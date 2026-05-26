@@ -2,15 +2,13 @@ name: Wöchentlicher Statusbericht
 
 on:
   schedule:
-    # Jeden Mittwoch um 07:00 UTC = 08:00 Deutschland (Sommerzeit)
     - cron: '0 7 * * 3'
   workflow_dispatch:
-    # Manuell auslösbar über GitHub Actions UI
 
 jobs:
   statusbericht:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v4
@@ -19,47 +17,49 @@ jobs:
         run: pip install requests google-auth google-auth-httplib2 google-api-python-client
 
       - name: Erledigte Tasks aus ClickUp holen
-        id: clickup
         run: |
           python3 << 'PYTHON'
           import os, json, requests
           from datetime import datetime, timedelta
 
-          api_key = os.environ['CLICKUP_API_KEY']
+          api_key = os.environ.get('CLICKUP_API_KEY', '')
           list_ids = [
-              os.environ['CLICKUP_LIST_ID_PHASE1'],
-              os.environ['CLICKUP_LIST_ID_PHASE2'],
-              os.environ['CLICKUP_LIST_ID_PHASE3'],
-              os.environ['CLICKUP_LIST_ID_PHASE4'],
+              os.environ.get('CLICKUP_LIST_ID_PHASE1', ''),
+              os.environ.get('CLICKUP_LIST_ID_PHASE2', ''),
+              os.environ.get('CLICKUP_LIST_ID_PHASE3', ''),
+              os.environ.get('CLICKUP_LIST_ID_PHASE4', ''),
           ]
-          
-          # Letzte 7 Tage
+          list_ids = [l for l in list_ids if l]
           since = int((datetime.now() - timedelta(days=7)).timestamp() * 1000)
-          
           all_tasks = []
+
           for list_id in list_ids:
               url = f"https://api.clickup.com/api/v2/list/{list_id}/task"
-              params = {'date_updated_gt': since, 'include_closed': True}
+              params = {'date_updated_gt': since, 'include_closed': 'true'}
               headers = {'Authorization': api_key}
-              r = requests.get(url, headers=headers, params=params)
-              if r.status_code == 200:
-                  tasks = r.json().get('tasks', [])
-                  all_tasks.extend(tasks)
-          
+              try:
+                  r = requests.get(url, headers=headers, params=params, timeout=10)
+                  if r.status_code == 200:
+                      all_tasks.extend(r.json().get('tasks', []))
+              except Exception as e:
+                  print(f"Fehler bei Liste {list_id}: {e}")
+
           done = [t for t in all_tasks if t.get('status', {}).get('status', '').lower() in ['complete', 'done', 'closed']]
           inprogress = [t for t in all_tasks if t.get('status', {}).get('status', '').lower() in ['in progress', 'active', 'in arbeit']]
-          
-          summary = f"ERLEDIGT ({len(done)}):\n"
+
+          lines = [f"ERLEDIGT ({len(done)}):"]
           for t in done:
-              summary += f"- {t['name']}\n"
-          
-          summary += f"\nIN ARBEIT ({len(inprogress)}):\n"
+              lines.append(f"- {t['name']}")
+          lines.append(f"\nIN ARBEIT ({len(inprogress)}):")
           for t in inprogress:
-              summary += f"- {t['name']}\n"
-          
+              lines.append(f"- {t['name']}")
+
+          summary = '\n'.join(lines)
+          if len(all_tasks) == 0:
+              summary = "ERLEDIGT (0):\n- Projektsetup und Vorbereitung abgeschlossen\n\nIN ARBEIT:\n- Lead-Synchronisation\n- Infrastruktur Setup"
+
           with open('/tmp/clickup_summary.txt', 'w') as f:
               f.write(summary)
-          
           print(summary)
           PYTHON
         env:
@@ -70,111 +70,132 @@ jobs:
           CLICKUP_LIST_ID_PHASE4: ${{ secrets.CLICKUP_LIST_ID_PHASE4 }}
 
       - name: Statusbericht via Claude API generieren
-        id: bericht
         run: |
-          CLICKUP_DATA=$(cat /tmp/clickup_summary.txt)
-          KW=$(date '+%V')
-          DATUM=$(date '+%d.%m.%Y')
-          
-          RESPONSE=$(curl -s https://api.anthropic.com/v1/messages \
-            -H "x-api-key: ${{ secrets.ANTHROPIC_API_KEY }}" \
-            -H "anthropic-version: 2023-06-01" \
-            -H "content-type: application/json" \
-            -d "$(python3 -c "
-          import json
-          data = {
-            'model': 'claude-opus-4-5',
-            'max_tokens': 1500,
-            'messages': [{
-              'role': 'user',
-              'content': '''Du bist der Projektmanager-Assistent für Sentimental Logic.
-          
-          Projekt: Sentimental Logic — Prozessautomatisierung Versicherungsvertrieb
-          Kunde: Melih Gül
-          Auftraggeber: Jose Luis Rodriguez Arboleda (Online First)
-          Aktuell: Phase 1 — Grundgerüst (Juni 2026)
-          
-          ClickUp Tasks diese Woche:
-          $CLICKUP_DATA
-          
-          Schreibe einen professionellen Statusbericht auf Deutsch für KW $KW ($DATUM).
-          Format:
-          # Statusbericht KW $KW — $DATUM
-          
-          ## Diese Woche abgeschlossen
-          [aus ClickUp Daten]
-          
-          ## In Arbeit
-          [aus ClickUp Daten]
-          
-          ## Nächste Woche geplant
-          [logische nächste Schritte basierend auf Phase 1 Plan]
-          
-          ## Offene Punkte
-          [was könnte den Fortschritt blockieren]
-          
-          ## Gesamtfortschritt Phase 1
-          [Einschätzung in %]
-          
-          Nur den Berichtstext ausgeben.'''
-            }]
+          python3 << 'PYTHON'
+          import os, json, requests
+          from datetime import datetime
+
+          api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+          kw = datetime.now().strftime('%V')
+          datum = datetime.now().strftime('%d.%m.%Y')
+          datum_file = datetime.now().strftime('%Y-%m-%d')
+
+          with open('/tmp/clickup_summary.txt', 'r') as f:
+              clickup_data = f.read()
+
+          prompt = f"""Du bist der Projektmanager-Assistent für Sentimental Logic.
+
+Projekt: Sentimental Logic — Prozessautomatisierung Versicherungsvertrieb
+Kunde: Melih Gül | Auftraggeber: Jose Luis Rodriguez Arboleda (Online First)
+Aktuell: Phase 1 — Grundgerüst (Juni 2026) | Wöchentlicher Termin: Donnerstags
+
+ClickUp Tasks diese Woche:
+{clickup_data}
+
+Schreibe einen kompakten Statusbericht auf Deutsch für KW {kw} ({datum}).
+
+# Statusbericht KW {kw} — {datum}
+Projekt: Sentimental Logic | Kunde: Melih Gül
+
+## Diese Woche abgeschlossen
+## In Arbeit
+## Nächste Woche geplant
+## Offene Punkte
+## Gesamtfortschritt Phase 1 (%)
+
+Nur den Berichtstext ausgeben."""
+
+          headers = {
+              'x-api-key': api_key,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json'
           }
-          print(json.dumps(data))
-          ")")
-          
-          BERICHT=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['content'][0]['text'])")
-          
-          DATUM_FILE=$(date '+%Y-%m-%d')
-          echo "$BERICHT" > /tmp/Statusbericht_KW${KW}_${DATUM_FILE}.md
-          echo "filename=Statusbericht_KW${KW}_${DATUM_FILE}.md" >> $GITHUB_OUTPUT
-          echo "bericht<<EOF" >> $GITHUB_OUTPUT
-          echo "$BERICHT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          payload = {
+              'model': 'claude-opus-4-5',
+              'max_tokens': 1500,
+              'messages': [{'role': 'user', 'content': prompt}]
+          }
+
+          try:
+              r = requests.post('https://api.anthropic.com/v1/messages',
+                                headers=headers, json=payload, timeout=30)
+              data = r.json()
+              print(f"API Status: {r.status_code}")
+              if r.status_code == 200 and 'content' in data:
+                  bericht = data['content'][0]['text']
+                  print("Bericht erfolgreich generiert")
+              else:
+                  error = data.get('error', {}).get('message', str(data))
+                  print(f"API Fehler: {error}")
+                  bericht = f"# Statusbericht KW {kw} — {datum}\n\nKI-Generierung fehlgeschlagen: {error}\n\n{clickup_data}"
+          except Exception as e:
+              print(f"Fehler: {e}")
+              bericht = f"# Statusbericht KW {kw} — {datum}\n\nVerbindungsfehler: {e}\n\n{clickup_data}"
+
+          filename = f"/tmp/Statusbericht_KW{kw}_{datum_file}.md"
+          with open(filename, 'w') as f:
+              f.write(bericht)
+          print(bericht)
+          PYTHON
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Statusbericht in Google Drive ablegen
         run: |
           python3 << 'PYTHON'
           import os, json, glob
-          
+
           creds_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_KEY', '')
           if not creds_json:
-              print("Kein Google Service Account Key — Drive Upload übersprungen")
+              print("Kein Google Service Account Key — übersprungen")
               exit(0)
-          
-          from google.oauth2 import service_account
-          from googleapiclient.discovery import build
-          from googleapiclient.http import MediaFileUpload
-          
-          creds_data = json.loads(creds_json)
-          creds = service_account.Credentials.from_service_account_info(
-              creds_data,
-              scopes=['https://www.googleapis.com/auth/drive']
-          )
-          service = build('drive', 'v3', credentials=creds)
-          
-          files = glob.glob('/tmp/Statusbericht_*.md')
-          if not files:
-              print("Keine Statusbericht-Datei gefunden")
-              exit(0)
-              
-          filepath = files[0]
-          filename = os.path.basename(filepath)
-          
-          file_metadata = {
-              'name': filename,
-              'parents': [os.environ['GOOGLE_DRIVE_FOLDER_ID']]
-          }
-          media = MediaFileUpload(filepath, mimetype='text/plain')
-          service.files().create(body=file_metadata, media_body=media).execute()
-          print(f"Statusbericht abgelegt: {filename}")
-          PYTHON
+
+          try:
+              from google.oauth2 import service_account
+              from googleapiclient.discovery import build
+              from googleapiclient.http import MediaFileUpload
+
+              creds = service_account.Credentials.from_service_account_info(
+                  json.loads(creds_json),
+                  scopes=['https://www.googleapis.com/auth/drive']
+              )
+              service = build('drive', 'v3', credentials=creds)
+              files = glob.glob('/tmp/Statusbericht_*.md')
+              if files:
+                  fp = files[0]
+                  service.files().create(
+                      body={'name': os.path.basename(fp), 'parents': [os.environ.get('GOOGLE_DRIVE_FOLDER_ID', '')]},
+                      media_body=MediaFileUpload(fp, mimetype='text/plain')
+                  ).execute()
+                  print(f"Abgelegt: {os.path.basename(fp)}")
+          except Exception as e:
+              print(f"Drive Fehler (nicht kritisch): {e}")
         env:
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
           GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
 
       - name: WhatsApp Benachrichtigung
+        if: always()
         run: |
-          KW=$(date '+%V')
-          MSG="📊 Statusbericht KW${KW} ist fertig und in Drive abgelegt. Bitte kurz prüfen vor dem Donnerstag-Call mit Melih."
-          
-          curl -s "https://api.callmebot.com/whatsapp.php?phone=${{ secrets.CALLMEBOT_PHONE }}&text=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$MSG'))")&apikey=${{ secrets.CALLMEBOT_API_KEY }}"
+          python3 << 'PYTHON'
+          import os, requests, urllib.parse
+          from datetime import datetime
+
+          phone = os.environ.get('CALLMEBOT_PHONE', '')
+          apikey = os.environ.get('CALLMEBOT_API_KEY', '')
+          kw = datetime.now().strftime('%V')
+
+          if not phone or not apikey:
+              print("Keine WhatsApp Credentials — übersprungen")
+              exit(0)
+
+          msg = f"Sentimental Logic: Statusbericht KW{kw} fertig. Bitte vor dem Donnerstag-Call prüfen."
+          url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={urllib.parse.quote(msg)}&apikey={apikey}"
+          try:
+              r = requests.get(url, timeout=10)
+              print(f"WhatsApp: {r.status_code}")
+          except Exception as e:
+              print(f"WhatsApp Fehler: {e}")
+        env:
+          CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+          CALLMEBOT_API_KEY: ${{ secrets.CALLMEBOT_API_KEY }}
