@@ -35,9 +35,12 @@ export default function DashboardPage() {
   const [dragOver, setDragOver] = useState(false)
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvPreview, setCsvPreview] = useState<string[][]>([])
+  const [csvAllRows, setCsvAllRows] = useState<string[][]>([])
   const [csvHeaders, setCsvHeaders] = useState<string[]>([])
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [importDone, setImportDone] = useState(false)
+  const [importLoading, setImportLoading] = useState(false)
+  const [importCount, setImportCount] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function parseCSV(text: string) {
@@ -52,8 +55,10 @@ export default function DashboardPage() {
       const text = e.target?.result as string
       const rows = parseCSV(text)
       const headers = rows[0] ?? []
+      const dataRows = rows.slice(1).filter((r) => r.some((c) => c.trim()))
       setCsvHeaders(headers)
-      setCsvPreview(rows.slice(1, 4))
+      setCsvPreview(dataRows.slice(0, 3))
+      setCsvAllRows(dataRows)
       // Auto-Mapping: CSV-Header auf System-Felder mappen
       const autoMap: Record<string, string> = {}
       headers.forEach((h) => {
@@ -64,7 +69,7 @@ export default function DashboardPage() {
       })
       setMapping(autoMap)
     }
-    reader.readAsText(file)
+    reader.readAsText(file, 'UTF-8')
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -74,8 +79,36 @@ export default function DashboardPage() {
     if (file) handleFile(file)
   }
 
-  function handleImport() {
+  async function handleImport() {
+    if (csvAllRows.length === 0) return
+    setImportLoading(true)
+    let count = 0
+    // Alle Zeilen sequenziell in die DB schreiben
+    for (const row of csvAllRows) {
+      const lead: Record<string, string> = {}
+      csvHeaders.forEach((header, i) => {
+        const field = mapping[header]
+        if (field && field !== 'ignore') {
+          lead[field] = row[i]?.trim() ?? ''
+        }
+      })
+      if (!lead.first_name || !lead.last_name) continue
+      try {
+        const res = await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(lead),
+        })
+        if (res.ok) count++
+      } catch { /* einzelne Fehler überspringen */ }
+    }
+    setImportCount(count)
+    setImportLoading(false)
     setImportDone(true)
+    // Dashboard-Leads nach Import neu laden
+    fetch('/api/leads?limit=5').then((r) => r.json()).then((res) => {
+      if (res.success) setLeads(res.data)
+    }).catch(() => {})
   }
 
   function closeModal() {
@@ -327,10 +360,12 @@ export default function DashboardPage() {
                     </button>
                     <button
                       onClick={handleImport}
-                      disabled={!csvFile}
+                      disabled={!csvFile || importLoading}
                       className="flex-1 bg-[#FFC300] hover:bg-[#e6b000] disabled:opacity-40 disabled:cursor-not-allowed text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
                     >
-                      {csvPreview.length + 1} Leads importieren
+                      {importLoading
+                        ? 'Importiere…'
+                        : `${csvAllRows.length} Leads importieren`}
                     </button>
                   </div>
                 </>
@@ -343,7 +378,7 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <h3 className="text-xl font-bold text-[#1A1A1A] mb-1">
-                    {csvPreview.length + 1} Leads importiert
+                    {importCount} Leads importiert
                   </h3>
                   <p className="text-gray-500 text-sm mb-6">
                     Die Leads wurden erfolgreich in das System übernommen und den Automatisierungsregeln übergeben.
