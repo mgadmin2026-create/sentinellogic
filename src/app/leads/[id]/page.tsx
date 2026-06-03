@@ -1,8 +1,8 @@
 'use client'
 // Lead-Profil — alle Details, Notizen, Versicherungsstatus, KI-Gesprächsvorbereitung
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { getLeadById, STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS } from '@/data/mock'
+import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, type MockLead } from '@/data/mock'
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   sync: (
@@ -34,11 +34,35 @@ const INSURANCE_BADGES = ['BHV', 'KFZ', 'Rechtsschutz', 'Kranken', 'Leben', 'Ren
 export default function LeadDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const lead = getLeadById(params.id as string)
 
-  const [notes, setNotes] = useState(lead?.notes ?? '')
-  const [notesTimestamp, setNotesTimestamp] = useState(lead?.notes_updated_at)
+  // Lead aus echter Datenbank laden
+  const [lead, setLead] = useState<MockLead | null>(null)
+  const [loadingLead, setLoadingLead] = useState(true)
+  const [notes, setNotes] = useState('')
+  const [notesTimestamp, setNotesTimestamp] = useState<string | undefined>()
   const [prepModalOpen, setPrepModalOpen] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/leads/${params.id}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success) {
+          setLead(res.data)
+          setNotes(res.data.notes ?? '')
+          setNotesTimestamp(res.data.notes_updated_at)
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoadingLead(false))
+  }, [params.id])
+
+  if (loadingLead) {
+    return (
+      <div className="p-8 flex items-center justify-center text-gray-400 text-sm">
+        Lead wird geladen…
+      </div>
+    )
+  }
 
   if (!lead) {
     return (
@@ -51,9 +75,16 @@ export default function LeadDetailPage() {
     )
   }
 
-  function saveQuickNote() {
+  async function saveQuickNote() {
     const ts = new Date().toISOString()
+    // Notiz in Datenbank speichern
+    await fetch(`/api/leads/${lead!.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes }),
+    }).catch(console.error)
     setNotesTimestamp(ts)
+    setLead((prev) => prev ? { ...prev, notes, notes_updated_at: ts } : prev)
   }
 
   const sectionCard = (title: string, children: React.ReactNode) => (

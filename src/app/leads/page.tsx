@@ -1,8 +1,8 @@
 'use client'
-// Lead-Liste — Suche, Filter, Tabelle mit allen 8 Mock-Leads
-import { useState } from 'react'
+// Lead-Liste — Suche, Filter, Tabelle mit echten Daten aus Supabase
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { MOCK_LEADS, STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS, type LeadStatus } from '@/data/mock'
+import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS, type LeadStatus, type MockLead } from '@/data/mock'
 
 const FILTERS: { label: string; value: LeadStatus | 'all' }[] = [
   { label: 'Alle', value: 'all' },
@@ -13,16 +13,27 @@ const FILTERS: { label: string; value: LeadStatus | 'all' }[] = [
 ]
 
 export default function LeadsPage() {
+  const [allLeads, setAllLeads] = useState<MockLead[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<LeadStatus | 'all'>('all')
 
-  const filtered = MOCK_LEADS.filter((lead) => {
+  // Leads aus der echten Datenbank laden
+  useEffect(() => {
+    fetch('/api/leads?limit=100')
+      .then((r) => r.json())
+      .then((res) => { if (res.success) setAllLeads(res.data) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filtered = allLeads.filter((lead) => {
     const matchesStatus = activeFilter === 'all' || lead.status === activeFilter
     const q = search.toLowerCase()
     const matchesSearch =
       !q ||
       `${lead.first_name} ${lead.last_name}`.toLowerCase().includes(q) ||
-      lead.email.toLowerCase().includes(q) ||
+      (lead.email ?? '').toLowerCase().includes(q) ||
       (lead.company_name ?? '').toLowerCase().includes(q) ||
       (lead.industry ?? '').toLowerCase().includes(q)
     return matchesStatus && matchesSearch
@@ -34,7 +45,7 @@ export default function LeadsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-[#1A1A1A]">Leads</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{MOCK_LEADS.length} Leads gesamt</p>
+          <p className="text-gray-500 text-sm mt-0.5">{loading ? 'Lädt…' : `${allLeads.length} Leads gesamt`}</p>
         </div>
         <Link
           href="/dashboard"
@@ -70,8 +81,8 @@ export default function LeadsPage() {
         <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1">
           {FILTERS.map((f) => {
             const count = f.value === 'all'
-              ? MOCK_LEADS.length
-              : MOCK_LEADS.filter((l) => l.status === f.value).length
+              ? allLeads.length
+              : allLeads.filter((l) => l.status === f.value).length
             return (
               <button
                 key={f.value}
@@ -106,10 +117,12 @@ export default function LeadsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr><td colSpan={7} className="text-center text-gray-400 py-16 text-sm">Leads werden geladen…</td></tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center text-gray-400 py-16 text-sm">
-                    Keine Leads gefunden.
+                    {allLeads.length === 0 ? 'Noch keine Leads in der Datenbank.' : 'Keine Leads gefunden.'}
                   </td>
                 </tr>
               ) : (
@@ -163,7 +176,7 @@ export default function LeadsPage() {
         {filtered.length > 0 && (
           <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/40">
             <p className="text-xs text-gray-400">
-              {filtered.length} von {MOCK_LEADS.length} Leads angezeigt
+              {filtered.length} von {allLeads.length} Leads angezeigt
             </p>
           </div>
         )}

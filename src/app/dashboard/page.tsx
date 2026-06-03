@@ -1,11 +1,9 @@
 'use client'
 // Dashboard — KPI-Kacheln + Leads-Tabelle + CSV-Import Modal
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { MOCK_LEADS, STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS } from '@/data/mock'
-
-// Letzte 5 Leads für das Dashboard
-const DASHBOARD_LEADS = MOCK_LEADS.slice(0, 5)
+import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS } from '@/data/mock'
+import type { MockLead } from '@/data/mock'
 
 // Spalten-Mapping für CSV-Import
 const CSV_FIELDS = ['Vorname', 'Nachname', 'Firma', 'Telefon', 'E-Mail', 'Branche', 'Quelle']
@@ -21,6 +19,18 @@ const SYSTEM_FIELDS = [
 ]
 
 export default function DashboardPage() {
+  // Echte Leads aus der Datenbank
+  const [leads, setLeads] = useState<MockLead[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/leads?limit=5')
+      .then((r) => r.json())
+      .then((res) => { if (res.success) setLeads(res.data) })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
   const [csvModalOpen, setCsvModalOpen] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [csvFile, setCsvFile] = useState<File | null>(null)
@@ -77,9 +87,12 @@ export default function DashboardPage() {
     setImportDone(false)
   }
 
+  // KPIs dynamisch aus echten Leads berechnen
+  const today = new Date().toDateString()
+  const leadsToday = leads.filter((l) => new Date(l.created_at).toDateString() === today).length
   const kpis = [
-    { label: 'Leads heute', value: '12', sub: '+3 gegenüber gestern', color: 'border-[#FFC300]' },
-    { label: 'Leads diese Woche', value: '47', sub: '↑ 18% zur Vorwoche', color: 'border-blue-400' },
+    { label: 'Leads heute', value: String(leadsToday), sub: 'aus der Datenbank', color: 'border-[#FFC300]' },
+    { label: 'Leads gesamt', value: String(leads.length > 0 ? leads.length : '—'), sub: 'in der Pipeline', color: 'border-blue-400' },
     { label: 'Abschlussquote', value: '23%', sub: 'Ø letzte 30 Tage', color: 'border-emerald-400' },
     { label: 'Zeitersparnis', value: '4,6h', sub: 'pro Woche durch Automation', color: 'border-purple-400' },
   ]
@@ -136,7 +149,11 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {DASHBOARD_LEADS.map((lead) => (
+              {loading ? (
+                <tr><td colSpan={6} className="text-center text-gray-400 py-12 text-sm">Leads werden geladen…</td></tr>
+              ) : leads.length === 0 ? (
+                <tr><td colSpan={6} className="text-center text-gray-400 py-12 text-sm">Noch keine Leads in der Datenbank.</td></tr>
+              ) : leads.map((lead) => (
                 <tr key={lead.id} className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors">
                   <td className="px-6 py-3.5">
                     <span className="font-medium text-[#1A1A1A]">
