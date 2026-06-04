@@ -576,6 +576,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   calendly: 'Calendly',
   csv: 'CSV',
   email: 'E-Mail',
+  manuell: 'Manuell',
 }
 
 export const SOURCE_COLORS: Record<string, string> = {
@@ -584,4 +585,5 @@ export const SOURCE_COLORS: Record<string, string> = {
   calendly: 'bg-orange-50 text-orange-700',
   csv: 'bg-gray-100 text-gray-700',
   email: 'bg-green-50 text-green-700',
+  manuell: 'bg-gray-100 text-gray-600',
 }

@@ -47,8 +47,18 @@ export async function PATCH(
     const body = await request.json()
     const { id } = params
 
-    // Schreibgeschützte Felder entfernen
-    const { id: _id, created_at, ...updates } = body
+    // Schreibgeschützte Felder entfernen, Rest direkt durchleiten
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _id, created_at, activities, ...rawUpdates } = body
+
+    // Zahlenfelder konvertieren
+    const updates = {
+      ...rawUpdates,
+      children: rawUpdates.children ? parseInt(rawUpdates.children) : rawUpdates.children ?? null,
+      founded_year: rawUpdates.founded_year ? parseInt(rawUpdates.founded_year) : rawUpdates.founded_year ?? null,
+      employees: rawUpdates.employees ? parseInt(rawUpdates.employees) : rawUpdates.employees ?? null,
+      email: rawUpdates.email?.toLowerCase?.() ?? rawUpdates.email,
+    }
 
     const { data, error } = await supabase
       .from('leads')

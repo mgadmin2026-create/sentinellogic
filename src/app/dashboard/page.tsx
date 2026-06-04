@@ -5,17 +5,25 @@ import Link from 'next/link'
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS } from '@/data/mock'
 import type { MockLead } from '@/data/mock'
 
-// Spalten-Mapping für CSV-Import
-const CSV_FIELDS = ['Vorname', 'Nachname', 'Firma', 'Telefon', 'E-Mail', 'Branche', 'Quelle']
+// Spalten-Mapping für CSV-Import — alle verfügbaren Systemfelder
 const SYSTEM_FIELDS = [
-  { value: 'first_name', label: 'Vorname' },
-  { value: 'last_name', label: 'Nachname' },
-  { value: 'company_name', label: 'Firma' },
-  { value: 'phone_mobile', label: 'Telefon' },
-  { value: 'email', label: 'E-Mail' },
-  { value: 'industry', label: 'Branche' },
-  { value: 'source', label: 'Quelle' },
-  { value: 'ignore', label: '— ignorieren —' },
+  { value: 'first_name',    label: 'Vorname' },
+  { value: 'last_name',     label: 'Nachname' },
+  { value: 'email',         label: 'E-Mail' },
+  { value: 'phone_mobile',  label: 'Telefon Mobil' },
+  { value: 'phone_office',  label: 'Telefon Büro' },
+  { value: 'company_name',  label: 'Firma' },
+  { value: 'industry',      label: 'Branche' },
+  { value: 'position',      label: 'Position' },
+  { value: 'street',        label: 'Straße' },
+  { value: 'postal_code',   label: 'PLZ' },
+  { value: 'city',          label: 'Ort' },
+  { value: 'country',       label: 'Land' },
+  { value: 'website',       label: 'Website' },
+  { value: 'source',        label: 'Quelle' },
+  { value: 'status',        label: 'Status' },
+  { value: 'notes',         label: 'Notizen' },
+  { value: 'ignore',        label: '— ignorieren —' },
 ]
 
 export default function DashboardPage() {

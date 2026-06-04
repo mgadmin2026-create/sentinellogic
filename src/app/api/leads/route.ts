@@ -1,24 +1,23 @@
 // API Route: Lead-Verwaltung
-// GET  /api/leads — alle Leads abrufen (mit Filter + Limit)
-// POST /api/leads — neuen Lead anlegen
+// GET  /api/leads — alle Leads abrufen
+// POST /api/leads — neuen Lead anlegen (mit Duplikatprüfung)
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
-// Gültige Enum-Werte aus der DB
-const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email']
+const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
 
-// Quelle normalisieren (z.B. "Facebook" → "facebook")
 function normalizeSource(raw?: string): string {
-  if (!raw) return 'csv'
+  if (!raw) return 'manuell'
   const map: Record<string, string> = {
     facebook: 'facebook', Facebook: 'facebook',
     tiktok: 'tiktok', TikTok: 'tiktok',
     calendly: 'calendly', Calendly: 'calendly',
     csv: 'csv', CSV: 'csv',
-    email: 'email', 'E-Mail': 'email', EMail: 'email',
+    email: 'email', 'E-Mail': 'email',
+    manuell: 'manuell', Manuell: 'manuell', manual: 'manuell',
   }
-  return map[raw] ?? (VALID_SOURCES.includes(raw.toLowerCase()) ? raw.toLowerCase() : 'csv')
+  return map[raw] ?? (VALID_SOURCES.includes(raw.toLowerCase()) ? raw.toLowerCase() : 'manuell')
 }
 
 export async function GET(request: NextRequest) {
@@ -27,7 +26,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const source = searchParams.get('source')
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '100', 10), 500)
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '200', 10), 500)
 
     let query = supabase
       .from('leads')
@@ -53,7 +52,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = createServerClient()
 
-    // Nur Vorname + Nachname sind wirklich Pflicht
     const { first_name, last_name } = body
     if (!first_name?.trim() || !last_name?.trim()) {
       return Response.json(
@@ -62,25 +60,88 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // ── Duplikatprüfung ─────────────────────────────────────
+    if (body.email?.trim() && !body.force) {
+      const { data: emailDupe } = await supabase
+        .from('leads')
+        .select('id, first_name, last_name, email')
+        .eq('email', body.email.trim().toLowerCase())
+        .limit(1)
+        .maybeSingle()
+
+      if (emailDupe) {
+        return Response.json({
+          success: false,
+          duplicate: true,
+          error: `Duplikat: Lead mit dieser E-Mail existiert bereits (${emailDupe.first_name} ${emailDupe.last_name}).`,
+          existing: emailDupe,
+        }, { status: 409 })
+      }
+    }
+
+    if (!body.force) {
+      const { data: nameDupe } = await supabase
+        .from('leads')
+        .select('id, first_name, last_name, email')
+        .eq('first_name', first_name.trim())
+        .eq('last_name', last_name.trim())
+        .limit(1)
+        .maybeSingle()
+
+      if (nameDupe) {
+        return Response.json({
+          success: false,
+          duplicate: true,
+          error: `Duplikat: Lead mit diesem Namen existiert bereits (${nameDupe.email || 'keine E-Mail'}).`,
+          existing: nameDupe,
+        }, { status: 409 })
+      }
+    }
+
     const source = normalizeSource(body.source)
     const status = VALID_STATUSES.includes(body.status) ? body.status : 'new'
 
-    // Alle erlaubten Felder explizit mappen
     const insertData = {
+      // Kontakt
       first_name: first_name.trim(),
       last_name: last_name.trim(),
-      email: body.email?.trim() || null,
-      phone_mobile: (body.phone_mobile || body.phone)?.trim() || null,
+      email: body.email?.trim()?.toLowerCase() || null,
+      phone_mobile: body.phone_mobile?.trim() || null,
       phone_office: body.phone_office?.trim() || null,
-      address: body.address?.trim() || null,
-      company_name: body.company_name?.trim() || null,
-      industry: body.industry?.trim() || null,
-      position: body.position?.trim() || null,
+      // Persönlich
+      birth_date: body.birth_date || null,
+      marital_status: body.marital_status?.trim() || null,
+      children: body.children ? parseInt(body.children) : null,
       profession: body.profession?.trim() || null,
+      profession_group: body.profession_group?.trim() || null,
+      position: body.position?.trim() || null,
+      // Adresse
+      address: body.address?.trim() || null,
+      street: body.street?.trim() || null,
+      postal_code: body.postal_code?.trim() || null,
+      city: body.city?.trim() || null,
+      country: body.country?.trim() || 'Deutschland',
+      // Firma
+      company_name: body.company_name?.trim() || null,
+      legal_form: body.legal_form?.trim() || null,
+      founded_year: body.founded_year ? parseInt(body.founded_year) : null,
+      employees: body.employees ? parseInt(body.employees) : null,
+      annual_revenue: body.annual_revenue?.trim() || null,
+      trade_register: body.trade_register?.trim() || null,
+      vat_id: body.vat_id?.trim() || null,
+      industry: body.industry?.trim() || null,
+      business_description: body.business_description?.trim() || null,
       website: body.website?.trim() || null,
-      notes: body.notes?.trim() || null,
+      headquarters: body.headquarters?.trim() || null,
+      // Versicherung
+      existing_insurances: Array.isArray(body.existing_insurances) ? body.existing_insurances : [],
+      current_providers: body.current_providers?.trim() || null,
+      monthly_premium: body.monthly_premium?.trim() || null,
+      coverage_gaps: body.coverage_gaps?.trim() || null,
+      // Intern
       source,
       status,
+      notes: body.notes?.trim() || null,
     }
 
     const { data: lead, error: insertError } = await supabase
@@ -91,8 +152,6 @@ export async function POST(request: NextRequest) {
 
     if (insertError) throw new Error(`Supabase Fehler: ${insertError.message}`)
 
-    // Aktivität protokollieren
-    // Aktivität protokollieren — Fehler werden ignoriert (nicht kritisch)
     void supabase.from('activities').insert({
       lead_id: lead.id,
       type: 'sync',
