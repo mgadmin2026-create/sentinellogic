@@ -3,6 +3,7 @@
 // POST /api/leads — neuen Lead anlegen (mit Regelausführung + Duplikatprüfung)
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { syncLeadToKlicktipp, type LeadSyncData } from '@/lib/integrations/klicktipp'
 
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
@@ -31,9 +32,9 @@ interface RuleActions {
 async function executeRules(
   supabase: ReturnType<typeof createServerClient>,
   leadId: string,
-  leadName: string,
   source: string,
-  currentStatus: string
+  currentStatus: string,
+  leadData: LeadSyncData & { first_name: string; last_name: string }
 ): Promise<{ statusOverride?: string; appliedRules: string[] }> {
   // Passende aktive Regeln laden
   const { data: rules } = await supabase
@@ -51,17 +52,37 @@ async function executeRules(
     const actions = rule.actions as RuleActions
     const resultParts: string[] = []
 
-    // Klicktipp Tag setzen
+    // ── KlickTipp Tag tatsächlich setzen ──────────────────────
     if (actions.klicktipp_tag) {
-      const hasApiKey = !!process.env.KLICKTIPP_API_KEY
-      resultParts.push(
-        hasApiKey
-          ? `Klicktipp Tag "${actions.klicktipp_tag}" gesetzt`
-          : `Klicktipp Tag "${actions.klicktipp_tag}" konfiguriert (API-Key ausstehend)`
-      )
+      if (!leadData.email) {
+        resultParts.push(`⚠️ KlickTipp übersprungen: Kein E-Mail beim Lead`)
+      } else if (!process.env.KLICKTIPP_API_KEY) {
+        resultParts.push(`⚠️ KlickTipp übersprungen: KLICKTIPP_API_KEY nicht gesetzt`)
+      } else {
+        // Echten API-Call durchführen
+        const syncResult = await syncLeadToKlicktipp(
+          leadData,
+          actions.klicktipp_tag,
+          process.env.KLICKTIPP_LIST_ID
+        )
+        if (syncResult.success) {
+          resultParts.push(
+            `✅ KlickTipp: ${syncResult.message}`
+          )
+          // Subscriber-ID im Lead speichern
+          if (syncResult.subscriberId) {
+            await supabase
+              .from('leads')
+              .update({ klicktipp_id: syncResult.subscriberId })
+              .eq('id', leadId)
+          }
+        } else {
+          resultParts.push(`⚠️ KlickTipp Fehler: ${syncResult.message}`)
+        }
+      }
     }
 
-    // Dialfire Kampagne
+    // ── Dialfire Kampagne ──────────────────────────────────────
     if (actions.dialfire_campaign) {
       const hasApiKey = !!process.env.DIALFIRE_API_KEY
       resultParts.push(
@@ -71,7 +92,7 @@ async function executeRules(
       )
     }
 
-    // Status überschreiben
+    // ── Status überschreiben ──────────────────────────────────
     if (actions.set_status && VALID_STATUSES.includes(actions.set_status)) {
       if (actions.set_status !== currentStatus) {
         statusOverride = actions.set_status
@@ -79,23 +100,19 @@ async function executeRules(
       }
     }
 
-    // Benachrichtigung
+    // ── Benachrichtigung ──────────────────────────────────────
     if (actions.send_notification) {
       resultParts.push('Benachrichtigung ausgelöst')
     }
 
     if (resultParts.length > 0) {
-      // Aktivität für diese Regel anlegen
       await supabase.from('activities').insert({
         lead_id: leadId,
         type: 'sync',
         description: `⚡ Regel "${rule.name}" ausgeführt: ${resultParts.join(' · ')}`,
         data: { rule_id: rule.id, rule_name: rule.name, actions },
       })
-
-      // Ausführungszähler erhöhen
       await supabase.from('rules').update({ runs: rule.runs + 1 }).eq('id', rule.id)
-
       appliedRules.push(rule.name)
     }
   }
@@ -232,10 +249,18 @@ export async function POST(request: NextRequest) {
       description: `Lead angelegt via ${source}`,
     })
 
-    // ── Regeln ausführen ──────────────────────────────────────
-    const leadName = `${lead.first_name} ${lead.last_name}`
+    // ── Regeln ausführen (inkl. KlickTipp Live-Sync) ─────────
     const { statusOverride, appliedRules } = await executeRules(
-      supabase, lead.id, leadName, source, lead.status
+      supabase,
+      lead.id,
+      source,
+      lead.status,
+      {
+        email: lead.email,
+        first_name: lead.first_name,
+        last_name: lead.last_name,
+        phone_mobile: lead.phone_mobile,
+      }
     )
 
     // Status-Override anwenden falls eine Regel ihn gesetzt hat
