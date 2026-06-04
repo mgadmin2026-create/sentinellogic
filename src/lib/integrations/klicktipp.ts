@@ -1,20 +1,118 @@
-// KlickTipp API Integration — E-Mail-Marketing und Tag-Synchronisation
-// Auth: X-API-Key Header (moderner API-Key aus KlickTipp → Einstellungen → API)
+// KlickTipp API Integration — Session-basierte Authentifizierung
+// KlickTipp REST API nutzt Login → Session-ID → alle weiteren Calls
 // Dokumentation: https://www.klicktipp.com/de/support/api/
 
 const KLICKTIPP_API_URL = (process.env.KLICKTIPP_API_URL ?? 'https://api.klicktipp.com').replace(/\/$/, '')
 
-function getApiKey(): string | null {
-  return process.env.KLICKTIPP_API_KEY || null
+// ── Session-Management ───────────────────────────────────────
+
+interface KlicktippSession {
+  name: string    // Cookie-Name der Session
+  id: string      // Session-ID
+  expires: number // Unix-Timestamp Ablauf (30 Min)
 }
 
-function getAuthHeaders(): HeadersInit {
-  const key = getApiKey()
-  if (!key) throw new Error('KLICKTIPP_API_KEY fehlt in den Umgebungsvariablen')
+// In-Memory Cache für Session (pro Server-Instanz)
+let cachedSession: KlicktippSession | null = null
+
+async function getSession(): Promise<KlicktippSession> {
+  // Gecachte Session nutzen wenn noch gültig (mit 5 Min Puffer)
+  if (cachedSession && Date.now() < cachedSession.expires - 5 * 60 * 1000) {
+    return cachedSession
+  }
+
+  const username = process.env.KLICKTIPP_USERNAME
+  const password = process.env.KLICKTIPP_PASSWORD
+
+  if (!username || !password) {
+    throw new Error(
+      'KLICKTIPP_USERNAME und KLICKTIPP_PASSWORD fehlen in .env.local — ' +
+      'KlickTipp REST API benötigt Login-Zugangsdaten (nicht den API-Key)'
+    )
+  }
+
+  const response = await fetch(`${KLICKTIPP_API_URL}/account/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+
+  if (!response.ok) {
+    const err = await response.text()
+    throw new Error(`KlickTipp Login fehlgeschlagen (${response.status}): ${err}`)
+  }
+
+  const data = await response.json()
+  // Antwort: { session_name: "...", sessid: "..." }
+  // oder Array: ["session_name", "session_id"]
+  let sessionName: string
+  let sessionId: string
+
+  if (Array.isArray(data)) {
+    [sessionName, sessionId] = data
+  } else {
+    sessionName = data.session_name ?? data.sessid_name ?? 'PHPSESSID'
+    sessionId = data.sessid ?? data.session_id ?? data.id
+  }
+
+  if (!sessionId) throw new Error('KlickTipp Login: Keine Session-ID in der Antwort')
+
+  cachedSession = {
+    name: sessionName,
+    id: sessionId,
+    expires: Date.now() + 30 * 60 * 1000, // 30 Min TTL
+  }
+
+  return cachedSession
+}
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const session = await getSession()
   return {
     'Content-Type': 'application/json',
-    'X-API-Key': key,
+    'Cookie': `${session.name}=${session.id}`,
   }
+}
+
+// Session bei Fehler invalidieren
+function invalidateSession() {
+  cachedSession = null
+}
+
+// Hilfsfunktion: Request mit auto-retry bei Session-Ablauf
+async function apiRequest(
+  path: string,
+  options: { method?: string; body?: unknown } = {}
+): Promise<unknown> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${KLICKTIPP_API_URL}${path}`, {
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  })
+
+  if (response.status === 403) {
+    // Session abgelaufen → neu einloggen und einmal wiederholen
+    invalidateSession()
+    const freshHeaders = await getAuthHeaders()
+    const retry = await fetch(`${KLICKTIPP_API_URL}${path}`, {
+      method: options.method ?? 'GET',
+      headers: freshHeaders,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    })
+    if (!retry.ok) {
+      const err = await retry.text()
+      throw new Error(`${options.method ?? 'GET'} ${path} fehlgeschlagen (${retry.status}): ${err}`)
+    }
+    return retry.json()
+  }
+
+  if (!response.ok) {
+    const err = await response.text()
+    throw new Error(`${options.method ?? 'GET'} ${path} fehlgeschlagen (${response.status}): ${err}`)
+  }
+
+  return response.json()
 }
 
 // ── Typen ────────────────────────────────────────────────────
@@ -40,83 +138,46 @@ export interface LeadSyncData {
 
 // ── Tags ─────────────────────────────────────────────────────
 
-// Alle Tags aus KlickTipp laden → [{id, name}]
 export async function getAllTags(): Promise<KlicktippTag[]> {
-  try {
-    const response = await fetch(`${KLICKTIPP_API_URL}/tag`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    if (!response.ok) {
-      const err = await response.text()
-      throw new Error(`GET /tag fehlgeschlagen (${response.status}): ${err}`)
-    }
-    const data = await response.json()
-    // KlickTipp gibt ein Objekt zurück: {tagId: tagName, ...} oder Array je nach Version
-    if (Array.isArray(data)) return data
-    // Objekt-Format: { "123": "fb-lead", ... }
-    return Object.entries(data as Record<string, string>).map(([id, name]) => ({ id, name }))
-  } catch (error) {
-    console.error('[KlickTipp] getAllTags Fehler:', error)
-    throw error
-  }
+  const data = await apiRequest('/tag')
+  if (Array.isArray(data)) return data as KlicktippTag[]
+  // Objekt-Format: { "123": "fb-lead", ... }
+  return Object.entries(data as Record<string, string>).map(([id, name]) => ({ id, name }))
 }
 
-// Tag per Name suchen — wenn nicht vorhanden, neu anlegen → Tag-ID
 export async function getOrCreateTagByName(name: string): Promise<string> {
-  // Vorhandene Tags laden und Namen vergleichen
   const tags = await getAllTags()
   const existing = tags.find((t) => t.name.toLowerCase() === name.toLowerCase())
   if (existing) return existing.id
 
-  // Nicht gefunden → Tag anlegen
-  const response = await fetch(`${KLICKTIPP_API_URL}/tag`, {
+  const created = await apiRequest('/tag', {
     method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ name }),
+    body: { name },
   })
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`POST /tag fehlgeschlagen (${response.status}): ${err}`)
-  }
-  const created = await response.json()
-  // Antwort kann Array-Eintrag [tagId] oder Objekt {id} sein
-  const tagId = Array.isArray(created) ? created[0] : (created.id ?? created)
+  const tagId = Array.isArray(created) ? created[0] : (created as Record<string, unknown>).id ?? created
   return String(tagId)
 }
 
 // ── Subscriber ───────────────────────────────────────────────
 
-// Prüfen ob Subscriber bereits in KlickTipp existiert
 export async function getSubscriberByEmail(email: string): Promise<Record<string, unknown> | null> {
   try {
     const encoded = encodeURIComponent(email)
-    const response = await fetch(`${KLICKTIPP_API_URL}/subscriber/${encoded}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    if (response.status === 404) return null
-    if (!response.ok) return null
-    return await response.json()
-  } catch {
+    const data = await apiRequest(`/subscriber/${encoded}`)
+    return data as Record<string, unknown>
+  } catch (err) {
+    if (String(err).includes('404')) return null
     return null
   }
 }
 
-// Tag zu bestehendem Subscriber hinzufügen
 export async function addTagToSubscriber(email: string, tagId: string): Promise<void> {
-  const response = await fetch(`${KLICKTIPP_API_URL}/subscriber/tag`, {
+  await apiRequest('/subscriber/tag', {
     method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ email, tagid: tagId }),
+    body: { email, tagid: tagId },
   })
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`POST /subscriber/tag fehlgeschlagen (${response.status}): ${err}`)
-  }
 }
 
-// Neuen Subscriber anlegen mit Tag und optionalem Verteiler
 export async function createSubscriber(
   lead: LeadSyncData,
   tagIds: string[],
@@ -133,41 +194,23 @@ export async function createSubscriber(
   }
   if (listId) body.listid = listId
 
-  const response = await fetch(`${KLICKTIPP_API_URL}/subscriber`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`POST /subscriber fehlgeschlagen (${response.status}): ${err}`)
-  }
-  const data = await response.json()
-  // Antwort: [subscriberId] (Array) oder {id: subscriberId}
-  const id = Array.isArray(data) ? data[0] : (data.id ?? data)
+  const data = await apiRequest('/subscriber', { method: 'POST', body })
+  const id = Array.isArray(data) ? data[0] : (data as Record<string, unknown>).id ?? data
   return String(id)
 }
 
-// ── Haupt-Funktion für Rule-Execution ────────────────────────
+// ── Haupt-Funktion ────────────────────────────────────────────
 
-/**
- * Lead in KlickTipp anlegen/aktualisieren und Tag setzen.
- * Wird von executeRules aufgerufen wenn eine Regel klicktipp_tag enthält.
- *
- * Ablauf:
- * 1. API-Key prüfen
- * 2. Tag-ID per getOrCreateTagByName holen
- * 3. Subscriber prüfen: neu anlegen ODER nur Tag hinzufügen
- * 4. Subscriber-ID zurückgeben
- */
 export async function syncLeadToKlicktipp(
   lead: LeadSyncData,
   tagName: string,
   listId?: string
 ): Promise<KlicktippSyncResult> {
-  // API-Key-Check
-  if (!getApiKey()) {
-    return { success: false, message: 'KLICKTIPP_API_KEY nicht konfiguriert' }
+  if (!process.env.KLICKTIPP_USERNAME || !process.env.KLICKTIPP_PASSWORD) {
+    return {
+      success: false,
+      message: 'KLICKTIPP_USERNAME / KLICKTIPP_PASSWORD nicht in .env.local konfiguriert',
+    }
   }
 
   try {
@@ -176,25 +219,21 @@ export async function syncLeadToKlicktipp(
     try {
       tagId = await getOrCreateTagByName(tagName)
     } catch (tagError) {
-      console.error('[KlickTipp] Tag-Fehler:', tagError)
       return {
         success: false,
-        message: `Tag "${tagName}" konnte nicht gefunden/angelegt werden: ${tagError instanceof Error ? tagError.message : 'Unbekannt'}`,
+        message: `Tag "${tagName}" Fehler: ${tagError instanceof Error ? tagError.message : String(tagError)}`,
       }
     }
 
-    // 2. Subscriber bereits vorhanden?
+    // 2. Subscriber anlegen oder Tag hinzufügen
     const existing = await getSubscriberByEmail(lead.email)
 
     let subscriberId: string
-
     if (existing) {
-      // Subscriber existiert → nur Tag hinzufügen
-      const existingId = existing.id ?? existing.subscriberid ?? existing.subscriber_id
+      const existingId = existing.id ?? existing.subscriberid
       subscriberId = String(existingId ?? lead.email)
       await addTagToSubscriber(lead.email, tagId)
     } else {
-      // Neuen Subscriber anlegen
       subscriberId = await createSubscriber(lead, [tagId], listId)
     }
 
@@ -203,47 +242,31 @@ export async function syncLeadToKlicktipp(
       subscriberId,
       tagId,
       message: existing
-        ? `Bestehender Kontakt gefunden, Tag "${tagName}" hinzugefügt`
+        ? `Bestehender Kontakt, Tag "${tagName}" hinzugefügt`
         : `Kontakt angelegt, Tag "${tagName}" gesetzt`,
     }
   } catch (error) {
-    console.error('[KlickTipp] syncLeadToKlicktipp Fehler:', error)
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Unbekannter Fehler',
+      message: error instanceof Error ? error.message : String(error),
     }
   }
 }
 
 // ── Legacy-Funktionen (Rückwärtskompatibilität) ───────────────
 
-export interface KlicktippContact {
-  email: string
-  first_name?: string
-  last_name?: string
-  phone?: string
-  tags?: string[]
-  fields?: Record<string, string>
-}
-
 export async function subscribeContact(
-  contact: KlicktippContact,
+  contact: { email: string; first_name?: string; last_name?: string; phone?: string; tags?: string[] },
   listId: string
 ): Promise<{ id?: string; error?: string }> {
   try {
     const id = await createSubscriber(
-      {
-        email: contact.email,
-        first_name: contact.first_name,
-        last_name: contact.last_name,
-        phone_mobile: contact.phone,
-      },
+      { email: contact.email, first_name: contact.first_name, last_name: contact.last_name, phone_mobile: contact.phone },
       contact.tags ?? [],
       listId
     )
     return { id }
   } catch (error) {
-    console.error('[KlickTipp] subscribeContact Fehler:', error)
     return { error: String(error) }
   }
 }
