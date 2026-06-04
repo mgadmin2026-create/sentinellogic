@@ -287,8 +287,34 @@ export default function LeadsPage() {
               ) : filtered.map((lead) => (
                 <tr key={lead.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                   <td className="px-5 py-3.5">
-                    <p className="font-semibold text-[#1A1A1A]">{lead.first_name} {lead.last_name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{lead.email || lead.phone_mobile || '—'}</p>
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <p className="font-semibold text-[#1A1A1A]">{lead.first_name} {lead.last_name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{lead.email || lead.phone_mobile || '—'}</p>
+                      </div>
+                      {/* Notiz-Tooltip */}
+                      {!!(lead as unknown as Record<string, unknown>).notes && (() => {
+                        const noteText = String((lead as unknown as Record<string, unknown>).notes ?? '')
+                        return (
+                          <div className="relative group flex-shrink-0">
+                            <div className="w-5 h-5 rounded bg-[#FFC300]/15 flex items-center justify-center cursor-default">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b88c00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                              </svg>
+                            </div>
+                            <div className="absolute left-0 top-7 z-20 hidden group-hover:block bg-[#1A1A1A] text-white text-xs rounded-xl p-3 w-56 shadow-xl pointer-events-none">
+                              <p className="font-semibold text-[#FFC300] mb-1.5">Notiz</p>
+                              <p className="leading-relaxed text-gray-200">
+                                {noteText.slice(0, 120)}{noteText.length > 120 ? '…' : ''}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
                   </td>
                   <td className="px-5 py-3.5 text-gray-600">{lead.company_name || '—'}</td>
                   <td className="px-5 py-3.5">

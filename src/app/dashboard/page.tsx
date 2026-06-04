@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [importDone, setImportDone] = useState(false)
   const [importLoading, setImportLoading] = useState(false)
   const [importCount, setImportCount] = useState(0)
+  const [importDuplicates, setImportDuplicates] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function parseCSV(text: string) {
@@ -91,28 +92,61 @@ export default function DashboardPage() {
     if (csvAllRows.length === 0) return
     setImportLoading(true)
     let count = 0
-    // Alle Zeilen sequenziell in die DB schreiben
+    let duplicates = 0
+    const createdIds: string[] = []
+    const createdNames: string[] = []
+
+    // Alle Zeilen mit Duplikatprüfung in DB schreiben
     for (const row of csvAllRows) {
       const lead: Record<string, string> = {}
       csvHeaders.forEach((header, i) => {
         const field = mapping[header]
-        if (field && field !== 'ignore') {
-          lead[field] = row[i]?.trim() ?? ''
-        }
+        if (field && field !== 'ignore') lead[field] = row[i]?.trim() ?? ''
       })
       if (!lead.first_name || !lead.last_name) continue
+      if (!lead.source) lead.source = 'csv'
+
       try {
         const res = await fetch('/api/leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(lead),
         })
-        if (res.ok) count++
+        const data = await res.json()
+        if (res.status === 409 && data.duplicate) {
+          duplicates++
+        } else if (res.ok && data.success) {
+          count++
+          createdIds.push(data.data.id)
+          createdNames.push(`${data.data.first_name} ${data.data.last_name}`)
+        }
       } catch { /* einzelne Fehler überspringen */ }
     }
+
+    // Sync-Log Eintrag schreiben
+    const total = count + duplicates
+    const status = duplicates > 0 && count === 0 ? 'warning' : 'success'
+    const message = duplicates > 0
+      ? `${count} importiert, ${duplicates} Duplikat${duplicates > 1 ? 'e' : ''} übersprungen`
+      : `${count} Leads aus CSV importiert`
+
+    fetch('/api/sync-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source: 'CSV-Import',
+        count, duplicates_skipped: duplicates,
+        status, message,
+        lead_ids: createdIds,
+        lead_names: createdNames,
+      }),
+    }).catch(() => {})
+
     setImportCount(count)
+    setImportDuplicates(duplicates)
     setImportLoading(false)
     setImportDone(true)
+
     // Dashboard-Leads nach Import neu laden
     fetch('/api/leads?limit=5').then((r) => r.json()).then((res) => {
       if (res.success) setLeads(res.data)
@@ -126,6 +160,7 @@ export default function DashboardPage() {
     setCsvHeaders([])
     setMapping({})
     setImportDone(false)
+    setImportDuplicates(0)
   }
 
   // KPIs dynamisch aus echten Leads berechnen
@@ -385,12 +420,17 @@ export default function DashboardPage() {
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-[#1A1A1A] mb-1">
+                  <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">
                     {importCount} Leads importiert
                   </h3>
-                  <p className="text-gray-500 text-sm mb-6">
-                    Die Leads wurden erfolgreich in das System übernommen und den Automatisierungsregeln übergeben.
+                  <p className="text-gray-500 text-sm mb-3">
+                    Leads übernommen und Automatisierungsregeln ausgeführt.
                   </p>
+                  {importDuplicates > 0 && (
+                    <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mb-4">
+                      ⚠️ {importDuplicates} Duplikat{importDuplicates > 1 ? 'e' : ''} übersprungen — bereits im System vorhanden
+                    </p>
+                  )}
                   <button
                     onClick={closeModal}
                     className="bg-[#FFC300] hover:bg-[#e6b000] text-[#1A1A1A] font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors"
