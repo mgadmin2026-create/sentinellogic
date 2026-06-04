@@ -88,8 +88,20 @@ export async function PATCH(
       return Response.json({ success: false, error: 'Keine gültigen Felder zum Aktualisieren' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    // Felder aus optionalen Migrationen — werden beim Retry entfernt falls Spalten fehlen
+    const MIGRATION_V2_FIELDS = ['street', 'postal_code', 'city', 'country']
+
+    let { data, error } = await supabase
       .from('leads').update(raw).eq('id', id).select().single()
+
+    // Wenn Spalten fehlen (Migration nicht ausgeführt) → Retry ohne optionale Felder
+    if (error && (error.code === '42703' || error.message.toLowerCase().includes('column'))) {
+      console.warn('[PATCH] Optionale Spalten nicht vorhanden, Retry ohne Migration-Felder')
+      for (const f of MIGRATION_V2_FIELDS) delete raw[f]
+      const retry = await supabase.from('leads').update(raw).eq('id', id).select().single()
+      data = retry.data
+      error = retry.error
+    }
 
     if (error) throw new Error(`Supabase Fehler: ${error.message}`)
 

@@ -171,45 +171,57 @@ export async function POST(request: NextRequest) {
     const status = VALID_STATUSES.includes(body.status) ? body.status : 'new'
 
     // ── Lead anlegen ─────────────────────────────────────────
-    const { data: lead, error: insertError } = await supabase
-      .from('leads')
-      .insert({
-        first_name: first_name.trim(),
-        last_name: last_name.trim(),
-        email: body.email?.trim()?.toLowerCase() || null,
-        phone_mobile: body.phone_mobile?.trim() || null,
-        phone_office: body.phone_office?.trim() || null,
-        birth_date: body.birth_date || null,
-        marital_status: body.marital_status?.trim() || null,
-        children: body.children ? parseInt(body.children) : null,
-        profession: body.profession?.trim() || null,
-        profession_group: body.profession_group?.trim() || null,
-        position: body.position?.trim() || null,
-        address: body.address?.trim() || null,
-        street: body.street?.trim() || null,
-        postal_code: body.postal_code?.trim() || null,
-        city: body.city?.trim() || null,
-        country: body.country?.trim() || 'Deutschland',
-        company_name: body.company_name?.trim() || null,
-        legal_form: body.legal_form?.trim() || null,
-        founded_year: body.founded_year ? parseInt(body.founded_year) : null,
-        employees: body.employees ? parseInt(body.employees) : null,
-        annual_revenue: body.annual_revenue?.trim() || null,
-        trade_register: body.trade_register?.trim() || null,
-        vat_id: body.vat_id?.trim() || null,
-        industry: body.industry?.trim() || null,
-        business_description: body.business_description?.trim() || null,
-        website: body.website?.trim() || null,
-        headquarters: body.headquarters?.trim() || null,
-        existing_insurances: Array.isArray(body.existing_insurances) ? body.existing_insurances : [],
-        current_providers: body.current_providers?.trim() || null,
-        monthly_premium: body.monthly_premium?.trim() || null,
-        coverage_gaps: body.coverage_gaps?.trim() || null,
-        source,
-        status,
-        notes: body.notes?.trim() || null,
-      })
-      .select().single()
+    // Basis-Felder (immer vorhanden)
+    const insertBase: Record<string, unknown> = {
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      email: body.email?.trim()?.toLowerCase() || null,
+      phone_mobile: body.phone_mobile?.trim() || null,
+      phone_office: body.phone_office?.trim() || null,
+      birth_date: body.birth_date || null,
+      marital_status: body.marital_status?.trim() || null,
+      children: body.children ? parseInt(body.children) : null,
+      profession: body.profession?.trim() || null,
+      profession_group: body.profession_group?.trim() || null,
+      position: body.position?.trim() || null,
+      address: body.address?.trim() || null,
+      company_name: body.company_name?.trim() || null,
+      legal_form: body.legal_form?.trim() || null,
+      founded_year: body.founded_year ? parseInt(body.founded_year) : null,
+      employees: body.employees ? parseInt(body.employees) : null,
+      annual_revenue: body.annual_revenue?.trim() || null,
+      trade_register: body.trade_register?.trim() || null,
+      vat_id: body.vat_id?.trim() || null,
+      industry: body.industry?.trim() || null,
+      business_description: body.business_description?.trim() || null,
+      website: body.website?.trim() || null,
+      headquarters: body.headquarters?.trim() || null,
+      existing_insurances: Array.isArray(body.existing_insurances) ? body.existing_insurances : [],
+      current_providers: body.current_providers?.trim() || null,
+      monthly_premium: body.monthly_premium?.trim() || null,
+      coverage_gaps: body.coverage_gaps?.trim() || null,
+      source,
+      status,
+      notes: body.notes?.trim() || null,
+    }
+
+    // Optionale Adressfelder (migration_v2) — nur wenn befüllt
+    if (body.street?.trim()) insertBase.street = body.street.trim()
+    if (body.postal_code?.trim()) insertBase.postal_code = body.postal_code.trim()
+    if (body.city?.trim()) insertBase.city = body.city.trim()
+    if (body.country?.trim() && body.country.trim() !== 'Deutschland') insertBase.country = body.country.trim()
+
+    // Erst mit Adressfeldern versuchen, bei Fehler ohne Adressfelder wiederholen
+    let { data: lead, error: insertError } = await supabase
+      .from('leads').insert(insertBase).select().single()
+
+    if (insertError && (insertError.code === '42703' || insertError.message.includes('column'))) {
+      console.warn('[POST] Adressspalten nicht vorhanden, Retry ohne migration_v2-Felder')
+      const { street: _s, postal_code: _p, city: _c, country: _co, ...baseOnly } = insertBase
+      const retry = await supabase.from('leads').insert(baseOnly).select().single()
+      lead = retry.data
+      insertError = retry.error
+    }
 
     if (insertError) throw new Error(`Supabase Fehler: ${insertError.message}`)
 
