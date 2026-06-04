@@ -9,6 +9,7 @@ interface Rule {
   actions: {
     klicktipp_tag?: string; dialfire_campaign?: string
     set_status?: LeadStatus; send_notification?: boolean
+    notification_email?: string
   }
   active: boolean; runs: number
 }
@@ -43,6 +44,7 @@ export default function RegelnPage() {
   const [newDialfire, setNewDialfire] = useState('')
   const [newStatus, setNewStatus] = useState('')
   const [newNotification, setNewNotification] = useState(false)
+  const [newNotificationEmail, setNewNotificationEmail] = useState('')
 
   function loadRules() {
     fetch('/api/rules').then((r) => r.json())
@@ -74,7 +76,10 @@ export default function RegelnPage() {
     if (newKlicktipp) actions.klicktipp_tag = newKlicktipp
     if (newDialfire) actions.dialfire_campaign = newDialfire
     if (newStatus) actions.set_status = newStatus as LeadStatus
-    if (newNotification) actions.send_notification = true
+    if (newNotification) {
+      actions.send_notification = true
+      if (newNotificationEmail.trim()) actions.notification_email = newNotificationEmail.trim()
+    }
 
     await fetch('/api/rules', {
       method: 'POST',
@@ -87,7 +92,8 @@ export default function RegelnPage() {
       }),
     })
     setSaving(false); setModalOpen(false)
-    setNewSource('facebook'); setNewKlicktipp(''); setNewDialfire(''); setNewStatus(''); setNewNotification(false)
+    setNewSource('facebook'); setNewKlicktipp(''); setNewDialfire('')
+    setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
     loadRules()
   }
 
@@ -173,7 +179,10 @@ export default function RegelnPage() {
                         {rule.actions.send_notification && (
                           <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
                             <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                            <span className="font-semibold">Benachrichtigung senden</span>
+                            <span className="font-semibold">Benachrichtigung</span>
+                            {rule.actions.notification_email && (
+                              <span className="text-gray-500">→ {rule.actions.notification_email}</span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -260,6 +269,18 @@ export default function RegelnPage() {
                       <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${newNotification ? 'translate-x-4' : 'translate-x-0.5'}`} />
                     </button>
                   </div>
+                  {newNotification && (
+                    <div className="flex items-center gap-2 pl-4 border-l-2 border-purple-100">
+                      <span className="text-sm text-gray-500 w-36 flex-shrink-0">E-Mail-Adresse:</span>
+                      <input
+                        type="email"
+                        placeholder="z.B. admin@firma.de"
+                        value={newNotificationEmail}
+                        onChange={(e) => setNewNotificationEmail(e.target.value)}
+                        className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#FFC300]/40"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex gap-3 pt-2">

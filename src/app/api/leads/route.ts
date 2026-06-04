@@ -4,6 +4,7 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { syncLeadToKlicktipp, type LeadSyncData } from '@/lib/integrations/klicktipp'
+import { Resend } from 'resend'
 
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
@@ -27,6 +28,52 @@ interface RuleActions {
   dialfire_campaign?: string
   set_status?: string
   send_notification?: boolean
+  notification_email?: string
+}
+
+// Benachrichtigungs-E-Mail via Resend senden
+async function sendNotificationEmail(
+  to: string,
+  leadName: string,
+  leadEmail: string | null | undefined,
+  ruleName: string,
+  actions: RuleActions
+): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[Benachrichtigung] RESEND_API_KEY nicht gesetzt — E-Mail nicht gesendet')
+    return
+  }
+  try {
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    const actionsText = [
+      actions.klicktipp_tag ? `• KlickTipp Tag: "${actions.klicktipp_tag}"` : null,
+      actions.dialfire_campaign ? `• Dialfire Kampagne: "${actions.dialfire_campaign}"` : null,
+      actions.set_status ? `• Status gesetzt: ${actions.set_status}` : null,
+    ].filter(Boolean).join('\n')
+
+    await resend.emails.send({
+      from: 'Sentimental Logic <noreply@onlinefirst.eu>',
+      to,
+      subject: `🔔 Neuer Lead: ${leadName}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:540px;margin:0 auto;padding:24px">
+          <h2 style="color:#1A1A1A;margin-bottom:4px">Neuer Lead angelegt</h2>
+          <p style="color:#666;margin-top:0">Regel: <strong>${ruleName}</strong></p>
+          <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
+          <table style="width:100%;border-collapse:collapse">
+            <tr><td style="padding:6px 0;color:#666;width:120px">Name</td><td style="font-weight:600">${leadName}</td></tr>
+            ${leadEmail ? `<tr><td style="padding:6px 0;color:#666">E-Mail</td><td>${leadEmail}</td></tr>` : ''}
+          </table>
+          <hr style="border:none;border-top:1px solid #eee;margin:16px 0"/>
+          <p style="color:#666;margin-bottom:6px"><strong>Ausgeführte Aktionen:</strong></p>
+          <pre style="background:#f9f9f9;padding:12px;border-radius:8px;font-size:13px;color:#333">${actionsText || '—'}</pre>
+          <p style="margin-top:20px;font-size:12px;color:#999">Sentimental Logic — Automatisierungssystem</p>
+        </div>
+      `,
+    })
+  } catch (err) {
+    console.error('[Benachrichtigung] E-Mail-Fehler:', err)
+  }
 }
 
 async function executeRules(
@@ -100,9 +147,19 @@ async function executeRules(
       }
     }
 
-    // ── Benachrichtigung ──────────────────────────────────────
-    if (actions.send_notification) {
-      resultParts.push('Benachrichtigung ausgelöst')
+    // ── Benachrichtigung per E-Mail ───────────────────────────
+    if (actions.send_notification && actions.notification_email) {
+      const leadName = `${leadData.first_name} ${leadData.last_name}`
+      await sendNotificationEmail(
+        actions.notification_email,
+        leadName,
+        leadData.email,
+        rule.name,
+        actions
+      )
+      resultParts.push(`📧 Benachrichtigung gesendet an ${actions.notification_email}`)
+    } else if (actions.send_notification) {
+      resultParts.push('Benachrichtigung ausgelöst (keine E-Mail konfiguriert)')
     }
 
     if (resultParts.length > 0) {
