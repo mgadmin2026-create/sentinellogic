@@ -219,9 +219,17 @@ export async function syncLeadToKlicktipp(
     try {
       tagId = await getOrCreateTagByName(tagName)
     } catch (tagError) {
+      const errMsg = tagError instanceof Error ? tagError.message : String(tagError)
+      // Klare Fehlermeldung bei 403 (API-Zugang nicht freigeschaltet)
+      if (errMsg.includes('403') || errMsg.includes('access denied')) {
+        return {
+          success: false,
+          message: `KlickTipp REST API nicht erreichbar (403). Bitte REST API-Zugang in KlickTipp aktivieren oder Support kontaktieren (Account #92061776).`,
+        }
+      }
       return {
         success: false,
-        message: `Tag "${tagName}" Fehler: ${tagError instanceof Error ? tagError.message : String(tagError)}`,
+        message: `Tag "${tagName}" Fehler: ${errMsg}`,
       }
     }
 
