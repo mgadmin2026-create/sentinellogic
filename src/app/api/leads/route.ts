@@ -99,24 +99,21 @@ async function executeRules(
     const actions = rule.actions as RuleActions
     const resultParts: string[] = []
 
-    // ── KlickTipp Tag tatsächlich setzen ──────────────────────
+    // ── KlickTipp Tag via Make.com setzen ─────────────────────
     if (actions.klicktipp_tag) {
       if (!leadData.email) {
         resultParts.push(`⚠️ KlickTipp übersprungen: Kein E-Mail beim Lead`)
-      } else if (!process.env.KLICKTIPP_API_KEY) {
-        resultParts.push(`⚠️ KlickTipp übersprungen: KLICKTIPP_API_KEY nicht gesetzt`)
+      } else if (!process.env.MAKE_WEBHOOK_URL) {
+        resultParts.push(`⚠️ KlickTipp übersprungen: MAKE_WEBHOOK_URL nicht gesetzt`)
       } else {
-        // Echten API-Call durchführen
+        // Lead an Make.com-Webhook senden → trägt ihn in KlickTipp ein
         const syncResult = await syncLeadToKlicktipp(
           leadData,
           actions.klicktipp_tag,
           process.env.KLICKTIPP_LIST_ID
         )
         if (syncResult.success) {
-          resultParts.push(
-            `✅ KlickTipp: ${syncResult.message}`
-          )
-          // Subscriber-ID im Lead speichern
+          resultParts.push(`✅ KlickTipp (via Make.com): ${syncResult.message}`)
           if (syncResult.subscriberId) {
             await supabase
               .from('leads')
