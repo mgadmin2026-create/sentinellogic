@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS, type LeadStatus, type MockLead } from '@/data/mock'
 import { mergeSteps, type PipelineStage, DEFAULT_STAGES } from '@/lib/pipeline'
 import { ProcessBar } from '@/components/ProcessBar'
+import { ProcessStepperBar } from '@/components/ProcessStepperBar'
 import { ProcessStepper } from '@/components/ProcessStepper'
 
 // ── Konfiguration ────────────────────────────────────────────
@@ -457,13 +458,22 @@ export default function LeadsPage() {
         )}
       </div>
 
-      {/* Tabelle */}
+      {/* Tabelle — mit sticky Name + Firma */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/60">
-                {['Name', 'Firma', 'Branche', 'Quelle', 'Status', 'Prozess', 'Erstellt', 'Aktionen'].map((h) => (
+                {/* Sticky Name */}
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3 sticky left-0 bg-gray-50/60 z-10">
+                  Name
+                </th>
+                {/* Sticky Firma */}
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3 sticky left-[240px] bg-gray-50/60 z-10">
+                  Firma
+                </th>
+                {/* Rest der Spalten */}
+                {['Branche', 'Quelle', 'Status', 'Prozess', 'Erstellt', 'Aktionen'].map((h) => (
                   <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">{h}</th>
                 ))}
               </tr>
@@ -478,7 +488,8 @@ export default function LeadsPage() {
                 </td></tr>
               ) : filtered.map((lead) => (
                 <tr key={lead.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-5 py-3.5">
+                  {/* Sticky Name */}
+                  <td className="px-5 py-3.5 sticky left-0 bg-white hover:bg-gray-50/50 z-9">
                     <div className="flex items-center gap-2">
                       <div>
                         <p className="font-semibold text-[#1A1A1A]">{lead.first_name} {lead.last_name}</p>
@@ -508,7 +519,8 @@ export default function LeadsPage() {
                       })()}
                     </div>
                   </td>
-                  <td className="px-5 py-3.5 text-gray-600">{lead.company_name || '—'}</td>
+                  {/* Sticky Firma */}
+                  <td className="px-5 py-3.5 text-gray-600 sticky left-[240px] bg-white hover:bg-gray-50/50 z-9">{lead.company_name || '—'}</td>
                   <td className="px-5 py-3.5">
                     {lead.industry ? <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{lead.industry}</span> : <span className="text-gray-300">—</span>}
                   </td>
@@ -544,7 +556,7 @@ export default function LeadsPage() {
                     </div>
                   </td>
                   {/* Prozess-Spalte */}
-                  <td className="px-5 py-3.5">
+                  <td className="px-5 py-3.5 min-w-[450px]">
                     {(() => {
                       const pipelineStage = (lead as any).pipeline_stage
                       const pipelineSteps = (lead as any).pipeline_steps ?? []
@@ -553,7 +565,7 @@ export default function LeadsPage() {
                       }
                       const mergedSteps = mergeSteps(pipelineStages, pipelineSteps)
                       const currentPosition = mergedSteps.findIndex(s => s.key === pipelineStage) + 1
-                      return <ProcessBar mergedSteps={mergedSteps} currentPosition={currentPosition > 0 ? currentPosition : null} />
+                      return <ProcessStepperBar mergedSteps={mergedSteps} currentPosition={currentPosition > 0 ? currentPosition : null} />
                     })()}
                   </td>
                   <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(lead.created_at).toLocaleDateString('de-DE')}</td>
