@@ -555,8 +555,8 @@ export default function LeadsPage() {
                       )}
                     </div>
                   </td>
-                  {/* Prozess-Spalte */}
-                  <td className="px-5 py-3.5 min-w-[180px]">
+                  {/* Prozess-Spalte — alle 12 Schritte */}
+                  <td className="px-5 py-3.5 min-w-[600px]">
                     {(() => {
                       const pipelineStage = (lead as any).pipeline_stage
                       const pipelineSteps = (lead as any).pipeline_steps ?? []
