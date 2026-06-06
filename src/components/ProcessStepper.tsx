@@ -7,6 +7,7 @@ interface ProcessStepperProps {
   mergedSteps: MergedStep[]
   currentStageKey: string | null
   onStageChange: (newStageKey: string) => Promise<void>
+  onStepsUpdate?: (steps: Array<{ key: string; done: boolean; completed_at?: string; due_date?: string }>) => Promise<void>
   loading?: boolean
 }
 
@@ -14,9 +15,11 @@ export function ProcessStepper({
   mergedSteps,
   currentStageKey,
   onStageChange,
+  onStepsUpdate,
   loading = false,
 }: ProcessStepperProps) {
   const [editingDueDate, setEditingDueDate] = useState<string | null>(null)
+  const [editingDueDateValue, setEditingDueDateValue] = useState<string>('')
   const [saving, setSaving] = useState(false)
 
   if (!currentStageKey || mergedSteps.length === 0) {
@@ -43,6 +46,40 @@ export function ProcessStepper({
     setSaving(true)
     try {
       await onStageChange(prevStageKey)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleSaveDueDate(stepKey: string) {
+    if (!onStepsUpdate) return
+    setSaving(true)
+    try {
+      const updatedSteps = mergedSteps.map((s) =>
+        s.key === stepKey ? { ...s, due_date: editingDueDateValue || undefined } : s
+      )
+      await onStepsUpdate(updatedSteps)
+      setEditingDueDate(null)
+      setEditingDueDateValue('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleToggleDone(stepKey: string, currentDone: boolean) {
+    if (!onStepsUpdate) return
+    setSaving(true)
+    try {
+      const updatedSteps = mergedSteps.map((s) =>
+        s.key === stepKey
+          ? {
+              ...s,
+              done: !currentDone,
+              completed_at: !currentDone ? new Date().toISOString() : undefined,
+            }
+          : s
+      )
+      await onStepsUpdate(updatedSteps)
     } finally {
       setSaving(false)
     }
@@ -117,9 +154,12 @@ export function ProcessStepper({
                     </div>
                   )}
 
-                  {isCurrent && (
+                  {(isCurrent || isDone) && (
                     <button
-                      onClick={() => setEditingDueDate(step.key)}
+                      onClick={() => {
+                        setEditingDueDate(step.key)
+                        setEditingDueDateValue(step.due_date || new Date().toISOString().split('T')[0])
+                      }}
                       className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                     >
                       {step.due_date ? 'Ändern' : '+ Fälligkeit'}
@@ -132,14 +172,22 @@ export function ProcessStepper({
                   <div className="mt-2 flex gap-2">
                     <input
                       type="date"
-                      defaultValue={step.due_date || new Date().toISOString().split('T')[0]}
+                      value={editingDueDateValue}
+                      onChange={(e) => setEditingDueDateValue(e.target.value)}
                       className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#FFC300]/40"
                     />
+                    <button
+                      onClick={() => handleSaveDueDate(step.key)}
+                      disabled={saving}
+                      className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                    >
+                      {saving ? '...' : '✓'}
+                    </button>
                     <button
                       onClick={() => setEditingDueDate(null)}
                       className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
                     >
-                      Abbrechen
+                      ✕
                     </button>
                   </div>
                 )}
@@ -150,6 +198,7 @@ export function ProcessStepper({
                 <input
                   type="checkbox"
                   checked={isDone}
+                  onChange={() => handleToggleDone(step.key, isDone)}
                   disabled={isFuture || saving}
                   className="flex-shrink-0 w-4 h-4 rounded border-gray-300 accent-emerald-500 cursor-pointer mt-1"
                   title={isDone ? 'Schritt als unerledigt markieren' : 'Schritt als erledigt markieren'}

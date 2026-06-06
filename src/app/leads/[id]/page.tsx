@@ -112,6 +112,25 @@ export default function LeadDetailPage() {
     }
   }
 
+  async function handlePipelineStepsUpdate(
+    steps: Array<{ key: string; done: boolean; completed_at?: string; due_date?: string }>
+  ) {
+    if (!lead) return
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pipeline_steps: steps }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setLead(data.data)
+      }
+    } catch (err) {
+      console.error('Fehler beim Aktualisieren der Prozessschritte:', err)
+    }
+  }
+
   const sectionCard = (title: string, children: React.ReactNode) => (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-4">
       <h2 className="text-sm font-bold text-[#1A1A1A] uppercase tracking-wide mb-4 pb-3 border-b border-gray-100">
@@ -203,6 +222,7 @@ Einwand: "Ich muss das erst mit meinem Steuerberater besprechen."
               mergedSteps={mergeSteps(pipelineStages, (lead as any).pipeline_steps ?? [])}
               currentStageKey={lead.pipeline_stage}
               onStageChange={handlePipelineStageChange}
+              onStepsUpdate={handlePipelineStepsUpdate}
               loading={loadingLead}
             />
           )}

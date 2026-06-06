@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { STATUS_LABELS, STATUS_COLORS, SOURCE_LABELS, SOURCE_COLORS, type LeadStatus, type MockLead } from '@/data/mock'
 import { mergeSteps, type PipelineStage, DEFAULT_STAGES } from '@/lib/pipeline'
 import { ProcessBar } from '@/components/ProcessBar'
+import { ProcessStepper } from '@/components/ProcessStepper'
 
 // ── Konfiguration ────────────────────────────────────────────
 const FILTERS: { label: string; value: LeadStatus | 'all' }[] = [
@@ -130,6 +131,22 @@ function matchesDateFilter(createdAt: string, filter: string): boolean {
   return true
 }
 
+function hasOverdueTask(lead: MockLead): boolean {
+  const pipelineStage = (lead as any).pipeline_stage
+  const pipelineSteps = (lead as any).pipeline_steps ?? []
+  if (!pipelineStage) return false
+
+  const currentStep = pipelineSteps.find((s: any) => s.key === pipelineStage)
+  if (!currentStep || !currentStep.due_date) return false
+
+  const dueDate = new Date(currentStep.due_date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  dueDate.setHours(0, 0, 0, 0)
+
+  return dueDate <= today
+}
+
 // Status-Farben für Inline-Dropdown
 const STATUS_DOT: Record<string, string> = {
   new: 'bg-blue-400', contacted: 'bg-yellow-400',
@@ -147,6 +164,7 @@ export default function LeadsPage() {
   const [filterOpen, setFilterOpen] = useState(false)
   const [sourceFilters, setSourceFilters] = useState<string[]>([])
   const [dateFilter, setDateFilter] = useState('all')
+  const [showOnlyOverdue, setShowOnlyOverdue] = useState(false)
   // Inline-Status
   const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null)
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
@@ -198,6 +216,7 @@ export default function LeadsPage() {
     if (activeFilter !== 'all' && lead.status !== activeFilter) return false
     if (sourceFilters.length > 0 && !sourceFilters.includes(lead.source)) return false
     if (!matchesDateFilter(lead.created_at, dateFilter)) return false
+    if (showOnlyOverdue && !hasOverdueTask(lead)) return false
     const q = search.toLowerCase()
     if (q && !(
       `${lead.first_name} ${lead.last_name}`.toLowerCase().includes(q) ||
@@ -208,10 +227,10 @@ export default function LeadsPage() {
     return true
   })
 
-  const activeFilterCount = (sourceFilters.length > 0 ? 1 : 0) + (dateFilter !== 'all' ? 1 : 0)
+  const activeFilterCount = (sourceFilters.length > 0 ? 1 : 0) + (dateFilter !== 'all' ? 1 : 0) + (showOnlyOverdue ? 1 : 0)
 
   function resetFilters() {
-    setSourceFilters([]); setDateFilter('all'); setActiveFilter('all'); setSearch('')
+    setSourceFilters([]); setDateFilter('all'); setActiveFilter('all'); setSearch(''); setShowOnlyOverdue(false)
   }
 
   function toggleSourceFilter(src: string) {
@@ -320,7 +339,7 @@ export default function LeadsPage() {
   }
 
   // ── Tabs ──────────────────────────────────────────────────
-  const TABS = ['Kontaktdaten', 'Unternehmen', 'Versicherung', 'Intern']
+  const TABS = ['Kontaktdaten', 'Unternehmen', 'Versicherung', 'Intern', 'Prozess']
 
   // ── Render ─────────────────────────────────────────────────
   return (
@@ -412,6 +431,18 @@ export default function LeadsPage() {
                   ))}
                 </div>
               </div>
+            </div>
+            {/* Fällige Aufgaben */}
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showOnlyOverdue}
+                  onChange={(e) => setShowOnlyOverdue(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 accent-[#FFC300]"
+                />
+                <span className="text-xs font-medium text-gray-600">Nur fällige Aufgaben anzeigen</span>
+              </label>
             </div>
             {/* Ergebnis-Zähler */}
             <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
@@ -770,6 +801,45 @@ export default function LeadsPage() {
                     <label className={labelCls}>Notizen</label>
                     <textarea className={`${inputCls} resize-none`} rows={5} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Erste Eindrücke, Besonderheiten, Hinweise für das Gespräch…" />
                   </div>
+                </div>
+              )}
+
+              {/* ── TAB 4: Prozess ── */}
+              {activeTab === 4 && editLead && (
+                <div className="space-y-4">
+                  {editLead.pipeline_stage ? (
+                    <ProcessStepper
+                      mergedSteps={mergeSteps(pipelineStages, (editLead as any).pipeline_steps ?? [])}
+                      currentStageKey={editLead.pipeline_stage}
+                      onStageChange={async (newStageKey) => {
+                        const res = await fetch(`/api/leads/${editLead.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ pipeline_stage: newStageKey }),
+                        })
+                        const data = await res.json()
+                        if (data.success) {
+                          setEditLead(data.data)
+                        }
+                      }}
+                      onStepsUpdate={async (steps) => {
+                        const res = await fetch(`/api/leads/${editLead.id}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ pipeline_steps: steps }),
+                        })
+                        const data = await res.json()
+                        if (data.success) {
+                          setEditLead(data.data)
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      <p className="text-sm">Dieser Lead hat noch keinen Prozessschritt zugewiesen.</p>
+                      <p className="text-xs text-gray-400 mt-1">Dies wird automatisch beim Speichern eines neuen Leads gesetzt.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
