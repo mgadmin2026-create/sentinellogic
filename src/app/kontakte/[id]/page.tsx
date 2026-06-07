@@ -80,11 +80,27 @@ const STATUS_LABELS: Record<string, string> = {
 
 const TABS = [
   { id: 'overview', label: 'Übersicht', icon: '👤' },
+  { id: 'process', label: 'Prozess', icon: '🎯' },
   { id: 'activities', label: 'Aktivitäten', icon: '📝' },
   { id: 'tasks', label: 'Aufgaben', icon: '✓' },
   { id: 'opportunities', label: 'Opportunities', icon: '💼' },
   { id: 'notes', label: 'Notizen', icon: '📋' },
   { id: 'documents', label: 'Dokumente', icon: '📄' },
+]
+
+const PIPELINE_STEPS = [
+  { key: 'lead_in', label: 'Lead kommt rein' },
+  { key: 'contacted', label: 'Lead wird kontaktiert' },
+  { key: 'data_gathering', label: 'Daten werden eingeholt' },
+  { key: 'wait_policies', label: 'Warten auf Policen' },
+  { key: 'calc_offers', label: 'Angebote berechnen' },
+  { key: 'download_offers', label: 'Angebote herunterladen & ablegen' },
+  { key: 'contract_overview', label: 'Vertragsübersicht erstellen' },
+  { key: 'send_offers', label: 'Angebote senden' },
+  { key: 'offer_meeting', label: 'Angebotsbesprechung (Termin)' },
+  { key: 'sales_talk', label: 'Verkaufsgespräch' },
+  { key: 'contracts_store', label: 'Verträge ablegen' },
+  { key: 'aftercare', label: 'Nachbereitung' },
 ]
 
 export default function KontaktDetailPage() {
@@ -105,6 +121,7 @@ export default function KontaktDetailPage() {
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [pipelineSaving, setPipelineSaving] = useState(false)
 
   useEffect(() => {
     loadKontakt()
@@ -170,6 +187,66 @@ export default function KontaktDetailPage() {
       router.push('/kontakte')
     } catch (err) {
       console.error('Fehler beim Löschen:', err)
+    }
+  }
+
+  async function handleUpdatePipelineStep(stepKey: string, done: boolean, dueDate?: string) {
+    if (!kontakt) return
+    try {
+      setPipelineSaving(true)
+      // Update the step in pipeline_steps array
+      const updatedSteps = (kontakt.pipeline_steps || []).map((step: any) =>
+        step.key === stepKey
+          ? {
+              ...step,
+              done,
+              completed_at: done ? new Date().toISOString().split('T')[0] : null,
+              due_date: dueDate || null,
+            }
+          : step
+      )
+      const res = await fetch(`/api/kontakte/${kontaktId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pipeline_steps: updatedSteps }),
+      })
+      if (!res.ok) throw new Error('Fehler beim Speichern')
+      await loadKontakt()
+    } catch (err) {
+      console.error('Fehler:', err)
+    } finally {
+      setPipelineSaving(false)
+    }
+  }
+
+  async function handleNextStep() {
+    if (!kontakt || !kontakt.pipeline_stage) return
+    try {
+      setPipelineSaving(true)
+      const currentIndex = PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage)
+      if (currentIndex < PIPELINE_STEPS.length - 1) {
+        const nextStep = PIPELINE_STEPS[currentIndex + 1]
+        // Mark current step as done and move to next
+        const updatedSteps = (kontakt.pipeline_steps || []).map((step: any) =>
+          step.key === kontakt.pipeline_stage
+            ? { ...step, done: true, completed_at: new Date().toISOString().split('T')[0] }
+            : step
+        )
+        const res = await fetch(`/api/kontakte/${kontaktId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pipeline_stage: nextStep.key,
+            pipeline_steps: updatedSteps,
+          }),
+        })
+        if (!res.ok) throw new Error('Fehler beim Fortschreiten')
+        await loadKontakt()
+      }
+    } catch (err) {
+      console.error('Fehler:', err)
+    } finally {
+      setPipelineSaving(false)
     }
   }
 
@@ -409,6 +486,113 @@ export default function KontaktDetailPage() {
                 <p className="text-sm text-gray-900">{new Date(kontakt.created_at).toLocaleDateString('de-DE')}</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB: Prozess — 12-Schritt-Stepper */}
+        {activeTab === 'process' && (
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Vertriebsprozess</h2>
+              {kontakt?.pipeline_stage && (
+                <button
+                  onClick={handleNextStep}
+                  disabled={
+                    pipelineSaving ||
+                    PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage) === PIPELINE_STEPS.length - 1
+                  }
+                  className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 font-semibold text-sm px-4 py-2 rounded-lg transition-colors"
+                >
+                  {pipelineSaving ? '…' : '→'} Nächster Schritt
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-3 max-w-2xl">
+              {PIPELINE_STEPS.map((step, index) => {
+                const stepData = (kontakt?.pipeline_steps || []).find((s: any) => s.key === step.key)
+                const isCompleted = stepData?.done || false
+                const isDueDate = stepData?.due_date
+                const isCurrent = kontakt?.pipeline_stage === step.key
+                const isNext = !isCompleted && (PIPELINE_STEPS.findIndex(s => s.key === kontakt?.pipeline_stage) || 0) === index - 1
+
+                return (
+                  <div
+                    key={step.key}
+                    className={`flex gap-4 p-4 rounded-lg border-2 transition-all ${
+                      isCurrent
+                        ? 'border-yellow-400 bg-yellow-50'
+                        : isCompleted
+                          ? 'border-emerald-200 bg-emerald-50'
+                          : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    {/* Icon */}
+                    <div className="flex-shrink-0">
+                      {isCompleted ? (
+                        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
+                          ✓
+                        </div>
+                      ) : isCurrent ? (
+                        <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-gray-900 font-bold">
+                          {index + 1}
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400 text-sm font-medium">
+                          {index + 1}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className={`font-semibold ${isCompleted ? 'text-emerald-900' : isCurrent ? 'text-yellow-900' : 'text-gray-700'}`}>
+                          {step.label}
+                        </p>
+                        {isCompleted && stepData?.completed_at && (
+                          <span className="text-xs text-emerald-600 font-medium">
+                            ✓ {new Date(stepData.completed_at).toLocaleDateString('de-DE')}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex gap-3 items-center">
+                        <input
+                          type="checkbox"
+                          checked={isCompleted}
+                          onChange={(e) => handleUpdatePipelineStep(step.key, e.target.checked, isDueDate)}
+                          disabled={pipelineSaving}
+                          className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+                          title="Als erledigt markieren"
+                        />
+                        <input
+                          type="date"
+                          value={isDueDate || ''}
+                          onChange={(e) => handleUpdatePipelineStep(step.key, isCompleted, e.target.value)}
+                          disabled={pipelineSaving}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                          title="Fälligkeitsdatum"
+                        />
+                        {isDueDate && (
+                          <span className="text-xs text-gray-500">
+                            Fällig: {new Date(isDueDate).toLocaleDateString('de-DE')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {kontakt?.pipeline_stage === PIPELINE_STEPS[PIPELINE_STEPS.length - 1].key && (
+              <div className="mt-6 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
+                <p className="text-sm font-semibold text-emerald-900">
+                  🎉 Kontakt hat alle Prozessschritte abgeschlossen!
+                </p>
+              </div>
+            )}
           </div>
         )}
 
