@@ -46,12 +46,25 @@ export default function AufgabenPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [prioritätFilter, setPrioritätFilter] = useState('all')
   const [modalOpen, setModalOpen] = useState(false)
+  const [contactSelectOpen, setContactSelectOpen] = useState(false)
+  const [selectedContactId, setSelectedContactId] = useState('')
+  const [kontakte, setKontakte] = useState<any[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [newTaskContactId, setNewTaskContactId] = useState('')
 
   useEffect(() => {
     loadAufgaben()
+    loadKontakte()
   }, [statusFilter, prioritätFilter, search])
+
+  async function loadKontakte() {
+    try {
+      const res = await fetch('/api/kontakte?limit=1000')
+      const json = await res.json()
+      if (json.success) setKontakte(json.data)
+    } catch (err) {
+      console.error('Fehler beim Laden der Kontakte:', err)
+    }
+  }
 
   async function loadAufgaben() {
     try {
@@ -140,10 +153,7 @@ export default function AufgabenPage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            setNewTaskContactId('')
-            setModalOpen(true)
-          }}
+          onClick={() => setContactSelectOpen(true)}
           className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -288,7 +298,40 @@ export default function AufgabenPage() {
         </div>
       </div>
 
-      <AufgabenEditModal kontaktId={newTaskContactId} isOpen={modalOpen} onClose={() => setModalOpen(false)} onSave={handleCreateAufgabe} />
+      <AufgabenEditModal kontaktId={selectedContactId} isOpen={modalOpen} onClose={() => setModalOpen(false)} onSave={handleCreateAufgabe} />
+
+      {/* Kontakt-Selektor */}
+      {contactSelectOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 sticky top-0 bg-white">
+              <h2 className="text-lg font-bold text-gray-900">Kontakt wählen</h2>
+              <button onClick={() => setContactSelectOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-2">
+              {kontakte.map((k) => (
+                <button
+                  key={k.id}
+                  onClick={() => {
+                    setSelectedContactId(k.id)
+                    setContactSelectOpen(false)
+                    setModalOpen(true)
+                  }}
+                  className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-yellow-50 hover:border-yellow-400 transition-all"
+                >
+                  <p className="font-medium text-gray-900">{k.first_name} {k.last_name}</p>
+                  <p className="text-xs text-gray-500">{k.company_name || k.email}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
