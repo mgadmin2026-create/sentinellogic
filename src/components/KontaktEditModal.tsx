@@ -16,6 +16,7 @@ interface Kontakt {
   city?: string
   country?: string
   website?: string
+  source?: string
   status?: string
   notes?: string
 }
@@ -247,7 +248,42 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
             </div>
           </div>
 
-          {/* Section 4: Notizen */}
+          {/* Section 4: Quelle & Status */}
+          <div className="border-b border-gray-100 pb-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">📌 Quelle & Status</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quelle</label>
+                <select
+                  value={formData.source || 'manuell'}
+                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                >
+                  <option value="manuell">Manuell</option>
+                  <option value="csv">CSV Import</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="calendly">Calendly</option>
+                  <option value="email">E-Mail</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Status</label>
+                <select
+                  value={formData.status || 'new'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                >
+                  <option value="new">Neu</option>
+                  <option value="contacted">Kontaktiert</option>
+                  <option value="qualified">Qualifiziert</option>
+                  <option value="customer">Kunde</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Notizen */}
           {isEdit && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-4">📝 Notizen</h3>

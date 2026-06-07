@@ -10,6 +10,7 @@ interface Kontakt {
   last_name: string
   email: string
   company_name?: string
+  source?: string
   status: 'new' | 'contacted' | 'qualified' | 'customer'
   assigned_user_id?: string
   pipeline_stage?: string
@@ -29,6 +30,24 @@ const STATUS_COLORS: Record<string, string> = {
   contacted: 'bg-yellow-100 text-yellow-800',
   qualified: 'bg-emerald-100 text-emerald-800',
   customer: 'bg-purple-100 text-purple-800',
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  manuell: 'Manuell',
+  csv: 'CSV',
+  facebook: 'Facebook',
+  tiktok: 'TikTok',
+  calendly: 'Calendly',
+  email: 'E-Mail',
+}
+
+const SOURCE_COLORS: Record<string, string> = {
+  manuell: 'bg-gray-100 text-gray-600',
+  csv: 'bg-gray-100 text-gray-700',
+  facebook: 'bg-blue-50 text-blue-700',
+  tiktok: 'bg-gray-900 text-white',
+  calendly: 'bg-orange-50 text-orange-700',
+  email: 'bg-green-50 text-green-700',
 }
 
 const KONTAKT_FILTER = [
@@ -231,6 +250,7 @@ export default function KontaktePage() {
               <tr className="border-b border-gray-100 bg-gray-50/60">
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Name</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Firma</th>
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Quelle</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Status</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Fortschritt</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Erstellt</th>
@@ -240,13 +260,13 @@ export default function KontaktePage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center text-gray-400 py-16 text-sm">
+                  <td colSpan={7} className="text-center text-gray-400 py-16 text-sm">
                     Kontakte werden geladen…
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <p className="text-gray-400 text-sm">{kontakte.length === 0 ? 'Noch keine Kontakte vorhanden.' : 'Keine Kontakte gefunden.'}</p>
                   </td>
                 </tr>
@@ -260,6 +280,11 @@ export default function KontaktePage() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5 text-gray-600">{kontakt.company_name || '—'}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${SOURCE_COLORS[kontakt.source || 'manuell']}`}>
+                        {SOURCE_LABELS[kontakt.source || 'manuell']}
+                      </span>
+                    </td>
                     <td className="px-5 py-3.5">
                       <select
                         value={kontakt.status}

@@ -22,6 +22,7 @@ interface Kontakt {
   city?: string
   country?: string
   website?: string
+  source?: string
   status: 'new' | 'contacted' | 'qualified' | 'customer'
   assigned_user_id?: string
   assigned_user_name?: string
@@ -383,6 +384,10 @@ export default function KontaktDetailPage() {
                 <span className={`inline-flex text-sm font-medium px-3 py-1.5 rounded-full ${STATUS_COLORS[kontakt.status]}`}>
                   {STATUS_LABELS[kontakt.status]}
                 </span>
+              </div>
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Quelle</p>
+                <p className="text-sm text-gray-900 font-medium capitalize">{kontakt.source || 'Manuell'}</p>
               </div>
               <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Qualität</p>
