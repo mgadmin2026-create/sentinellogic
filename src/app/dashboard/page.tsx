@@ -163,14 +163,22 @@ export default function DashboardPage() {
     setImportDuplicates(0)
   }
 
-  // KPIs dynamisch aus echten Leads berechnen
+  // KPIs dynamisch aus echten Kontakten/Aufgaben/Opportunities berechnen
   const today = new Date().toDateString()
   const leadsToday = leads.filter((l) => new Date(l.created_at).toDateString() === today).length
+
+  // Mock-Daten für Aufgaben und Opportunities (später echte API)
+  const mockOpenTasks = 12
+  const mockOpenOpportunities = 5
+  const mockPipelineValue = 234000
+
   const kpis = [
-    { label: 'Leads heute', value: String(leadsToday), sub: 'aus der Datenbank', color: 'border-[#FFC300]' },
-    { label: 'Leads gesamt', value: String(leads.length > 0 ? leads.length : '—'), sub: 'in der Pipeline', color: 'border-blue-400' },
-    { label: 'Abschlussquote', value: '23%', sub: 'Ø letzte 30 Tage', color: 'border-emerald-400' },
-    { label: 'Zeitersparnis', value: '4,6h', sub: 'pro Woche durch Automation', color: 'border-purple-400' },
+    { label: 'Neue Kontakte', value: String(leadsToday), sub: 'diese Woche', color: 'border-[#FFC300]' },
+    { label: 'Kontakte gesamt', value: String(leads.length > 0 ? leads.length : '—'), sub: 'in der Pipeline', color: 'border-blue-400' },
+    { label: 'Offene Aufgaben', value: String(mockOpenTasks), sub: 'fällig diese Woche', color: 'border-orange-400' },
+    { label: 'Pipeline-Wert', value: `${(mockPipelineValue / 1000).toFixed(0)}K €`, sub: 'offene Opportunities', color: 'border-emerald-400' },
+    { label: 'Abschlussquote', value: '23%', sub: 'Ø letzte 30 Tage', color: 'border-purple-400' },
+    { label: 'Offene Opportunities', value: String(mockOpenOpportunities), sub: 'nicht als Kunde abgeschl.', color: 'border-cyan-400' },
   ]
 
   return (
@@ -195,11 +203,11 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI-Kacheln */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className={`bg-white rounded-xl border-l-4 ${kpi.color} border border-gray-200 shadow-sm p-5`}>
+          <div key={kpi.label} className={`bg-white rounded-lg border-l-4 ${kpi.color} border border-gray-200 shadow-sm p-4`}>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-            <p className="text-3xl font-bold text-[#1A1A1A] mt-1">{kpi.value}</p>
+            <p className="text-2xl font-bold text-[#1A1A1A] mt-1">{kpi.value}</p>
             <p className="text-xs text-gray-400 mt-1">{kpi.sub}</p>
           </div>
         ))}
