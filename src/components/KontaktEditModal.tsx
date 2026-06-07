@@ -284,17 +284,15 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
           </div>
 
           {/* Section 5: Notizen */}
-          {isEdit && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">📝 Notizen</h3>
-              <textarea
-                value={formData.notes || ''}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm h-20 resize-none"
-                placeholder="Interne Notizen…"
-              />
-            </div>
-          )}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">📝 Notizen</h3>
+            <textarea
+              value={formData.notes || ''}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm h-20 resize-none"
+              placeholder="Interne Notizen…"
+            />
+          </div>
 
           {/* Buttons */}
           <div className="flex gap-3 pt-4 border-t border-gray-100">
