@@ -11,10 +11,32 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'street', 'postal_code', 'city', 'country', 'website',
   'source', 'status', 'notes',
   'assigned_user_id', 'qualität', 'bestandskunde',
+  'pipeline_stage', 'pipeline_steps',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']
+
+// Pipeline-Schritte und ihre Status-Ableitung
+const PIPELINE_STEPS_DEF = [
+  { key: 'lead_in', label: 'Lead kommt rein', maps_to: 'new' },
+  { key: 'contacted', label: 'Lead wird kontaktiert', maps_to: 'contacted' },
+  { key: 'data_gathering', label: 'Daten werden eingeholt', maps_to: 'contacted' },
+  { key: 'wait_policies', label: 'Warten auf Policen', maps_to: 'contacted' },
+  { key: 'calc_offers', label: 'Angebote berechnen', maps_to: 'qualified' },
+  { key: 'download_offers', label: 'Angebote herunterladen & ablegen', maps_to: 'qualified' },
+  { key: 'contract_overview', label: 'Vertragsübersicht erstellen', maps_to: 'qualified' },
+  { key: 'send_offers', label: 'Angebote senden', maps_to: 'qualified' },
+  { key: 'offer_meeting', label: 'Angebotsbesprechung (Termin)', maps_to: 'qualified' },
+  { key: 'sales_talk', label: 'Verkaufsgespräch', maps_to: 'qualified' },
+  { key: 'contracts_store', label: 'Verträge ablegen', maps_to: 'customer' },
+  { key: 'aftercare', label: 'Nachbereitung', maps_to: 'customer' },
+]
+
+function getStatusFromPipelineStage(stageKey: string): string {
+  const stage = PIPELINE_STEPS_DEF.find(s => s.key === stageKey)
+  return stage ? stage.maps_to : 'new'
+}
 
 export async function GET(
   _request: NextRequest,
@@ -104,6 +126,17 @@ export async function PATCH(
       delete raw.status
     }
 
+    // Pipeline-Stage Validierung & Auto-Status
+    if (raw.pipeline_stage) {
+      const validStage = PIPELINE_STEPS_DEF.find(s => s.key === String(raw.pipeline_stage))
+      if (validStage) {
+        // Auto-derive status from pipeline stage
+        raw.status = validStage.maps_to
+      } else {
+        delete raw.pipeline_stage
+      }
+    }
+
     // Boolean-Konversion für bestandskunde
     if (raw.bestandskunde !== undefined) {
       raw.bestandskunde = raw.bestandskunde === true || raw.bestandskunde === 'true'
@@ -130,16 +163,23 @@ export async function PATCH(
     }
 
     // Aktivität loggen (optional)
-    if (raw.status) {
-      try {
+    try {
+      if (raw.pipeline_stage) {
+        const stage = PIPELINE_STEPS_DEF.find(s => s.key === raw.pipeline_stage)
+        await supabase.from('activities').insert({
+          lead_id: id,
+          type: 'pipeline_change',
+          description: `Prozessschritt: ${stage?.label || String(raw.pipeline_stage)}`,
+        })
+      } else if (raw.status) {
         await supabase.from('activities').insert({
           lead_id: id,
           type: 'status_change',
           description: `Status geändert zu: ${raw.status}`,
         })
-      } catch (e) {
-        // Fehler beim Aktivitätsloggen ignorieren
       }
+    } catch (e) {
+      // Fehler beim Aktivitätsloggen ignorieren
     }
 
     return Response.json({ success: true, data })

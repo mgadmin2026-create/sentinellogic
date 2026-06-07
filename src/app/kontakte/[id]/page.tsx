@@ -24,6 +24,13 @@ interface Kontakt {
   website?: string
   source?: string
   status: 'new' | 'contacted' | 'qualified' | 'customer'
+  pipeline_stage?: string
+  pipeline_steps?: Array<{
+    key: string
+    done: boolean
+    completed_at?: string
+    due_date?: string
+  }>
   assigned_user_id?: string
   assigned_user_name?: string
   qualität?: string
