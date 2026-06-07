@@ -1,7 +1,7 @@
 'use client'
-// Opportunities-Verwaltung — Verkaufschancen pro Kontakt
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { OpportunityEditModal } from '@/components/OpportunityEditModal'
 
 interface Opportunity {
   id: string
@@ -16,7 +16,7 @@ interface Opportunity {
   created_at: string
 }
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS = {
   neu: 'Neu',
   kontaktiert: 'Kontaktiert',
   analyse: 'Analyse',
@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
   kunde: 'Kunde',
 }
 
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_COLORS = {
   neu: 'bg-blue-100 text-blue-800',
   kontaktiert: 'bg-cyan-100 text-cyan-800',
   analyse: 'bg-purple-100 text-purple-800',
@@ -44,75 +44,14 @@ const OPPORTUNITIES_FILTER = [
   { label: 'Kunde', value: 'kunde' },
 ]
 
-// Mock-Daten für Phase 1
-const MOCK_OPPORTUNITIES: Opportunity[] = [
-  {
-    id: '1',
-    contact_id: 'c1',
-    contact_name: 'Max Mustermann',
-    thema: 'KFZ-Versicherung',
-    status: 'angebot',
-    wert: 45000,
-    nächster_schritt: 'Angebote vergleichen und Unterschrift einholen',
-    fällig: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    notizen: 'Kundenfreundlich, gute Bonität, hohes Upsell-Potenzial',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    contact_id: 'c2',
-    contact_name: 'Laura Klein',
-    thema: 'Altersvorsorge (Rente)',
-    status: 'analyse',
-    wert: 25000,
-    nächster_schritt: 'Finanzielle Situation analysieren, Bedarf ermitteln',
-    fällig: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    notizen: 'Angestellte, großes Interesse an Vermögensaufbau',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '3',
-    contact_id: 'c3',
-    contact_name: 'John Doe',
-    thema: 'Berufsunfähigkeitsversicherung',
-    status: 'neu',
-    wert: 15000,
-    nächster_schritt: 'Erstkontakt, Termin vereinbaren',
-    fällig: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    notizen: 'Handwerker, höheres Risiko, BU-Versicherung essentiell',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '4',
-    contact_id: 'c4',
-    contact_name: 'Anna Schmidt',
-    thema: 'Hausratversicherung',
-    status: 'kunde',
-    wert: 8000,
-    nächster_schritt: 'Abschluss, Verträge vorbereiten',
-    fällig: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    notizen: 'Mehrfamilienhaus, bereits mehrere Versicherungen bei uns',
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: '5',
-    contact_id: 'c5',
-    contact_name: 'Peter Wagner',
-    thema: 'Haftpflicht + Sachversicherung (Gewerbe)',
-    status: 'nachfassen',
-    wert: 120000,
-    nächster_schritt: 'Nachfassen — keine Rückmeldung seit Angebotssendung',
-    fällig: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    notizen: 'KMU, großvolumiges Geschäft, aber Entscheidungsprozess verzögert sich',
-    created_at: new Date().toISOString(),
-  },
-]
-
 export default function OpportunitiesPage() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [modalOpen, setModalOpen] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [newOppContactId, setNewOppContactId] = useState('')
 
   useEffect(() => {
     loadOpportunities()
@@ -129,39 +68,74 @@ export default function OpportunitiesPage() {
       const res = await fetch(`/api/opportunities?${params.toString()}`)
       const json = await res.json()
       if (json.success) {
-        setOpportunities(json.data.map((o: any) => ({
-          ...o,
-          contact_name: o.contact ? `${o.contact.first_name} ${o.contact.last_name}` : '—',
-        })))
+        setOpportunities(
+          json.data.map((o: any) => ({
+            ...o,
+            contact_name: o.contact ? `${o.contact.first_name} ${o.contact.last_name}` : '—',
+          }))
+        )
       }
     } catch (err) {
-      console.error('Fehler beim Laden der Opportunities:', err)
+      console.error('Fehler:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const isOverdue = (dueDate?: string) => {
-    return dueDate && new Date(dueDate) < new Date()
+  async function handleCreateOpp(form: any) {
+    try {
+      const res = await fetch('/api/opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) throw new Error('Fehler beim Erstellen')
+      setModalOpen(false)
+      await loadOpportunities()
+    } catch (err: any) {
+      throw err
+    }
   }
+
+  async function handleStatusChange(id: string, newStatus: string) {
+    try {
+      const res = await fetch(`/api/opportunities/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) await loadOpportunities()
+    } catch (err) {
+      console.error('Fehler:', err)
+    }
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/opportunities/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setDeleteConfirm(null)
+        await loadOpportunities()
+      }
+    } catch (err) {
+      console.error('Fehler:', err)
+    }
+  }
+
+  const isOverdue = (dueDate?: string) => dueDate && new Date(dueDate) < new Date()
 
   const filtered = opportunities.filter((o) => {
     if (statusFilter !== 'all' && o.status !== statusFilter) return false
     const q = search.toLowerCase()
-    if (q && !(
-      o.thema.toLowerCase().includes(q) ||
-      (o.contact_name ?? '').toLowerCase().includes(q) ||
-      (o.nächster_schritt ?? '').toLowerCase().includes(q)
-    )) return false
+    if (q && !(o.thema.toLowerCase().includes(q) || (o.contact_name ?? '').toLowerCase().includes(q))) return false
     return true
   })
 
   const totalWert = filtered.reduce((sum, o) => sum + (o.wert ?? 0), 0)
-  const kundenWert = filtered.filter(o => o.status === 'kunde').reduce((sum, o) => sum + (o.wert ?? 0), 0)
+  const kundenWert = filtered.filter((o) => o.status === 'kunde').reduce((sum, o) => sum + (o.wert ?? 0), 0)
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Opportunities</h1>
@@ -169,8 +143,14 @@ export default function OpportunitiesPage() {
             {loading ? 'Lädt…' : `${opportunities.length} Opportunities, ${(totalWert / 1000).toFixed(0)}K € Gesamtwert`}
           </p>
         </div>
-        <button className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <button
+          onClick={() => {
+            setNewOppContactId('')
+            setModalOpen(true)
+          }}
+          className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
@@ -181,16 +161,16 @@ export default function OpportunitiesPage() {
       {/* KPI-Widgets */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <p className="text-xs text-gray-500 font-semibold uppercase">Gesamt Opportunities</p>
+          <p className="text-xs text-gray-500 font-semibold uppercase">Gesamt</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{opportunities.length}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
-          <p className="text-xs text-gray-500 font-semibold uppercase">Offene (≠ Kunde)</p>
-          <p className="text-2xl font-bold text-yellow-600 mt-1">{opportunities.filter(o => o.status !== 'kunde').length}</p>
+          <p className="text-xs text-gray-500 font-semibold uppercase">Offene</p>
+          <p className="text-2xl font-bold text-yellow-600 mt-1">{opportunities.filter((o) => o.status !== 'kunde').length}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <p className="text-xs text-gray-500 font-semibold uppercase">Abgeschlossen</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-1">{opportunities.filter(o => o.status === 'kunde').length}</p>
+          <p className="text-2xl font-bold text-emerald-600 mt-1">{opportunities.filter((o) => o.status === 'kunde').length}</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4">
           <p className="text-xs text-gray-500 font-semibold uppercase">Umsatz (Kunde)</p>
@@ -198,30 +178,18 @@ export default function OpportunitiesPage() {
         </div>
       </div>
 
-      {/* Suche + Filter */}
       <div className="mb-6 space-y-3">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
-            <svg width="16" height="16" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Nach Thema, Kontakt oder nächstem Schritt suchen…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 focus:border-yellow-400"
-            />
-          </div>
-        </div>
+        <input
+          type="text"
+          placeholder="Nach Thema oder Kontakt suchen…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+        />
 
-        {/* Status-Tabs */}
         <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1 w-fit overflow-x-auto">
           {OPPORTUNITIES_FILTER.map((f) => {
-            const count = f.value === 'all'
-              ? opportunities.length
-              : opportunities.filter((o) => o.status === f.value).length
+            const count = f.value === 'all' ? opportunities.length : opportunities.filter((o) => o.status === f.value).length
             return (
               <button
                 key={f.value}
@@ -232,25 +200,24 @@ export default function OpportunitiesPage() {
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                {f.label} <span className={`ml-1 text-xs ${statusFilter === f.value ? 'text-gray-700' : 'text-gray-400'}`}>{count}</span>
+                {f.label} <span className="ml-1 text-xs">{count}</span>
               </button>
             )
           })}
         </div>
       </div>
 
-      {/* Tabelle */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Thema</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Kontakt</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Status</th>
-                <th className="text-right text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Wert</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Nächster Schritt</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Fällig</th>
+              <tr className="border-b border-gray-100 bg-gray-50">
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Thema</th>
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Kontakt</th>
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Status</th>
+                <th className="text-right text-xs font-semibold text-gray-400 uppercase px-5 py-3">Wert</th>
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Fällig</th>
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -263,45 +230,50 @@ export default function OpportunitiesPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-16">
-                    <p className="text-gray-400 text-sm">{opportunities.length === 0 ? 'Noch keine Opportunities vorhanden.' : 'Keine Opportunities gefunden.'}</p>
+                    <p className="text-gray-400 text-sm">
+                      {opportunities.length === 0 ? 'Noch keine Opportunities vorhanden.' : 'Keine Opportunities gefunden.'}
+                    </p>
                   </td>
                 </tr>
               ) : (
                 filtered.map((opp) => (
-                  <tr key={opp.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                  <tr key={opp.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                    <td className="px-5 py-3.5 font-semibold text-gray-900">{opp.thema}</td>
                     <td className="px-5 py-3.5">
-                      <p className="font-semibold text-gray-900">{opp.thema}</p>
-                      {opp.notizen && (
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{opp.notizen}</p>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <Link href={`/kontakte/${opp.contact_id}`} className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">
-                        {opp.contact_name || '—'}
+                      <Link href={`/kontakte/${opp.contact_id}`} className="text-yellow-600 hover:underline">
+                        {opp.contact_name}
                       </Link>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLORS[opp.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                        {STATUS_LABELS[opp.status]}
-                      </span>
+                      <select
+                        value={opp.status}
+                        onChange={(e) => handleStatusChange(opp.id, e.target.value)}
+                        className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer ${STATUS_COLORS[opp.status]}`}
+                      >
+                        {Object.entries(STATUS_LABELS).map(([v, label]) => (
+                          <option key={v} value={v}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <span className="font-semibold text-gray-900">
-                        {opp.wert ? `${(opp.wert / 1000).toFixed(0)}K €` : '—'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-gray-600 text-xs max-w-xs line-clamp-2">
-                      {opp.nächster_schritt || '—'}
+                    <td className="px-5 py-3.5 text-right font-semibold text-gray-900">{opp.wert ? `${(opp.wert / 1000).toFixed(0)}K €` : '—'}</td>
+                    <td className={`px-5 py-3.5 text-xs ${isOverdue(opp.fällig) && opp.status !== 'kunde' ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                      {opp.fällig ? new Date(opp.fällig).toLocaleDateString('de-DE') : '—'}
+                      {isOverdue(opp.fällig) && opp.status !== 'kunde' && (
+                        <span className="ml-2 inline-flex px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold">⏰</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
-                      <div className={`text-xs ${isOverdue(opp.fällig) && opp.status !== 'kunde' ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
-                        {opp.fällig ? new Date(opp.fällig).toLocaleDateString('de-DE') : '—'}
-                        {isOverdue(opp.fällig) && opp.status !== 'kunde' && (
-                          <span className="ml-1.5 inline-flex px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold">
-                            ⏰
-                          </span>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => setDeleteConfirm(opp.id)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -310,6 +282,31 @@ export default function OpportunitiesPage() {
           </table>
         </div>
       </div>
+
+      <OpportunityEditModal kontaktId={newOppContactId} isOpen={modalOpen} onClose={() => setModalOpen(false)} onSave={handleCreateOpp} />
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Opportunity löschen?</h3>
+            <p className="text-gray-600 text-sm mb-6">Diese Opportunity wird gelöscht.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 border border-gray-200 text-gray-600 font-medium text-sm px-4 py-2.5 rounded-lg hover:bg-gray-50"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg"
+              >
+                Ja, löschen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
