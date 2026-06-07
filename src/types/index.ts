@@ -1,24 +1,83 @@
-// Zentrale TypeScript-Typen für Sentimental Logic
+// Zentrale TypeScript-Typen für Sentinel Logic
+// Neue Struktur: Kontakte (statt Leads) mit Opportunities & Tasks
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer'
+export type ContactStatus = 'new' | 'contacted' | 'qualified' | 'customer'
+export type LeadStatus = ContactStatus // Backward compat
 export type LeadSource = 'facebook' | 'tiktok' | 'manual' | 'klicktipp'
 
-export type ActivityType = 'sync' | 'research' | 'ai_prep' | 'status_change'
+export type ActivityType = 'sync' | 'research' | 'ai_prep' | 'status_change' | 'task_created' | 'task_completed' | 'opportunity_created' | 'opportunity_updated'
 
-export interface Lead {
+export type OpportunityStatus = 'neu' | 'kontaktiert' | 'analyse' | 'angebot' | 'nachfassen' | 'kunde'
+export type TaskStatus = 'offen' | 'in_bearbeitung' | 'erledigt'
+export type TaskPriority = 'niedrig' | 'mittel' | 'hoch'
+
+// ── Kontakt (früher Lead) ──────────────────────────────
+export interface Contact {
   id: string
   created_at: string
   source: LeadSource
   first_name: string
   last_name: string
   email: string
-  phone: string
+  phone_mobile?: string
+  phone_office?: string
   company_name?: string
-  status: LeadStatus
+  status: ContactStatus
+  assigned_user_id?: string
+  qualität?: string
+  bestandskunde?: boolean
   klicktipp_id?: string
   dialfire_id?: string
-  research_data?: ResearchData
   notes?: string
+  notes_updated_at?: string
+  // Pipeline
+  pipeline_stage?: string
+  pipeline_steps?: Array<{ key: string; done: boolean; completed_at?: string; due_date?: string }>
+}
+
+// Backward-Compatibility
+export type Lead = Contact
+
+// ── User (Verantwortlicher) ────────────────────────────
+export interface User {
+  id: string
+  created_at: string
+  email: string
+  name: string
+  active: boolean
+}
+
+// ── Opportunity (Verkaufschance) ───────────────────────
+export interface Opportunity {
+  id: string
+  created_at: string
+  updated_at: string
+  contact_id: string
+  thema: string
+  status: OpportunityStatus
+  wert?: number
+  nächster_schritt?: string
+  fällig?: string
+  notizen?: string
+}
+
+// ── Task (Aufgabe) ─────────────────────────────────────
+export interface Task {
+  id: string
+  created_at: string
+  updated_at: string
+  contact_id: string
+  opportunity_id?: string
+  assigned_user_id?: string
+  created_by_user_id?: string
+  titel: string
+  beschreibung?: string
+  status: TaskStatus
+  priorität: TaskPriority
+  fällig: string
+  erledigt_am?: string
+  triggered_by_rule?: string
+  triggered_by_process_step?: string
 }
 
 export interface Customer {
