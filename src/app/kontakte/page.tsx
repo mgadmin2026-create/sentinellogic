@@ -205,6 +205,7 @@ export default function KontaktePage() {
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Name</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Firma</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Status</th>
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Fortschritt</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Erstellt</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Aktionen</th>
               </tr>
@@ -244,6 +245,22 @@ export default function KontaktePage() {
                           </option>
                         ))}
                       </select>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {/* Prozessfortschritt Bar */}
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-yellow-400 rounded-full transition-all"
+                            style={{
+                              width: kontakt.status === 'new' ? '25%' : kontakt.status === 'contacted' ? '50%' : kontakt.status === 'qualified' ? '75%' : '100%',
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500 font-medium">
+                          {kontakt.status === 'new' ? '1/4' : kontakt.status === 'contacted' ? '2/4' : kontakt.status === 'qualified' ? '3/4' : '4/4'}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(kontakt.created_at).toLocaleDateString('de-DE')}</td>
                     <td className="px-5 py-3.5">

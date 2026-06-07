@@ -4,6 +4,7 @@ import { useState } from 'react'
 interface Aufgabe {
   contact_id: string
   opportunity_id?: string
+  assigned_user_id?: string
   titel: string
   beschreibung?: string
   fällig: string
@@ -18,6 +19,12 @@ interface Props {
   onSave: (aufgabe: Aufgabe) => Promise<void>
 }
 
+const MOCK_USERS = [
+  { id: 'max', name: 'Max Mustermann' },
+  { id: 'laura', name: 'Laura Klein' },
+  { id: 'system', name: 'System' },
+]
+
 export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props) {
   const [form, setForm] = useState<Aufgabe>({
     contact_id: kontaktId,
@@ -26,6 +33,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
     fällig: new Date().toISOString().split('T')[0],
     priorität: 'mittel',
     status: 'offen',
+    assigned_user_id: 'system',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -72,7 +80,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
               required
               value={form.titel}
               onChange={(e) => setForm({ ...form, titel: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               placeholder="z.B. Angebote vorbereiten"
             />
           </div>
@@ -82,7 +90,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
             <textarea
               value={form.beschreibung || ''}
               onChange={(e) => setForm({ ...form, beschreibung: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 h-24 resize-none"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm h-20 resize-none"
               placeholder="Optionale Details…"
             />
           </div>
@@ -95,7 +103,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
                 required
                 value={form.fällig}
                 onChange={(e) => setForm({ ...form, fällig: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               />
             </div>
             <div>
@@ -103,13 +111,28 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
               <select
                 value={form.priorität || 'mittel'}
                 onChange={(e) => setForm({ ...form, priorität: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               >
                 <option value="niedrig">Niedrig</option>
                 <option value="mittel">Mittel</option>
                 <option value="hoch">Hoch</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Zugewiesen an</label>
+            <select
+              value={form.assigned_user_id || 'system'}
+              onChange={(e) => setForm({ ...form, assigned_user_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+            >
+              {MOCK_USERS.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-gray-100">

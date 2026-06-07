@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
+import { AufgabenEditModal } from '@/components/AufgabenEditModal'
+import { OpportunityEditModal } from '@/components/OpportunityEditModal'
 
 interface Kontakt {
   id: string
@@ -86,6 +88,8 @@ export default function KontaktDetailPage() {
   const [kontakt, setKontakt] = useState<Kontakt | null>(null)
   const [loading, setLoading] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [newTaskModalOpen, setNewTaskModalOpen] = useState(false)
+  const [newOppModalOpen, setNewOppModalOpen] = useState(false)
   const [notesEditMode, setNotesEditMode] = useState(false)
   const [notes, setNotes] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
@@ -158,6 +162,36 @@ export default function KontaktDetailPage() {
       router.push('/kontakte')
     } catch (err) {
       console.error('Fehler beim Löschen:', err)
+    }
+  }
+
+  async function handleCreateAufgabe(form: any) {
+    try {
+      const res = await fetch('/api/aufgaben', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) throw new Error('Fehler beim Erstellen')
+      setNewTaskModalOpen(false)
+      await loadKontakt()
+    } catch (err: any) {
+      throw err
+    }
+  }
+
+  async function handleCreateOpp(form: any) {
+    try {
+      const res = await fetch('/api/opportunities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) throw new Error('Fehler beim Erstellen')
+      setNewOppModalOpen(false)
+      await loadKontakt()
+    } catch (err: any) {
+      throw err
     }
   }
 
@@ -400,7 +434,12 @@ export default function KontaktDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">Aufgaben für diesen Kontakt</h2>
-              <button className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">+ Neue Aufgabe</button>
+              <button
+                onClick={() => setNewTaskModalOpen(true)}
+                className="text-yellow-600 hover:text-yellow-700 text-sm font-medium"
+              >
+                + Neue Aufgabe
+              </button>
             </div>
             {aufgaben.length === 0 ? (
               <div className="p-6 text-center text-gray-400">
@@ -459,7 +498,12 @@ export default function KontaktDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">Opportunities für diesen Kontakt</h2>
-              <button className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">+ Neue Opportunity</button>
+              <button
+                onClick={() => setNewOppModalOpen(true)}
+                className="text-yellow-600 hover:text-yellow-700 text-sm font-medium"
+              >
+                + Neue Opportunity
+              </button>
             </div>
             {opportunities.length === 0 ? (
               <div className="p-6 text-center text-gray-400">
@@ -597,6 +641,22 @@ export default function KontaktDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Neue Aufgabe Modal */}
+      <AufgabenEditModal
+        kontaktId={kontaktId}
+        isOpen={newTaskModalOpen}
+        onClose={() => setNewTaskModalOpen(false)}
+        onSave={handleCreateAufgabe}
+      />
+
+      {/* Neue Opportunity Modal */}
+      <OpportunityEditModal
+        kontaktId={kontaktId}
+        isOpen={newOppModalOpen}
+        onClose={() => setNewOppModalOpen(false)}
+        onSave={handleCreateOpp}
+      />
     </div>
   )
 }

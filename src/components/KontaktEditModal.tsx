@@ -1,5 +1,4 @@
 'use client'
-// Modal zum Anlegen/Bearbeiten von Kontakten
 import { useState } from 'react'
 
 interface Kontakt {
@@ -79,168 +78,187 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
             </div>
           )}
 
-          {/* Row 1: Vorname + Nachname */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Vorname *</label>
+          {/* Section 1: Grunddaten */}
+          <div className="border-b border-gray-100 pb-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">👤 Grunddaten</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Vorname *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Max"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nachname *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Mustermann"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">E-Mail *</label>
               <input
-                type="text"
+                type="email"
                 required
-                value={formData.first_name}
-                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="Max"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                placeholder="max@example.com"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Nachname *</label>
-              <input
-                type="text"
-                required
-                value={formData.last_name}
-                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="Mustermann"
-              />
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Telefon Mobil</label>
+                <input
+                  type="tel"
+                  value={formData.phone_mobile || ''}
+                  onChange={(e) => setFormData({ ...formData, phone_mobile: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="+49 123 456789"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Telefon Büro</label>
+                <input
+                  type="tel"
+                  value={formData.phone_office || ''}
+                  onChange={(e) => setFormData({ ...formData, phone_office: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="+49 40 123456"
+                />
+              </div>
             </div>
           </div>
 
-          {/* E-Mail */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">E-Mail *</label>
-            <input
-              type="email"
-              required
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-              placeholder="max@example.com"
-            />
-          </div>
+          {/* Section 2: Firma */}
+          <div className="border-b border-gray-100 pb-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">🏢 Firma</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Firma</label>
+                <input
+                  type="text"
+                  value={formData.company_name || ''}
+                  onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Beispiel GmbH"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Position</label>
+                <input
+                  type="text"
+                  value={formData.position || ''}
+                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Geschäftsführer"
+                />
+              </div>
+            </div>
 
-          {/* Telefon */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Telefon Mobil</label>
-              <input
-                type="tel"
-                value={formData.phone_mobile || ''}
-                onChange={(e) => setFormData({ ...formData, phone_mobile: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="+49 123 456789"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Telefon Büro</label>
-              <input
-                type="tel"
-                value={formData.phone_office || ''}
-                onChange={(e) => setFormData({ ...formData, phone_office: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="+49 40 123456"
-              />
-            </div>
-          </div>
-
-          {/* Firma + Position */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Firma</label>
-              <input
-                type="text"
-                value={formData.company_name || ''}
-                onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="Beispiel GmbH"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Position</label>
-              <input
-                type="text"
-                value={formData.position || ''}
-                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="Geschäftsführer"
-              />
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Branche</label>
+                <input
+                  type="text"
+                  value={formData.industry || ''}
+                  onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Versicherungsgewerbe"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Website</label>
+                <input
+                  type="url"
+                  value={formData.website || ''}
+                  onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="https://beispiel.de"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Branche + Website */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Section 3: Adresse */}
+          <div className="border-b border-gray-100 pb-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">📍 Adresse</h3>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Branche</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Straße</label>
               <input
                 type="text"
-                value={formData.industry || ''}
-                onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="Versicherungsgewerbe"
+                value={formData.street || ''}
+                onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                placeholder="Beispielstraße 42"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Website</label>
-              <input
-                type="url"
-                value={formData.website || ''}
-                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="https://beispiel.de"
-              />
+
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">PLZ</label>
+                <input
+                  type="text"
+                  value={formData.postal_code || ''}
+                  onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="20095"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Ort</label>
+                <input
+                  type="text"
+                  value={formData.city || ''}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Hamburg"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Land</label>
+                <input
+                  type="text"
+                  value={formData.country || ''}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Deutschland"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Adresse */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Straße</label>
-            <input
-              type="text"
-              value={formData.street || ''}
-              onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-              placeholder="Beispielstraße 42"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
+          {/* Section 4: Notizen */}
+          {isEdit && (
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">PLZ</label>
-              <input
-                type="text"
-                value={formData.postal_code || ''}
-                onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="20095"
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">📝 Notizen</h3>
+              <textarea
+                value={formData.notes || ''}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm h-20 resize-none"
+                placeholder="Interne Notizen…"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Ort</label>
-              <input
-                type="text"
-                value={formData.city || ''}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="Hamburg"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Land</label>
-              <input
-                type="text"
-                value={formData.country || ''}
-                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                placeholder="Deutschland"
-              />
-            </div>
-          </div>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-3 pt-4 border-t border-gray-100">

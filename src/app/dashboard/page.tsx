@@ -170,15 +170,12 @@ export default function DashboardPage() {
   // Mock-Daten für Aufgaben und Opportunities (später echte API)
   const mockOpenTasks = 12
   const mockOpenOpportunities = 5
-  const mockPipelineValue = 234000
 
   const kpis = [
     { label: 'Neue Kontakte', value: String(leadsToday), sub: 'diese Woche', color: 'border-[#FFC300]' },
     { label: 'Kontakte gesamt', value: String(leads.length > 0 ? leads.length : '—'), sub: 'in der Pipeline', color: 'border-blue-400' },
     { label: 'Offene Aufgaben', value: String(mockOpenTasks), sub: 'fällig diese Woche', color: 'border-orange-400' },
-    { label: 'Pipeline-Wert', value: `${(mockPipelineValue / 1000).toFixed(0)}K €`, sub: 'offene Opportunities', color: 'border-emerald-400' },
     { label: 'Abschlussquote', value: '23%', sub: 'Ø letzte 30 Tage', color: 'border-purple-400' },
-    { label: 'Offene Opportunities', value: String(mockOpenOpportunities), sub: 'nicht als Kunde abgeschl.', color: 'border-cyan-400' },
   ]
 
   return (
@@ -198,16 +195,16 @@ export default function DashboardPage() {
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
-          Leads importieren (CSV)
+          Kontakte importieren (CSV)
         </button>
       </div>
 
       {/* KPI-Kacheln */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {kpis.map((kpi) => (
-          <div key={kpi.label} className={`bg-white rounded-lg border-l-4 ${kpi.color} border border-gray-200 shadow-sm p-4`}>
+          <div key={kpi.label} className={`bg-white rounded-lg border-l-4 ${kpi.color} border border-gray-200 shadow-sm p-5`}>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{kpi.label}</p>
-            <p className="text-2xl font-bold text-[#1A1A1A] mt-1">{kpi.value}</p>
+            <p className="text-2xl font-bold text-[#1A1A1A] mt-2">{kpi.value}</p>
             <p className="text-xs text-gray-400 mt-1">{kpi.sub}</p>
           </div>
         ))}

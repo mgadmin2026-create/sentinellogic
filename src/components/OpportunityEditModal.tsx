@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 interface Opportunity {
   contact_id: string
+  assigned_user_id?: string
   thema: string
   status?: string
   wert?: number
@@ -18,9 +19,16 @@ interface Props {
   onSave: (opp: Opportunity) => Promise<void>
 }
 
+const MOCK_USERS = [
+  { id: 'max', name: 'Max Mustermann' },
+  { id: 'laura', name: 'Laura Klein' },
+  { id: 'system', name: 'System' },
+]
+
 export function OpportunityEditModal({ kontaktId, isOpen, onClose, onSave }: Props) {
   const [form, setForm] = useState<Opportunity>({
     contact_id: kontaktId,
+    assigned_user_id: 'system',
     thema: '',
     status: 'neu',
     wert: undefined,
@@ -73,7 +81,7 @@ export function OpportunityEditModal({ kontaktId, isOpen, onClose, onSave }: Pro
               required
               value={form.thema}
               onChange={(e) => setForm({ ...form, thema: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               placeholder="z.B. KFZ-Versicherung"
             />
           </div>
@@ -83,7 +91,7 @@ export function OpportunityEditModal({ kontaktId, isOpen, onClose, onSave }: Pro
             <select
               value={form.status || 'neu'}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
             >
               <option value="neu">Neu</option>
               <option value="kontaktiert">Kontaktiert</option>
@@ -101,7 +109,7 @@ export function OpportunityEditModal({ kontaktId, isOpen, onClose, onSave }: Pro
                 type="number"
                 value={form.wert || ''}
                 onChange={(e) => setForm({ ...form, wert: e.target.value ? parseInt(e.target.value) : undefined })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
                 placeholder="z.B. 25000"
               />
             </div>
@@ -111,9 +119,24 @@ export function OpportunityEditModal({ kontaktId, isOpen, onClose, onSave }: Pro
                 type="date"
                 value={form.fällig || ''}
                 onChange={(e) => setForm({ ...form, fällig: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Zugewiesen an</label>
+            <select
+              value={form.assigned_user_id || 'system'}
+              onChange={(e) => setForm({ ...form, assigned_user_id: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+            >
+              {MOCK_USERS.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -122,7 +145,7 @@ export function OpportunityEditModal({ kontaktId, isOpen, onClose, onSave }: Pro
               type="text"
               value={form.nächster_schritt || ''}
               onChange={(e) => setForm({ ...form, nächster_schritt: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               placeholder="z.B. Angebote vergleichen"
             />
           </div>
@@ -132,7 +155,7 @@ export function OpportunityEditModal({ kontaktId, isOpen, onClose, onSave }: Pro
             <textarea
               value={form.notizen || ''}
               onChange={(e) => setForm({ ...form, notizen: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 h-20 resize-none"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm h-20 resize-none"
             />
           </div>
 
