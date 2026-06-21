@@ -4,55 +4,51 @@
 -- ──────────────────────────────────────────────────────
 -- ACTIVITIES Tabelle
 -- ──────────────────────────────────────────────────────
-create table if not exists activities (
+create table if not exists public.activities (
   id uuid primary key default gen_random_uuid(),
-  contact_id uuid not null references contacts(id) on delete cascade,
-  type text not null, -- 'call', 'email', 'meeting', 'note', 'status_change', etc.
+  contact_id uuid not null,
+  type text not null default 'note',
   description text not null,
-  data jsonb, -- Zusätzliche Daten (z.B. Anrufdauer, E-Mail-Betreff, etc.)
-  created_by uuid, -- Zukünftig: User-ID wer die Aktivität erstellt hat
+  data jsonb default null,
+  created_by uuid default null,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
 
-create index if not exists idx_activities_contact_id on activities(contact_id);
-create index if not exists idx_activities_created_at on activities(created_at desc);
-create index if not exists idx_activities_type on activities(type);
+-- Indexes für Performance
+create index if not exists idx_activities_contact_id on public.activities(contact_id);
+create index if not exists idx_activities_created_at on public.activities(created_at desc);
+create index if not exists idx_activities_type on public.activities(type);
 
 -- ──────────────────────────────────────────────────────
 -- TASKS Tabelle
 -- ──────────────────────────────────────────────────────
-create table if not exists tasks (
+create table if not exists public.tasks (
   id uuid primary key default gen_random_uuid(),
-  contact_id uuid not null references contacts(id) on delete cascade,
+  contact_id uuid not null,
   title text not null,
-  description text,
-  status text not null default 'open', -- 'open', 'in_progress', 'done'
-  priority text not null default 'medium', -- 'low', 'medium', 'high'
-  due_date date,
-  assigned_user_id uuid,
-  created_by uuid,
+  description text default null,
+  status text not null default 'open',
+  priority text not null default 'medium',
+  due_date date default null,
+  assigned_user_id uuid default null,
+  created_by uuid default null,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now(),
-  completed_at timestamp with time zone
+  completed_at timestamp with time zone default null
 );
 
-create index if not exists idx_tasks_contact_id on tasks(contact_id);
-create index if not exists idx_tasks_status on tasks(status);
-create index if not exists idx_tasks_due_date on tasks(due_date);
-create index if not exists idx_tasks_assigned_user_id on tasks(assigned_user_id);
-create index if not exists idx_tasks_priority on tasks(priority);
-
--- ──────────────────────────────────────────────────────
--- POLICIES (RLS) — Optional: Später aktivieren
--- ──────────────────────────────────────────────────────
--- alter table activities enable row level security;
--- alter table tasks enable row level security;
+-- Indexes für Performance
+create index if not exists idx_tasks_contact_id on public.tasks(contact_id);
+create index if not exists idx_tasks_status on public.tasks(status);
+create index if not exists idx_tasks_due_date on public.tasks(due_date);
+create index if not exists idx_tasks_assigned_user_id on public.tasks(assigned_user_id);
+create index if not exists idx_tasks_priority on public.tasks(priority);
 
 -- ──────────────────────────────────────────────────────
 -- Trigger für updated_at
 -- ──────────────────────────────────────────────────────
-create or replace function update_activities_timestamp()
+create or replace function public.update_activities_timestamp()
 returns trigger as $$
 begin
   new.updated_at = now();
@@ -60,7 +56,7 @@ begin
 end;
 $$ language plpgsql;
 
-create or replace function update_tasks_timestamp()
+create or replace function public.update_tasks_timestamp()
 returns trigger as $$
 begin
   new.updated_at = now();
@@ -68,12 +64,30 @@ begin
 end;
 $$ language plpgsql;
 
+drop trigger if exists activities_update_timestamp on public.activities;
 create trigger activities_update_timestamp
-  before update on activities
+  before update on public.activities
   for each row
-  execute function update_activities_timestamp();
+  execute function public.update_activities_timestamp();
 
+drop trigger if exists tasks_update_timestamp on public.tasks;
 create trigger tasks_update_timestamp
-  before update on tasks
+  before update on public.tasks
   for each row
-  execute function update_tasks_timestamp();
+  execute function public.update_tasks_timestamp();
+
+-- ──────────────────────────────────────────────────────
+-- Hinzufügen von Foreign Keys (nach contacts-Tabelle-Verifikation)
+-- ──────────────────────────────────────────────────────
+-- Uncomment sobald contacts-Tabelle verifikation vorliegt:
+-- alter table public.activities
+--   add constraint fk_activities_contact_id 
+--   foreign key (contact_id) 
+--   references public.contacts(id) 
+--   on delete cascade;
+--
+-- alter table public.tasks
+--   add constraint fk_tasks_contact_id 
+--   foreign key (contact_id) 
+--   references public.contacts(id) 
+--   on delete cascade;
