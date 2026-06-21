@@ -3,6 +3,7 @@
 // PATCH  /api/kontakte/[id] — Kontakt-Felder aktualisieren
 // DELETE /api/kontakte/[id] — Kontakt löschen
 import { NextRequest } from 'next/server'
+import { logContactUpdated, logContactDeleted, logPipelineStageChanged, logStatusChanged } from '@/lib/activities-logger'
 import { createServerClient } from '@/lib/supabase/server'
 
 const ALLOWED_UPDATE_FIELDS = new Set([

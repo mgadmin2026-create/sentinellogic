@@ -4,6 +4,7 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
+import { logContactCreated } from '@/lib/activities-logger'
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']
 
@@ -149,6 +150,10 @@ export async function POST(request: NextRequest) {
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }
 
+    // Log activity
+    if (data?.id) {
+      await logContactCreated(data.id, `${data.first_name} ${data.last_name}`)
+    }
     return Response.json({ success: true, data }, { status: 201 })
   } catch (err) {
     console.error('[POST /api/kontakte] Fehler:', err)
