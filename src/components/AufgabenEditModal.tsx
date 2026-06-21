@@ -33,7 +33,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
     fällig: new Date().toISOString().split('T')[0],
     priorität: 'mittel',
     status: 'offen',
-    assigned_user_id: 'system',
+    assigned_user_id: undefined, // Keine Zuweisung standardmäßig
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

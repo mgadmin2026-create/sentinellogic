@@ -26,6 +26,7 @@ drop table if exists public.tasks cascade;
 
 create table public.tasks (
   id uuid primary key default gen_random_uuid(),
+  contact_id uuid not null,
   opportunity_id uuid default null,
   assigned_user_id uuid default null,
   created_by_user_id uuid default null,
@@ -41,6 +42,7 @@ create table public.tasks (
   triggered_by_process_step text default null
 );
 
+create index if not exists idx_tasks_contact_id on public.tasks(contact_id);
 create index if not exists idx_tasks_status on public.tasks(status);
 create index if not exists idx_tasks_fällig on public.tasks(fällig);
 create index if not exists idx_tasks_assigned_user_id on public.tasks(assigned_user_id);
