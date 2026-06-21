@@ -21,6 +21,57 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.3.0',
+    date: '2026-06-22',
+    title: 'Activity Logging & Audit Trail',
+    summary: 'Umfassendes Aktivitäts-Protokoll für alle Kontakt-Änderungen mit automatischem Audit Trail',
+    features: [
+      {
+        title: 'Activity Logging System',
+        description:
+          'Alle Aktivitäten rund um einen Kontakt werden automatisch protokolliert: Anlage, Bearbeitung, Prozessfortschritt, Statusänderungen. Jede Aktivität zeigt Timestamp und Details.',
+        category: 'feature',
+        icon: '📝',
+      },
+      {
+        title: 'Aktivitäten-Tab',
+        description:
+          'Neue "Aktivitäten" Sektion im Kontakt-Detail zeigt vollständige Chronik aller Änderungen mit Zeitstempel. Visuell als Timeline dargestellt.',
+        category: 'feature',
+        icon: '📋',
+      },
+      {
+        title: 'Tasks & Aufgaben-Management',
+        description:
+          'Neue "Aufgaben" Tab im Kontakt-Detail. Aufgaben können erstellt, bearbeitet und als erledigt markiert werden. Fälligkeitsdatum, Priorität und Status-Tracking.',
+        category: 'feature',
+        icon: '✓',
+      },
+      {
+        title: 'Opportunities entfernt',
+        description:
+          'Opportunities-Tab wurde aus der UI entfernt. Fokus liegt auf Kontakt-Management, Pipeline und Aufgaben.',
+        category: 'improvement',
+        icon: '🗑️',
+      },
+      {
+        title: 'Audit Trail für Compliance',
+        description:
+          'Vollständige Aktivitätshistorie für Compliance und Nachverfolgung. Wer hat was wann gemacht — alles protokolliert.',
+        category: 'security',
+        icon: '🔐',
+      },
+    ],
+    breaking_changes: [
+      'Opportunities-Tab wurde aus der UI entfernt (Daten in DB bleiben erhalten)',
+    ],
+    known_issues: [
+      'DELETE-Operation (Kontakt löschen) loggt noch nicht automatisch',
+      'File-Upload-Logging noch nicht implementiert',
+    ],
+    next_release_date: '2026-07-01',
+  },
+  {
     version: '0.2.0',
     date: '2026-06-20',
     title: '12-Schritt-Vertriebsprozess & Process Stepper',
