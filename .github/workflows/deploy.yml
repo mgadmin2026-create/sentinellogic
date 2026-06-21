@@ -1,0 +1,17 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Vercel
+        run: npx vercel deploy --prod --scope mgadmin2026-5820s-projects
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
