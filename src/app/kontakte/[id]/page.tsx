@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
-import { OpportunityEditModal } from '@/components/OpportunityEditModal'
 
 interface Kontakt {
   id: string
@@ -56,13 +55,6 @@ interface Aufgabe {
   assigned_user_name?: string
 }
 
-interface Opportunity {
-  id: string
-  thema: string
-  status: string
-  wert?: number
-  fällig?: string
-}
 
 const STATUS_COLORS: Record<string, string> = {
   new: 'bg-blue-100 text-blue-800',
@@ -83,7 +75,6 @@ const TABS = [
   { id: 'process', label: 'Prozess', icon: '🎯' },
   { id: 'activities', label: 'Aktivitäten', icon: '📝' },
   { id: 'tasks', label: 'Aufgaben', icon: '✓' },
-  { id: 'opportunities', label: 'Opportunities', icon: '💼' },
   { id: 'notes', label: 'Notizen', icon: '📋' },
   { id: 'documents', label: 'Dokumente', icon: '📄' },
 ]
@@ -119,7 +110,6 @@ export default function KontaktDetailPage() {
   const [notesSaving, setNotesSaving] = useState(false)
   const [aktivitäten, setAktivitäten] = useState<Aktivität[]>([])
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [pipelineSaving, setPipelineSaving] = useState(false)
 
@@ -690,52 +680,6 @@ export default function KontaktDetailPage() {
         )}
 
         {/* TAB: Opportunities */}
-        {activeTab === 'opportunities' && (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Opportunities für diesen Kontakt</h2>
-              <button
-                onClick={() => setNewOppModalOpen(true)}
-                className="text-yellow-600 hover:text-yellow-700 text-sm font-medium"
-              >
-                + Neue Opportunity
-              </button>
-            </div>
-            {opportunities.length === 0 ? (
-              <div className="p-6 text-center text-gray-400">
-                <p>Keine Opportunities für diesen Kontakt.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50">
-                      {['Thema', 'Status', 'Wert', 'Fällig'].map((h) => (
-                        <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-6 py-3">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {opportunities.map((opp) => (
-                      <tr key={opp.id} className="border-b border-gray-50 hover:bg-gray-50">
-                        <td className="px-6 py-3.5 text-gray-900 font-medium">{opp.thema}</td>
-                        <td className="px-6 py-3.5">
-                          <span className="inline-flex text-xs font-medium px-2.5 py-1 rounded-full bg-purple-100 text-purple-800">{opp.status}</span>
-                        </td>
-                        <td className="px-6 py-3.5 text-gray-900 font-semibold">{opp.wert ? `${(opp.wert / 1000).toFixed(0)}K €` : '—'}</td>
-                        <td className="px-6 py-3.5 text-gray-600">{opp.fällig ? new Date(opp.fällig).toLocaleDateString('de-DE') : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB: Notizen */}
         {activeTab === 'notes' && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Notizen</h2>
@@ -847,7 +791,6 @@ export default function KontaktDetailPage() {
       />
 
       {/* Neue Opportunity Modal */}
-      <OpportunityEditModal
         kontaktId={kontaktId}
         isOpen={newOppModalOpen}
         onClose={() => setNewOppModalOpen(false)}

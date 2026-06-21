@@ -71,7 +71,6 @@ export async function GET(
       .eq('contact_id', id)
       .order('created_at', { ascending: false })
 
-    // Opportunities laden
     const { data: opportunities } = await supabase
       .from('opportunities')
       .select('*')
@@ -84,7 +83,6 @@ export async function GET(
         ...contact,
         activities: activities ?? [],
         tasks: tasks ?? [],
-        opportunities: opportunities ?? [],
       },
     })
   } catch (error) {
