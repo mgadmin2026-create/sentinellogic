@@ -2,9 +2,11 @@
 // GET /api/release-notes/0.2.0
 import { getReleaseByVersion } from '@/data/release-notes'
 
-export async function GET(request: Request, { params }: { params: { version: string } }) {
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: Request, { params }: { params: Promise<{ version: string }> }) {
   try {
-    const { version } = params
+    const { version } = await params
 
     if (!version) {
       return Response.json({ success: false, error: 'Version erforderlich' }, { status: 400 })
