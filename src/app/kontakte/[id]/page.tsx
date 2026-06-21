@@ -128,7 +128,6 @@ export default function KontaktDetailPage() {
         setNotes(data.notes || '')
         setAktivitäten(data.activities || [])
         setAufgaben(data.tasks || [])
-        setOpportunities(data.opportunities || [])
       }
     } catch (err) {
       console.error('Fehler beim Laden des Kontakts:', err)
