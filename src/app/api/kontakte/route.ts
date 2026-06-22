@@ -11,14 +11,17 @@ async function invokeEdgeFunction(functionName: string, payload: any) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+  console.log('[invokeEdgeFunction] Starting', { functionName, url: supabaseUrl, hasKey: !!supabaseKey })
+
   if (!supabaseUrl || !supabaseKey) {
-    console.warn('[invokeEdgeFunction] Missing env vars, skipping...')
+    console.warn('[invokeEdgeFunction] Missing env vars', { url: !!supabaseUrl, key: !!supabaseKey })
     return null
   }
 
   const url = `${supabaseUrl}/functions/v1/${functionName}`
 
   try {
+    console.log('[invokeEdgeFunction] Calling:', url)
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -28,7 +31,9 @@ async function invokeEdgeFunction(functionName: string, payload: any) {
       body: JSON.stringify(payload),
     })
 
+    console.log('[invokeEdgeFunction] Response status:', res.status)
     const result = await res.json()
+    console.log('[invokeEdgeFunction] Result:', result)
     return result
   } catch (err) {
     console.error(`[invokeEdgeFunction] ${functionName} error:`, err)
