@@ -38,6 +38,9 @@ interface Kontakt {
   klicktipp_id?: string
   klicktipp_tags?: string[]
   klicktipp_last_sync?: string
+  dialfire_id?: string
+  dialfire_campaign?: string
+  dialfire_last_sync?: string
   created_at: string
 }
 
@@ -507,6 +510,38 @@ export default function KontaktDetailPage() {
                         <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Letzer Sync</p>
                         <p className="text-xs text-gray-600">
                           {new Date(kontakt.klicktipp_last_sync).toLocaleString('de-DE')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Dialfire Integration */}
+              {kontakt.dialfire_id && (
+                <div className="bg-purple-50 rounded-xl border border-purple-200 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">📞</span>
+                    <p className="text-xs text-purple-700 font-semibold uppercase">Dialfire</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-purple-600 font-semibold uppercase mb-1">ID</p>
+                      <p className="text-sm text-gray-900 font-mono">{kontakt.dialfire_id}</p>
+                    </div>
+                    {kontakt.dialfire_campaign && (
+                      <div>
+                        <p className="text-xs text-purple-600 font-semibold uppercase mb-1">Kampagne</p>
+                        <span className="inline-flex items-center bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                          {kontakt.dialfire_campaign}
+                        </span>
+                      </div>
+                    )}
+                    {kontakt.dialfire_last_sync && (
+                      <div>
+                        <p className="text-xs text-purple-600 font-semibold uppercase mb-1">Letzer Sync</p>
+                        <p className="text-xs text-gray-600">
+                          {new Date(kontakt.dialfire_last_sync).toLocaleString('de-DE')}
                         </p>
                       </div>
                     )}
