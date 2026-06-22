@@ -35,6 +35,9 @@ interface Kontakt {
   qualität?: string
   bestandskunde?: boolean
   notes?: string
+  klicktipp_id?: string
+  klicktipp_tags?: string[]
+  klicktipp_last_sync?: string
   created_at: string
 }
 
@@ -474,6 +477,42 @@ export default function KontaktDetailPage() {
                 <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Erstellt</p>
                 <p className="text-sm text-gray-900">{new Date(kontakt.created_at).toLocaleDateString('de-DE')}</p>
               </div>
+
+              {/* KlickTipp Integration */}
+              {kontakt.klicktipp_id && (
+                <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">🔗</span>
+                    <p className="text-xs text-blue-700 font-semibold uppercase">KlickTipp</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-blue-600 font-semibold uppercase mb-1">ID</p>
+                      <p className="text-sm text-gray-900 font-mono">{kontakt.klicktipp_id}</p>
+                    </div>
+                    {kontakt.klicktipp_tags && kontakt.klicktipp_tags.length > 0 && (
+                      <div>
+                        <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Tags</p>
+                        <div className="flex flex-wrap gap-2">
+                          {kontakt.klicktipp_tags.map((tag: string) => (
+                            <span key={tag} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {kontakt.klicktipp_last_sync && (
+                      <div>
+                        <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Letzer Sync</p>
+                        <p className="text-xs text-gray-600">
+                          {new Date(kontakt.klicktipp_last_sync).toLocaleString('de-DE')}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
