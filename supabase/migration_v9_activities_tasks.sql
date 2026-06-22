@@ -26,7 +26,7 @@ drop table if exists public.tasks cascade;
 
 create table public.tasks (
   id uuid primary key default gen_random_uuid(),
-  contact_id uuid not null,
+  contact_id uuid not null references public.contacts(id) on delete cascade,
   opportunity_id uuid default null,
   assigned_user_id uuid default null,
   created_by_user_id uuid default null,
