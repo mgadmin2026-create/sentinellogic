@@ -157,7 +157,7 @@ export default function AufgabenPage() {
         </div>
         <button
           onClick={() => {
-            setSelectedContactId('')
+            setSelectedContactId(undefined as any)
             setModalOpen(true)
           }}
           className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg"

@@ -27,13 +27,13 @@ const MOCK_USERS = [
 
 export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props) {
   const [form, setForm] = useState<Aufgabe>({
-    contact_id: kontaktId,
+    contact_id: kontaktId || undefined,
     titel: '',
     beschreibung: '',
     fällig: new Date().toISOString().split('T')[0],
     priorität: 'mittel',
     status: 'offen',
-    assigned_user_id: undefined, // Keine Zuweisung standardmäßig
+    assigned_user_id: undefined,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
