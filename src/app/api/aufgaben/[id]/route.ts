@@ -25,9 +25,7 @@ export async function GET(
       .from('tasks')
       .select(`
         *,
-        contact:contact_id(id, first_name, last_name),
-        assigned_user:assigned_user_id(id, name),
-        opportunity:opportunity_id(id, thema, status)
+        contact:contact_id(id, first_name, last_name)
       `)
       .eq('id', id)
       .single()

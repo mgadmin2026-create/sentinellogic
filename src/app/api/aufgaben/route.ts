@@ -22,8 +22,7 @@ export async function GET(request: NextRequest) {
       .from('tasks')
       .select(`
         *,
-        contact:contact_id(first_name, last_name),
-        assigned_user:assigned_user_id(name)
+        contact:contact_id(first_name, last_name)
       `)
       .order('fällig', { ascending: true })
 
