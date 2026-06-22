@@ -153,7 +153,10 @@ export default function AufgabenPage() {
           </p>
         </div>
         <button
-          onClick={() => setContactSelectOpen(true)}
+          onClick={() => {
+            setSelectedContactId('')
+            setModalOpen(true)
+          }}
           className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -246,19 +249,27 @@ export default function AufgabenPage() {
                 </tr>
               ) : (
                 filtered.map((aufgabe) => (
-                  <tr key={aufgabe.id} className={`border-b border-gray-50 hover:bg-gray-50/50 ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}>
-                    <td className="px-5 py-3.5 font-semibold text-gray-900">{aufgabe.titel}</td>
-                    <td className="px-5 py-3.5">
-                      <Link href={`/kontakte/${aufgabe.contact_id}`} className="text-yellow-600 hover:underline">
-                        {aufgabe.contact_name}
-                      </Link>
+                  <tr
+                    key={aufgabe.id}
+                    className={`border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}
+                    onClick={() => window.location.href = `/aufgaben/${aufgabe.id}`}
+                  >
+                    <td className="px-5 py-3.5 font-semibold text-yellow-600 hover:underline">{aufgabe.titel}</td>
+                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                      {aufgabe.contact_name && aufgabe.contact_id ? (
+                        <Link href={`/kontakte/${aufgabe.contact_id}`} className="text-yellow-600 hover:underline">
+                          {aufgabe.contact_name}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-5 py-3.5">
                       <span className={`text-xs font-bold ${PRIORITÄT_COLORS[aufgabe.priorität]}`}>
                         {PRIORITÄT_LABELS[aufgabe.priorität]}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={aufgabe.status}
                         onChange={(e) => handleStatusChange(aufgabe.id, e.target.value)}
@@ -279,7 +290,7 @@ export default function AufgabenPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setDeleteConfirm(aufgabe.id)}
                         className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50"
