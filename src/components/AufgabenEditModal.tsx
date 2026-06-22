@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Aufgabe {
   contact_id?: string
@@ -12,18 +12,18 @@ interface Aufgabe {
   status?: string
 }
 
+interface Kontakt {
+  id: string
+  first_name: string
+  last_name: string
+}
+
 interface Props {
   kontaktId?: string
   isOpen: boolean
   onClose: () => void
   onSave: (aufgabe: Aufgabe) => Promise<void>
 }
-
-const MOCK_USERS = [
-  { id: 'max', name: 'Max Mustermann' },
-  { id: 'laura', name: 'Laura Klein' },
-  { id: 'system', name: 'System' },
-]
 
 export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props) {
   const [form, setForm] = useState<Aufgabe>({
@@ -35,8 +35,25 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
     status: 'offen',
     assigned_user_id: undefined,
   })
+  const [kontakte, setKontakte] = useState<Kontakt[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      loadKontakte()
+    }
+  }, [isOpen])
+
+  async function loadKontakte() {
+    try {
+      const res = await fetch('/api/kontakte?limit=1000')
+      const json = await res.json()
+      if (json.success) setKontakte(json.data)
+    } catch (err) {
+      console.error('Fehler beim Laden der Kontakte:', err)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -118,6 +135,22 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
                 <option value="hoch">Hoch</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Kontakt (optional)</label>
+            <select
+              value={form.contact_id || ''}
+              onChange={(e) => setForm({ ...form, contact_id: e.target.value || undefined })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+            >
+              <option value="">Kein Kontakt</option>
+              {kontakte.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.first_name} {k.last_name}
+                </option>
+              ))}
+            </select>
           </div>
 
 

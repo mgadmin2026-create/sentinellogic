@@ -51,9 +51,11 @@ export default function AufgabeDetailPage() {
   const [editMode, setEditMode] = useState(false)
   const [form, setForm] = useState<Partial<Aufgabe>>({})
   const [saving, setSaving] = useState(false)
+  const [kontakte, setKontakte] = useState<any[]>([])
 
   useEffect(() => {
     loadAufgabe()
+    loadKontakte()
   }, [aufgabeId])
 
   async function loadAufgabe() {
@@ -69,6 +71,16 @@ export default function AufgabeDetailPage() {
       console.error('Fehler:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadKontakte() {
+    try {
+      const res = await fetch('/api/kontakte?limit=1000')
+      const json = await res.json()
+      if (json.success) setKontakte(json.data)
+    } catch (err) {
+      console.error('Fehler beim Laden der Kontakte:', err)
     }
   }
 
@@ -219,13 +231,18 @@ export default function AufgabeDetailPage() {
             {/* Kontakt (optional) */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Kontakt (optional)</label>
-              <input
-                type="text"
-                value={form.contact?.first_name && form.contact?.last_name ? `${form.contact.first_name} ${form.contact.last_name}` : '—'}
-                disabled
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-500"
-              />
-              <p className="text-xs text-gray-400 mt-1">Kontakt wird in der Übersicht zugewiesen</p>
+              <select
+                value={form.contact_id || ''}
+                onChange={(e) => setForm({ ...form, contact_id: e.target.value || undefined })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              >
+                <option value="">Kein Kontakt</option>
+                {kontakte.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.first_name} {k.last_name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Buttons */}
