@@ -15,11 +15,13 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get('hub.verify_token')
     const mode = searchParams.get('hub.mode')
 
+    console.log('[DEBUG] mode:', mode, 'token:', token, 'env_token:', process.env.FACEBOOK_VERIFY_TOKEN)
+
     if (mode === 'subscribe' && token === process.env.FACEBOOK_VERIFY_TOKEN) {
       console.log('✅ Facebook Webhook verified')
       return new NextResponse(challenge)
     } else {
-      console.error('❌ Facebook Webhook verification failed')
+      console.error('❌ Webhook verification failed - mode:', mode, 'token match:', token === process.env.FACEBOOK_VERIFY_TOKEN)
       return new NextResponse('Forbidden', { status: 403 })
     }
   } catch (error) {
