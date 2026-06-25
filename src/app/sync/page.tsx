@@ -1,18 +1,40 @@
 'use client'
-// Synchronisation — Quellen-Kacheln + echtes Sync-Protokoll aus DB mit Lead-Namen
 import { useState, useEffect } from 'react'
 
 type SyncStatus = 'connected' | 'warning' | 'inactive'
+type IntervalType = '15min' | '30min' | '60min' | 'daily' | 'weekly'
 
 interface SyncSource {
-  id: string; name: string; description: string
-  status: SyncStatus; count: string; lastSync: string; autoInterval: number
+  id: string
+  name: string
+  description: string
+  status: SyncStatus
+  count: string
+  lastSync: string
+  autoInterval: number
 }
 
 interface SyncLogEntry {
-  id: string; created_at: string; source: string; count: number
-  duplicates_skipped: number; status: 'success' | 'warning' | 'error'
-  message: string; lead_names: string[]
+  id: string
+  created_at: string
+  source: string
+  count: number
+  duplicates_skipped: number
+  status: 'success' | 'warning' | 'error'
+  message: string
+  lead_names: string[]
+  error_details?: Array<{ lead_id: string; email: string | null; error_message: string }>
+  duplicate_details?: Array<{ facebook_id: string; email: string | null; existing_contact_id: string | null; action: string; reason: string }>
+}
+
+interface FacebookSyncConfig {
+  enabled: boolean
+  interval_type: IntervalType
+  daily_hour: number
+  weekly_day: number
+  weekly_hour: number
+  last_sync_at: string | null
+  next_sync_at: string | null
 }
 
 const INITIAL_SOURCES: SyncSource[] = [
@@ -28,40 +50,99 @@ const STATUS_CFG: Record<SyncStatus, { label: string; dot: string; badge: string
   inactive: { label: 'Manuell', dot: 'bg-gray-300', badge: 'bg-gray-100 text-gray-500' },
 }
 
+const INTERVAL_LABELS: Record<IntervalType, string> = {
+  '15min': 'alle 15 Min',
+  '30min': 'alle 30 Min',
+  '60min': 'alle 60 Min',
+  'daily': 'täglich um 08:00 Uhr',
+  'weekly': 'montags um 08:00 Uhr',
+}
+
 export default function SyncPage() {
   const [sources, setSources] = useState<SyncSource[]>(INITIAL_SOURCES)
   const [syncing, setSyncing] = useState<string | null>(null)
   const [syncLog, setSyncLog] = useState<SyncLogEntry[]>([])
   const [loadingLog, setLoadingLog] = useState(true)
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
+  const [facebookConfig, setFacebookConfig] = useState<FacebookSyncConfig | null>(null)
 
-  // Sync-Log aus DB laden
+  // Load sync config for Facebook
+  useEffect(() => {
+    fetch('/api/sync-config')
+      .then(r => r.json())
+      .then(cfg => setFacebookConfig(cfg))
+      .catch(console.error)
+  }, [])
+
+  // Load sync log from DB
   function loadSyncLog() {
     fetch('/api/sync-log?limit=20')
-      .then((r) => r.json())
-      .then((res) => { if (res.success) setSyncLog(res.data) })
+      .then(r => r.json())
+      .then(res => { if (res.success) setSyncLog(res.data) })
       .catch(console.error)
       .finally(() => setLoadingLog(false))
   }
+
   useEffect(() => { loadSyncLog() }, [])
 
   function handleSync(id: string) {
-    setSyncing(id)
-    setTimeout(() => {
-      setSyncing(null)
-      setSources((prev) => prev.map((s) => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
-    }, 1800)
+    if (id === 'facebook') {
+      setSyncing(id)
+      fetch('/api/sync/facebook-leads')
+        .then(r => r.json())
+        .then(() => {
+          setSources(prev => prev.map(s => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
+          loadSyncLog()
+        })
+        .catch(console.error)
+        .finally(() => setSyncing(null))
+    } else {
+      setSyncing(id)
+      setTimeout(() => {
+        setSyncing(null)
+        setSources(prev => prev.map(s => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
+      }, 1800)
+    }
   }
 
   function toggleAuto(id: string) {
-    setSources((prev) => prev.map((s) =>
-      s.id === id ? { ...s, autoInterval: s.autoInterval > 0 ? 0 : (s.id === 'facebook' ? 15 : s.id === 'calendly' ? 30 : 60) } : s
-    ))
+    if (id === 'facebook' && facebookConfig) {
+      const newEnabled = !facebookConfig.enabled
+      fetch('/api/sync-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newEnabled, interval_type: facebookConfig.interval_type }),
+      })
+        .then(r => r.json())
+        .then(cfg => setFacebookConfig(cfg))
+        .catch(console.error)
+    } else {
+      setSources(prev => prev.map(s =>
+        s.id === id ? { ...s, autoInterval: s.autoInterval > 0 ? 0 : (s.id === 'facebook' ? 15 : s.id === 'calendly' ? 30 : 60) } : s
+      ))
+    }
   }
 
-  function setIntervalVal(id: string, minutes: number) {
-    setSources((prev) => prev.map((s) => s.id === id ? { ...s, autoInterval: minutes } : s))
+  function setIntervalVal(id: string, intervalType: IntervalType) {
+    if (id === 'facebook' && facebookConfig) {
+      fetch('/api/sync-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: true, interval_type: intervalType }),
+      })
+        .then(r => r.json())
+        .then(cfg => setFacebookConfig(cfg))
+        .catch(console.error)
+    } else {
+      const minutes = intervalType === '15min' ? 15 : intervalType === '30min' ? 30 : 60
+      setSources(prev => prev.map(s => s.id === id ? { ...s, autoInterval: minutes } : s))
+    }
   }
+
+  const facebookSource = sources.find(s => s.id === 'facebook')
+  const isFacebookSyncing = syncing === 'facebook'
+  const facebookEnabled = facebookConfig?.enabled || false
+  const facebookInterval = facebookConfig?.interval_type || '15min'
 
   return (
     <div className="p-8">
@@ -76,7 +157,7 @@ export default function SyncPage() {
           </p>
         </div>
         <button
-          onClick={() => sources.forEach((s) => s.status !== 'inactive' && handleSync(s.id))}
+          onClick={() => sources.forEach(s => s.status !== 'inactive' && handleSync(s.id))}
           className="flex items-center gap-2 bg-[#1A1A1A] hover:bg-[#333] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -89,9 +170,13 @@ export default function SyncPage() {
 
       {/* Quellen-Kacheln */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {sources.map((source) => {
+        {sources.map(source => {
           const cfg = STATUS_CFG[source.status]
           const isSyncing = syncing === source.id
+          const isFacebook = source.id === 'facebook'
+          const autoEnabled = isFacebook ? facebookEnabled : source.autoInterval > 0
+          const displayInterval = isFacebook ? facebookInterval : (['15min', '30min', '60min', 'daily', 'weekly'].includes(String(source.autoInterval)) ? String(source.autoInterval) as IntervalType : '15min')
+
           return (
             <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
               <div className="flex items-start justify-between mb-4">
@@ -113,16 +198,18 @@ export default function SyncPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <button onClick={() => toggleAuto(source.id)}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${source.autoInterval > 0 ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${source.autoInterval > 0 ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    className={`relative w-9 h-5 rounded-full transition-colors ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </button>
                   <span className="text-xs text-gray-500">Auto</span>
-                  {source.autoInterval > 0 && (
-                    <select value={source.autoInterval} onChange={(e) => setIntervalVal(source.id, parseInt(e.target.value))}
+                  {autoEnabled && (
+                    <select value={displayInterval} onChange={e => setIntervalVal(source.id, e.target.value as IntervalType)}
                       className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none">
-                      <option value={15}>alle 15 Min</option>
-                      <option value={30}>alle 30 Min</option>
-                      <option value={60}>alle 60 Min</option>
+                      <option value="15min">alle 15 Min</option>
+                      <option value="30min">alle 30 Min</option>
+                      <option value="60min">alle 60 Min</option>
+                      <option value="daily">täglich um 08:00 Uhr</option>
+                      <option value="weekly">montags um 08:00 Uhr</option>
                     </select>
                   )}
                 </div>
@@ -146,7 +233,7 @@ export default function SyncPage() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-[#1A1A1A]">Sync-Protokoll</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Jeder Eintrag zeigt importierte Leads — anklicken für Details</p>
+            <p className="text-xs text-gray-400 mt-0.5">Jeder Eintrag zeigt Details zu Importen, Duplikaten und Fehlern</p>
           </div>
           <button onClick={loadSyncLog} className="text-xs text-gray-400 hover:text-[#1A1A1A] flex items-center gap-1 transition-colors">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -166,34 +253,36 @@ export default function SyncPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  {['Datum & Uhrzeit', 'Quelle', 'Importiert', 'Duplikate', 'Status', 'Meldung'].map((h) => (
+                  {['Datum & Uhrzeit', 'Quelle', 'Importiert', 'Duplikate', 'Fehler', 'Status', 'Meldung'].map(h => (
                     <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {syncLog.map((entry) => (
-                  <>
+                {syncLog.map(entry => (
+                  <div key={entry.id}>
                     <tr
-                      key={entry.id}
                       onClick={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
-                      className={`border-b border-gray-50 hover:bg-gray-50/40 transition-colors cursor-pointer ${entry.lead_names?.length > 0 ? '' : ''}`}
-                    >
+                      className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors cursor-pointer">
                       <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
                         {new Date(entry.created_at).toLocaleDateString('de-DE')},{' '}
                         {new Date(entry.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
                       </td>
                       <td className="px-5 py-3 font-medium text-[#1A1A1A]">{entry.source}</td>
-                      <td className="px-5 py-3">
-                        <span className="font-bold text-[#1A1A1A]">{entry.count}</span>
-                        {entry.lead_names?.length > 0 && (
-                          <span className="ml-1 text-xs text-[#FFC300]">▼</span>
-                        )}
-                      </td>
+                      <td className="px-5 py-3 font-bold text-[#1A1A1A]">{entry.count}</td>
                       <td className="px-5 py-3">
                         {entry.duplicates_skipped > 0 ? (
                           <span className="text-xs font-medium text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded-full">
-                            {entry.duplicates_skipped} übersprungen
+                            {entry.duplicates_skipped}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {entry.error_details && entry.error_details.length > 0 ? (
+                          <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded-full">
+                            {entry.error_details.length}
                           </span>
                         ) : (
                           <span className="text-gray-300 text-xs">—</span>
@@ -207,27 +296,47 @@ export default function SyncPage() {
                           <span className={`w-1.5 h-1.5 rounded-full ${
                             entry.status === 'success' ? 'bg-emerald-500' :
                             entry.status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}`} />
-                          {entry.status === 'success' ? 'Erfolgreich' : entry.status === 'warning' ? 'Warnung' : 'Fehler'}
+                          {entry.status === 'success' ? '✓' : entry.status === 'warning' ? '⚠' : '✕'}
                         </span>
                       </td>
                       <td className="px-5 py-3 text-gray-500 text-xs">{entry.message}</td>
                     </tr>
-                    {/* Aufgeklappte Lead-Namen */}
-                    {expandedEntry === entry.id && entry.lead_names?.length > 0 && (
-                      <tr key={`${entry.id}-detail`} className="bg-[#FFC300]/5 border-b border-[#FFC300]/20">
-                        <td colSpan={6} className="px-5 py-3">
-                          <p className="text-xs font-semibold text-gray-500 mb-2">Importierte Leads:</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {entry.lead_names.map((name, i) => (
-                              <span key={i} className="text-xs bg-white border border-gray-200 text-[#1A1A1A] px-2.5 py-1 rounded-full shadow-sm">
-                                {name}
-                              </span>
-                            ))}
+                    {/* Expandable Details */}
+                    {expandedEntry === entry.id && (
+                      <tr className="bg-gray-50/60 border-b border-gray-100">
+                        <td colSpan={7} className="px-5 py-4">
+                          <div className="space-y-3">
+                            {/* Duplicate Details */}
+                            {entry.duplicate_details && entry.duplicate_details.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-gray-600 mb-2">📋 Duplikate ({entry.duplicate_details.length})</p>
+                                <div className="space-y-1 pl-4">
+                                  {entry.duplicate_details.map((dup, i) => (
+                                    <p key={i} className="text-xs text-gray-600">
+                                      {dup.action === 'linked' ? '⟳' : '⊘'} {dup.email || dup.facebook_id} — {dup.reason}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {/* Error Details */}
+                            {entry.error_details && entry.error_details.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-red-600 mb-2">❌ Fehler ({entry.error_details.length})</p>
+                                <div className="space-y-1 pl-4">
+                                  {entry.error_details.map((err, i) => (
+                                    <p key={i} className="text-xs text-red-600">
+                                      {err.email || err.lead_id}: {err.error_message}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
                     )}
-                  </>
+                  </div>
                 ))}
               </tbody>
             </table>
