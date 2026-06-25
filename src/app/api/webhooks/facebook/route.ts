@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { logActivity } from '@/lib/activities-logger'
@@ -7,6 +8,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Validate Facebook webhook signature (HMAC-SHA256)
+function verifyFacebookSignature(body: string, xHubSignature: string | null): boolean {
+  if (!xHubSignature) return false
+
+  const appSecret = process.env.FACEBOOK_APP_SECRET
+  if (!appSecret) {
+    console.error('❌ FACEBOOK_APP_SECRET not configured')
+    return false
+  }
+
+  const hash = createHmac('sha256', appSecret).update(body).digest('hex')
+  const signature = `sha256=${hash}`
+
+  return signature === xHubSignature
+}
+
 // GET: Facebook Webhook Verification
 export async function GET(request: NextRequest) {
   try {
@@ -15,13 +32,11 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get('hub.verify_token')
     const mode = searchParams.get('hub.mode')
 
-    console.log('[DEBUG] mode:', mode, 'token:', token, 'env_token:', process.env.FACEBOOK_VERIFY_TOKEN)
-
     if (mode === 'subscribe' && token === process.env.FACEBOOK_VERIFY_TOKEN) {
       console.log('✅ Facebook Webhook verified')
       return new NextResponse(challenge)
     } else {
-      console.error('❌ Webhook verification failed - mode:', mode, 'token match:', token === process.env.FACEBOOK_VERIFY_TOKEN)
+      console.error('❌ Webhook verification failed')
       return new NextResponse('Forbidden', { status: 403 })
     }
   } catch (error) {
@@ -33,7 +48,16 @@ export async function GET(request: NextRequest) {
 // POST: Handle incoming Facebook leads
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    // FIX 1: Verify Facebook webhook signature (POST)
+    const xHubSignature = request.headers.get('x-hub-signature-256')
+    const rawBody = await request.text()
+
+    if (!verifyFacebookSignature(rawBody, xHubSignature)) {
+      console.error('❌ Invalid Facebook webhook signature')
+      return new NextResponse(JSON.stringify({ error: 'Invalid signature' }), { status: 403 })
+    }
+
+    const body = JSON.parse(rawBody)
     const { entry } = body
 
     if (!entry || !Array.isArray(entry)) {
@@ -51,10 +75,15 @@ export async function POST(request: NextRequest) {
 
           if (!leadGenId || !formId) continue
 
-          // Fetch lead details from Facebook
+          // FIX 2: Use Authorization header instead of query parameter
           const leadResponse = await fetch(
-            `https://graph.facebook.com/v18.0/${leadGenId}?fields=field_data,created_time&access_token=${process.env.FACEBOOK_ACCESS_TOKEN}`,
-            { method: 'GET' }
+            `https://graph.facebook.com/v18.0/${leadGenId}?fields=field_data,created_time`,
+            {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${process.env.FACEBOOK_ACCESS_TOKEN}`,
+              },
+            }
           )
 
           if (!leadResponse.ok) {
@@ -64,16 +93,37 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          const fbLead = await leadResponse.json()
+          let fbLead: any
+          try {
+            fbLead = await leadResponse.json()
+          } catch (parseError) {
+            errors.push(`Failed to parse Facebook response for lead ${leadGenId}`)
+            continue
+          }
+
+          if (!fbLead.field_data || !Array.isArray(fbLead.field_data)) {
+            errors.push(`Invalid field_data structure for lead ${leadGenId}`)
+            continue
+          }
 
           // Map Facebook fields to contact structure
           const contact = mapFacebookFieldsToContact(fbLead.field_data)
           contact.facebook_id = leadGenId
           contact.facebook_form_id = formId
           contact.source = 'facebook'
-          contact.created_at = new Date(fbLead.created_time).toISOString()
 
-          // Check if contact already exists by facebook_id
+          if (fbLead.created_time) {
+            try {
+              contact.created_at = new Date(fbLead.created_time).toISOString()
+            } catch {
+              console.warn(`Invalid timestamp for lead ${leadGenId}`)
+            }
+          }
+
+          // FIX 3 & 4: Email validation + smart duplicate detection
+          const hasValidEmail = contact.email && typeof contact.email === 'string' && contact.email.trim().length > 0
+
+          // First check: facebook_id (always unique)
           const { data: existingByFb, error: checkFbError } = await supabase
             .from('contacts')
             .select('id')
@@ -91,17 +141,22 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          // Check if contact exists by email
-          const { data: existingByEmail, error: checkEmailError } = await supabase
-            .from('contacts')
-            .select('id')
-            .eq('email', contact.email)
-            .maybeSingle()
+          // Second check: email (only if email is valid)
+          let existingByEmail: any = null
+          if (hasValidEmail) {
+            const { data, error } = await supabase
+              .from('contacts')
+              .select('id')
+              .eq('email', contact.email)
+              .maybeSingle()
 
-          if (checkEmailError && checkEmailError.code !== 'PGRST116') {
-            console.error('Error checking existing email:', checkEmailError)
-            errors.push(`Email check failed: ${checkEmailError.message}`)
-            continue
+            if (error && error.code !== 'PGRST116') {
+              console.error('Error checking existing email:', error)
+              errors.push(`Email check failed: ${contact.email}`)
+              continue
+            }
+
+            existingByEmail = data
           }
 
           if (existingByEmail) {
@@ -134,16 +189,21 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          // Insert new contact
+          // FIX 5: Insert with UPSERT logic to prevent race conditions
           const { data: insertedData, error: insertError } = await supabase
             .from('contacts')
             .insert([contact])
             .select('id')
 
           if (insertError) {
-            const errorMsg = `Error inserting contact: ${insertError.message}`
-            console.error(errorMsg)
-            errors.push(errorMsg)
+            if (insertError.code === '23505') {
+              console.log(`Duplicate facebook_id detected for ${leadGenId}, race condition handled`)
+              leadsProcessed++
+            } else {
+              const errorMsg = `Error inserting contact: ${insertError.message}`
+              console.error(errorMsg)
+              errors.push(errorMsg)
+            }
           } else if (insertedData && insertedData[0]) {
             const contactId = insertedData[0].id
             console.log(`✅ Contact ${contactId} created from Facebook lead ${leadGenId}`)
@@ -213,17 +273,22 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
     if (!value || value.trim() === '') return
 
     if (fieldMap[fbName]) {
-      contact[fieldMap[fbName]] = value
+      contact[fieldMap[fbName]] = value.trim()
     }
 
-    contact.metadata[fbName] = value
+    contact.metadata[fbName] = value.trim()
   })
 
   // Split full_name into first_name and last_name if needed
   if (contact.name && !contact.first_name) {
-    const nameParts = contact.name.split(' ')
-    contact.first_name = nameParts[0]
-    contact.last_name = nameParts.slice(1).join(' ')
+    const nameParts = contact.name.trim().split(/\s+/).filter(Boolean)
+    if (nameParts.length === 1) {
+      contact.first_name = nameParts[0]
+      contact.last_name = ''
+    } else if (nameParts.length > 1) {
+      contact.first_name = nameParts[0]
+      contact.last_name = nameParts.slice(1).join(' ')
+    }
   }
 
   return contact
