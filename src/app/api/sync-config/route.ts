@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const { enabled, interval_type } = body
 
-    if (!enabled !== undefined || !interval_type) {
+    if (enabled === undefined || !interval_type) {
       return new NextResponse(
         JSON.stringify({ error: 'enabled and interval_type required' }),
         { status: 400 }
