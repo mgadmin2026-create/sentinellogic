@@ -41,6 +41,9 @@ interface Kontakt {
   dialfire_id?: string
   dialfire_campaign?: string
   dialfire_last_sync?: string
+  dialfire_task_name?: string
+  dialfire_updated_at?: string
+  dialfire_sync_error?: string
   created_at: string
 }
 
@@ -518,30 +521,56 @@ export default function KontaktDetailPage() {
               )}
 
               {/* Dialfire Integration */}
-              {kontakt.dialfire_id && (
-                <div className="bg-purple-50 rounded-xl border border-purple-200 p-4">
+              {(kontakt.dialfire_id || kontakt.dialfire_sync_error) && (
+                <div className={`rounded-xl border p-4 ${
+                  kontakt.dialfire_sync_error
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-purple-50 border-purple-200'
+                }`}>
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-lg">📞</span>
-                    <p className="text-xs text-purple-700 font-semibold uppercase">Dialfire</p>
+                    <p className={`text-xs font-semibold uppercase ${
+                      kontakt.dialfire_sync_error ? 'text-red-700' : 'text-purple-700'
+                    }`}>Dialfire</p>
                   </div>
                   <div className="space-y-3">
-                    <div>
-                      <p className="text-xs text-purple-600 font-semibold uppercase mb-1">ID</p>
-                      <p className="text-sm text-gray-900 font-mono">{kontakt.dialfire_id}</p>
-                    </div>
-                    {kontakt.dialfire_campaign && (
+                    {kontakt.dialfire_id && (
                       <div>
-                        <p className="text-xs text-purple-600 font-semibold uppercase mb-1">Kampagne</p>
-                        <span className="inline-flex items-center bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                          {kontakt.dialfire_campaign}
+                        <p className={`text-xs font-semibold uppercase mb-1 ${
+                          kontakt.dialfire_sync_error ? 'text-red-600' : 'text-purple-600'
+                        }`}>ID</p>
+                        <p className="text-sm text-gray-900 font-mono">{kontakt.dialfire_id}</p>
+                      </div>
+                    )}
+                    {kontakt.dialfire_task_name && (
+                      <div>
+                        <p className={`text-xs font-semibold uppercase mb-1 ${
+                          kontakt.dialfire_sync_error ? 'text-red-600' : 'text-purple-600'
+                        }`}>Task</p>
+                        <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${
+                          kontakt.dialfire_sync_error
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {kontakt.dialfire_task_name}
                         </span>
                       </div>
                     )}
-                    {kontakt.dialfire_last_sync && (
+                    {kontakt.dialfire_updated_at && (
                       <div>
-                        <p className="text-xs text-purple-600 font-semibold uppercase mb-1">Letzer Sync</p>
+                        <p className={`text-xs font-semibold uppercase mb-1 ${
+                          kontakt.dialfire_sync_error ? 'text-red-600' : 'text-purple-600'
+                        }`}>Letzer Sync</p>
                         <p className="text-xs text-gray-600">
-                          {new Date(kontakt.dialfire_last_sync).toLocaleString('de-DE')}
+                          {new Date(kontakt.dialfire_updated_at).toLocaleString('de-DE')}
+                        </p>
+                      </div>
+                    )}
+                    {kontakt.dialfire_sync_error && (
+                      <div className="pt-2 border-t border-red-200">
+                        <p className="text-xs text-red-600 font-semibold uppercase mb-1">Fehler</p>
+                        <p className="text-xs text-red-700 bg-red-100 rounded px-2.5 py-1.5 font-mono">
+                          {kontakt.dialfire_sync_error}
                         </p>
                       </div>
                     )}
@@ -667,22 +696,46 @@ export default function KontaktDetailPage() {
               <p className="text-gray-400 text-sm">Keine Aktivitäten vorhanden.</p>
             ) : (
               <div className="space-y-4">
-                {aktivitäten.map((akt, i) => (
-                  <div key={akt.id} className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-bold flex-shrink-0">
-                        {i + 1}
+                {aktivitäten.map((akt, i) => {
+                  // Icon basierend auf Activity-Type
+                  const getActivityIcon = (type: string) => {
+                    if (type.includes('klicktipp')) return '🔗'
+                    if (type.includes('dialfire')) return '📞'
+                    if (type.includes('task')) return '✓'
+                    return '📝'
+                  }
+                  
+                  const getActivityColor = (type: string) => {
+                    if (type.includes('klicktipp')) return 'bg-blue-100 text-blue-600'
+                    if (type.includes('dialfire')) return 'bg-purple-100 text-purple-600'
+                    if (type.includes('task')) return 'bg-emerald-100 text-emerald-600'
+                    return 'bg-yellow-100 text-yellow-600'
+                  }
+                  
+                  return (
+                    <div key={akt.id} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${getActivityColor(akt.type)}`}>
+                          {getActivityIcon(akt.type)}
+                        </div>
+                        {i < aktivitäten.length - 1 && <div className="w-0.5 h-8 bg-gray-200 mt-2" />}
                       </div>
-                      {i < aktivitäten.length - 1 && <div className="w-0.5 h-8 bg-gray-200 mt-2" />}
+                      <div className="flex-1 pt-1">
+                        <p className="text-sm font-medium text-gray-900">{akt.description}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-gray-400">
+                            {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {akt.type && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getActivityColor(akt.type)}`}>
+                              {akt.type.replace('_', ' ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 pt-1">
-                      <p className="text-sm font-medium text-gray-900">{akt.description}</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

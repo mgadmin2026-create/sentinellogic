@@ -4,7 +4,7 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
-import { logContactCreated } from '@/lib/activities-logger'
+import { logActivity, logContactCreated } from '@/lib/activities-logger'
 
 // Helper: Rufe Edge Function auf
 async function invokeEdgeFunction(functionName: string, payload: any) {
@@ -219,8 +219,11 @@ export async function POST(request: NextRequest) {
             .eq('id', data.id)
 
           console.log(`[KlickTipp] Sync erfolgreich: ${data.email} -> ID: ${klicktippId}, Tag: ${klicktippTag}`)
+          // Log Activity
+          await logActivity(null, data.id, \'klicktipp_synced\', `KlickTipp synced (tag: ${klicktippTag}, ID: ${klicktippId})`, 'klicktipp_synced')
         } else {
           console.warn(`[KlickTipp] Sync fehlgeschlagen für ${data.email}: ${syncResult?.error}`)
+          await logActivity(null, data.id, \'klicktipp_sync_failed\', `KlickTipp sync failed: ${syncResult?.error || 'Unknown error'}`, 'klicktipp_sync_failed')
         }
       } catch (err) {
         console.error(`[KlickTipp] Fehler beim Sync für ${data.email}:`, err)
@@ -241,7 +244,15 @@ export async function POST(request: NextRequest) {
           },
         })
 
-        if (dialfireResult?.success) {
+        if (!dialfireResult) {
+          console.warn(`[Dialfire] invokeEdgeFunction returned null for ${data.email}`)
+          await supabase
+            .from('contacts')
+            .update({
+              dialfire_sync_error: 'Edge Function call failed or returned null',
+            })
+            .eq('id', data.id)
+        } else if (dialfireResult?.success) {
           const dialfireId = dialfireResult.dialfire_id
 
           // Speichere dialfire_id in Supabase
@@ -256,8 +267,10 @@ export async function POST(request: NextRequest) {
             .eq('id', data.id)
 
           console.log(`[Dialfire] Sync erfolgreich: ${data.email} -> ID: ${dialfireId}`)
+          await logActivity(null, data.id, \'dialfire_synced\', `Dialfire synced (task: ${process.env.DIALFIRE_TASK_NAME || 'call'}, ID: ${dialfireId})`, 'dialfire_synced')
         } else {
           console.warn(`[Dialfire] Sync fehlgeschlagen für ${data.email}: ${dialfireResult?.error}`)
+          await logActivity(null, data.id, \'dialfire_sync_failed\', `Dialfire sync failed: ${dialfireResult?.error || 'Unknown error'}`, 'dialfire_sync_failed')
           // Speichere Error
           await supabase
             .from('contacts')

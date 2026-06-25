@@ -11,6 +11,10 @@ export type ActivityType =
   | 'file_uploaded'
   | 'note_updated'
   | 'status_changed'
+  | 'klicktipp_synced'
+  | 'klicktipp_sync_failed'
+  | 'dialfire_synced'
+  | 'dialfire_sync_failed'
 
 interface ActivityData {
   [key: string]: any
