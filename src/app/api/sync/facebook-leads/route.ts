@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { logActivity } from '@/lib/activities-logger'
 
+export const dynamic = 'force-dynamic'
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -252,7 +254,6 @@ function mapFacebookFieldsToContact(fieldData: any[] = []): Record<string, any> 
   const fieldMap: Record<string, string> = {
     email: 'email',
     email_address: 'email',
-    full_name: 'name',
     first_name: 'first_name',
     last_name: 'last_name',
     phone_number: 'phone_mobile',
@@ -263,21 +264,26 @@ function mapFacebookFieldsToContact(fieldData: any[] = []): Record<string, any> 
     zip: 'postcode',
   }
 
+  let fullName = ''
+
   fieldData.forEach((field) => {
     const fbName = field.name.toLowerCase()
     const value = field.values?.[0]
 
     if (!value || value.trim() === '') return
 
-    if (fieldMap[fbName]) {
+    if (fbName === 'full_name') {
+      fullName = value.trim()
+    } else if (fieldMap[fbName]) {
       contact[fieldMap[fbName]] = value.trim()
     }
 
     contact.metadata[fbName] = value.trim()
   })
 
-  if (contact.name && !contact.first_name) {
-    const nameParts = contact.name.trim().split(/\s+/).filter(Boolean)
+  // Split full_name into first_name and last_name if needed
+  if (fullName && !contact.first_name) {
+    const nameParts = fullName.split(/\s+/).filter(Boolean)
     if (nameParts.length === 1) {
       contact.first_name = nameParts[0]
       contact.last_name = ''
