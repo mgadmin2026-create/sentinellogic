@@ -6,26 +6,107 @@
 
 ---
 
-## 1. KALENDER VIEW
+## 1. AUFGABEN (Tasks) — KALENDER VIEW & MANAGEMENT
 
-### 1.1 Basis-Funktionalität
+### 1.1 Kalender-Ansicht (Monat & Woche)
 - [ ] Öffne **Dashboard → Kalender**
-- [ ] Prüfe: Zwei View-Optionen vorhanden (Monat / Woche)
+- [ ] Prüfe: Zwei View-Optionen sichtbar (Monat / Woche)
 - [ ] Klick auf **Monat** → zeigt Kalender mit allen Tagen
-- [ ] Klick auf **Woche** → zeigt 7-Tage-Ansicht
-- [ ] Navigiere durch Monate/Wochen mit Pfeilen
+- [ ] Klick auf **Woche** → zeigt 7-Tage-Ansicht mit stündlicher Auflösung
+- [ ] Navigiere durch Monate/Wochen mit Pfeilen (← & →)
+- [ ] Tage mit Aufgaben sollten visuell hervorgehoben sein (z.B. Punkt oder Highlighting)
 
 ### 1.2 Status-Filter
-- [ ] Rechts oben: Filter-Dropdown sichtbar
-- [ ] Default-Status: Tasks mit "erledigt" sind NICHT sichtbar ✓
-- [ ] Klick auf Filter → nur Tasks mit "erledigt" anzeigen
-- [ ] Klick erneut → zurück auf Standard (ohne "erledigt")
+- [ ] Rechts oben: **Filter-Dropdown** sichtbar
+- [ ] **Default-Einstellung**: Aufgaben mit Status "erledigt" sind NICHT sichtbar ✓
+- [ ] Klick auf Filter → Optionen sichtbar:
+  - [ ] "Alle außer erledigt" (default)
+  - [ ] "Nur erledigt"
+  - [ ] "Alle anzeigen"
+- [ ] Nach Filteränderung: Kalender-Anzeige aktualisiert sich sofort
+- [ ] Filtereinstellung bleibt gespeichert nach Seite neu laden (localStorage)
 
-### 1.3 Task-Details
-- [ ] Klick auf einen Tag mit Tasks
-- [ ] Rechts in der Sidebar: Tagesdetails mit allen Tasks
+### 1.3 Task-Details in der Sidebar
+- [ ] Klick auf einen Tag mit Aufgaben
+- [ ] **Rechts in der Sidebar**: Tagesdetails mit **Überschrift** (Datum)
+- [ ] Alle Tasks dieses Tages sollten aufgelistet sein mit:
+  - [ ] Task-Titel (klickbar)
+  - [ ] Status (z.B. "neu", "in Arbeit", "erledigt")
+  - [ ] Priorität (z.B. "hoch", "mittel", "niedrig") — farblich markiert
+  - [ ] Fälligkeitsdatum/Uhrzeit (wenn vorhanden)
 - [ ] Klick auf Task-Titel → öffnet Task-Detail-Seite
-- [ ] Prüfe: Priorität, Status, Fälligkeitsdatum werden korrekt angezeigt
+
+### 1.4 Task-Detail-Seite
+- [ ] Öffne einen Task über Kalender oder aus Liste
+- [ ] **Header** zeigt:
+  - [ ] Task-Titel (editierbar)
+  - [ ] Status-Selektor (neu / in Arbeit / erledigt / storniert)
+  - [ ] Priorität mit farblichem Indikator
+- [ ] **Beschreibung** (Textarea, editierbar)
+- [ ] **Fälligkeitsdatum** mit Uhrzeit (Datepicker)
+- [ ] **Zugewiesen an** (Kontakt-Selektor, optional)
+- [ ] **Kategorie** oder **Tag** (falls vorhanden)
+- [ ] **Notizen** (Freitextfeld)
+- [ ] **Aktivitäten-Timeline** (z.B. "Status geändert", "erstellt am...")
+- [ ] Button: **Speichern** (oder Auto-Save)
+
+### 1.5 Task-Erstellung
+- [ ] Öffne Kalender → Klick auf leeren Tag → **+ Neue Aufgabe** Button
+- [ ] Formular öffnet sich mit:
+  - [ ] Titel (Pflichtfeld)
+  - [ ] Fälligkeitsdatum (auto-gesetzt auf Klik-Datum)
+  - [ ] Status (default: "neu")
+  - [ ] Priorität (optional, default: "mittel")
+  - [ ] Beschreibung (optional)
+- [ ] Klick **Speichern** → Task wird erstellt und im Kalender angezeigt
+- [ ] Task erscheint sofort im Kalender-View
+
+### 1.6 Task-Bearbeitung & Status-Änderung
+- [ ] Öffne einen existierenden Task
+- [ ] Ändere Status (z.B. "neu" → "in Arbeit")
+- [ ] Prüfe: Status-Änderung wird sofort im Kalender sichtbar
+- [ ] Wenn Status = "erledigt" → Task verschwindet aus Standard-Kalender-View
+- [ ] Wechsel Filter zu "Nur erledigt" → erledigte Task erscheint wieder
+- [ ] Ändere Fälligkeitsdatum → Task wird im Kalender an neuem Datum angezeigt
+- [ ] Aktivitäten-Log sollte alle Änderungen tracken
+
+### 1.7 Task-Löschung
+- [ ] Öffne einen Task
+- [ ] Klick auf **Löschen** Button
+- [ ] Bestätigungsdialog sollte erscheinen
+- [ ] Nach Bestätigung: Task wird gelöscht
+- [ ] Task verschwindet aus Kalender-View
+
+### 1.8 Task-Liste (alternative Ansicht)
+- [ ] Öffne **Dashboard → Aufgaben** (oder Tasks Liste)
+- [ ] Alle Tasks sollten in Listenform angezeigt werden
+- [ ] Spalten sichtbar:
+  - [ ] Status (mit Icon/Badge)
+  - [ ] Titel
+  - [ ] Fälligkeitsdatum
+  - [ ] Priorität (farblich)
+  - [ ] Zugewiesen an (falls vorhanden)
+- [ ] **Sortierung** möglich nach:
+  - [ ] Fälligkeitsdatum (aufsteigend/absteigend)
+  - [ ] Priorität
+  - [ ] Status
+- [ ] **Filter** möglich nach:
+  - [ ] Status (neu / in Arbeit / erledigt / storniert)
+  - [ ] Priorität
+  - [ ] Zugewiesen an
+- [ ] Inline-Aktionen pro Zeile:
+  - [ ] Klick → öffnet Detail
+  - [ ] Status ändern (Dropdown direkt in Zeile)
+  - [ ] Löschen (mit Bestätigung)
+
+### 1.9 Performance & Usability
+- [ ] Kalender lädt schnell (< 2 Sekunden)
+- [ ] Bei vielen Tasks (> 50): Kalender bleibt responsive
+- [ ] Sidebar scrollbar erscheint wenn viele Tasks an einem Tag
+- [ ] Responsive auf Mobilgeräten:
+  - [ ] Kalender passt sich an Bildschirmgröße an
+  - [ ] Touch-freundlich (größere Tappziele)
+  - [ ] Sidebar wird zu Drawer/Modal auf Mobile
 
 ---
 
