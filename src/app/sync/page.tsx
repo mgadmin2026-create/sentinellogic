@@ -37,6 +37,20 @@ interface FacebookSyncConfig {
   next_sync_at: string | null
 }
 
+interface PreviewResult {
+  mode: string
+  totalLeads: number
+  formId: string
+  leads: Array<{
+    facebook_id: string
+    first_name: string
+    last_name: string
+    email: string
+    branche?: string
+    versicherungstyp?: string
+  }>
+}
+
 const INITIAL_SOURCES: SyncSource[] = [
   { id: 'facebook', name: 'Facebook Lead Ads', description: 'Leads direkt aus Facebook-Kampagnen', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 15 },
   { id: 'calendly', name: 'Calendly', description: 'Terminbuchungen automatisch als Leads', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 30 },
@@ -65,6 +79,9 @@ export default function SyncPage() {
   const [loadingLog, setLoadingLog] = useState(true)
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
   const [facebookConfig, setFacebookConfig] = useState<FacebookSyncConfig | null>(null)
+  const [facebookPreviewEnabled, setFacebookPreviewEnabled] = useState(false)
+  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   // Load sync config for Facebook
   useEffect(() => {
@@ -85,17 +102,26 @@ export default function SyncPage() {
 
   useEffect(() => { loadSyncLog() }, [])
 
-  function handleSync(id: string) {
+  function handleSync(id: string, preview: boolean = false) {
     if (id === 'facebook') {
-      setSyncing(id)
-      fetch('/api/sync/facebook-leads')
-        .then(r => r.json())
-        .then(() => {
-          setSources(prev => prev.map(s => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
-          loadSyncLog()
-        })
-        .catch(console.error)
-        .finally(() => setSyncing(null))
+      if (preview) {
+        setPreviewLoading(true)
+        fetch('/api/sync/facebook-leads-list')
+          .then(r => r.json())
+          .then(data => setPreviewResult(data))
+          .catch(console.error)
+          .finally(() => setPreviewLoading(false))
+      } else {
+        setSyncing(id)
+        fetch('/api/sync/facebook-leads')
+          .then(r => r.json())
+          .then(() => {
+            setSources(prev => prev.map(s => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
+            loadSyncLog()
+          })
+          .catch(console.error)
+          .finally(() => setSyncing(null))
+      }
     } else {
       setSyncing(id)
       setTimeout(() => {
@@ -168,6 +194,41 @@ export default function SyncPage() {
         </button>
       </div>
 
+      {/* Preview Results */}
+      {previewResult && (
+        <div className="bg-blue-50 rounded-xl border border-blue-200 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-semibold text-blue-900">👁 Facebook Preview</h3>
+              <p className="text-sm text-blue-700 mt-1">{previewResult.totalLeads} Leads würden importiert</p>
+            </div>
+            <button onClick={() => setPreviewResult(null)} className="text-blue-400 hover:text-blue-600">✕</button>
+          </div>
+          {previewResult.totalLeads > 0 && (
+            <div className="bg-white rounded-lg p-4 max-h-80 overflow-y-auto">
+              <div className="space-y-2">
+                {previewResult.leads.slice(0, 20).map(lead => (
+                  <div key={lead.facebook_id} className="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{lead.first_name} {lead.last_name}</p>
+                      <p className="text-xs text-gray-500">{lead.email}</p>
+                      {(lead.branche || lead.versicherungstyp) && (
+                        <p className="text-xs text-blue-600 mt-0.5">{lead.branche && `Branche: ${lead.branche}`} {lead.versicherungstyp && `• Versicherung: ${lead.versicherungstyp}`}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {previewResult.totalLeads > 20 && (
+                <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-100">
+                  ... und {previewResult.totalLeads - 20} weitere Leads
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Quellen-Kacheln */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {sources.map(source => {
@@ -195,33 +256,59 @@ export default function SyncPage() {
                 <p className="text-sm font-semibold text-[#1A1A1A]">{source.count}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {source.lastSync}</p>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <button onClick={() => toggleAuto(source.id)}
-                    className={`relative w-9 h-5 rounded-full transition-colors ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <button onClick={() => toggleAuto(source.id)}
+                      className={`relative w-9 h-5 rounded-full transition-colors ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
+                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                    <span className="text-xs text-gray-500">Auto</span>
+                    {autoEnabled && (
+                      <select value={displayInterval} onChange={e => setIntervalVal(source.id, e.target.value as IntervalType)}
+                        className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none">
+                        <option value="15min">alle 15 Min</option>
+                        <option value="30min">alle 30 Min</option>
+                        <option value="60min">alle 60 Min</option>
+                        <option value="daily">täglich um 08:00 Uhr</option>
+                        <option value="weekly">montags um 08:00 Uhr</option>
+                      </select>
+                    )}
+                  </div>
+                  <button onClick={() => handleSync(source.id)} disabled={isSyncing}
+                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'animate-spin' : ''}>
+                      <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    {isSyncing ? 'Läuft…' : 'Jetzt synchronisieren'}
                   </button>
-                  <span className="text-xs text-gray-500">Auto</span>
-                  {autoEnabled && (
-                    <select value={displayInterval} onChange={e => setIntervalVal(source.id, e.target.value as IntervalType)}
-                      className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none">
-                      <option value="15min">alle 15 Min</option>
-                      <option value="30min">alle 30 Min</option>
-                      <option value="60min">alle 60 Min</option>
-                      <option value="daily">täglich um 08:00 Uhr</option>
-                      <option value="weekly">montags um 08:00 Uhr</option>
-                    </select>
-                  )}
                 </div>
-                <button onClick={() => handleSync(source.id)} disabled={isSyncing}
-                  className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                    strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'animate-spin' : ''}>
-                    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                  </svg>
-                  {isSyncing ? 'Läuft…' : 'Jetzt synchronisieren'}
-                </button>
+                {isFacebook && (
+                  <div className="flex items-center gap-2.5 pt-2 border-t border-gray-100">
+                    <button onClick={() => setFacebookPreviewEnabled(!facebookPreviewEnabled)}
+                      className={`relative w-9 h-5 rounded-full transition-colors ${facebookPreviewEnabled ? 'bg-blue-400' : 'bg-gray-200'}`}>
+                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${facebookPreviewEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                    </button>
+                    <span className="text-xs text-gray-500">Preview</span>
+                    {facebookPreviewEnabled && (
+                      <button onClick={() => handleSync(source.id, true)} disabled={previewLoading}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                        {previewLoading ? (
+                          <>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
+                              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                            </svg>
+                            Lädt…
+                          </>
+                        ) : (
+                          <>👁 Preview laden</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )
