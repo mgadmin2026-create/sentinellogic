@@ -282,13 +282,13 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error(`[Dialfire] Fehler beim Sync für ${data.email}:`, err)
         // Speichere Error (non-blocking)
+        // Ignore update errors
         await supabase
           .from('contacts')
           .update({
             dialfire_sync_error: String(err),
           })
           .eq('id', data.id)
-          .catch(() => null) // Ignore update errors
       }
     }
 
