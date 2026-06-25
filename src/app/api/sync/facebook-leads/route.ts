@@ -264,6 +264,13 @@ function mapFacebookFieldsToContact(fieldData: any[] = []): Record<string, any> 
     zip: 'postcode',
   }
 
+  const customFieldMap: Record<string, string> = {
+    'in_welcher_branche_seid_ihr_tätig?': 'branche',
+    'welche_absicherung_möchtest_du_prüfen_lassen?': 'versicherungstyp',
+    'wie_hoch_ist_euer_jahresumsatz?': 'jahresumsatz',
+    'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeiterzahl',
+  }
+
   let fullName = ''
 
   fieldData.forEach((field) => {
@@ -276,6 +283,8 @@ function mapFacebookFieldsToContact(fieldData: any[] = []): Record<string, any> 
       fullName = value.trim()
     } else if (fieldMap[fbName]) {
       contact[fieldMap[fbName]] = value.trim()
+    } else if (customFieldMap[fbName]) {
+      contact[customFieldMap[fbName]] = value.trim()
     }
 
     contact.metadata[fbName] = value.trim()
