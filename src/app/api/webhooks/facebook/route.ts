@@ -1,121 +1,221 @@
-// Webhook: Facebook Lead Ads
-// GET  — Webhook-Verifizierung durch Facebook (einmalig beim Setup)
-// POST — Eingehende Leads aus Facebook Lead Ads verarbeiten
-import { NextRequest } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
-import type { FacebookLeadPayload } from '@/types'
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { logActivity } from '@/lib/activities-logger'
 
-const VERIFY_TOKEN = process.env.FACEBOOK_WEBHOOK_VERIFY_TOKEN
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
-// Facebook Webhook-Verifizierung (Challenge-Response)
+// GET: Facebook Webhook Verification
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const mode = searchParams.get('hub.mode')
-    const token = searchParams.get('hub.verify_token')
     const challenge = searchParams.get('hub.challenge')
+    const token = searchParams.get('hub.verify_token')
+    const mode = searchParams.get('hub.mode')
 
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('[Facebook Webhook] Verifizierung erfolgreich')
-      return new Response(challenge, { status: 200 })
+    if (mode === 'subscribe' && token === process.env.FACEBOOK_VERIFY_TOKEN) {
+      console.log('✅ Facebook Webhook verified')
+      return new NextResponse(challenge)
+    } else {
+      console.error('❌ Facebook Webhook verification failed')
+      return new NextResponse('Forbidden', { status: 403 })
     }
-
-    console.warn('[Facebook Webhook] Verifizierung fehlgeschlagen — ungültiger Token')
-    return new Response('Forbidden', { status: 403 })
   } catch (error) {
-    console.error('[GET /api/webhooks/facebook] Fehler:', error)
-    return new Response('Interner Fehler', { status: 500 })
+    console.error('Webhook GET Error:', error)
+    return new NextResponse('Internal Server Error', { status: 500 })
   }
 }
 
-// Eingehende Lead Ads Daten verarbeiten
+// POST: Handle incoming Facebook leads
 export async function POST(request: NextRequest) {
   try {
-    const body: FacebookLeadPayload = await request.json()
+    const body = await request.json()
+    const { entry } = body
 
-    if (body.object !== 'page') {
-      return Response.json({ success: false, error: 'Unbekannter Webhook-Typ' }, { status: 400 })
+    if (!entry || !Array.isArray(entry)) {
+      return new NextResponse(JSON.stringify({ ok: false }), { status: 400 })
     }
 
-    const supabase = createServerClient()
-    const processedLeads: string[] = []
+    let leadsProcessed = 0
+    const errors: string[] = []
 
-    for (const entry of body.entry) {
-      for (const change of entry.changes) {
-        if (change.field !== 'leadgen') continue
+    for (const item of entry) {
+      for (const change of item.changes || []) {
+        try {
+          const leadGenId = change.value?.leadgen_id
+          const formId = change.value?.form_id
 
-        const leadgenId = change.value.leadgen_id
-        const fieldData = change.value.field_data ?? []
+          if (!leadGenId || !formId) continue
 
-        // Felder aus dem Facebook-Formular extrahieren
-        const getField = (name: string) =>
-          fieldData.find((f) => f.name === name)?.values[0] ?? ''
+          // Fetch lead details from Facebook
+          const leadResponse = await fetch(
+            `https://graph.facebook.com/v18.0/${leadGenId}?fields=field_data,created_time&access_token=${process.env.FACEBOOK_ACCESS_TOKEN}`,
+            { method: 'GET' }
+          )
 
-        const firstName = getField('first_name')
-        const lastName = getField('last_name')
-        const email = getField('email')
-        const phone = getField('phone_number')
+          if (!leadResponse.ok) {
+            const errorMsg = `Failed to fetch lead ${leadGenId}: ${leadResponse.statusText}`
+            console.error(errorMsg)
+            errors.push(errorMsg)
+            continue
+          }
 
-        if (!email && !phone) {
-          console.warn(`[Facebook Webhook] Lead ${leadgenId} ohne Kontaktdaten übersprungen`)
-          continue
+          const fbLead = await leadResponse.json()
+
+          // Map Facebook fields to contact structure
+          const contact = mapFacebookFieldsToContact(fbLead.field_data)
+          contact.facebook_id = leadGenId
+          contact.facebook_form_id = formId
+          contact.source = 'facebook'
+          contact.created_at = new Date(fbLead.created_time).toISOString()
+
+          // Check if contact already exists by facebook_id
+          const { data: existingByFb, error: checkFbError } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('facebook_id', leadGenId)
+            .maybeSingle()
+
+          if (checkFbError && checkFbError.code !== 'PGRST116') {
+            console.error('Error checking existing facebook contact:', checkFbError)
+            errors.push(`Facebook ID check failed: ${checkFbError.message}`)
+            continue
+          }
+
+          if (existingByFb) {
+            console.log(`Contact with facebook_id ${leadGenId} already exists, skipping`)
+            continue
+          }
+
+          // Check if contact exists by email
+          const { data: existingByEmail, error: checkEmailError } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('email', contact.email)
+            .maybeSingle()
+
+          if (checkEmailError && checkEmailError.code !== 'PGRST116') {
+            console.error('Error checking existing email:', checkEmailError)
+            errors.push(`Email check failed: ${checkEmailError.message}`)
+            continue
+          }
+
+          if (existingByEmail) {
+            // Update existing contact with facebook_id
+            const { error: updateError } = await supabase
+              .from('contacts')
+              .update({
+                facebook_id: leadGenId,
+                facebook_form_id: formId,
+              })
+              .eq('id', existingByEmail.id)
+
+            if (updateError) {
+              console.error('Error updating contact with facebook_id:', updateError)
+              errors.push(`Update failed for email ${contact.email}`)
+            } else {
+              console.log(`✅ Updated contact ${existingByEmail.id} with Facebook ID`)
+              await logActivity(null, existingByEmail.id, 'facebook_linked', 'Facebook lead linked to existing contact', {
+                facebook_id: leadGenId,
+                form_id: formId,
+              })
+              leadsProcessed++
+            }
+            continue
+          }
+
+          // Insert new contact
+          const { data: insertedData, error: insertError } = await supabase
+            .from('contacts')
+            .insert([contact])
+            .select('id')
+
+          if (insertError) {
+            const errorMsg = `Error inserting contact: ${insertError.message}`
+            console.error(errorMsg)
+            errors.push(errorMsg)
+          } else if (insertedData && insertedData[0]) {
+            const contactId = insertedData[0].id
+            console.log(`✅ Contact ${contactId} created from Facebook lead ${leadGenId}`)
+
+            await logActivity(
+              contactId,
+              'facebook_imported',
+              `Lead imported from Facebook form`,
+              {
+                facebook_id: leadGenId,
+                form_id: formId,
+                source: 'facebook',
+              }
+            )
+
+            leadsProcessed++
+          }
+        } catch (leadError) {
+          const errorMsg = `Error processing individual lead: ${leadError instanceof Error ? leadError.message : String(leadError)}`
+          console.error(errorMsg)
+          errors.push(errorMsg)
         }
-
-        // Duplikat-Prüfung anhand leadgen_id
-        const { data: existing } = await supabase
-          .from('leads')
-          .select('id')
-          .eq('source', 'facebook')
-          .contains('research_data', { leadgen_id: leadgenId })
-          .maybeSingle()
-
-        if (existing) {
-          console.log(`[Facebook Webhook] Lead ${leadgenId} bereits vorhanden`)
-          continue
-        }
-
-        // Lead in Supabase speichern
-        const { data: lead, error } = await supabase
-          .from('leads')
-          .insert({
-            first_name: firstName,
-            last_name: lastName,
-            email: email || null,
-            phone: phone || null,
-            source: 'facebook',
-            status: 'new',
-            research_data: {
-              leadgen_id: leadgenId,
-              page_id: change.value.page_id,
-              form_id: change.value.form_id,
-              ad_id: change.value.ad_id,
-              raw_fields: fieldData,
-            },
-          })
-          .select()
-          .single()
-
-        if (error) {
-          console.error(`[Facebook Webhook] Insert Fehler für ${leadgenId}:`, error)
-          continue
-        }
-
-        // Aktivität protokollieren
-        await supabase.from('activities').insert({
-          lead_id: lead.id,
-          type: 'sync',
-          description: 'Lead via Facebook Lead Ads eingegangen',
-          data: { leadgen_id: leadgenId, ad_id: change.value.ad_id },
-        })
-
-        processedLeads.push(lead.id)
       }
     }
 
-    console.log(`[Facebook Webhook] ${processedLeads.length} Leads verarbeitet`)
-    return Response.json({ success: true, data: { processed: processedLeads.length } })
+    return new NextResponse(
+      JSON.stringify({
+        ok: true,
+        leadsProcessed,
+        errors: errors.length > 0 ? errors : undefined,
+      }),
+      { status: 200 }
+    )
   } catch (error) {
-    console.error('[POST /api/webhooks/facebook] Fehler:', error)
-    return Response.json({ success: false, error: 'Webhook-Verarbeitung fehlgeschlagen' }, { status: 500 })
+    console.error('Webhook POST Error:', error)
+    return new NextResponse(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500 }
+    )
   }
+}
+
+function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: string[] }> = []): Record<string, any> {
+  const contact: Record<string, any> = {
+    metadata: {},
+  }
+
+  const fieldMap: Record<string, string> = {
+    email: 'email',
+    email_address: 'email',
+    full_name: 'name',
+    first_name: 'first_name',
+    last_name: 'last_name',
+    phone_number: 'phone_mobile',
+    phone: 'phone_mobile',
+    company: 'company_name',
+    city: 'city',
+    state: 'state',
+    zip: 'postcode',
+  }
+
+  fieldData.forEach((field) => {
+    const fbName = field.name.toLowerCase()
+    const value = field.values?.[0]
+
+    if (!value || value.trim() === '') return
+
+    if (fieldMap[fbName]) {
+      contact[fieldMap[fbName]] = value
+    }
+
+    contact.metadata[fbName] = value
+  })
+
+  // Split full_name into first_name and last_name if needed
+  if (contact.name && !contact.first_name) {
+    const nameParts = contact.name.split(' ')
+    contact.first_name = nameParts[0]
+    contact.last_name = nameParts.slice(1).join(' ')
+  }
+
+  return contact
 }

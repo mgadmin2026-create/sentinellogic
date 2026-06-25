@@ -15,6 +15,8 @@ export type ActivityType =
   | 'klicktipp_sync_failed'
   | 'dialfire_synced'
   | 'dialfire_sync_failed'
+  | 'facebook_imported'
+  | 'facebook_linked'
 
 interface ActivityData {
   [key: string]: any
