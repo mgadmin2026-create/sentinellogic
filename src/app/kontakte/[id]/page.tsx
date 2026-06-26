@@ -7,6 +7,7 @@ import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
 import { ContactOverview } from '@/components/ContactOverview'
+import { StickyContactHeader } from '@/components/StickyContactHeader'
 
 interface Kontakt {
   id: string
@@ -348,62 +349,20 @@ export default function KontaktDetailPage() {
   const fullName = `${kontakt.first_name} ${kontakt.last_name}`
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{fullName}</h1>
-          <p className="text-gray-500 text-sm mt-1">{kontakt.company_name || 'Kein Unternehmen'}</p>
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={kontakt.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className={`text-sm font-medium px-3 py-2 rounded-lg border-0 cursor-pointer ${STATUS_COLORS[kontakt.status]}`}
-          >
-            <option value="new">Neu</option>
-            <option value="contacted">Kontaktiert</option>
-            <option value="qualified">Qualifiziert</option>
-            <option value="customer">Kunde</option>
-          </select>
-          <button
-            onClick={() => setIsEditingOverview(!isEditingOverview)}
-            className={`flex items-center gap-2 font-semibold text-sm px-4 py-2 rounded-lg transition-colors ${
-              isEditingOverview
-                ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
-                : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900'
-            }`}
-          >
-            {isEditingOverview ? '✓ Bearbeitung aktiv' : 'Bearbeiten'}
-          </button>
-          <button
-            onClick={() => setDeleteConfirm(true)}
-            className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 font-semibold text-sm px-4 py-2 rounded-lg transition-colors"
-          >
-            Löschen
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-6">
-        <div className="flex gap-0.5 overflow-x-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                activeTab === tab.id ? 'text-yellow-600 border-yellow-600' : 'text-gray-600 border-transparent hover:text-gray-900'
-              }`}
-            >
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div>
+      {/* Sticky Header */}
+      <StickyContactHeader
+        firstName={kontakt.first_name}
+        lastName={kontakt.last_name}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isEditing={isEditingOverview}
+        onEditChange={setIsEditingOverview}
+        onDelete={() => setDeleteConfirm(true)}
+      />
 
       {/* Tab Content */}
-      <div>
+      <div className="p-8">
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
           <ContactOverview
