@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
+import { AutomationControls } from '@/components/AutomationControls'
 
 interface Kontakt {
   id: string
@@ -42,6 +43,13 @@ interface Kontakt {
   dialfire_campaign?: string
   dialfire_last_sync?: string
   dialfire_task_name?: string
+  automation_disabled?: boolean
+  dialfire_campaign_auto?: boolean
+  dialfire_campaign_id?: string
+  dialfire_task_auto?: boolean
+  dialfire_task_name_field?: string
+  klicktipp_tags_auto?: boolean
+  klicktipp_tags_field?: string[]
   dialfire_updated_at?: string
   dialfire_sync_error?: string
   created_at: string
@@ -86,6 +94,7 @@ const TABS = [
   { id: 'tasks', label: 'Aufgaben', icon: '✓' },
   { id: 'notes', label: 'Notizen', icon: '📋' },
   { id: 'documents', label: 'Dokumente', icon: '📄' },
+  { id: 'automation', label: 'Automation', icon: '⚙️' },
 ]
 
 const PIPELINE_STEPS = [
