@@ -64,7 +64,7 @@ export async function executeAutomation(
 
     // Prepare fields to update
     const fieldsToSet: any = {}
-    const fieldsSummary = { dialfire_campaign_id: '', dialfire_task_name: '', klicktipp_tags: [] as string[] }
+    const fieldsSummary: any = { dialfire_campaign_id: '', dialfire_task_name: '', klicktipp_tags: [] as string[], status: '' }
 
     if (matchingRule.actions.dialfire_campaign) {
       fieldsToSet.dialfire_campaign_id = matchingRule.actions.dialfire_campaign
