@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
+import { ContactOverview } from '@/components/ContactOverview'
 
 interface Kontakt {
   id: string
@@ -290,6 +291,21 @@ export default function KontaktDetailPage() {
     }
   }
 
+  async function handleFieldUpdate(field: string, value: any) {
+    try {
+      const res = await fetch(`/api/kontakte/${kontaktId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (res.ok) {
+        await loadKontakt()
+      }
+    } catch (err) {
+      console.error('Fehler beim Update:', err)
+    }
+  }
+
   async function handleStatusChange(newStatus: string) {
     try {
       const res = await fetch(`/api/kontakte/${kontaktId}`, {
@@ -381,219 +397,11 @@ export default function KontaktDetailPage() {
       <div>
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-3 gap-6">
-            {/* Linke Spalte: Kontaktinfo */}
-            <div className="col-span-2 space-y-6">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Kontaktinformationen</h2>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500 font-semibold uppercase">E-Mail</p>
-                      <p className="text-sm text-gray-900 mt-1">
-                        <a href={`mailto:${kontakt.email}`} className="text-yellow-600 hover:underline">
-                          {kontakt.email}
-                        </a>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-semibold uppercase">Telefon Mobil</p>
-                      <p className="text-sm text-gray-900 mt-1">
-                        {kontakt.phone_mobile ? (
-                          <a href={`tel:${kontakt.phone_mobile}`} className="text-yellow-600 hover:underline">
-                            {kontakt.phone_mobile}
-                          </a>
-                        ) : (
-                          '—'
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500 font-semibold uppercase">Telefon Büro</p>
-                      <p className="text-sm text-gray-900 mt-1">
-                        {kontakt.phone_office ? (
-                          <a href={`tel:${kontakt.phone_office}`} className="text-yellow-600 hover:underline">
-                            {kontakt.phone_office}
-                          </a>
-                        ) : (
-                          '—'
-                        )}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-semibold uppercase">Website</p>
-                      <p className="text-sm text-gray-900 mt-1">
-                        {kontakt.website ? (
-                          <a href={kontakt.website} target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:underline">
-                            {kontakt.website.replace('https://', '')}
-                          </a>
-                        ) : (
-                          '—'
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Adresse</h2>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-gray-500 font-semibold uppercase">Firma</p>
-                    <p className="text-sm text-gray-900 mt-1">{kontakt.company_name || '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-semibold uppercase">Position</p>
-                    <p className="text-sm text-gray-900 mt-1">{kontakt.position || '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-semibold uppercase">Straße</p>
-                    <p className="text-sm text-gray-900 mt-1">{kontakt.street || '—'}</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500 font-semibold uppercase">PLZ</p>
-                      <p className="text-sm text-gray-900 mt-1">{kontakt.postal_code || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-semibold uppercase">Ort</p>
-                      <p className="text-sm text-gray-900 mt-1">{kontakt.city || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-semibold uppercase">Land</p>
-                      <p className="text-sm text-gray-900 mt-1">{kontakt.country || '—'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Rechte Spalte: Status & Metadata */}
-            <div className="space-y-4">
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Status</p>
-                <span className={`inline-flex text-sm font-medium px-3 py-1.5 rounded-full ${STATUS_COLORS[kontakt.status]}`}>
-                  {STATUS_LABELS[kontakt.status]}
-                </span>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Quelle</p>
-                <p className="text-sm text-gray-900 font-medium capitalize">{kontakt.source || 'Manuell'}</p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Qualität</p>
-                <p className="text-sm text-gray-900">{kontakt.qualität || '—'}</p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Bestandskunde</p>
-                <p className="text-sm text-gray-900">{kontakt.bestandskunde ? '✓ Ja' : 'Nein'}</p>
-              </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <p className="text-xs text-gray-500 font-semibold uppercase mb-2">Erstellt</p>
-                <p className="text-sm text-gray-900">{new Date(kontakt.created_at).toLocaleDateString('de-DE')}</p>
-              </div>
-
-              {/* KlickTipp Integration */}
-              {kontakt.klicktipp_id && (
-                <div className="bg-blue-50 rounded-xl border border-blue-200 p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">🔗</span>
-                    <p className="text-xs text-blue-700 font-semibold uppercase">KlickTipp</p>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs text-blue-600 font-semibold uppercase mb-1">ID</p>
-                      <p className="text-sm text-gray-900 font-mono">{kontakt.klicktipp_id}</p>
-                    </div>
-                    {kontakt.klicktipp_tags && kontakt.klicktipp_tags.length > 0 && (
-                      <div>
-                        <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Tags</p>
-                        <div className="flex flex-wrap gap-2">
-                          {kontakt.klicktipp_tags.map((tag: string) => (
-                            <span key={tag} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {kontakt.klicktipp_last_sync && (
-                      <div>
-                        <p className="text-xs text-blue-600 font-semibold uppercase mb-1">Letzer Sync</p>
-                        <p className="text-xs text-gray-600">
-                          {new Date(kontakt.klicktipp_last_sync).toLocaleString('de-DE')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Dialfire Integration */}
-              {(kontakt.dialfire_id || kontakt.dialfire_sync_error) && (
-                <div className={`rounded-xl border p-4 ${
-                  kontakt.dialfire_sync_error
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-purple-50 border-purple-200'
-                }`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-lg">📞</span>
-                    <p className={`text-xs font-semibold uppercase ${
-                      kontakt.dialfire_sync_error ? 'text-red-700' : 'text-purple-700'
-                    }`}>Dialfire</p>
-                  </div>
-                  <div className="space-y-3">
-                    {kontakt.dialfire_id && (
-                      <div>
-                        <p className={`text-xs font-semibold uppercase mb-1 ${
-                          kontakt.dialfire_sync_error ? 'text-red-600' : 'text-purple-600'
-                        }`}>ID</p>
-                        <p className="text-sm text-gray-900 font-mono">{kontakt.dialfire_id}</p>
-                      </div>
-                    )}
-                    {kontakt.dialfire_task_name && (
-                      <div>
-                        <p className={`text-xs font-semibold uppercase mb-1 ${
-                          kontakt.dialfire_sync_error ? 'text-red-600' : 'text-purple-600'
-                        }`}>Task</p>
-                        <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full ${
-                          kontakt.dialfire_sync_error
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {kontakt.dialfire_task_name}
-                        </span>
-                      </div>
-                    )}
-                    {kontakt.dialfire_updated_at && (
-                      <div>
-                        <p className={`text-xs font-semibold uppercase mb-1 ${
-                          kontakt.dialfire_sync_error ? 'text-red-600' : 'text-purple-600'
-                        }`}>Letzer Sync</p>
-                        <p className="text-xs text-gray-600">
-                          {new Date(kontakt.dialfire_updated_at).toLocaleString('de-DE')}
-                        </p>
-                      </div>
-                    )}
-                    {kontakt.dialfire_sync_error && (
-                      <div className="pt-2 border-t border-red-200">
-                        <p className="text-xs text-red-600 font-semibold uppercase mb-1">Fehler</p>
-                        <p className="text-xs text-red-700 bg-red-100 rounded px-2.5 py-1.5 font-mono">
-                          {kontakt.dialfire_sync_error}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <ContactOverview
+            kontakt={kontakt}
+            onUpdate={handleFieldUpdate}
+          />
         )}
-
-        {/* TAB: Prozess — 12-Schritt-Stepper */}
         {activeTab === 'process' && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
