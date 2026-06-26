@@ -64,7 +64,7 @@ export async function executeAutomation(
 
     // Prepare fields to update
     const fieldsToSet: any = {}
-    const fieldsSummary: any = { dialfire_campaign_id: '', dialfire_task_name: '', klicktipp_tags: [] as string[], status: '' }
+    const fieldsSummary = { dialfire_campaign_id: '', dialfire_task_name: '', klicktipp_tags: [] as string[] }
 
     if (matchingRule.actions.dialfire_campaign) {
       fieldsToSet.dialfire_campaign_id = matchingRule.actions.dialfire_campaign
@@ -79,11 +79,6 @@ export async function executeAutomation(
     if (matchingRule.actions.klicktipp_tag) {
       fieldsToSet.klicktipp_tags_field = [matchingRule.actions.klicktipp_tag]
       fieldsSummary.klicktipp_tags = [matchingRule.actions.klicktipp_tag]
-    }
-
-    if (matchingRule.actions.set_status) {
-      fieldsToSet.status = matchingRule.actions.set_status
-      fieldsSummary.status = matchingRule.actions.set_status
     }
 
     // Update contact with automated fields
