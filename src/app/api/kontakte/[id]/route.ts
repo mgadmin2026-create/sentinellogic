@@ -13,6 +13,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'source', 'status', 'notes',
   'assigned_user_id', 'qualität', 'bestandskunde',
   'pipeline_stage', 'pipeline_steps',
+  'qualität', 'bestandskunde', 'jahresumsatz', 'mitarbeitanzahl', 'versicherungstyp', 'assigned_user_name',
   'klicktipp_id', 'klicktipp_tags', 'klicktipp_tag_ids', 'klicktipp_last_sync',
   'dialfire_id', 'dialfire_external_ref', 'dialfire_task_name', 'dialfire_updated_at', 'dialfire_sync_error',
   'automation_disabled', 'dialfire_campaign_auto', 'dialfire_campaign_id', 'dialfire_task_auto', 'dialfire_task_name_field', 'klicktipp_tags_auto', 'klicktipp_tags_field',

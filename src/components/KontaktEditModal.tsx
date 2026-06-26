@@ -21,6 +21,15 @@ interface Kontakt {
   notes?: string
   klicktipp_tag?: string
   automation_disabled?: boolean
+  qualität?: string
+  bestandskunde?: boolean
+  jahresumsatz?: string
+  mitarbeitanzahl?: number
+  versicherungstyp?: string
+  assigned_user_name?: string
+  dialfire_campaign_id?: string
+  dialfire_task_name_field?: string
+  klicktipp_tag_ids?: number[]
 }
 
 interface Props {
@@ -200,6 +209,40 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Jahresumsatz</label>
+                <input
+                  type="text"
+                  value={formData.jahresumsatz || ''}
+                  onChange={(e) => setFormData({ ...formData, jahresumsatz: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="z.B. 500k-1M"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Mitarbeiterzahl</label>
+                <input
+                  type="number"
+                  value={formData.mitarbeitanzahl || ''}
+                  onChange={(e) => setFormData({ ...formData, mitarbeitanzahl: e.target.value ? parseInt(e.target.value) : undefined })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="50"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Versicherungstyp</label>
+              <input
+                type="text"
+                value={formData.versicherungstyp || ''}
+                onChange={(e) => setFormData({ ...formData, versicherungstyp: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                placeholder="z.B. Krankenversicherung"
+              />
+            </div>
           </div>
 
           {/* Section 3: Adresse */}
@@ -280,6 +323,46 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Qualität</label>
+                <select
+                  value={formData.qualität || ''}
+                  onChange={(e) => setFormData({ ...formData, qualität: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                >
+                  <option value="">-- Wählen --</option>
+                  <option value="kalt">Kalt</option>
+                  <option value="warm">Warm</option>
+                  <option value="heiss">Heiß</option>
+                  <option value="sehr-heiss">Sehr Heiß</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Verantwortlicher</label>
+                <input
+                  type="text"
+                  value={formData.assigned_user_name || ''}
+                  onChange={(e) => setFormData({ ...formData, assigned_user_name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="z.B. Max Mustermann"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <input
+                type="checkbox"
+                id="bestandskunde"
+                checked={formData.bestandskunde || false}
+                onChange={(e) => setFormData({ ...formData, bestandskunde: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-300 text-yellow-500"
+              />
+              <label htmlFor="bestandskunde" className="text-sm font-medium text-gray-900">
+                Bestandskunde
+              </label>
+            </div>
+
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-700">
                 💡 <strong>Status & Prozessschritte</strong> werden in der Kontaktübersicht verwaltet.

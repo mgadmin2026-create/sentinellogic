@@ -50,6 +50,9 @@ interface Kontakt {
   dialfire_task_name_field?: string
   klicktipp_tags_auto?: boolean
   klicktipp_tags_field?: string[]
+  jahresumsatz?: string
+  mitarbeitanzahl?: number
+  versicherungstyp?: string
   dialfire_updated_at?: string
   dialfire_sync_error?: string
   created_at: string
