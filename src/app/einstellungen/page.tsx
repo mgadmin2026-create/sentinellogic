@@ -11,6 +11,12 @@ const settingsSections = [
     icon: '⚙️'
   },
   {
+    title: 'Integration Setup',
+    description: 'Konfiguriere Dialfire Kampagnen, Tasks und KlickTipp Tags',
+    href: '/einstellungen/integration',
+    icon: '🔗'
+  },
+  {
     title: 'Allgemein',
     description: 'Allgemeine Einstellungen (kommt bald)',
     href: '#',

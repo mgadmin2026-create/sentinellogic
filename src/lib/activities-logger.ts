@@ -18,6 +18,8 @@ export type ActivityType =
   | 'facebook_imported'
   | 'facebook_linked'
   | 'facebook_skipped_duplicate'
+  | 'automation_executed'
+  | 'automation_skipped'
 
 interface ActivityData {
   [key: string]: any

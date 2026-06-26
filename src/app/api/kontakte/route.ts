@@ -3,7 +3,7 @@
 // POST /api/kontakte — neuen Kontakt anlegen
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-
+import { executeAutomation } from '@/lib/automation-engine'
 import { logActivity, logContactCreated } from '@/lib/activities-logger'
 
 // Helper: Rufe Edge Function auf
@@ -190,6 +190,15 @@ export async function POST(request: NextRequest) {
     // Log activity
     if (data?.id) {
       await logContactCreated(data.id, `${data.first_name} ${data.last_name}`)
+    }
+
+    // Execute automation rules (if not disabled)
+    const automationDisabled = body.automation_disabled === true
+    if (data?.id) {
+      const automationResult = await executeAutomation(data.id, data.source, automationDisabled)
+      if (automationResult.error) {
+        console.warn('[Automation] Failed:', automationResult.error)
+      }
     }
 
     // KlickTipp Sync: Wenn klicktipp_tag im Request, synce zu KlickTipp
