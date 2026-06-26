@@ -731,6 +731,21 @@ export default function KontaktDetailPage() {
                       </div>
                       <div className="flex-1 pt-1">
                         <p className="text-sm font-medium text-gray-900">{akt.description}</p>
+                        
+                        {/* Show extra data fields if present */}
+                        {akt.data && Object.keys(akt.data).length > 0 && (
+                          <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs space-y-1">
+                            {Object.entries(akt.data).map(([key, value]) => (
+                              <div key={key} className="flex gap-2">
+                                <span className="font-semibold text-gray-600">{key}:</span>
+                                <span className="text-gray-700">
+                                  {Array.isArray(value) ? value.join(", ") : String(value)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-sm font-medium text-gray-900">{akt.description}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <p className="text-xs text-gray-400">
                             {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
@@ -892,6 +907,21 @@ export default function KontaktDetailPage() {
         )}
       </div>
 
+
+        {activeTab === 'automation' && (
+          <AutomationControls
+            contactId={kontakt.id}
+            initialData={{
+              automation_disabled: kontakt.automation_disabled ?? false,
+              dialfire_campaign_auto: kontakt.dialfire_campaign_auto ?? true,
+              dialfire_campaign_id: kontakt.dialfire_campaign_id,
+              dialfire_task_auto: kontakt.dialfire_task_auto ?? true,
+              dialfire_task_name_field: kontakt.dialfire_task_name_field,
+              klicktipp_tags_auto: kontakt.klicktipp_tags_auto ?? true,
+              klicktipp_tags_field: kontakt.klicktipp_tags_field,
+            }}
+          />
+        )}
       {/* Footer */}
       <div className="mt-8 text-center">
         <Link href="/kontakte" className="text-gray-500 hover:text-gray-900 text-sm font-medium">
