@@ -15,6 +15,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'pipeline_stage', 'pipeline_steps',
   'klicktipp_id', 'klicktipp_tags', 'klicktipp_last_sync',
   'dialfire_id', 'dialfire_external_ref', 'dialfire_task_name', 'dialfire_updated_at', 'dialfire_sync_error',
+  'automation_disabled', 'dialfire_campaign_auto', 'dialfire_campaign_id', 'dialfire_task_auto', 'dialfire_task_name_field', 'klicktipp_tags_auto', 'klicktipp_tags_field',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
