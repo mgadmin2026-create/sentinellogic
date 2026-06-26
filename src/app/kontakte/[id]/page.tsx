@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
+import { ActivityTimeline } from '@/components/ActivityTimeline'
 
 interface Kontakt {
   id: string
@@ -697,57 +698,12 @@ export default function KontaktDetailPage() {
           </div>
         )}
 
-        {/* TAB: Aktivitäten */}
         {activeTab === 'activities' && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Aktivitätshistorie</h2>
-            {aktivitäten.length === 0 ? (
-              <p className="text-gray-400 text-sm">Keine Aktivitäten vorhanden.</p>
-            ) : (
-              <div className="space-y-4">
-                {aktivitäten.map((akt, i) => {
-                  // Icon basierend auf Activity-Type
-                  const getActivityIcon = (type: string) => {
-                    if (type.includes('klicktipp')) return '🔗'
-                    if (type.includes('dialfire')) return '📞'
-                    if (type.includes('task')) return '✓'
-                    return '📝'
-                  }
-                  
-                  const getActivityColor = (type: string) => {
-                    if (type.includes('klicktipp')) return 'bg-blue-100 text-blue-600'
-                    if (type.includes('dialfire')) return 'bg-purple-100 text-purple-600'
-                    if (type.includes('task')) return 'bg-emerald-100 text-emerald-600'
-                    return 'bg-yellow-100 text-yellow-600'
-                  }
-                  
-                  return (
-                    <div key={akt.id} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${getActivityColor(akt.type)}`}>
-                          {getActivityIcon(akt.type)}
-                        </div>
-                        {i < aktivitäten.length - 1 && <div className="w-0.5 h-8 bg-gray-200 mt-2" />}
-                      </div>
-                      <div className="flex-1 pt-1">
-                        <p className="text-sm font-medium text-gray-900">{akt.description}</p>
-                        
-                        {/* Show extra data fields if present */}
-                        {akt.data && Object.keys(akt.data).length > 0 && (
-                          <div className="mt-2 p-3 bg-gray-50 rounded-lg text-xs space-y-1">
-                            {Object.entries(akt.data).map(([key, value]) => (
-                              <div key={key} className="flex gap-2">
-                                <span className="font-semibold text-gray-600">{key}:</span>
-                                <span className="text-gray-700">
-                                  {Array.isArray(value) ? value.join(", ") : String(value)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <p className="text-sm font-medium text-gray-900">{akt.description}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs text-gray-400">
+            <ActivityTimeline activities={aktivitäten} />
+          </div>
+        )}
                             {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                           {akt.type && (
