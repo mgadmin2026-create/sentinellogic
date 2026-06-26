@@ -41,6 +41,8 @@ export default function RegelnPage() {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [applyingRuleId, setApplyingRuleId] = useState<string | null>(null)
+  const [applyMessage, setApplyMessage] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [config, setConfig] = useState<IntegrationConfig>({})
 
@@ -72,6 +74,35 @@ export default function RegelnPage() {
     })
     const data = await res.json()
     if (data.success) setRules((prev) => prev.map((r) => r.id === rule.id ? data.data : r))
+  }
+
+  async function applyBatchRule(ruleId: string) {
+    setApplyingRuleId(ruleId)
+    setApplyMessage('')
+
+    try {
+      const res = await fetch(`/api/rules/${ruleId}/apply-batch`, {
+        method: 'POST',
+      })
+      const result = await res.json()
+
+      if (result.success) {
+        setApplyMessage(`✅ ${result.message} (${result.applied} Kontakte aktualisiert)`)
+      } else {
+        setApplyMessage(`❌ Fehler: ${result.error}`)
+      }
+
+      setTimeout(() => {
+        setApplyMessage('')
+        setApplyingRuleId(null)
+      }, 5000)
+    } catch (err) {
+      setApplyMessage(`❌ Fehler: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setTimeout(() => {
+        setApplyMessage('')
+        setApplyingRuleId(null)
+      }, 5000)
+    }
   }
 
   async function deleteRule(id: string) {
@@ -141,6 +172,13 @@ export default function RegelnPage() {
           Alle Werte müssen vorher in <strong>Einstellungen → Integration Setup</strong> konfiguriert werden.
         </p>
       </div>
+
+      {/* Feedback Message */}
+      {applyMessage && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+          {applyMessage}
+        </div>
+      )}
 
       {/* Rules */}
       {loading ? (
@@ -212,6 +250,16 @@ export default function RegelnPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {rule.active && (
+                    <button
+                      onClick={() => applyBatchRule(rule.id)}
+                      disabled={applyingRuleId === rule.id}
+                      className="text-xs font-semibold px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 rounded-lg transition-colors"
+                      title="Auf alle bestehenden Kontakte mit dieser Quelle anwenden"
+                    >
+                      {applyingRuleId === rule.id ? '⏳ Lädt...' : '📋 Anwenden'}
+                    </button>
+                  )}
                   <button onClick={() => toggleRule(rule)}
                     className={`relative w-9 h-5 rounded-full transition-colors ${rule.active ? 'bg-emerald-500' : 'bg-gray-200'}`}>
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${rule.active ? 'translate-x-4' : 'translate-x-0.5'}`} />
