@@ -702,21 +702,6 @@ export default function KontaktDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Aktivitätshistorie</h2>
             <ActivityTimeline activities={aktivitäten} />
-          </div>
-        )}
-                            {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                          {akt.type && (
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getActivityColor(akt.type)}`}>
-                              {akt.type.replace('_', ' ')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
             )}
           </div>
         )}
