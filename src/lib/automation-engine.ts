@@ -41,6 +41,19 @@ export async function executeAutomation(
       return { executed: false, fields_set: {} }
     }
 
+    // Load config for tag ID lookup
+    const { data: configData } = await supabase
+      .from('system_config')
+      .select('config')
+      .eq('key', 'system_config')
+      .single()
+
+    const config = configData?.config || {}
+    const klicktippTagsMap = (config.klicktipp_tags || []).reduce((acc: any, tag: any) => {
+      acc[tag.tag_name] = tag.tag_id
+      return acc
+    }, {})
+
     // Load all active rules
     const { data: rules, error: rulesError } = await supabase
       .from('rules')
@@ -78,7 +91,12 @@ export async function executeAutomation(
 
     if (matchingRule.actions.klicktipp_tag) {
       fieldsToSet.klicktipp_tags = [matchingRule.actions.klicktipp_tag]
+      const tagId = klicktippTagsMap[matchingRule.actions.klicktipp_tag]
+      if (tagId) {
+        fieldsToSet.klicktipp_tag_ids = [tagId]
+      }
       fieldsSummary.klicktipp_tags = [matchingRule.actions.klicktipp_tag]
+      fieldsSummary.klicktipp_tag_ids = tagId ? [tagId] : []
     }
 
     if (matchingRule.actions.set_status) {

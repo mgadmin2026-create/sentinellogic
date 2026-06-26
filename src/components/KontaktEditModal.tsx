@@ -20,6 +20,7 @@ interface Kontakt {
   status?: string
   notes?: string
   klicktipp_tag?: string
+  automation_disabled?: boolean
 }
 
 interface Props {
@@ -286,7 +287,31 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
             </div>
           </div>
 
-          {/* Section 5: Notizen */}
+          {/* Section 5: Automation */}
+          <div className="border-b border-gray-100 pb-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-4">⚙️ Automation</h3>
+            <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Automation deaktivieren</p>
+                <p className="text-xs text-gray-500 mt-1">Keine automatischen Syncs zu KlickTipp und Dialfire</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, automation_disabled: !formData.automation_disabled })}
+                className={`relative w-12 h-6 rounded-full transition-colors ${
+                  formData.automation_disabled ? 'bg-red-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    formData.automation_disabled ? 'translate-x-5.5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Section 6: Notizen */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-4">📝 Notizen</h3>
             <textarea
