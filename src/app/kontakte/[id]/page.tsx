@@ -133,6 +133,8 @@ export default function KontaktDetailPage() {
   const [aktivitäten, setAktivitäten] = useState<Aktivität[]>([])
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [isEditingOverview, setIsEditingOverview] = useState(false)
+  const [overviewSaving, setOverviewSaving] = useState(false)
   const [pipelineSaving, setPipelineSaving] = useState(false)
 
   useEffect(() => {
@@ -291,18 +293,21 @@ export default function KontaktDetailPage() {
     }
   }
 
-  async function handleFieldUpdate(field: string, value: any) {
+  async function handleSaveOverview(changes: Record<string, any>) {
+    setOverviewSaving(true)
     try {
       const res = await fetch(`/api/kontakte/${kontaktId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
+        body: JSON.stringify(changes),
       })
       if (res.ok) {
         await loadKontakt()
       }
     } catch (err) {
-      console.error('Fehler beim Update:', err)
+      console.error('Fehler beim Speichern:', err)
+    } finally {
+      setOverviewSaving(false)
     }
   }
 
@@ -362,10 +367,14 @@ export default function KontaktDetailPage() {
             <option value="customer">Kunde</option>
           </select>
           <button
-            onClick={() => setEditModalOpen(true)}
-            className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2 rounded-lg transition-colors"
+            onClick={() => setIsEditingOverview(!isEditingOverview)}
+            className={`flex items-center gap-2 font-semibold text-sm px-4 py-2 rounded-lg transition-colors ${
+              isEditingOverview
+                ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                : 'bg-yellow-400 hover:bg-yellow-500 text-gray-900'
+            }`}
           >
-            Bearbeiten
+            {isEditingOverview ? '✓ Bearbeitung aktiv' : 'Bearbeiten'}
           </button>
           <button
             onClick={() => setDeleteConfirm(true)}
@@ -399,7 +408,9 @@ export default function KontaktDetailPage() {
         {activeTab === 'overview' && (
           <ContactOverview
             kontakt={kontakt}
-            onUpdate={handleFieldUpdate}
+            onSave={handleSaveOverview}
+            isEditing={isEditingOverview}
+            onEditChange={setIsEditingOverview}
           />
         )}
         {activeTab === 'process' && (
