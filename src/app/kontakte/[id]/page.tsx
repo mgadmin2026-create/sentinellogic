@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
-import { ActivityTimeline } from '@/components/ActivityTimeline'
 
 interface Kontakt {
   id: string
@@ -698,10 +697,55 @@ export default function KontaktDetailPage() {
           </div>
         )}
 
+        {/* TAB: Aktivitäten */}
         {activeTab === 'activities' && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-6">Aktivitätshistorie</h2>
-            <ActivityTimeline activities={aktivitäten} />
+            {aktivitäten.length === 0 ? (
+              <p className="text-gray-400 text-sm">Keine Aktivitäten vorhanden.</p>
+            ) : (
+              <div className="space-y-4">
+                {aktivitäten.map((akt, i) => {
+                  // Icon basierend auf Activity-Type
+                  const getActivityIcon = (type: string) => {
+                    if (type.includes('klicktipp')) return '🔗'
+                    if (type.includes('dialfire')) return '📞'
+                    if (type.includes('task')) return '✓'
+                    return '📝'
+                  }
+                  
+                  const getActivityColor = (type: string) => {
+                    if (type.includes('klicktipp')) return 'bg-blue-100 text-blue-600'
+                    if (type.includes('dialfire')) return 'bg-purple-100 text-purple-600'
+                    if (type.includes('task')) return 'bg-emerald-100 text-emerald-600'
+                    return 'bg-yellow-100 text-yellow-600'
+                  }
+                  
+                  return (
+                    <div key={akt.id} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${getActivityColor(akt.type)}`}>
+                          {getActivityIcon(akt.type)}
+                        </div>
+                        {i < aktivitäten.length - 1 && <div className="w-0.5 h-8 bg-gray-200 mt-2" />}
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <p className="text-sm font-medium text-gray-900">{akt.description}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-xs text-gray-400">
+                            {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {akt.type && (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getActivityColor(akt.type)}`}>
+                              {akt.type.replace('_', ' ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
         )}
@@ -848,21 +892,6 @@ export default function KontaktDetailPage() {
         )}
       </div>
 
-
-        {activeTab === 'automation' && (
-          <AutomationControls
-            contactId={kontakt.id}
-            initialData={{
-              automation_disabled: kontakt.automation_disabled ?? false,
-              dialfire_campaign_auto: kontakt.dialfire_campaign_auto ?? true,
-              dialfire_campaign_id: kontakt.dialfire_campaign_id,
-              dialfire_task_auto: kontakt.dialfire_task_auto ?? true,
-              dialfire_task_name_field: kontakt.dialfire_task_name_field,
-              klicktipp_tags_auto: kontakt.klicktipp_tags_auto ?? true,
-              klicktipp_tags_field: kontakt.klicktipp_tags_field,
-            }}
-          />
-        )}
       {/* Footer */}
       <div className="mt-8 text-center">
         <Link href="/kontakte" className="text-gray-500 hover:text-gray-900 text-sm font-medium">
