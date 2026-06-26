@@ -892,6 +892,21 @@ export default function KontaktDetailPage() {
         )}
       </div>
 
+        {activeTab === 'automation' && (
+          <AutomationControls
+            contactId={kontakt.id}
+            initialData={{
+              automation_disabled: kontakt.automation_disabled ?? false,
+              dialfire_campaign_auto: kontakt.dialfire_campaign_auto ?? true,
+              dialfire_campaign_id: kontakt.dialfire_campaign_id,
+              dialfire_task_auto: kontakt.dialfire_task_auto ?? true,
+              dialfire_task_name_field: kontakt.dialfire_task_name_field,
+              klicktipp_tags_auto: kontakt.klicktipp_tags_auto ?? true,
+              klicktipp_tags_field: kontakt.klicktipp_tags_field,
+            }}
+          />
+        )}
+
       {/* Footer */}
       <div className="mt-8 text-center">
         <Link href="/kontakte" className="text-gray-500 hover:text-gray-900 text-sm font-medium">
