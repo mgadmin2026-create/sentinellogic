@@ -12,6 +12,7 @@ interface AutomationControlsProps {
     dialfire_task_name_field?: string
     klicktipp_tags_auto: boolean
     klicktipp_tags_field?: string[]
+    klicktipp_tag_ids?: number[]
   }
   onUpdate?: (data: any) => void
 }
@@ -27,13 +28,22 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
   const [config, setConfig] = useState<IntegrationConfig>({})
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [tagIdMap, setTagIdMap] = useState<{ [key: string]: number }>({})  // Map tag names to IDs
 
   // Load integration config
   useEffect(() => {
     fetch('/api/config?key=system_config')
       .then(r => r.json())
       .then(res => {
-        if (res.success) setConfig(res.data)
+        if (res.success) {
+          setConfig(res.data)
+          // Build tag ID map
+          const map: { [key: string]: number } = {}
+          res.data.klicktipp_tags?.forEach((tag: any) => {
+            map[tag.tag_name] = tag.tag_id
+          })
+          setTagIdMap(map)
+        }
       })
       .catch(console.error)
   }, [])
@@ -43,10 +53,16 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
     setMessage('')
 
     try {
+      // If updating klicktipp_tags, also update IDs
+      const updatesToSend = { ...updates }
+      if (updates.klicktipp_tags_field) {
+        updatesToSend.klicktipp_tag_ids = updates.klicktipp_tags_field.map((tagName: string) => tagIdMap[tagName]).filter(Boolean)
+      }
+
       const response = await fetch(`/api/kontakte/${contactId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(updatesToSend),
       })
 
       const result = await response.json()
