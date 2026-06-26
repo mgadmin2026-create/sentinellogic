@@ -35,7 +35,7 @@ export default function DashboardPage() {
   const [showBanner, setShowBanner] = useState(true)
 
   useEffect(() => {
-    fetch('/api/kontakte?limit=5')
+    fetch('/api/kontakte?limit=10000')
       .then((r) => r.json())
       .then((res) => { if (res.success) setLeads(res.data) })
       .catch(console.error)
