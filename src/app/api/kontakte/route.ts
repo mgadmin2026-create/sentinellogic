@@ -276,17 +276,19 @@ export async function POST(request: NextRequest) {
           const dialfireId = dialfireResult.dialfire_id
 
           // Speichere dialfire_id in Supabase
-          await supabase
+          const { error: updateError } = await supabase
             .from('contacts')
             .update({
               dialfire_id: dialfireId,
-              dialfire_external_ref: data.id,
-              dialfire_task_name: process.env.DIALFIRE_TASK_NAME || 'call',
-              dialfire_updated_at: new Date().toISOString(),
             })
             .eq('id', data.id)
 
-          console.log(`[Dialfire] Sync erfolgreich: ${data.email} -> ID: ${dialfireId}`)
+          if (updateError) {
+            console.error(`[Dialfire] Fehler beim Speichern der ID: ${updateError.message}`)
+          } else {
+            console.log(`[Dialfire] Sync erfolgreich: ${data.email} -> ID: ${dialfireId}`)
+          }
+
           await logActivity(null, data.id, 'dialfire_synced', `Dialfire synced (task: ${process.env.DIALFIRE_TASK_NAME || 'call'}, ID: ${dialfireId})`)
         } else {
           console.warn(`[Dialfire] Sync fehlgeschlagen für ${data.email}: ${dialfireResult?.error}`)
