@@ -10,7 +10,7 @@ const CAMPAIGN_CONFIG: Record<string, { api_key: string; task_name: string }> = 
   },
   "SFU6DSEG4RU2Z6HX": {
     api_key: Deno.env.get("DIALFIRE_API_KEY_FACEBOOK")!,
-    task_name: "Anruf",
+    task_name: "anrufen_stufe",
   },
 }
 
