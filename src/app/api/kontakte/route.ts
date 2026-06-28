@@ -168,6 +168,8 @@ export async function POST(request: NextRequest) {
       city: body.city ? String(body.city).trim() : null,
       country: body.country ? String(body.country).trim() : null,
       website: body.website ? String(body.website).trim() : null,
+      mitarbeiterzahl: body.mitarbeiterzahl ? String(body.mitarbeiterzahl).trim() : null,
+      jahresumsatz: body.jahresumsatz ? String(body.jahresumsatz).trim() : null,
       source: VALID_SOURCES.includes(String(body.source ?? 'manuell')) ? body.source : 'manuell',
       status: VALID_STATUSES.includes(String(body.status ?? 'new')) ? body.status : 'new',
       assigned_user_id: body.assigned_user_id ?? null,
