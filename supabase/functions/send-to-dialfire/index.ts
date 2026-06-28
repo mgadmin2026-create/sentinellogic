@@ -21,6 +21,12 @@ interface DialfireContactPayload {
   last_name?: string
   email?: string
   company_name?: string
+  strasse?: string
+  plz?: string
+  ort?: string
+  Tätigkeit?: string
+  Mitarbeiter?: number | string
+  Jahresumsatz?: string
   [key: string]: any
 }
 
@@ -92,6 +98,12 @@ serve(async (req) => {
       last_name: contact.last_name,
       email: contact.email,
       company_name: contact.company_name,
+      strasse: contact.street,
+      plz: contact.postal_code,
+      ort: contact.city,
+      Tätigkeit: contact.position,
+      Mitarbeiter: contact.mitarbeiterzahl || contact.mitarbeitanzahl,
+      Jahresumsatz: contact.jahresumsatz,
     }
 
     const result = await createDialfireContact(payload, campaignId, config.api_key, config.task_name)
