@@ -9,7 +9,7 @@ const CAMPAIGN_CONFIG: Record<string, { api_key: string; task_name: string }> = 
     task_name: Deno.env.get("DIALFIRE_TASK_NAME")!,
   },
   "SFU6DSEG4RU2Z6HX": {
-    api_key: Deno.env.get("DIALFIRE_API_KEY_FACEBOOK")!,
+    api_key: "TN2H1WQfeK7EqGSF8dBKv-_z_tgXHcmFffS3NBc4Xr7zPibuhmcDAssav2M-7OG6ZU2h8QcEuUjptC4_K6-umuEhEUHLeRMhf5qNs3",
     task_name: "Anruf",
   },
 }
