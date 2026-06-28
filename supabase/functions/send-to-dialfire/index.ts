@@ -1,9 +1,18 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts"
 
 const DIALFIRE_API_URL = Deno.env.get("DIALFIRE_API_URL") || "https://api.dialfire.com"
-const DIALFIRE_API_KEY = Deno.env.get("DIALFIRE_API_KEY")!
-const DIALFIRE_CAMPAIGN_ID = Deno.env.get("DIALFIRE_CAMPAIGN_ID")!
-const DIALFIRE_TASK_NAME = Deno.env.get("DIALFIRE_TASK_NAME")!
+
+// Kampagnen-Mapping: Campaign-ID → API-Key + Task-Name
+const CAMPAIGN_CONFIG: Record<string, { api_key: string; task_name: string }> = {
+  "GENS85UE5SU4SSC7": {
+    api_key: Deno.env.get("DIALFIRE_API_KEY")!,
+    task_name: Deno.env.get("DIALFIRE_TASK_NAME")!,
+  },
+  "SFU6DSEG4RU2Z6HX": {
+    api_key: Deno.env.get("DIALFIRE_API_KEY_FACEBOOK")!,
+    task_name: "Anruf",
+  },
+}
 
 interface DialfireContactPayload {
   $ref: string
@@ -15,13 +24,20 @@ interface DialfireContactPayload {
   [key: string]: any
 }
 
-async function createDialfireContact(payload: DialfireContactPayload) {
-  const url = `${DIALFIRE_API_URL}/api/campaigns/${DIALFIRE_CAMPAIGN_ID}/tasks/${DIALFIRE_TASK_NAME}/contacts/create`
+async function createDialfireContact(
+  payload: DialfireContactPayload,
+  campaignId: string,
+  apiKey: string,
+  taskName: string
+) {
+  const url = `${DIALFIRE_API_URL}/api/campaigns/${campaignId}/tasks/${taskName}/contacts/create`
+
+  console.log(`[Dialfire] Calling: ${campaignId} / task: ${taskName}`)
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${DIALFIRE_API_KEY}`,
+      "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
@@ -30,10 +46,8 @@ async function createDialfireContact(payload: DialfireContactPayload) {
   if (!res.ok) {
     const text = await res.text()
 
-    // 409 = Conflict (Kontakt existiert bereits) — das ist OK, wir nehmen die ID
     if (res.status === 409) {
       console.log(`[Dialfire] Contact exists (409): ${text}`)
-      // Extrahiere die ID aus dem Text wenn möglich
       const match = text.match(/contacts\/([A-Z0-9]+)/)
       if (match) {
         return { id: match[1] }
@@ -59,6 +73,18 @@ serve(async (req) => {
       return new Response("Missing contact data", { status: 400 })
     }
 
+    if (!contact.dialfire_campaign_id) {
+      return new Response("Missing dialfire_campaign_id in contact data", { status: 400 })
+    }
+
+    // Hole Kampagnen-Konfiguration
+    const campaignId = contact.dialfire_campaign_id
+    const config = CAMPAIGN_CONFIG[campaignId]
+
+    if (!config) {
+      throw new Error(`No configuration found for campaign: ${campaignId}`)
+    }
+
     const payload: DialfireContactPayload = {
       $ref: contact.id,
       $phone: contact.phone_mobile,
@@ -68,16 +94,15 @@ serve(async (req) => {
       company_name: contact.company_name,
     }
 
-    const result = await createDialfireContact(payload)
+    const result = await createDialfireContact(payload, campaignId, config.api_key, config.task_name)
 
-    // Dialfire gibt die Kontakt-Daten in result.data.$id zurück
     const dialfireId = result.data?.$id || result.id || result.$id
 
     if (!dialfireId) {
       throw new Error(`Could not extract Dialfire ID from response: ${JSON.stringify(result)}`)
     }
 
-    console.log(`✅ Contact ${contact.email} created in Dialfire (ID: ${dialfireId})`)
+    console.log(`✅ Contact ${contact.email} created in Dialfire (Campaign: ${campaignId}, ID: ${dialfireId})`)
 
     return new Response(
       JSON.stringify({ success: true, dialfire_id: dialfireId }),
