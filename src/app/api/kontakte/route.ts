@@ -261,6 +261,8 @@ export async function POST(request: NextRequest) {
             last_name: data.last_name,
             phone_mobile: data.phone_mobile,
             company_name: data.company_name,
+            dialfire_campaign_id: updatedContact?.dialfire_campaign_id,
+            dialfire_task_name_field: updatedContact?.dialfire_task_name_field,
           },
         })
 
