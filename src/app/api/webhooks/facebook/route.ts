@@ -217,23 +217,6 @@ export async function POST(request: NextRequest) {
               }
             )
 
-            // Create note with Facebook metadata
-            await supabase
-              .from('contact_notes_history')
-              .insert({
-                contact_id: contactId,
-                content: `Facebook Lead Form Submit\nForm ID: ${formId}\nLead ID: ${leadGenId}`,
-                type: 'facebook_sync',
-                category: 'dialfire',
-                created_by: 'system',
-                metadata: {
-                  facebook_id: leadGenId,
-                  form_id: formId,
-                  facebook_phase: contact.facebook_phase,
-                  form_data: body.entry[0].changes[0].value.field_data || {},
-                },
-              })
-
             leadsProcessed++
           }
         } catch (leadError) {
