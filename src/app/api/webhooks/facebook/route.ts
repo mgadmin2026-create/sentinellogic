@@ -253,17 +253,46 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
   }
 
   const fieldMap: Record<string, string> = {
+    // Contact basics
     email: 'email',
     email_address: 'email',
     full_name: 'name',
     first_name: 'first_name',
     last_name: 'last_name',
+
+    // Phone
     phone_number: 'phone_mobile',
     phone: 'phone_mobile',
+
+    // Company info
     company: 'company_name',
+    company_name: 'company_name',
+
+    // Address
     city: 'city',
     state: 'state',
-    zip: 'postcode',
+    street: 'street',
+    address: 'street',
+    zip: 'postal_code',
+    postal_code: 'postal_code',
+    country: 'country',
+
+    // Business details (KEY FIELDS!)
+    industry: 'industry',
+    branche: 'industry',
+    mitarbeiterzahl: 'mitarbeiterzahl',
+    mitarbeitende: 'mitarbeiterzahl',
+    employee_count: 'mitarbeiterzahl',
+    employees: 'mitarbeiterzahl',
+    jahresumsatz: 'jahresumsatz',
+    revenue: 'jahresumsatz',
+    annual_revenue: 'jahresumsatz',
+    umsatz: 'jahresumsatz',
+
+    // Other
+    website: 'website',
+    position: 'position',
+    jobtitle: 'position',
   }
 
   fieldData.forEach((field) => {
@@ -276,6 +305,7 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
       contact[fieldMap[fbName]] = value.trim()
     }
 
+    // Store ALL fields in metadata for audit trail
     contact.metadata[fbName] = value.trim()
   })
 
