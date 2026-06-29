@@ -165,7 +165,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           <Field label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
           <div className="col-span-2">
-            <Field label="Versicherungstyp" field="versicherungstyp" value={getValue('versicherungstyp')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Versicherungsprodukt" field="insurance_product" value={getValue('insurance_product')} onChange={handleChange} isEditing={isEditing} />
           </div>
         </div>
       </div>
@@ -223,29 +223,6 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
         </div>
       </div>
 
-      {/* Section 4.5: Facebook Info */}
-      {kontakt.facebook_id && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">📱 Facebook</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase">Facebook ID</p>
-              <p className="text-sm text-gray-900 mt-1 font-mono">{kontakt.facebook_id || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase">Facebook Phase</p>
-              <p className="text-sm text-gray-900 mt-1">{kontakt.facebook_phase || '—'}</p>
-            </div>
-          </div>
-          {kontakt.insurance_product && (
-            <div className="mt-4">
-              <p className="text-xs text-gray-500 font-semibold uppercase">Versicherungsprodukt</p>
-              <p className="text-sm text-gray-900 mt-1">{kontakt.insurance_product}</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Section 5: Integrations (Read-Only) */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h3 className="text-sm font-semibold text-gray-900 mb-4">🔗 Integrations</h3>
@@ -269,6 +246,17 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase">Facebook ID</p>
+              <p className="text-sm text-gray-900 mt-2 font-mono">{kontakt.facebook_id || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase">Facebook Phase</p>
+              <p className="text-sm text-gray-900 mt-2">{kontakt.facebook_phase || '—'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-4">
             <div>
               <p className="text-xs text-gray-500 font-semibold uppercase">Dialfire Kampagne</p>
               <p className="text-sm text-gray-900 mt-2">{kontakt.dialfire_campaign_id || '—'}</p>
