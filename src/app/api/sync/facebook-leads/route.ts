@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     for (const lead of allLeads) {
       try {
-        const contact = mapFacebookFieldsToContact(lead.field_data)
+        const contact = mapFacebookFieldsToContact(lead.field_data, lead.qualification_status)
         contact.facebook_id = lead.id
         contact.facebook_form_id = formId
         contact.source = 'facebook'
