@@ -189,24 +189,19 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          // FIX 5: Insert with UPSERT logic to prevent race conditions
+          // FIX 5: UPSERT to handle duplicates and race conditions
           const { data: insertedData, error: insertError } = await supabase
             .from('contacts')
-            .insert([contact])
+            .upsert([contact], { onConflict: 'facebook_id' })
             .select('id')
 
           if (insertError) {
-            if (insertError.code === '23505') {
-              console.log(`Duplicate facebook_id detected for ${leadGenId}, race condition handled`)
-              leadsProcessed++
-            } else {
-              const errorMsg = `Error inserting contact: ${insertError.message}`
-              console.error(errorMsg)
-              errors.push(errorMsg)
-            }
+            const errorMsg = `Error upserting contact: ${insertError.message}`
+            console.error(errorMsg)
+            errors.push(errorMsg)
           } else if (insertedData && insertedData[0]) {
             const contactId = insertedData[0].id
-            console.log(`✅ Contact ${contactId} created from Facebook lead ${leadGenId}`)
+            console.log(`✅ Contact ${contactId} created/updated from Facebook lead ${leadGenId}`)
 
             await logActivity(
               null,

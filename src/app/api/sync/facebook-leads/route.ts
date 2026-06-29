@@ -210,32 +210,20 @@ export async function GET(request: NextRequest) {
 
         const { data: insertedData, error: insertError } = await supabase
           .from('contacts')
-          .insert([contact])
+          .upsert([contact], { onConflict: 'facebook_id' })
           .select('id')
 
         if (insertError) {
-          if (insertError.code === '23505') {
-            console.log(`Duplicate facebook_id detected for ${lead.id}`)
-            duplicateDetails.push({
-              facebook_id: lead.id,
-              email: contact.email,
-              existing_contact_id: null,
-              action: 'skipped',
-              reason: 'race condition: facebook_id already inserted',
-            })
-            skipped++
-          } else {
-            console.error(`Error inserting lead ${lead.id}:`, insertError)
-            errorDetails.push({
-              lead_id: lead.id,
-              email: contact.email,
-              error_message: insertError.message,
-            })
-            errors++
-          }
+          console.error(`Error upserting lead ${lead.id}:`, insertError)
+          errorDetails.push({
+            lead_id: lead.id,
+            email: contact.email,
+            error_message: insertError.message,
+          })
+          errors++
         } else if (insertedData && insertedData[0]) {
           const contactId = insertedData[0].id
-          console.log(`✅ Contact ${contactId} created from Facebook lead ${lead.id}`)
+          console.log(`✅ Contact ${contactId} created/updated from Facebook lead ${lead.id}`)
 
           await logActivity(
             null,
