@@ -99,35 +99,6 @@ export async function GET(request: NextRequest) {
 
     for (const lead of allLeads) {
       try {
-        const { data: existing, error: checkError } = await supabase
-          .from('contacts')
-          .select('id')
-          .eq('facebook_id', lead.id)
-          .maybeSingle()
-
-        if (checkError && checkError.code !== 'PGRST116') {
-          console.error(`Error checking lead ${lead.id}:`, checkError)
-          errorDetails.push({
-            lead_id: lead.id,
-            email: null,
-            error_message: `Duplicate check failed: ${checkError.message}`,
-          })
-          errors++
-          continue
-        }
-
-        if (existing) {
-          duplicateDetails.push({
-            facebook_id: lead.id,
-            email: null,
-            existing_contact_id: existing.id,
-            action: 'skipped',
-            reason: 'facebook_id already exists',
-          })
-          skipped++
-          continue
-        }
-
         const contact = mapFacebookFieldsToContact(lead.field_data)
         contact.facebook_id = lead.id
         contact.facebook_form_id = formId
