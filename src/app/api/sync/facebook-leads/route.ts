@@ -334,12 +334,12 @@ function mapFacebookFieldsToContact(fieldData: any[] = []): Record<string, any> 
     company: 'company_name',
     city: 'city',
     state: 'state',
-    zip: 'postcode',
+    zip: 'postal_code',
   }
 
   const customFieldMap: Record<string, string> = {
-    'in_welcher_branche_seid_ihr_tätig?': 'branche',
-    'welche_absicherung_möchtest_du_prüfen_lassen?': 'versicherungstyp',
+    'in_welcher_branche_seid_ihr_tätig?': 'industry',
+    'welche_absicherung_möchtest_du_prüfen_lassen?': 'insurance_product',
     'wie_hoch_ist_euer_jahresumsatz?': 'jahresumsatz',
     'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeiterzahl',
   }
