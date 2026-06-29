@@ -25,6 +25,9 @@ interface Kontakt {
   jahresumsatz?: string
   mitarbeitanzahl?: number
   versicherungstyp?: string
+  insurance_product?: string
+  facebook_id?: string
+  facebook_phase?: string
   klicktipp_tags?: string[]
   klicktipp_tag_ids?: number[]
   dialfire_campaign_id?: string
@@ -219,6 +222,29 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           </div>
         </div>
       </div>
+
+      {/* Section 4.5: Facebook Info */}
+      {kontakt.facebook_id && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">📱 Facebook</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase">Facebook ID</p>
+              <p className="text-sm text-gray-900 mt-1 font-mono">{kontakt.facebook_id || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase">Facebook Phase</p>
+              <p className="text-sm text-gray-900 mt-1">{kontakt.facebook_phase || '—'}</p>
+            </div>
+          </div>
+          {kontakt.insurance_product && (
+            <div className="mt-4">
+              <p className="text-xs text-gray-500 font-semibold uppercase">Versicherungsprodukt</p>
+              <p className="text-sm text-gray-900 mt-1">{kontakt.insurance_product}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Section 5: Integrations (Read-Only) */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">

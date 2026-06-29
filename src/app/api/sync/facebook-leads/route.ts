@@ -205,9 +205,27 @@ export async function GET(request: NextRequest) {
               facebook_id: lead.id,
               form_id: formId,
               source: 'facebook',
-              branche: contact.branche || null,
+              facebook_phase: contact.facebook_phase || null,
+              form_data: lead.field_data || {},
             }
           )
+
+          // Create note with Facebook metadata
+          await supabase
+            .from('contact_notes_history')
+            .insert({
+              contact_id: contactId,
+              content: `Facebook Lead Import\nForm ID: ${formId}\nLead ID: ${lead.id}\nPhase: ${contact.facebook_phase || 'Neu'}`,
+              type: 'facebook_sync',
+              category: 'dialfire',
+              created_by: 'system',
+              metadata: {
+                facebook_id: lead.id,
+                form_id: formId,
+                facebook_phase: contact.facebook_phase,
+                form_data: lead.field_data || {},
+              },
+            })
 
           synced++
           if (synced % 10 === 0) {
