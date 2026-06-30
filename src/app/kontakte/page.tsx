@@ -614,7 +614,7 @@ export default function KontaktePage() {
                     const key = columnKey as keyof ColumnVisibility
                     const isSortable = ['first_name', 'created_at', 'status'].includes(key)
                     const label = FIELD_LABELS[key]
-                    const isCritical = ['first_name', 'status'].includes(key)
+                    const isCritical = ['first_name', 'last_name', 'company_name', 'status', 'pipeline_stage', 'source', 'progress'].includes(key)
                     const isBlueField = key.includes('dialfire')
 
                     // Adaptive column widths
@@ -686,7 +686,7 @@ export default function KontaktePage() {
                       .filter(([key, visible]) => visible && key !== 'progress' && key !== 'actions')
                       .map(([columnKey]) => {
                         const key = columnKey as keyof ColumnVisibility
-                        const isCritical = ['first_name', 'status'].includes(key)
+                        const isCritical = ['first_name', 'last_name', 'company_name', 'status', 'pipeline_stage', 'source', 'progress'].includes(key)
                         let value: any = (kontakt as any)[key]
 
                         // Format value based on column type
