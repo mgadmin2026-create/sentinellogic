@@ -313,7 +313,7 @@ export default function KontaktePage() {
   }
 
   return (
-    <div className="p-4 sm:p-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap sm:flex-nowrap">
         <div>
@@ -379,44 +379,65 @@ export default function KontaktePage() {
         </div>
       </div>
 
-      {/* Tabelle */}
+      {/* Tabelle — OPTIMIERTE SPALTEN-BREITEN */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
+              <tr className="border-b border-gray-100 bg-gray-50/80 sticky top-0">
+                {/* NAME — 28% (Wichtigste Spalte, nicht kürzen) */}
                 {visibleColumns.name && (
-                  <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">
-                    <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-gray-600">
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 sm:px-4 py-3 w-[28%] min-w-52">
+                    <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-gray-700">
                       Name <SortIcon field="name" />
                     </button>
                   </th>
                 )}
+
+                {/* FIRMA — 22% (Wichtig, auf Mobile versteckt) */}
                 {visibleColumns.company && (
-                  <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Firma</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 sm:px-4 py-3 w-[22%] hidden sm:table-cell">
+                    Firma
+                  </th>
                 )}
+
+                {/* QUELLE — 11% (Badge, auf Tablet versteckt) */}
                 {visibleColumns.source && (
-                  <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Quelle</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 sm:px-4 py-3 w-[11%] hidden md:table-cell">
+                    Quelle
+                  </th>
                 )}
+
+                {/* SCHRITT — 16% (Auf Desktop, kürzt automatisch) */}
                 {visibleColumns.step && (
-                  <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Aktueller Schritt</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 sm:px-4 py-3 w-[16%] hidden lg:table-cell">
+                    Schritt
+                  </th>
                 )}
+
+                {/* FORTSCHRITT — 13% (Kompakter Progress Bar) */}
                 {visibleColumns.progress && (
-                  <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">
-                    <button onClick={() => toggleSort('progress')} className="flex items-center gap-1 hover:text-gray-600">
-                      Fortschritt <SortIcon field="progress" />
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 sm:px-4 py-3 w-[13%]">
+                    <button onClick={() => toggleSort('progress')} className="flex items-center gap-1 hover:text-gray-700">
+                      Fort. <SortIcon field="progress" />
                     </button>
                   </th>
                 )}
+
+                {/* ERSTELLT — 10% (Auf Mobile versteckt) */}
                 {visibleColumns.created && (
-                  <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">
-                    <button onClick={() => toggleSort('created_at')} className="flex items-center gap-1 hover:text-gray-600">
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 sm:px-4 py-3 w-[10%] hidden sm:table-cell">
+                    <button onClick={() => toggleSort('created_at')} className="flex items-center gap-1 hover:text-gray-700">
                       Erstellt <SortIcon field="created_at" />
                     </button>
                   </th>
                 )}
+
+                {/* AKTIONEN — 8-10% (Compact Icons) */}
                 {visibleColumns.actions && (
-                  <th className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">Aktionen</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 sm:px-3 py-3 w-[10%] text-right">
+                    Aktionen
+                  </th>
                 )}
               </tr>
             </thead>
@@ -439,35 +460,48 @@ export default function KontaktePage() {
                     key={kontakt.id}
                     className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                   >
+                    {/* NAME */}
                     {visibleColumns.name && (
-                      <td className="px-5 py-3.5">
+                      <td className="px-3 sm:px-4 py-3 w-[28%] min-w-52">
                         <Link href={`/kontakte/${kontakt.id}`} className="group">
-                          <p className="font-semibold text-yellow-600 group-hover:underline">{kontakt.first_name} {kontakt.last_name}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{kontakt.email || kontakt.id}</p>
+                          <p className="font-semibold text-yellow-600 group-hover:underline truncate">{kontakt.first_name} {kontakt.last_name}</p>
+                          <p className="text-xs text-gray-400 mt-0.5 truncate">{kontakt.email || kontakt.id}</p>
                         </Link>
                       </td>
                     )}
+
+                    {/* FIRMA */}
                     {visibleColumns.company && (
-                      <td className="px-5 py-3.5 text-gray-600">{kontakt.company_name || '—'}</td>
+                      <td className="px-3 sm:px-4 py-3 w-[22%] hidden sm:table-cell text-gray-600 truncate">
+                        {kontakt.company_name || '—'}
+                      </td>
                     )}
+
+                    {/* QUELLE */}
                     {visibleColumns.source && (
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-flex text-xs font-medium px-2.5 py-1 rounded-full ${SOURCE_COLORS[kontakt.source || 'manuell']}`}>
+                      <td className="px-3 sm:px-4 py-3 w-[11%] hidden md:table-cell">
+                        <span className={`inline-flex text-xs font-medium px-2 py-1 rounded-full ${SOURCE_COLORS[kontakt.source || 'manuell']}`}>
                           {SOURCE_LABELS[kontakt.source || 'manuell']}
                         </span>
                       </td>
                     )}
+
+                    {/* SCHRITT */}
                     {visibleColumns.step && (
-                      <td className="px-5 py-3.5">
-                        <span className="text-xs text-gray-700 font-medium truncate max-w-xs block" title={getStepLabel(kontakt.pipeline_stage)}>
-                          {getStepLabel(kontakt.pipeline_stage)}
+                      <td className="px-3 sm:px-4 py-3 w-[16%] hidden lg:table-cell">
+                        <span className="text-xs text-gray-700 font-medium truncate max-w-full block" title={getStepLabel(kontakt.pipeline_stage)}>
+                          {getStepLabel(kontakt.pipeline_stage).length > 20
+                            ? getStepLabel(kontakt.pipeline_stage).substring(0, 17) + '…'
+                            : getStepLabel(kontakt.pipeline_stage)}
                         </span>
                       </td>
                     )}
+
+                    {/* FORTSCHRITT */}
                     {visibleColumns.progress && (
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                      <td className="px-3 sm:px-4 py-3 w-[13%]">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                             <div
                               className="h-full bg-yellow-400 rounded-full transition-all"
                               style={{
@@ -481,17 +515,23 @@ export default function KontaktePage() {
                         </div>
                       </td>
                     )}
+
+                    {/* ERSTELLT */}
                     {visibleColumns.created && (
-                      <td className="px-5 py-3.5 text-gray-500 text-xs">{new Date(kontakt.created_at).toLocaleDateString('de-DE')}</td>
+                      <td className="px-3 sm:px-4 py-3 w-[10%] hidden sm:table-cell text-gray-500 text-xs">
+                        {new Date(kontakt.created_at).toLocaleDateString('de-DE')}
+                      </td>
                     )}
+
+                    {/* AKTIONEN */}
                     {visibleColumns.actions && (
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1 flex-wrap">
+                      <td className="px-2 sm:px-3 py-3 w-[10%] text-right">
+                        <div className="flex items-center gap-0.5 justify-end">
                           {/* Status Dropdown */}
                           <select
                             value={kontakt.status}
                             onChange={(e) => handleStatusChange(kontakt.id, e.target.value)}
-                            className="text-xs px-2 py-1.5 border border-gray-200 rounded hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                            className="text-xs px-1.5 sm:px-2 py-1 border border-gray-200 rounded hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {Object.entries(STATUS_LABELS).map(([key, label]) => (
@@ -499,14 +539,14 @@ export default function KontaktePage() {
                             ))}
                           </select>
 
-                          {/* Quick Actions */}
+                          {/* Quick Note */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               setShowQuickNote(kontakt.id)
                             }}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                            title="Notiz hinzufügen"
+                            className="p-1 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all flex-shrink-0"
+                            title="Notiz"
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -514,10 +554,11 @@ export default function KontaktePage() {
                             </svg>
                           </button>
 
+                          {/* Details */}
                           <Link
                             href={`/kontakte/${kontakt.id}`}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all"
-                            title="Details & Bearbeiten"
+                            className="p-1 rounded text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all flex-shrink-0"
+                            title="Details"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -526,12 +567,13 @@ export default function KontaktePage() {
                             </svg>
                           </Link>
 
+                          {/* Copy */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               handleCopyKontakt(kontakt)
                             }}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-all"
+                            className="p-1 rounded text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-all flex-shrink-0"
                             title="Kopieren"
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -540,12 +582,13 @@ export default function KontaktePage() {
                             </svg>
                           </button>
 
+                          {/* Delete */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               setDeleteConfirm(kontakt.id)
                             }}
-                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                            className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all flex-shrink-0"
                             title="Löschen"
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
