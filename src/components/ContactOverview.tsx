@@ -214,6 +214,9 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       <AccordionSection title="Kontaktdaten" icon="👤" isOpen={true} onToggle={() => {}} isPrimary={true}>
         <div className="space-y-4 sm:space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+            <Field label="Vorname" field="first_name" value={getValue('first_name')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Nachname" field="last_name" value={getValue('last_name')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Anrede" field="anrede" value={getValue('anrede')} onChange={handleChange} isEditing={isEditing} />
             <div>
               <p className="text-xs text-gray-500 font-semibold">E-Mail</p>
               <p className="text-sm text-gray-900 mt-1">
@@ -299,7 +302,6 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
         onToggle={() => toggleSection('versicherung')}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-          <Field label="Anrede" field="anrede" value={getValue('anrede')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Rechtsform" field="rechtsform" value={getValue('rechtsform')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Geburtstag GF/Inhaber" field="geburtstag_gf_inhaber" type="date" value={getValue('geburtstag_gf_inhaber')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Geschäftsführer (Anzahl)" field="geschaeftsfuehrer_anzahl" type="number" value={getValue('geschaeftsfuehrer_anzahl')} onChange={handleChange} isEditing={isEditing} />
