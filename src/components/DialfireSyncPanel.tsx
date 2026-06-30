@@ -18,9 +18,15 @@ interface Props {
   kontakt: any
 }
 
+interface SyncResult {
+  changed_fields?: string[]
+  changes?: Record<string, { old: any; new: any }>
+}
+
 export function DialfireSyncPanel({ kontakt }: Props) {
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [lastSyncResult, setLastSyncResult] = useState<SyncResult | null>(null)
 
   const dialfireInfo: DialfireInfo = {
     dialfire_id: kontakt.dialfire_id,
@@ -45,6 +51,7 @@ export function DialfireSyncPanel({ kontakt }: Props) {
 
     setSyncing(true)
     setSyncMessage(null)
+    setLastSyncResult(null)
 
     try {
       const res = await fetch('/api/dialfire/pull-sync', {
@@ -60,9 +67,16 @@ export function DialfireSyncPanel({ kontakt }: Props) {
       const data = await res.json()
 
       if (res.ok && data.success) {
-        setSyncMessage({ type: 'success', text: `✅ Sync erfolgreich: ${data.result.changed_fields.length} Felder aktualisiert` })
-        // Reload page after 2 seconds
-        setTimeout(() => window.location.reload(), 2000)
+        const fieldsText = data.result.changed_fields.length > 0
+          ? data.result.changed_fields.join(', ')
+          : 'keine'
+        setSyncMessage({
+          type: 'success',
+          text: `✅ Sync erfolgreich: ${data.result.changed_fields.length} Felder aktualisiert`
+        })
+        setLastSyncResult(data.result)
+        // Reload page after 3 seconds
+        setTimeout(() => window.location.reload(), 3000)
       } else {
         setSyncMessage({ type: 'error', text: `❌ Sync fehlgeschlagen: ${data.error}` })
       }
@@ -113,6 +127,28 @@ export function DialfireSyncPanel({ kontakt }: Props) {
             {syncMessage.text}
           </div>
         )}
+
+      {/* Letzte Sync-Details */}
+      {lastSyncResult && lastSyncResult.changed_fields && lastSyncResult.changed_fields.length > 0 && (
+        <div className="bg-blue-50 rounded-lg border border-blue-200 p-4 mt-4">
+          <h4 className="text-sm font-semibold text-blue-900 mb-3">📋 Geänderte Felder:</h4>
+          <div className="space-y-2">
+            {lastSyncResult.changed_fields.map((field) => {
+              const change = lastSyncResult.changes?.[field]
+              return (
+                <div key={field} className="text-sm text-blue-800 bg-white rounded p-2">
+                  <div className="font-medium">{field}</div>
+                  <div className="text-xs text-blue-700 mt-1">
+                    <span className="line-through text-red-600">{change?.old || '—'}</span>
+                    {' → '}
+                    <span className="text-emerald-600">{change?.new || '—'}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
       </div>
 
       {/* Last Call Info */}
