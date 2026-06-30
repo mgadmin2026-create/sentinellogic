@@ -32,6 +32,18 @@ interface Kontakt {
   klicktipp_tag_ids?: number[]
   dialfire_campaign_id?: string
   dialfire_task_name_field?: string
+  bemerkung?: string
+  anrede?: string
+  rechtsform?: string
+  geburtstag_gf_inhaber?: string
+  geschaeftsfuehrer_anzahl?: number
+  seit_wann_gewerbe?: string
+  versicherungsgesellschaft?: string
+  zahlweise?: string
+  beitrag_vorsorge?: number
+  kontoinhaber?: string
+  iban?: string
+  sparte?: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -164,6 +176,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     unternehmen: false,
     adresse: false,
+    versicherung: false,
     integrations: false,
   })
 
@@ -213,6 +226,9 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
               <p className="text-xs text-gray-500 font-semibold">Quelle</p>
               <p className="text-sm text-gray-900 mt-1">{kontakt.source?.toUpperCase() || '—'}</p>
             </div>
+          </div>
+          <div className="sm:col-span-2">
+            <Field label="Bemerkung [Dialfire]" field="bemerkung" value={getValue('bemerkung')} onChange={handleChange} isEditing={isEditing} />
           </div>
         </div>
       </AccordionSection>
@@ -272,6 +288,29 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           <Field label="Website" field="website" type="url" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
+        </div>
+      </AccordionSection>
+
+      {/* SECONDARY SECTION: Versicherungsdaten (Collapsible) */}
+      <AccordionSection
+        title="Versicherungsdaten"
+        icon="🛡️"
+        isOpen={openSections.versicherung}
+        onToggle={() => toggleSection('versicherung')}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+          <Field label="Anrede" field="anrede" value={getValue('anrede')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Rechtsform" field="rechtsform" value={getValue('rechtsform')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Geburtstag GF/Inhaber" field="geburtstag_gf_inhaber" type="date" value={getValue('geburtstag_gf_inhaber')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Geschäftsführer (Anzahl)" field="geschaeftsfuehrer_anzahl" type="number" value={getValue('geschaeftsfuehrer_anzahl')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Seit wann Gewerbe" field="seit_wann_gewerbe" type="date" value={getValue('seit_wann_gewerbe')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Versicherungsgesellschaft" field="versicherungsgesellschaft" value={getValue('versicherungsgesellschaft')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Zahlweise" field="zahlweise" value={getValue('zahlweise')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Beitrag Vorsorge" field="beitrag_vorsorge" type="number" value={getValue('beitrag_vorsorge')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Versicherungstyp" field="versicherungstyp" value={getValue('versicherungstyp')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Kontoinhaber" field="kontoinhaber" value={getValue('kontoinhaber')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="IBAN" field="iban" value={getValue('iban')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
           <div className="sm:col-span-2">
             <Field label="Versicherungsprodukt" field="insurance_product" value={getValue('insurance_product')} onChange={handleChange} isEditing={isEditing} />
           </div>
