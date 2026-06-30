@@ -18,6 +18,7 @@ const tabs = [
   { id: 'activities', label: '📝 Aktivitäten' },
   { id: 'tasks', label: '✓ Aufgaben' },
   { id: 'notes', label: '📋 Notizen' },
+  { id: 'dialfire', label: '📞 Dialfire' },
   { id: 'documents', label: '📎 Dokumente' },
   { id: 'automation', label: '⚡ Automation' },
 ]
