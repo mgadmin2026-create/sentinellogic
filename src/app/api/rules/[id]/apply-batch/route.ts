@@ -157,6 +157,7 @@ export async function POST(
                 last_name: contact.last_name,
                 phone_mobile: contact.phone_mobile,
                 company_name: contact.company_name,
+                source: contact.source,
               },
             })
 
