@@ -161,6 +161,17 @@ const FIELD_LABELS: Record<keyof ColumnVisibility, string> = {
   actions: 'Aktionen'
 }
 
+// Definierte Spalten-Reihenfolge (WICHTIG: Object.entries hat keine Reihenfolge!)
+const COLUMN_ORDER: (keyof ColumnVisibility)[] = [
+  'first_name', 'last_name', 'email', 'phone_mobile', 'phone_office', 'website',
+  'company_name', 'industry', 'position', 'jahresumsatz', 'mitarbeitanzahl',
+  'street', 'postal_code', 'city', 'country',
+  'status', 'qualität', 'pipeline_stage', 'assigned_user',
+  'source', 'facebook_id', 'facebook_phase', 'dialfire_campaign', 'dialfire_task', 'klicktipp_tags',
+  'created_at', 'updated_at', 'notes', 'bestandskunde', 'insurance_product',
+  'progress', 'actions'
+]
+
 const STATUS_LABELS: Record<string, string> = {
   new: 'Neu',
   contacted: 'Kontaktiert',
@@ -607,10 +618,10 @@ export default function KontaktePage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80 sticky top-0">
-                {/* DYNAMISCH: Loop through all visible columns except actions/progress */}
-                {Object.entries(visibleColumns)
-                  .filter(([key, visible]) => visible && key !== 'progress' && key !== 'actions')
-                  .map(([columnKey]) => {
+                {/* DYNAMISCH: Loop through all visible columns in DEFINED ORDER */}
+                {COLUMN_ORDER
+                  .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
+                  .map((columnKey) => {
                     const key = columnKey as keyof ColumnVisibility
                     const isSortable = ['first_name', 'created_at', 'status'].includes(key)
                     const label = FIELD_LABELS[key]
@@ -681,10 +692,10 @@ export default function KontaktePage() {
                     key={kontakt.id}
                     className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                   >
-                    {/* DYNAMISCH: Loop through all visible columns except progress/actions */}
-                    {Object.entries(visibleColumns)
-                      .filter(([key, visible]) => visible && key !== 'progress' && key !== 'actions')
-                      .map(([columnKey]) => {
+                    {/* DYNAMISCH: Loop through all visible columns in DEFINED ORDER */}
+                    {COLUMN_ORDER
+                      .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
+                      .map((columnKey) => {
                         const key = columnKey as keyof ColumnVisibility
                         const isCritical = ['first_name', 'last_name', 'company_name', 'status', 'pipeline_stage', 'source', 'progress'].includes(key)
                         let value: any = (kontakt as any)[key]
