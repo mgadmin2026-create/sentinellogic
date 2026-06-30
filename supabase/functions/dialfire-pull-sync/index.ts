@@ -306,7 +306,7 @@ async function pullSyncContact(
       .eq('contact_id', contactId)
       .order('version', { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle() // Use maybeSingle instead of single - handles empty result
 
     const nextVersion = (latestHistory?.version || 0) + 1
 
