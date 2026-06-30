@@ -62,7 +62,7 @@ const Field = memo(({ label, field, type = 'text', options, value, onChange, isE
   if (!isEditing) {
     return (
       <div>
-        <p className="text-xs text-gray-500 font-semibold">{label}</p>
+        <p className="text-xs text-gray-500 font-medium">{label}</p>
         <p className="text-sm text-gray-900 mt-1">{value || '—'}</p>
       </div>
     )
@@ -71,11 +71,11 @@ const Field = memo(({ label, field, type = 'text', options, value, onChange, isE
   if (type === 'select') {
     return (
       <div>
-        <p className="text-xs text-gray-500 font-semibold">{label}</p>
+        <p className="text-xs text-gray-500 font-medium">{label}</p>
         <select
           value={value || ''}
           onChange={(e) => onChange(field, e.target.value)}
-          className="w-full px-2 py-1 mt-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-yellow-400"
+          className="w-full px-2 py-1 mt-1 text-sm border-2 border-yellow-300 rounded bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
         >
           <option value="">—</option>
           {options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -86,12 +86,12 @@ const Field = memo(({ label, field, type = 'text', options, value, onChange, isE
 
   return (
     <div>
-      <p className="text-xs text-gray-500 font-semibold">{label}</p>
+      <p className="text-xs text-gray-500 font-medium">{label}</p>
       <input
         type={type}
         value={value || ''}
         onChange={(e) => onChange(field, type === 'number' ? (e.target.value ? parseInt(e.target.value) : null) : e.target.value)}
-        className="w-full px-2 py-1 mt-1 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-yellow-400"
+        className="w-full px-2 py-1 mt-1 text-sm border-2 border-yellow-300 rounded bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
         placeholder="—"
       />
     </div>
@@ -194,7 +194,9 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
   const getValue = (field: string) => editData[field] !== undefined ? editData[field] : kontakt[field as keyof Kontakt]
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-lg transition-colors ${
+      isEditing ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''
+    }`}>
       {/* PRIMARY SECTION 1: Kontaktdaten (Always Open) */}
       <AccordionSection title="Kontaktdaten" icon="👤" isOpen={true} onToggle={() => {}} isPrimary={true}>
         <div className="space-y-4 sm:space-y-6">

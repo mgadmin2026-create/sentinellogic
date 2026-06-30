@@ -355,6 +355,8 @@ export default function KontaktDetailPage() {
       <StickyContactHeader
         firstName={kontakt.first_name}
         lastName={kontakt.last_name}
+        companyName={kontakt.company_name}
+        phone={kontakt.phone_mobile}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isEditing={isEditingOverview}
