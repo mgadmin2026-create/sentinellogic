@@ -106,6 +106,8 @@ serve(async (req) => {
       plz: contact.postal_code,
       ort: contact.city,
       Tätigkeit: contact.position,
+      Herkunft: contact.source,
+      "Genaue_Tätigkeit": contact.industry,
       Mitarbeiter: contact.mitarbeiterzahl || contact.mitarbeitanzahl,
       Jahresumsatz: contact.jahresumsatz,
     }
