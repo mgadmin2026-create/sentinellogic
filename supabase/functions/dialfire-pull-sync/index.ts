@@ -337,9 +337,9 @@ async function pullSyncContact(
 
     // 11. Create activity log
     const { error: activityError } = await supabase
-      .from('contact_activities')
+      .from('activities')
       .insert({
-        contact_id: contactId,
+        lead_id: contactId,
         type: 'dialfire_synced',
         description: `Dialfire Sync — ${changedFields.length} Felder aktualisiert`,
         metadata: {
