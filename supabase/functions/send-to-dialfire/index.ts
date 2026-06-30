@@ -3,15 +3,21 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts"
 const DIALFIRE_API_URL = Deno.env.get("DIALFIRE_API_URL") || "https://api.dialfire.com"
 
 // Kampagnen-Mapping: Campaign-ID → API-Key + Task-Name
-const CAMPAIGN_CONFIG: Record<string, { api_key: string; task_name: string }> = {
-  "GENS85UE5SU4SSC7": {
-    api_key: Deno.env.get("DIALFIRE_API_KEY")!,
-    task_name: Deno.env.get("DIALFIRE_TASK_NAME")!,
-  },
-  "SFU6DSEG4RU2Z6HX": {
-    api_key: Deno.env.get("DIALFIRE_API_KEY_FACEBOOK")!,
-    task_name: "anrufen_stufe",
-  },
+function getCampaignConfig(campaignId: string): { api_key: string; task_name: string } | null {
+  switch (campaignId) {
+    case "GENS85UE5SU4SSC7":
+      return {
+        api_key: Deno.env.get("DIALFIRE_API_KEY") || "",
+        task_name: Deno.env.get("DIALFIRE_TASK_NAME") || "call",
+      }
+    case "SFU6DSEG4RU2Z6HX":
+      return {
+        api_key: Deno.env.get("DIALFIRE_API_KEY_FACEBOOK") || "",
+        task_name: "anrufen_stufe",
+      }
+    default:
+      return null
+  }
 }
 
 interface DialfireContactPayload {
@@ -85,10 +91,15 @@ serve(async (req) => {
 
     // Hole Kampagnen-Konfiguration
     const campaignId = contact.dialfire_campaign_id
-    const config = CAMPAIGN_CONFIG[campaignId]
+    const config = getCampaignConfig(campaignId)
 
     if (!config) {
       throw new Error(`No configuration found for campaign: ${campaignId}`)
+    }
+
+    if (!config.api_key) {
+      console.error(`[Dialfire] Missing API key for campaign: ${campaignId}`)
+      throw new Error(`Missing API key for campaign ${campaignId}. Check environment variables: DIALFIRE_API_KEY or DIALFIRE_API_KEY_FACEBOOK`)
     }
 
     const payload: DialfireContactPayload = {
