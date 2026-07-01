@@ -105,6 +105,18 @@ function calculateDeltas(
     industry: ['Genaue_Tätigkeit'],
     mitarbeitanzahl: ['Mitarbeiter'],
     jahresumsatz: ['Jahresumsatz'],
+    anrede: ['Anrede'],
+    rechtsform: ['Rechtsform'],
+    geburtstag_gf_inhaber: ['Geburtstag vom GF/Inhaber'],
+    geschaeftsfuehrer_anzahl: ['Wie viel Geschäftsführer'],
+    seit_wann_gewerbe: ['Seit wann Gewerbe'],
+    versicherungsgesellschaft: ['Versicherungsgesellschaft'],
+    zahlweise: ['Zahlweise'],
+    beitrag_vorsorge: ['Beitrag Vorsorge'],
+    kontoinhaber: ['Kontoinhaber'],
+    iban: ['IBAN'],
+    bemerkung: ['Bemerkung'],
+    sparte: ['Sparte'],
   }
 
   // Extract Dialfire values (prefer English, fallback to German)
