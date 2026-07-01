@@ -23,6 +23,19 @@ interface DialfireContact {
   Genaue_Tätigkeit?: string
   Mitarbeiter?: string | number
   Jahresumsatz?: string
+  Anrede?: string
+  Rechtsform?: string
+  'Geburtstag vom GF/Inhaber'?: string
+  'Wie viel Geschäftsführer'?: string | number
+  'Seit wann Gewerbe'?: string
+  Versicherungsgesellschaft?: string
+  Zahlweise?: string
+  'Beitrag Vorsorge'?: string | number
+  Kontoinhaber?: string
+  IBAN?: string
+  Bemerkung?: string
+  Sparte?: string
+  Inhaltssumme?: string
   $task_log?: Array<{
     fired: string
     status: string
