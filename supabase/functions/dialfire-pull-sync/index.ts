@@ -128,7 +128,7 @@ function calculateDeltas(
     beitrag_vorsorge: ['Beitrag Vorsorge'],
     kontoinhaber: ['Kontoinhaber'],
     iban: ['IBAN'],
-    bemerkung: ['Bemerkung'],
+    bemerkung: ['Bemerkung', 'Notizen'],
     sparte: ['Sparte'],
     inhaltssumme: ['Inhaltssumme'],
   }
