@@ -310,6 +310,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           <Field label="Kontoinhaber" field="kontoinhaber" value={getValue('kontoinhaber')} onChange={handleChange} isEditing={isEditing} />
           <Field label="IBAN" field="iban" value={getValue('iban')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Inhaltssumme" field="inhaltssumme" value={getValue('inhaltssumme')} onChange={handleChange} isEditing={isEditing} />
           <div className="sm:col-span-2">
             <Field label="Versicherungsprodukt" field="insurance_product" value={getValue('insurance_product')} onChange={handleChange} isEditing={isEditing} />
           </div>
