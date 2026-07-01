@@ -10,6 +10,7 @@ import { ContactOverview } from '@/components/ContactOverview'
 import { StickyContactHeader } from '@/components/StickyContactHeader'
 import { NotesHistory } from '@/components/NotesHistory'
 import { DialfireSyncPanel } from '@/components/DialfireSyncPanel'
+import { DialfireResponseTable } from '@/components/DialfireResponseTable'
 
 interface Kontakt {
   id: string
@@ -140,6 +141,7 @@ export default function KontaktDetailPage() {
   const [isEditingOverview, setIsEditingOverview] = useState(false)
   const [overviewSaving, setOverviewSaving] = useState(false)
   const [pipelineSaving, setPipelineSaving] = useState(false)
+  const [dialfireResponse, setDialfireResponse] = useState<Record<string, any> | null>(null)
 
   useEffect(() => {
     loadKontakt()
@@ -156,6 +158,19 @@ export default function KontaktDetailPage() {
         setNotes(data.notes || '')
         setAktivitäten(data.activities || [])
         setAufgaben(data.tasks || [])
+
+        // Load Dialfire response snapshot
+        if (data.dialfire_id) {
+          try {
+            const snapRes = await fetch(`/api/dialfire-sync/${data.id}/snapshot`)
+            const snapJson = await snapRes.json()
+            if (snapJson.success && snapJson.data?.dialfire_flat_view) {
+              setDialfireResponse(snapJson.data.dialfire_flat_view)
+            }
+          } catch (err) {
+            console.error('Fehler beim Laden der Dialfire Response:', err)
+          }
+        }
       }
     } catch (err) {
       console.error('Fehler beim Laden des Kontakts:', err)
@@ -670,7 +685,19 @@ export default function KontaktDetailPage() {
 
         {/* TAB: Dialfire */}
         {activeTab === 'dialfire' && (
-          <DialfireSyncPanel kontakt={kontakt} />
+          <div className="space-y-8">
+            {/* Sync Panel */}
+            <DialfireSyncPanel kontakt={kontakt} />
+
+            {/* Response Tabelle */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 Dialfire API Response</h2>
+              <p className="text-sm text-gray-600 mb-6">
+                Alle Felder aus der letzten Dialfire Synchronisierung. Diese Daten werden in Sentinel synchronisiert.
+              </p>
+              <DialfireResponseTable flatView={dialfireResponse} />
+            </div>
+          </div>
         )}
 
         {/* TAB: Dokumente */}
