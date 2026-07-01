@@ -53,7 +53,7 @@ export function DialfireResponseTable({ flatView, lastCallInfo, changedFields = 
         const isChanged = changedFields.includes(key)
         return { key, value, isChanged }
       })
-      .sort(([a], [b]) => a.key.localeCompare(b.key))
+      .sort((a, b) => a.key.localeCompare(b.key))
   }, [flatView, changedFields])
 
   // Nur geänderte Felder für die Haupttabelle
