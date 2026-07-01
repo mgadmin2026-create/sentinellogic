@@ -117,6 +117,7 @@ function calculateDeltas(
     iban: ['IBAN'],
     bemerkung: ['Bemerkung'],
     sparte: ['Sparte'],
+    inhaltssumme: ['Inhaltssumme'],
   }
 
   // Extract Dialfire values (prefer English, fallback to German)
