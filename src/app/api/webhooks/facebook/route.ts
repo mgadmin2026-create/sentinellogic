@@ -299,10 +299,10 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
     // Business details (KEY FIELDS!)
     industry: 'industry',
     branche: 'industry',
-    mitarbeiterzahl: 'mitarbeiterzahl',
-    mitarbeitende: 'mitarbeiterzahl',
-    employee_count: 'mitarbeiterzahl',
-    employees: 'mitarbeiterzahl',
+    mitarbeiterzahl: 'mitarbeitanzahl',
+    mitarbeitende: 'mitarbeitanzahl',
+    employee_count: 'mitarbeitanzahl',
+    employees: 'mitarbeitanzahl',
     jahresumsatz: 'jahresumsatz',
     revenue: 'jahresumsatz',
     annual_revenue: 'jahresumsatz',
@@ -329,7 +329,13 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
     value = value.trim().replace(/^[•_\s]+|[•_\s]+$/g, '').trim()
 
     if (fieldMap[fbName]) {
-      contact[fieldMap[fbName]] = value
+      const mappedField = fieldMap[fbName]
+      // Convert mitarbeitanzahl to integer if it's a numeric string
+      if (mappedField === 'mitarbeitanzahl' && /^\d+$/.test(value)) {
+        contact[mappedField] = parseInt(value, 10)
+      } else {
+        contact[mappedField] = value
+      }
     }
 
     // Store ALL fields in metadata for audit trail

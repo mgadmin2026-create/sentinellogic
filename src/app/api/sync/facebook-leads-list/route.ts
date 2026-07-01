@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
         branche: contact.branche || '',
         versicherungstyp: contact.versicherungstyp || '',
         jahresumsatz: contact.jahresumsatz || '',
-        mitarbeiterzahl: contact.mitarbeiterzahl || '',
+        mitarbeitanzahl: contact.mitarbeitanzahl || '',
         raw_fields: lead.field_data,
       }
     })
@@ -157,7 +157,7 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
     'in_welcher_branche_seid_ihr_tätig?': 'industry',
     'welche_absicherung_möchtest_du_prüfen_lassen?': 'insurance_product',
     'wie_hoch_ist_euer_jahresumsatz?': 'jahresumsatz',
-    'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeiterzahl',
+    'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeitanzahl',
   }
 
   let fullName = ''
@@ -176,7 +176,13 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
     } else if (fieldMap[fbName]) {
       contact[fieldMap[fbName]] = value
     } else if (customFieldMap[fbName]) {
-      contact[customFieldMap[fbName]] = value
+      const mappedField = customFieldMap[fbName]
+      // Convert mitarbeitanzahl to integer if it's a numeric string
+      if (mappedField === 'mitarbeitanzahl' && /^\d+$/.test(value)) {
+        contact[mappedField] = parseInt(value, 10)
+      } else {
+        contact[mappedField] = value
+      }
     }
   })
 

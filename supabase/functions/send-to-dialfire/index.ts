@@ -119,7 +119,7 @@ serve(async (req) => {
       Tätigkeit: contact.position,
       Herkunft: contact.source,
       "Genaue_Tätigkeit": contact.industry,
-      Mitarbeiter: contact.mitarbeiterzahl || contact.mitarbeitanzahl,
+      Mitarbeiter: contact.mitarbeitanzahl,
       Jahresumsatz: contact.jahresumsatz,
     }
 
