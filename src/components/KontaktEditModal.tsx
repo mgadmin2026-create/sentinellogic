@@ -46,6 +46,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
       last_name: '',
       email: '',
       status: 'new',
+      source: 'manuell',
     }
   )
   const [loading, setLoading] = useState(false)
