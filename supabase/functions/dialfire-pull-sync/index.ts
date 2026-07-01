@@ -34,6 +34,7 @@ interface DialfireContact {
   Kontoinhaber?: string
   IBAN?: string
   Bemerkung?: string
+  Notizen?: string
   Sparte?: string
   Inhaltssumme?: string
   $task_log?: Array<{
