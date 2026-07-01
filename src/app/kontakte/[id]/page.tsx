@@ -142,6 +142,7 @@ export default function KontaktDetailPage() {
   const [overviewSaving, setOverviewSaving] = useState(false)
   const [pipelineSaving, setPipelineSaving] = useState(false)
   const [dialfireResponse, setDialfireResponse] = useState<Record<string, any> | null>(null)
+  const [dialfireSnapshot, setDialfireSnapshot] = useState<any>(null)
 
   useEffect(() => {
     loadKontakt()
@@ -164,8 +165,9 @@ export default function KontaktDetailPage() {
           try {
             const snapRes = await fetch(`/api/dialfire-sync/${data.id}/snapshot`)
             const snapJson = await snapRes.json()
-            if (snapJson.success && snapJson.data?.dialfire_flat_view) {
+            if (snapJson.success && snapJson.data) {
               setDialfireResponse(snapJson.data.dialfire_flat_view)
+              setDialfireSnapshot(snapJson.data)
             }
           } catch (err) {
             console.error('Fehler beim Laden der Dialfire Response:', err)
@@ -686,16 +688,17 @@ export default function KontaktDetailPage() {
         {/* TAB: Dialfire */}
         {activeTab === 'dialfire' && (
           <div className="space-y-8">
-            {/* Sync Panel */}
-            <DialfireSyncPanel kontakt={kontakt} />
+            {/* Response Tabelle - Call-focused */}
+            <DialfireResponseTable
+              flatView={dialfireResponse}
+              lastCallInfo={dialfireSnapshot?.changes ? undefined : undefined}
+              changedFields={dialfireSnapshot?.changed_fields || []}
+            />
 
-            {/* Response Tabelle */}
+            {/* Sync Panel */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">📊 Dialfire API Response</h2>
-              <p className="text-sm text-gray-600 mb-6">
-                Alle Felder aus der letzten Dialfire Synchronisierung. Diese Daten werden in Sentinel synchronisiert.
-              </p>
-              <DialfireResponseTable flatView={dialfireResponse} />
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Sync-Zusammenfassung</h2>
+              <DialfireSyncPanel kontakt={kontakt} />
             </div>
           </div>
         )}

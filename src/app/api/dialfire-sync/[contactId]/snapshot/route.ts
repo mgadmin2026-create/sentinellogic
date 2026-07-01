@@ -10,16 +10,25 @@ export async function GET(request: NextRequest, { params }: { params: { contactI
   const contactId = params.contactId
 
   try {
-    // Get the latest Dialfire sync snapshot for this contact
-    const { data, error } = await supabase
-      .from('dialfire_sync_snapshots')
-      .select('dialfire_flat_view, created_at')
-      .eq('contact_id', contactId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+    // Get the latest Dialfire sync snapshot and sync log for this contact
+    const [snapResult, logResult] = await Promise.all([
+      supabase
+        .from('dialfire_sync_snapshots')
+        .select('dialfire_flat_view, created_at')
+        .eq('contact_id', contactId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+      supabase
+        .from('dialfire_sync_log')
+        .select('changed_fields, changes, dialfire_version')
+        .eq('contact_id', contactId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+    ])
 
-    if (error) {
+    if (snapResult.error) {
       return NextResponse.json(
         { success: false, error: 'Keine Dialfire Response vorhanden' },
         { status: 404 }
@@ -29,8 +38,10 @@ export async function GET(request: NextRequest, { params }: { params: { contactI
     return NextResponse.json({
       success: true,
       data: {
-        dialfire_flat_view: data.dialfire_flat_view,
-        created_at: data.created_at,
+        dialfire_flat_view: snapResult.data.dialfire_flat_view,
+        created_at: snapResult.data.created_at,
+        changed_fields: logResult.data?.changed_fields || [],
+        changes: logResult.data?.changes || {},
       },
     })
   } catch (err) {
