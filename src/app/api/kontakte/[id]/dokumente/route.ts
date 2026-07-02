@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { uploadDocumentToGoogleDrive, initGoogleDrive } from '@/lib/google-drive-client'
+import { uploadDocumentToGoogleDrive } from '@/lib/google-drive-oauth'
 import { logFileUploaded } from '@/lib/activities-logger'
-
-// Initialize Google Drive on startup
-if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY && process.env.GOOGLE_DRIVE_FOLDER_ID) {
-  try {
-    initGoogleDrive(process.env.GOOGLE_SERVICE_ACCOUNT_KEY, process.env.GOOGLE_DRIVE_FOLDER_ID)
-  } catch (err) {
-    console.error('[Google Drive] Initialization failed:', err)
-  }
-}
 
 // GET: List documents for a contact
 export async function GET(
@@ -76,6 +67,16 @@ export async function POST(
   try {
     const supabase = await createServerClient()
 
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
     // Get contact
     const { data: kontakt, error: kontaktError } = await supabase
       .from('contacts')
@@ -100,10 +101,11 @@ export async function POST(
     const fileBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(fileBuffer)
 
-    console.log(`[Dokumente] Uploading ${file.name} for contact ${kontaktId}`)
+    console.log(`[Dokumente] Uploading ${file.name} for contact ${kontaktId} by user ${user.id}`)
 
-    // Upload to Google Drive (with compression)
+    // Upload to Google Drive (with compression) using user's OAuth token
     const uploadResult = await uploadDocumentToGoogleDrive(
+      user.id,
       buffer,
       file.name,
       file.type,
