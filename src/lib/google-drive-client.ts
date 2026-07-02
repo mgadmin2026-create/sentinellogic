@@ -29,6 +29,7 @@ export function initGoogleDrive(serviceAccountKey: string, rootFolderId: string)
     }
 
     const keyData = JSON.parse(serviceAccountKey)
+    const cleanFolderId = rootFolderId.trim()
 
     const auth = new google.auth.GoogleAuth({
       credentials: keyData,
@@ -36,9 +37,9 @@ export function initGoogleDrive(serviceAccountKey: string, rootFolderId: string)
     })
 
     drive = google.drive({ version: 'v3', auth })
-    config = { serviceAccountKey: keyData, rootFolderId }
+    config = { serviceAccountKey: keyData, rootFolderId: cleanFolderId }
 
-    console.log('[Google Drive] ✅ Client initialized successfully')
+    console.log('[Google Drive] ✅ Client initialized successfully (Folder ID: ' + cleanFolderId + ')')
   } catch (err) {
     console.error('[Google Drive] ❌ Initialization error:', err instanceof Error ? err.message : String(err))
     throw err
