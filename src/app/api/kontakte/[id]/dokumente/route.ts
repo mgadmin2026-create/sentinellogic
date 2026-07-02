@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { uploadDocumentToGoogleDrive, initGoogleDrive } from '@/lib/google-drive-client'
-import { logActivity } from '@/lib/activities-logger'
+import { logFileUploaded } from '@/lib/activities-logger'
 
 // Initialize Google Drive on startup
 if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY && process.env.GOOGLE_DRIVE_FOLDER_ID) {
@@ -143,11 +143,11 @@ export async function POST(
     })
 
     // Log activity
-    await logActivity(
-      null,
+    await logFileUploaded(
       kontaktId,
-      'dokument_uploaded',
-      `Dokument hochgeladen: ${file.name} (${uploadResult.compressionRatio}% komprimiert)`
+      `${kontakt.first_name} ${kontakt.last_name}`,
+      file.name,
+      `${uploadResult.compressionRatio}% komprimiert`
     )
 
     return NextResponse.json({
