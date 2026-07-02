@@ -8,6 +8,7 @@ import sharp from 'sharp'
 import { PDFDocument } from 'pdf-lib'
 import * as zlib from 'zlib'
 import { promisify } from 'util'
+import { Readable } from 'stream'
 
 const gzip = promisify(zlib.gzip)
 
@@ -181,6 +182,8 @@ async function uploadFileToDrive(
   ensureInitialized()
 
   try {
+    const stream = Readable.from(fileData)
+
     const response = await drive.files.create({
       requestBody: {
         name: fileName,
@@ -189,7 +192,7 @@ async function uploadFileToDrive(
       },
       media: {
         mimeType: mimeType,
-        body: fileData,
+        body: stream,
       },
       fields: 'id',
     })
