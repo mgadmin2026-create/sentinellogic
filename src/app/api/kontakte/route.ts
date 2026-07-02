@@ -5,6 +5,7 @@ import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { executeAutomation } from '@/lib/automation-engine'
 import { logActivity, logContactCreated } from '@/lib/activities-logger'
+import { syncContactToKlickTipp } from '@/lib/klicktipp-client'
 
 // Helper: Rufe Edge Function auf
 async function invokeEdgeFunction(functionName: string, payload: any) {
@@ -203,41 +204,37 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // KlickTipp Sync: Wenn klicktipp_tag im Request, synce zu KlickTipp
-    if (body.klicktipp_tag && data?.id) {
+    // KlickTipp Sync: Synce neuen Kontakt zu KlickTipp mit Tag "Sentinel"
+    if (data?.id && data?.email) {
       try {
-        const syncResult = await invokeEdgeFunction('bright-function', {
+        const klicktippResult = await syncContactToKlickTipp({
+          id: data.id,
           email: data.email,
           first_name: data.first_name,
           last_name: data.last_name,
-          phone: data.phone_mobile,
-          tag: body.klicktipp_tag,
-          list_id: body.klicktipp_list_id,
+          company_name: data.company_name,
+          city: data.city,
+          country: data.country,
+          phone_mobile: data.phone_mobile,
+          website: data.website,
+          tagName: 'Sentinel', // Auto-assign "Sentinel" tag
         })
 
-        if (syncResult?.success) {
-          const klicktippId = syncResult.klicktipp_id
-          const klicktippTag = syncResult.tag
+        // Speichere KlickTipp ID
+        await supabase
+          .from('contacts')
+          .update({
+            klicktipp_id: klicktippResult.id,
+            klicktipp_tags: klicktippResult.tags || [],
+            klicktipp_last_sync: new Date().toISOString(),
+          })
+          .eq('id', data.id)
 
-          // Speichere klicktipp_id + tag
-          await supabase
-            .from('contacts')
-            .update({
-              klicktipp_id: klicktippId,
-              klicktipp_tags: [klicktippTag],
-              klicktipp_last_sync: new Date().toISOString(),
-            })
-            .eq('id', data.id)
-
-          console.log(`[KlickTipp] Sync erfolgreich: ${data.email} -> ID: ${klicktippId}, Tag: ${klicktippTag}`)
-          // Log Activity
-          await logActivity(null, data.id, 'klicktipp_synced', `KlickTipp synced (tag: ${klicktippTag}, ID: ${klicktippId})`)
-        } else {
-          console.warn(`[KlickTipp] Sync fehlgeschlagen für ${data.email}: ${syncResult?.error}`)
-          await logActivity(null, data.id, 'klicktipp_sync_failed', `KlickTipp sync failed: ${syncResult?.error || 'Unknown error'}`)
-        }
+        console.log(`✅ [KlickTipp] Kontakt synced: ${data.email} (KlickTipp ID: ${klicktippResult.id})`)
+        await logActivity(null, data.id, 'klicktipp_synced', `KlickTipp synced mit Tag "Sentinel"`)
       } catch (err) {
-        console.error(`[KlickTipp] Fehler beim Sync für ${data.email}:`, err)
+        console.error(`[KlickTipp] Sync failed für ${data.email}:`, err)
+        await logActivity(null, data.id, 'klicktipp_sync_failed', `KlickTipp sync failed: ${String(err)}`)
       }
     }
 
