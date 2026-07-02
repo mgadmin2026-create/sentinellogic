@@ -3,7 +3,7 @@
  * Handles contacts, tags, and opt-in processes
  */
 
-const KLICKTIPP_API_URL = 'https://api.klicktipp.com/v1'
+const KLICKTIPP_API_URL = 'https://api.klicktipp.com'
 
 interface KlickTippConfig {
   developerKey: string

@@ -1,0 +1,53 @@
+import { NextResponse } from 'next/server'
+
+async function testKeyOrder(order: string, devKey: string, custKey: string) {
+  let credentials: string
+
+  if (order === 'dev:cust') {
+    credentials = `${devKey}:${custKey}`
+  } else {
+    credentials = `${custKey}:${devKey}`
+  }
+
+  const encoded = Buffer.from(credentials).toString('base64')
+  const authHeader = `Basic ${encoded}`
+
+  const response = await fetch('https://api.klicktipp.com/tag', {
+    method: 'GET',
+    headers: {
+      Authorization: authHeader,
+      'Content-Type': 'application/json',
+    },
+  })
+
+  const body = await response.text()
+
+  return {
+    order,
+    status: response.status,
+    statusText: response.statusText,
+    body: body.substring(0, 100),
+    credentialsPreview: credentials.substring(0, 30) + '...',
+  }
+}
+
+export async function GET() {
+  try {
+    const developerKey = process.env.KLICKTIPP_DEVELOPER_KEY
+    const customerKey = process.env.KLICKTIPP_CUSTOMER_KEY
+
+    if (!developerKey || !customerKey) {
+      return NextResponse.json({ error: 'Missing keys' }, { status: 400 })
+    }
+
+    // Test both orders
+    const result1 = await testKeyOrder('dev:cust', developerKey, customerKey)
+    const result2 = await testKeyOrder('cust:dev', developerKey, customerKey)
+
+    return NextResponse.json({
+      results: [result1, result2],
+    })
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
