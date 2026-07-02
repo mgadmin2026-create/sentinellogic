@@ -23,17 +23,26 @@ let config: GoogleDriveConfig | null = null
  * Initialize Google Drive client
  */
 export function initGoogleDrive(serviceAccountKey: string, rootFolderId: string) {
-  const keyData = JSON.parse(serviceAccountKey)
+  try {
+    if (!serviceAccountKey || !rootFolderId) {
+      throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_KEY or GOOGLE_DRIVE_FOLDER_ID env vars')
+    }
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: keyData,
-    scopes: ['https://www.googleapis.com/auth/drive'],
-  })
+    const keyData = JSON.parse(serviceAccountKey)
 
-  drive = google.drive({ version: 'v3', auth })
-  config = { serviceAccountKey: keyData, rootFolderId }
+    const auth = new google.auth.GoogleAuth({
+      credentials: keyData,
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    })
 
-  console.log('[Google Drive] Client initialized')
+    drive = google.drive({ version: 'v3', auth })
+    config = { serviceAccountKey: keyData, rootFolderId }
+
+    console.log('[Google Drive] ✅ Client initialized successfully')
+  } catch (err) {
+    console.error('[Google Drive] ❌ Initialization error:', err instanceof Error ? err.message : String(err))
+    throw err
+  }
 }
 
 /**
