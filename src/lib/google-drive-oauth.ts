@@ -205,6 +205,7 @@ export async function uploadDocumentToGoogleDrive(
 
     return {
       fileId: response.data.id!,
+      fileName: fileName,
       ordnerId: ordnerId,
       ordnerName: ordnerName,
       originalSize: file.length,
