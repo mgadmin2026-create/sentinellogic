@@ -165,6 +165,7 @@ export async function uploadDocumentToGoogleDrive(
   kontaktName: string
 ): Promise<{
   fileId: string
+  fileName: string
   ordnerId: string
   ordnerName: string
   originalSize: number
