@@ -88,6 +88,7 @@ export default function RegelnPage() {
 
       if (result.success) {
         setApplyMessage(`✅ ${result.message} (${result.applied} Kontakte aktualisiert)`)
+        loadRules() // Ausführungszähler in der Anzeige aktualisieren
       } else {
         setApplyMessage(`❌ Fehler: ${result.error}`)
       }

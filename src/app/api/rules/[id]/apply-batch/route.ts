@@ -64,6 +64,13 @@ export async function POST(
       )
     }
 
+    // Ausführungszähler hochzählen: jede manuelle Ausführung wird gezählt,
+    // auch wenn 0 Kontakte matchen (die Route returned sonst frueh).
+    await supabase
+      .from('rules')
+      .update({ runs: (rule.runs ?? 0) + 1 })
+      .eq('id', ruleId)
+
     // 2. Find contacts matching rule source
     // Skip: automation_disabled=true, status='customer'
     const { data: contacts, error: contactsError } = await supabase
