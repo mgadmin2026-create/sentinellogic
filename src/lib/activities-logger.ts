@@ -20,6 +20,8 @@ export type ActivityType =
   | 'facebook_skipped_duplicate'
   | 'automation_executed'
   | 'automation_skipped'
+  | 'notification_sent'
+  | 'notification_failed'
 
 interface ActivityData {
   [key: string]: any

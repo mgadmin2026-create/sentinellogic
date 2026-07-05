@@ -1,15 +1,19 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
+import { sendRuleBatchNotification } from '@/lib/rule-notifications'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface Rule {
   id: string
+  name?: string
   condition_source: string
   actions: {
     dialfire_campaign?: string
     dialfire_task_name?: string
     klicktipp_tag?: string
     set_status?: string
+    send_notification?: boolean
+    notification_email?: string
   }
 }
 
@@ -87,21 +91,17 @@ export async function POST(
       )
     }
 
-    if (!contacts || contacts.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'Keine Kontakte gefunden, die diese Regel erfüllen',
-        applied: 0,
-        failed: 0,
-      })
-    }
+    // Kein Früh-Return bei 0 Kontakten: Ausführung soll trotzdem gezählt und
+    // (falls konfiguriert) eine Benachrichtigung gesendet werden. Die leere
+    // Schleife unten wird einfach nicht durchlaufen.
 
     // 3. Apply rule to each contact
+    const contactList = contacts ?? []
     let appliedCount = 0
     let failedCount = 0
     const errors: string[] = []
 
-    for (const contact of contacts) {
+    for (const contact of contactList) {
       try {
         // Build fields to update from rule actions
         const fieldsToSet: any = {}
@@ -219,13 +219,26 @@ export async function POST(
       }
     }
 
+    // E-Mail-Benachrichtigung: eine Summary-Mail pro manueller Ausfuehrung
+    if (rule.actions.send_notification && rule.actions.notification_email) {
+      const sent = await sendRuleBatchNotification({
+        to: rule.actions.notification_email,
+        ruleName: rule.name || 'Regel',
+        appliedCount,
+        actions: rule.actions,
+      })
+      console.log(
+        `[Batch] Benachrichtigung ${sent ? 'gesendet' : 'fehlgeschlagen'} an ${rule.actions.notification_email}`
+      )
+    }
+
     // 4. Return summary
     return NextResponse.json({
       success: true,
       message: `Regel auf ${appliedCount} Kontakte angewendet`,
       applied: appliedCount,
       failed: failedCount,
-      total: contacts.length,
+      total: contactList.length,
       errors: errors.length > 0 ? errors : undefined,
     })
   } catch (err) {

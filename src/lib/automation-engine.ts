@@ -1,8 +1,10 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
+import { sendRuleNotification } from '@/lib/rule-notifications'
 
 interface Rule {
   id: string
+  name?: string
   active: boolean
   condition_source: string
   actions: {
@@ -10,6 +12,8 @@ interface Rule {
     dialfire_campaign?: string
     dialfire_task_name?: string
     set_status?: string
+    send_notification?: boolean
+    notification_email?: string
   }
 }
 
@@ -73,6 +77,37 @@ export async function executeAutomation(
     if (!matchingRule) {
       console.log(`[Automation] No matching rule for source: ${contactSource}`)
       return { executed: false, fields_set: {} }
+    }
+
+    // E-Mail-Benachrichtigung (unabhaengig davon, ob Felder gesetzt werden)
+    if (matchingRule.actions.send_notification && matchingRule.actions.notification_email) {
+      const { data: kontakt } = await supabase
+        .from('contacts')
+        .select('first_name, last_name, email')
+        .eq('id', contactId)
+        .single()
+
+      const contactName = kontakt
+        ? `${kontakt.first_name ?? ''} ${kontakt.last_name ?? ''}`.trim()
+        : 'Kontakt'
+
+      const sent = await sendRuleNotification({
+        to: matchingRule.actions.notification_email,
+        contactName,
+        contactEmail: kontakt?.email,
+        ruleName: matchingRule.name || 'Regel',
+        actions: matchingRule.actions,
+      })
+
+      await logActivity(
+        null,
+        contactId,
+        sent ? 'notification_sent' : 'notification_failed',
+        sent
+          ? `Benachrichtigung gesendet an ${matchingRule.actions.notification_email}`
+          : `Benachrichtigung fehlgeschlagen (${matchingRule.actions.notification_email})`,
+        { rule_id: matchingRule.id }
+      )
     }
 
     // Prepare fields to update
