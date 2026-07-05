@@ -21,7 +21,11 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Database** | Supabase PostgreSQL | pgvector-ready, RLS-capable |
 | **Auth** | TBD | Session-based (planned) |
 | **Hosting** | Vercel | Auto-deploy on `git push main` |
-| **Version** | 0.3.0 — MVP | Aktiv in Entwicklung |
+| **Email** | Resend API | Transaktional (Domain: onlinefirst.eu) |
+| **Document Storage** | Google Drive OAuth | Zentrale System-Ablage + Kompression |
+| **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
+| **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
+| **Version** | 0.4.0 — Automation & Integrations | Aktiv in Entwicklung |
 
 ---
 
@@ -31,45 +35,55 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 | Table | Purpose | Key Columns |
 |-------|---------|------------|
-| `contacts` | Kontakt-Stammdaten | id, first_name, last_name, email, source, status, pipeline_stage |
-| `activities` | Aktivitäts-Audit-Trail | id, lead_id, type, description, data, created_at |
-| `tasks` | Aufgaben pro Kontakt | id, titel, status, priorität, fällig |
+| `contacts` | Kontakt-Stammdaten | id, first_name, last_name, email, source, status, pipeline_stage, dialfire_campaign_id, dialfire_task_name_field, dialfire_id, klicktipp_id, automation_disabled |
+| `activities` | Aktivitäts-Audit-Trail | id, contact_id, type, description, data, created_at |
+| `tasks` | Aufgaben pro Kontakt | id, contact_id, title, status, priority, due_date |
+| `rules` | Automation Rules | id, name, active, condition_source, actions (JSON), runs |
 | `users` | Teambenutzer | id, email, name, active |
+| `dokumente_metadata` | Google Drive Dokumente-Index | id, contact_id, file_name, file_size, compressed_size, compression_ratio, google_drive_file_id, uploaded_at |
+| `google_drive_system_token` | OAuth System-Token (Single-Row) | id, access_token, refresh_token, expires_at, connected_email, root_folder_id |
 
 ### Supporting Tables
 
 | Table | Purpose |
 |-------|---------|
-| `opportunities` | Exists but removed from UI (v0.3.0) |
+| `opportunities` | Removed from UI (v0.3.0) |
 | `pipeline_stages` | Konfigurierbare 12-Schritt-Pipeline |
 | `sync_log` | Sync-History für Lead-Import |
-| `rules` | Automation Rules (geplant) |
 
 ---
 
-## Feature-Status (v0.3.0)
+## Feature-Status (v0.4.0)
 
-### ✅ Implemented
+### ✅ Implemented (v0.4.0)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| **Kontakt-Verwaltung** | ✅ Done | CRUD, Duplikat-Prüfung |
+| **Kontakt-Verwaltung** | ✅ Done | CRUD, Duplikat-Prüfung, Automation-Integration |
 | **12-Schritt-Pipeline** | ✅ Done | Stepper, Auto-Status, Fälligkeitsdaten |
-| **Activity Logging** | ✅ Done | Alle Kontakt-Änderungen protokolliert |
+| **Activity Logging** | ✅ Done | Alle Kontakt-Änderungen protokolliert + Automation-Events |
 | **Aufgaben-Management** | ✅ Done | Tasks mit Status, Priorität, Fälligkeitsdatum |
-| **Aktivitäten-Tab** | ✅ Done | Chronologische Timeline |
+| **Aktivitäten-Tab** | ✅ Done | Chronologische Timeline mit Automation-Events |
 | **Release Notes** | ✅ Done | In-App Release-History mit Banners |
+| **Automation Rules** | ✅ Done | Trigger auf source (Facebook, Calendly, CSV, Email, Manuell); Auto-Feld-Befüllung (Dialfire Campaign/Task, KlickTipp Tags); Manuelle Batch-Ausführung |
+| **Automation Engine** | ✅ Done | Läuft automatisch bei Kontakt-Erstellung; matched Regel → setzt Felder → triggt Sync |
+| **KlickTipp Sync** | ✅ Done | Auto-Sync bei Kontakt-Erstellung mit Tag "Sentinel"; Activity Logging |
+| **Dialfire Sync** | ✅ Done | Create-Pfad + Batch-Pfad; Edge Function mit per-Rule Task-Name; Payload: Alle Felder (Adresse, Industrie, Mitarbeiterzahl, etc.) |
+| **Google Drive Dokumentenablage** | ✅ Done | Zentrale System-Ablage (nicht per-User); OAuth mit Auto-Refresh; Kompression (sharp für Bilder/75%, gzip Docs); Statistik-Tracking; Globales `/dokumente` + Kontakt-Tabs |
+| **E-Mail-Benachrichtigungen** | ✅ Done | Resend API; Auto-Pfad (pro Kontakt) + Manuell-Pfad (Summary pro Lauf); Versendet wenn send_notification=true in Regel |
+| **Regeln-Management** | ✅ Done | `/regeln` Page: Anlegen, Bearbeiten, Löschen, Manuelle Ausführung, Counter (runs), Benachrichtigungen |
 
-### ⏳ Planned
+### ⏳ Planned (v0.5+)
 
 | Feature | Target | Notes |
 |---------|--------|-------|
-| **User Authentication** | v0.4 | Session-based Login |
-| **Teams & Permissions** | v0.4 | Role-based Access Control |
-| **Advanced Filtering** | v0.4 | Search, Filter, Sort auf allen Listen |
-| **Automation Rules** | v0.5 | Trigger-based Actions |
-| **Reporting & Analytics** | v0.5 | Dashboards, KPI-Tracking |
-| **File Storage** | v0.5 | Upload & Link Files to Contacts |
+| **User Authentication** | v0.5 | Session-based Login |
+| **Teams & Permissions** | v0.5 | Role-based Access Control |
+| **Auto/Manuell Toggles** | v0.5 | Pro Feld deaktivierbar; UI mit Dropdown/Label |
+| **Automation Settings UI** | v0.5 | `/einstellungen` Sektion: Dialfire Kampagnen, Tasks, KlickTipp Tags (texarea → system_config) |
+| **Advanced Filtering** | v0.5 | Search, Filter, Sort auf allen Listen |
+| **Dialfire Campaign Flexibilität** | v0.5 | Nicht hartcodiert; konfigurierbar via system_config (aktuell nur 2 IDs in Edge-Function) |
+| **Reporting & Analytics** | v0.5+ | Dashboards, KPI-Tracking, Regeln-Statistik |
 
 ### ❌ Removed (v0.3.0)
 
@@ -179,6 +193,39 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.4.0 (2026-07-05) — Automation, Integrations & Document Management
+
+**Automation Engine & Rules:**
+- ✅ `automation-engine.ts` implementiert; läuft automatisch bei Kontakt-Erstellung
+- ✅ Regelunterschiede (condition_source) und automatische Feld-Befüllung
+- ✅ Manuelle Batch-Ausführung via `/api/rules/[id]/apply-batch`; Counter inkrementiert auch bei 0 Kontakten
+- ✅ `/regeln` Seite: Anlegen, Bearbeiten, Löschen, Manuell-Button, Benachrichtigungen
+- ✅ Activity Logging für Automation-Events (automation_executed, automation_skipped, notification_sent/failed)
+
+**E-Mail-Benachrichtigungen:**
+- ✅ `rule-notifications.ts` Lib (Resend API)
+- ✅ Auto-Pfad: Eine Mail pro Kontakt wenn Regel matcht
+- ✅ Manuell-Pfad: Eine Summary-Mail pro Batch-Lauf (kein Spam)
+- ✅ Versendet von noreply@onlinefirst.eu (Domain verifiziert)
+
+**Dialfire Sync — Bug Fixes:**
+- ✅ Fehlende `dialfire_campaign_id` in Batch-Payload gefixt
+- ✅ Fehlende Felder hinzugefügt: `industry`, `source`, `mitarbeitanzahl`, `jahresumsatz`
+- ✅ Per-Regel Task-Name (contact.dialfire_task_name_field) hat Priorität über Kampagnen-Default
+- ✅ Edge-Function aktualisiert: Payload-Struktur standardisiert
+
+**Google Drive Dokumentenablage:**
+- ✅ Zentrale System-Token-Ablage (nicht per-User); `google_drive_system_token` Single-Row-Tabelle
+- ✅ OAuth mit Auto-Refresh; Ablage unter "SentinelLogic Dokumente" Root-Ordner
+- ✅ Kompression: sharp (Bilder/JPEG/PNG → 75% Qualität), gzip Level 9 (PDF/Docs); Fallback auf Original
+- ✅ Statistik-Tracking: original_size, compressed_size, compression_ratio per Datei
+- ✅ Global `/dokumente` Seite: Übersicht, Statistik-Kacheln, Suche, Drive-Link
+- ✅ Kontakt-Tabs: Upload-UI mit Drag&Drop, Kompression-Metriken, Drive-Folder-Link pro Kontakt
+
+**KlickTipp Sync:**
+- ✅ Auto-Sync bei Kontakt-Erstellung mit "Sentinel" Tag
+- ✅ Activity Logging (klicktipp_synced, klicktipp_sync_failed)
+
 ### v0.3.0 (2026-06-22) — Activity Logging Release
 
 - ✅ Activity Logging System mit `src/lib/activities-logger.ts`
@@ -186,9 +233,6 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 - ✅ Aktivitäten-Tab im Kontakt-Detail
 - ✅ Aufgaben-Tab im Kontakt-Detail
 - ✅ Opportunities aus UI entfernt
-- ✅ Auto-Logging für Kontakt-Erstellung
-- ✅ Auto-Logging für Pipeline-Fortschritt
-- ✅ Release Notes v0.3.0 dokumentiert
 
 ### v0.2.0 (2026-06-20) — Pipeline Release
 
@@ -198,18 +242,23 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ---
 
-## Known Issues
+## Known Issues & Open Tasks
 
-### High Priority
+### High Priority (v0.4+)
+
+- [ ] **Dialfire Kampagnen-Flexibilität:** Nur 2 IDs hartcodiert in Edge-Function (GENS85UE5SU4SSC7, SFU6DSEG4RU2Z6HX); sollte via system_config konfigurierbar sein
+- [ ] **Auto/Manuell Toggles:** Kontakt-Detail braucht Pro-Feld Toggles (dialfire_campaign_auto, dialfire_task_auto, etc.)
+- [ ] **Automation Settings UI:** `/einstellungen` neue Sektion für Kampagnen/Tasks/Tags config (Textareas → system_config)
+- [ ] **Dialfire Test-Kontakt:** YWAY4QBKJVWG69PQ noch manuell in Dialfire UI löschen
+
+### Medium Priority (v0.5+)
 
 - [ ] DELETE-Logging (kontakt löschen loggen)
-- [ ] Task-API Routes (CRUD)
-
-### Medium Priority
-
-- [ ] User Authentication
-- [ ] Team Permissions
-- [ ] Advanced Search
+- [ ] Task-API Routes (vollständiges CRUD)
+- [ ] User Authentication & Sessions
+- [ ] Team Permissions & Rollen
+- [ ] Advanced Search & Filtering
+- [ ] Regression-Tests für Automation-Engine
 
 ---
 
@@ -223,4 +272,21 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-06-22 — v0.3.0 Activity Logging & Audit Trail Implementation*
+## Kritische Dateien (v0.4.0)
+
+| Datei | Zweck |
+|-------|-------|
+| `src/lib/automation-engine.ts` | Automation-Logik: Regel-Matching, Feld-Befüllung, Sync-Trigger |
+| `src/lib/rule-notifications.ts` | E-Mail-Benachrichtigungen via Resend (Auto + Batch) |
+| `src/app/api/rules/[id]/apply-batch/route.ts` | Manuelle Batch-Ausführung + Zähler + Mail |
+| `src/app/regeln/page.tsx` | UI für Regel-Verwaltung und manuelle Ausführung |
+| `supabase/functions/send-to-dialfire/index.ts` | Edge-Function: Dialfire API Integration mit Kampagnen-Mapping |
+| `src/lib/google-drive-oauth.ts` | Google Drive OAuth + Kompression + Folder-Struktur |
+| `src/app/api/kontakte/[id]/dokumente/route.ts` | Document Upload + Kompression + Metadata-Speicherung |
+| `src/app/einstellungen/dokumente/page.tsx` | OAuth-Connection UI |
+| `src/app/dokumente/page.tsx` | Global Document Overview + Stats |
+| `supabase/migrations/0022_google_drive_system_token.sql` | Google Drive System-Token Single-Row-Tabelle |
+
+---
+
+*Last Updated: 2026-07-05 — v0.4.0 Automation Engine, E-Mail Notifications, Dialfire Fixes & Google Drive Document Management*
