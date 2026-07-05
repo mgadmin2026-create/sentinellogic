@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.redirect('/login?error=not_authenticated')
+      return NextResponse.redirect(new URL('/login?error=not_authenticated', request.url))
     }
 
     // Get authorization code and state
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state')
 
     if (!code || !state) {
-      return NextResponse.redirect('/dashboard?error=missing_code_or_state')
+      return NextResponse.redirect(new URL('/dashboard?error=missing_code_or_state', request.url))
     }
 
     console.log('[Google Auth] Callback received for user:', user.id)
@@ -41,16 +41,16 @@ export async function GET(request: NextRequest) {
 
     if (insertError) {
       console.error('[Google Auth] Failed to store tokens:', insertError)
-      return NextResponse.redirect('/dashboard?error=token_storage_failed')
+      return NextResponse.redirect(new URL('/dashboard?error=token_storage_failed', request.url))
     }
 
     console.log('[Google Auth] ✅ Tokens stored for user:', user.id)
 
     // Redirect to dashboard
-    return NextResponse.redirect('/dashboard?success=google_auth_connected')
+    return NextResponse.redirect(new URL('/dashboard?success=google_auth_connected', request.url))
   } catch (err) {
     console.error('[Google Auth] Callback error:', err)
     const errorMsg = err instanceof Error ? err.message : 'OAuth callback failed'
-    return NextResponse.redirect(`/dashboard?error=${encodeURIComponent(errorMsg)}`)
+    return NextResponse.redirect(new URL(`/dashboard?error=${encodeURIComponent(errorMsg)}`, request.url))
   }
 }
