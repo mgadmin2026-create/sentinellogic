@@ -17,7 +17,7 @@ export async function GET(
 
     const { data: kontakt, error: kontaktError } = await supabase
       .from('contacts')
-      .select('id, first_name, last_name, google_drive_ordner_id, dokumente_count, dokumente_total_size')
+      .select('id, first_name, last_name, kontakt_typ, google_drive_ordner_id, dokumente_count, dokumente_total_size')
       .eq('id', kontaktId)
       .single()
 
@@ -42,6 +42,7 @@ export async function GET(
       kontakt: {
         id: kontakt.id,
         name: `${kontakt.first_name} ${kontakt.last_name}`,
+        kontakt_typ: kontakt.kontakt_typ || 'gewerbe',
         ordner_id: kontakt.google_drive_ordner_id,
         ordner_url: kontakt.google_drive_ordner_id
           ? `https://drive.google.com/drive/folders/${kontakt.google_drive_ordner_id}`
@@ -79,6 +80,7 @@ export async function POST(
 
     const formData = await request.formData()
     const file = formData.get('file') as File | null
+    const kategorie = String(formData.get('kategorie') || 'Sonstiges').trim() || 'Sonstiges'
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -87,7 +89,7 @@ export async function POST(
     const buffer = Buffer.from(await file.arrayBuffer())
     const kontaktName = `${kontakt.first_name} ${kontakt.last_name}`.trim()
 
-    console.log(`[Dokumente] Upload ${file.name} für Kontakt ${kontaktId}`)
+    console.log(`[Dokumente] Upload ${file.name} für Kontakt ${kontaktId} (Kategorie: ${kategorie})`)
 
     // Upload ins zentrale System-Konto
     let uploadResult
@@ -97,7 +99,8 @@ export async function POST(
         file.name,
         file.type || 'application/octet-stream',
         kontaktId,
-        kontaktName
+        kontaktName,
+        kategorie
       )
     } catch (uploadErr) {
       const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr)
@@ -110,11 +113,11 @@ export async function POST(
       )
     }
 
-    // Ordner-ID am Kontakt merken (erster Upload)
-    if (kontakt.google_drive_ordner_id !== uploadResult.ordnerId) {
+    // Kontakt-Ordner-ID am Kontakt merken (erster Upload) — NICHT den Kategorie-Unterordner
+    if (kontakt.google_drive_ordner_id !== uploadResult.kontaktOrdnerId) {
       await supabase
         .from('contacts')
-        .update({ google_drive_ordner_id: uploadResult.ordnerId })
+        .update({ google_drive_ordner_id: uploadResult.kontaktOrdnerId })
         .eq('id', kontaktId)
     }
 
@@ -125,6 +128,7 @@ export async function POST(
         kontakt_id: kontaktId,
         ordner_id: uploadResult.ordnerId,
         ordner_name: uploadResult.ordnerName,
+        kategorie: uploadResult.kategorie,
         file_id: uploadResult.fileId,
         file_name: uploadResult.fileName,
         file_type: file.type,

@@ -173,6 +173,7 @@ export async function POST(request: NextRequest) {
       jahresumsatz: body.jahresumsatz ? String(body.jahresumsatz).trim() : null,
       source: VALID_SOURCES.includes(String(body.source ?? 'manuell')) ? body.source : 'manuell',
       status: VALID_STATUSES.includes(String(body.status ?? 'new')) ? body.status : 'new',
+      kontakt_typ: ['privat', 'gewerbe'].includes(String(body.kontakt_typ)) ? body.kontakt_typ : 'gewerbe',
       assigned_user_id: body.assigned_user_id ?? null,
       notes: body.notes ? String(body.notes).trim() : null,
       pipeline_stage: 'lead_in',

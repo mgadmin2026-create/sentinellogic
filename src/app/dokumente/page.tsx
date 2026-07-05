@@ -9,6 +9,7 @@ interface Dokument {
   file_id: string
   file_name: string
   file_type: string | null
+  kategorie?: string
   original_size: number
   compressed_size: number
   compression_ratio: number
@@ -174,7 +175,12 @@ export default function DokumentePage() {
                 filtered.map((d) => (
                   <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3">
-                      <span className="font-medium text-gray-900 truncate block max-w-xs">📄 {d.file_name}</span>
+                      <span className="flex items-center gap-2 max-w-xs">
+                        <span className="font-medium text-gray-900 truncate">📄 {d.file_name}</span>
+                        <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                          {(d.kategorie || 'Sonstiges').replace('/', ' / ')}
+                        </span>
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/kontakte/${d.kontakt_id}`} className="text-blue-600 hover:text-blue-700 hover:underline">

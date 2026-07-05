@@ -17,6 +17,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'klicktipp_id', 'klicktipp_tags', 'klicktipp_tag_ids', 'klicktipp_last_sync',
   'dialfire_id', 'dialfire_external_ref', 'dialfire_task_name', 'dialfire_updated_at', 'dialfire_sync_error',
   'automation_disabled', 'dialfire_campaign_auto', 'dialfire_campaign_id', 'dialfire_task_auto', 'dialfire_task_name_field', 'klicktipp_tags_auto', 'klicktipp_tags_field',
+  'kontakt_typ',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
@@ -127,6 +128,9 @@ export async function PATCH(
     }
     if (raw.status != null && !VALID_STATUSES.includes(String(raw.status))) {
       delete raw.status
+    }
+    if (raw.kontakt_typ != null && !['privat', 'gewerbe'].includes(String(raw.kontakt_typ))) {
+      delete raw.kontakt_typ
     }
 
     // Pipeline-Stage Validierung & Auto-Status

@@ -26,6 +26,7 @@ interface Kontakt {
   jahresumsatz?: string
   mitarbeitanzahl?: number
   versicherungstyp?: string
+  kontakt_typ?: string
   assigned_user_name?: string
   dialfire_campaign_id?: string
   dialfire_task_name_field?: string
@@ -47,6 +48,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
       email: '',
       status: 'new',
       source: 'manuell',
+      kontakt_typ: 'gewerbe',
     }
   )
   const [loading, setLoading] = useState(false)
@@ -101,6 +103,31 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
           {/* Section 1: Grunddaten */}
           <div className="border-b border-gray-100 pb-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">👤 Grunddaten</h3>
+
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Kontakt-Typ</label>
+              <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+                {[
+                  { value: 'gewerbe', label: '🏢 Gewerbe' },
+                  { value: 'privat', label: '👤 Privat' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, kontakt_typ: opt.value })}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      (formData.kontakt_typ || 'gewerbe') === opt.value
+                        ? 'bg-yellow-400 text-gray-900'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Steuert die Dokumenten-Ordnerstruktur in Google Drive</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Vorname *</label>

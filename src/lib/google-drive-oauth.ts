@@ -165,6 +165,102 @@ export async function findOrCreateContactFolder(
 }
 
 /**
+ * Generischer Unterordner: unter parentId finden oder anlegen.
+ */
+async function findOrCreateSubfolder(
+  drive: drive_v3.Drive,
+  parentId: string,
+  name: string
+): Promise<string> {
+  const escapedName = name.replace(/'/g, "\\'")
+  const res = await drive.files.list({
+    q: `name='${escapedName}' and mimeType='application/vnd.google-apps.folder' and trashed=false and '${parentId}' in parents`,
+    spaces: 'drive',
+    fields: 'files(id, name)',
+    pageSize: 1,
+  })
+
+  if (res.data.files && res.data.files.length > 0) {
+    return res.data.files[0].id!
+  }
+
+  const created = await drive.files.create({
+    requestBody: {
+      name,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId],
+    },
+    fields: 'id',
+  })
+  console.log(`[Google Drive] Unterordner angelegt: ${name} (${created.data.id})`)
+  return created.data.id!
+}
+
+/**
+ * Kategorie-Ordner (max. 2 Ebenen, z.B. "KFZ-Versicherung/Vertrag") unterhalb des
+ * Kontakt-Ordners aufloesen. Lazy: Ordner entstehen erst beim ersten Upload.
+ * Drive-IDs werden in drive_ordner_map persistiert, damit Umbenennungen in der
+ * Config spaeter auf alle bestehenden Drive-Ordner propagiert werden koennen.
+ */
+async function resolveKategorieFolder(
+  drive: drive_v3.Drive,
+  kontaktId: string,
+  contactFolderId: string,
+  kategoriePfad: string
+): Promise<string> {
+  const segments = kategoriePfad
+    .split('/')
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+
+  if (segments.length === 0) return contactFolderId
+
+  const supabase = createServerClient()
+  let parentId = contactFolderId
+  let pfadSoFar = ''
+
+  for (const segment of segments) {
+    pfadSoFar = pfadSoFar ? `${pfadSoFar}/${segment}` : segment
+
+    // Fast path: bekannte Drive-ID aus dem Mapping
+    let folderId: string | null = null
+    try {
+      const { data } = await supabase
+        .from('drive_ordner_map')
+        .select('drive_folder_id')
+        .eq('kontakt_id', kontaktId)
+        .eq('pfad', pfadSoFar)
+        .maybeSingle()
+      folderId = data?.drive_folder_id ?? null
+    } catch {
+      // Tabelle fehlt o.ae. -> Drive-Suche uebernimmt
+    }
+
+    if (!folderId) {
+      folderId = await findOrCreateSubfolder(drive, parentId, segment)
+      try {
+        await supabase.from('drive_ordner_map').upsert(
+          {
+            kontakt_id: kontaktId,
+            pfad: pfadSoFar,
+            drive_folder_id: folderId,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'kontakt_id,pfad' }
+        )
+      } catch (err) {
+        console.warn('[Google Drive] drive_ordner_map upsert fehlgeschlagen:', err)
+      }
+    }
+
+    parentId = folderId
+  }
+
+  return parentId
+}
+
+/**
  * Datei je nach Typ komprimieren (Bilder via sharp, Dokumente/Text via gzip).
  */
 async function compressFile(
@@ -217,6 +313,8 @@ export interface UploadResult {
   fileName: string
   ordnerId: string
   ordnerName: string
+  kontaktOrdnerId: string
+  kategorie: string
   webViewLink: string | null
   originalSize: number
   compressedSize: number
@@ -225,14 +323,16 @@ export interface UploadResult {
 
 /**
  * Dokument ins zentrale System-Konto hochladen (mit Kompression).
- * Legt bei Bedarf Root- und Kontakt-Ordner an.
+ * Legt bei Bedarf Root-, Kontakt- und Kategorie-Ordner an.
+ * kategoriePfad z.B. "KFZ-Versicherung/Vertrag"; Default "Sonstiges".
  */
 export async function uploadDocumentToGoogleDrive(
   file: Buffer,
   fileName: string,
   mimeType: string,
   kontaktId: string,
-  kontaktName: string
+  kontaktName: string,
+  kategoriePfad: string = 'Sonstiges'
 ): Promise<UploadResult> {
   const { drive, rootFolderId } = await getSystemDriveClient()
 
@@ -249,12 +349,16 @@ export async function uploadDocumentToGoogleDrive(
 
   const folder = await findOrCreateContactFolder(drive, root, kontaktId, kontaktName)
 
+  // Kategorie-Unterordner (max. 2 Ebenen) aufloesen; Datei landet dort
+  const kategorie = kategoriePfad.trim() || 'Sonstiges'
+  const targetFolderId = await resolveKategorieFolder(drive, kontaktId, folder.id, kategorie)
+
   const { data: compressedData, compressionRatio } = await compressFile(file, mimeType, fileName)
 
   const response = await drive.files.create({
     requestBody: {
       name: fileName,
-      parents: [folder.id],
+      parents: [targetFolderId],
     },
     media: {
       mimeType: mimeType,
@@ -263,16 +367,155 @@ export async function uploadDocumentToGoogleDrive(
     fields: 'id, webViewLink',
   })
 
-  console.log(`[Google Drive] ✅ Hochgeladen: ${fileName} (ID: ${response.data.id})`)
+  console.log(`[Google Drive] ✅ Hochgeladen: ${fileName} → ${kategorie} (ID: ${response.data.id})`)
 
   return {
     fileId: response.data.id!,
     fileName: fileName,
-    ordnerId: folder.id,
+    ordnerId: targetFolderId,
     ordnerName: folder.name,
+    kontaktOrdnerId: folder.id,
+    kategorie,
     webViewLink: response.data.webViewLink ?? null,
     originalSize: file.length,
     compressedSize: compressedData.length,
     compressionRatio: compressionRatio,
+  }
+}
+
+export interface OrdnerstrukturNode {
+  name: string
+  children?: OrdnerstrukturNode[]
+}
+
+export interface Ordnerstruktur {
+  privat: OrdnerstrukturNode[]
+  gewerbe: OrdnerstrukturNode[]
+}
+
+export const DEFAULT_ORDNERSTRUKTUR: Ordnerstruktur = {
+  privat: [
+    { name: 'Lebensversicherung' },
+    { name: 'KFZ-Versicherung' },
+    { name: 'Haftpflichtversicherung' },
+  ],
+  gewerbe: [
+    { name: 'Betriebshaftpflicht' },
+    { name: 'Firmenrechtsschutz' },
+    { name: 'KFZ-Versicherung' },
+  ],
+}
+
+/**
+ * Ordnerstruktur fuer einen Kontakt-Typ aus system_config laden (Fallback: Default).
+ */
+export async function getOrdnerstruktur(): Promise<Ordnerstruktur> {
+  const supabase = createServerClient()
+  const { data } = await supabase
+    .from('system_config')
+    .select('config')
+    .eq('key', 'dokument_ordnerstruktur')
+    .maybeSingle()
+
+  const cfg = data?.config as Partial<Ordnerstruktur> | null
+  if (!cfg || (!Array.isArray(cfg.privat) && !Array.isArray(cfg.gewerbe))) {
+    return DEFAULT_ORDNERSTRUKTUR
+  }
+  return {
+    privat: Array.isArray(cfg.privat) ? cfg.privat : [],
+    gewerbe: Array.isArray(cfg.gewerbe) ? cfg.gewerbe : [],
+  }
+}
+
+/**
+ * Umbenennung einer Kategorie auf alle bestehenden Drive-Ordner propagieren.
+ * Nur Kontakte des angegebenen Typs (privat/gewerbe) sind betroffen — dieselbe
+ * Kategorie kann in beiden Strukturen existieren und darf nicht global umbenannt werden.
+ * Benennt die Drive-Ordner (exakter Pfad) um und zieht Pfade in
+ * drive_ordner_map + dokumente_metadata.kategorie nach (inkl. Unterpfade).
+ */
+export async function renameKategorieFolders(
+  kontaktTyp: 'privat' | 'gewerbe',
+  oldPfad: string,
+  newPfad: string
+): Promise<{ renamed: number; failed: number }> {
+  const supabase = createServerClient()
+  const newName = newPfad.split('/').pop()!
+
+  // Kontakte des betroffenen Typs
+  const { data: typKontakte, error: typError } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('kontakt_typ', kontaktTyp)
+  if (typError) throw new Error(`Kontakte lesen fehlgeschlagen: ${typError.message}`)
+  const typIds = new Set((typKontakte ?? []).map((k) => k.id))
+
+  // Alle betroffenen Mapping-Zeilen: exakter Pfad + Unterpfade
+  const { data: allRows, error } = await supabase
+    .from('drive_ordner_map')
+    .select('id, kontakt_id, pfad, drive_folder_id')
+    .or(`pfad.eq.${oldPfad},pfad.like.${oldPfad}/%`)
+
+  if (error) throw new Error(`drive_ordner_map lesen fehlgeschlagen: ${error.message}`)
+  const rows = (allRows ?? []).filter((r) => typIds.has(r.kontakt_id))
+
+  let renamed = 0
+  let failed = 0
+
+  if (rows.length > 0) {
+    const { drive } = await getSystemDriveClient()
+
+    for (const row of rows) {
+      const isExact = row.pfad === oldPfad
+      // Drive-Umbenennung nur fuer den Ordner selbst; Kinder behalten ihren Namen
+      if (isExact) {
+        try {
+          await drive.files.update({
+            fileId: row.drive_folder_id,
+            requestBody: { name: newName },
+          })
+          renamed++
+        } catch (err) {
+          console.error(`[Google Drive] Rename fehlgeschlagen (${row.drive_folder_id}):`, err)
+          failed++
+          continue
+        }
+      }
+
+      const updatedPfad = isExact ? newPfad : `${newPfad}${row.pfad.slice(oldPfad.length)}`
+      await supabase
+        .from('drive_ordner_map')
+        .update({ pfad: updatedPfad, updated_at: new Date().toISOString() })
+        .eq('id', row.id)
+    }
+  }
+
+  await renameKategorieMetadata(typIds, oldPfad, newPfad)
+  return { renamed, failed }
+}
+
+/**
+ * dokumente_metadata.kategorie von oldPfad (inkl. Unterpfade) auf newPfad umziehen —
+ * nur fuer die uebergebenen Kontakt-IDs.
+ */
+async function renameKategorieMetadata(
+  kontaktIds: Set<string>,
+  oldPfad: string,
+  newPfad: string
+): Promise<void> {
+  if (kontaktIds.size === 0) return
+  const supabase = createServerClient()
+  const ids = Array.from(kontaktIds)
+
+  const { data: affected } = await supabase
+    .from('dokumente_metadata')
+    .select('id, kategorie')
+    .or(`kategorie.eq.${oldPfad},kategorie.like.${oldPfad}/%`)
+    .in('kontakt_id', ids)
+
+  for (const doc of affected ?? []) {
+    const updated =
+      doc.kategorie === oldPfad ? newPfad : `${newPfad}${doc.kategorie.slice(oldPfad.length)}`
+    await supabase.from('dokumente_metadata').update({ kategorie: updated }).eq('id', doc.id)
   }
 }

@@ -25,6 +25,7 @@ interface Kontakt {
   jahresumsatz?: string
   mitarbeitanzahl?: number
   versicherungstyp?: string
+  kontakt_typ?: string
   insurance_product?: string
   facebook_id?: string
   facebook_phase?: string
@@ -226,6 +227,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
             <Field label="Telefon Mobil" field="phone_mobile" value={getValue('phone_mobile')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Telefon Büro" field="phone_office" value={getValue('phone_office')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Quelle" field="source" type="select" options={['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']} value={getValue('source')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Kontakt-Typ" field="kontakt_typ" type="select" options={['gewerbe', 'privat']} value={getValue('kontakt_typ') || 'gewerbe'} onChange={handleChange} isEditing={isEditing} />
           </div>
           <div className="sm:col-span-2">
             <Field label="Bemerkung [Dialfire]" field="bemerkung" value={getValue('bemerkung')} onChange={handleChange} isEditing={isEditing} />

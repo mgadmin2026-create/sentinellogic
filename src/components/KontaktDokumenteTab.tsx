@@ -7,14 +7,32 @@ interface Dokument {
   id: string
   file_id: string
   file_name: string
+  kategorie?: string
   original_size: number
   compressed_size: number
   compression_ratio: number
   created_at: string
 }
 
+interface StrukturNode {
+  name: string
+  children?: StrukturNode[]
+}
+
 interface KontaktDokumenteTabProps {
   kontaktId: string
+}
+
+// Baum des Kontakt-Typs zu waehlbaren Pfaden flachklopfen (max. 2 Ebenen)
+function flattenStruktur(nodes: StrukturNode[]): string[] {
+  const paths: string[] = []
+  for (const node of nodes) {
+    paths.push(node.name)
+    for (const child of node.children ?? []) {
+      paths.push(`${node.name}/${child.name}`)
+    }
+  }
+  return paths
 }
 
 export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
@@ -29,6 +47,9 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   })
   const [ordnerUrl, setOrdnerUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [kategorien, setKategorien] = useState<string[]>([])
+  const [uploadKategorie, setUploadKategorie] = useState('Sonstiges')
+  const [filterKategorie, setFilterKategorie] = useState<string>('alle')
 
   // Fetch documents on mount
   useEffect(() => {
@@ -49,6 +70,18 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           totalSize: data.kontakt.dokumente_total_size,
           totalOriginalSize: data.dokumente?.reduce((sum: number, d: Dokument) => sum + d.original_size, 0) || 0,
         })
+
+        // Ordnerstruktur des Kontakt-Typs laden (privat/gewerbe)
+        const typ = data.kontakt.kontakt_typ === 'privat' ? 'privat' : 'gewerbe'
+        try {
+          const strukturRes = await fetch('/api/dokument-kategorien')
+          const strukturData = await strukturRes.json()
+          if (strukturData.success) {
+            setKategorien(flattenStruktur(strukturData.data[typ] || []))
+          }
+        } catch {
+          // Struktur nicht ladbar -> nur "Sonstiges"
+        }
       }
     } catch (err) {
       setError('Fehler beim Laden der Dokumente')
@@ -95,6 +128,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
         const file = files[i]
         const formData = new FormData()
         formData.append('file', file)
+        formData.append('kategorie', uploadKategorie)
 
         const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`, {
           method: 'POST',
@@ -149,6 +183,26 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           {error}
         </div>
       )}
+
+      {/* Kategorie-Auswahl fuer Upload */}
+      <div className="flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+          🗂️ Ablegen unter:
+        </label>
+        <select
+          value={uploadKategorie}
+          onChange={(e) => setUploadKategorie(e.target.value)}
+          disabled={uploading}
+          className="flex-1 max-w-xs px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-white"
+        >
+          {kategorien.map((pfad) => (
+            <option key={pfad} value={pfad}>
+              {pfad.replace('/', ' / ')}
+            </option>
+          ))}
+          <option value="Sonstiges">Sonstiges</option>
+        </select>
+      </div>
 
       {/* Upload zone */}
       <div
@@ -209,19 +263,36 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
         </div>
       ) : (
         <div className="border border-gray-200 rounded-xl overflow-hidden">
-          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
             <p className="text-sm font-semibold text-gray-900">
               📋 Alle Dokumente ({dokumente.length})
             </p>
+            <select
+              value={filterKategorie}
+              onChange={(e) => setFilterKategorie(e.target.value)}
+              className="px-2 py-1 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none"
+            >
+              <option value="alle">Alle Kategorien</option>
+              {Array.from(new Set(dokumente.map((d) => d.kategorie || 'Sonstiges'))).sort().map((k) => (
+                <option key={k} value={k}>{k.replace('/', ' / ')}</option>
+              ))}
+            </select>
           </div>
           <div className="divide-y divide-gray-150">
-            {dokumente.map((doc) => (
+            {dokumente
+              .filter((doc) => filterKategorie === 'alle' || (doc.kategorie || 'Sonstiges') === filterKategorie)
+              .map((doc) => (
               <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      📄 {doc.file_name}
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        📄 {doc.file_name}
+                      </p>
+                      <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                        {(doc.kategorie || 'Sonstiges').replace('/', ' / ')}
+                      </span>
+                    </div>
                     <div className="flex gap-3 mt-2 text-xs text-gray-600">
                       <span>
                         Original: <strong>{formatBytes(doc.original_size)}</strong>
