@@ -250,7 +250,8 @@ export async function POST(request: NextRequest) {
       updatedContact = contactData
     }
 
-    if (data?.id && (updatedContact?.dialfire_campaign_id || updatedContact?.dialfire_task_name_field)) {
+    // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
+    if (data?.id && updatedContact?.dialfire_campaign_id) {
       try {
         const dialfireResult = await invokeEdgeFunction('send-to-dialfire', {
           contact: {
@@ -258,12 +259,14 @@ export async function POST(request: NextRequest) {
             email: data.email,
             first_name: data.first_name,
             last_name: data.last_name,
-            phone_mobile: data.phone_mobile,
+            phone_mobile: data.phone_mobile || data.phone_office,
             company_name: data.company_name,
             street: data.street,
             postal_code: data.postal_code,
             city: data.city,
             position: data.position,
+            industry: data.industry,
+            source: data.source,
             mitarbeitanzahl: data.mitarbeitanzahl,
             jahresumsatz: data.jahresumsatz,
             dialfire_campaign_id: updatedContact?.dialfire_campaign_id,

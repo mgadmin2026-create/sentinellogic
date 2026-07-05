@@ -147,7 +147,8 @@ export async function POST(
         )
 
         // Dialfire Sync: Only if campaign or task is set
-        if (fieldsToSet.dialfire_campaign_id || fieldsToSet.dialfire_task_name_field) {
+        // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
+        if (fieldsToSet.dialfire_campaign_id) {
           try {
             const dialfireResult = await invokeEdgeFunction('send-to-dialfire', {
               contact: {
@@ -155,9 +156,18 @@ export async function POST(
                 email: contact.email,
                 first_name: contact.first_name,
                 last_name: contact.last_name,
-                phone_mobile: contact.phone_mobile,
+                phone_mobile: contact.phone_mobile || contact.phone_office,
                 company_name: contact.company_name,
+                street: contact.street,
+                postal_code: contact.postal_code,
+                city: contact.city,
+                position: contact.position,
+                industry: contact.industry,
                 source: contact.source,
+                mitarbeitanzahl: contact.mitarbeitanzahl,
+                jahresumsatz: contact.jahresumsatz,
+                dialfire_campaign_id: fieldsToSet.dialfire_campaign_id,
+                dialfire_task_name_field: fieldsToSet.dialfire_task_name_field,
               },
             })
 
