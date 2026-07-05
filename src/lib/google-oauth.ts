@@ -5,7 +5,6 @@
 export const GOOGLE_OAUTH_CONFIG = {
   clientId: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
   clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
-  redirectUri: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/google/callback`,
   scopes: [
     'https://www.googleapis.com/auth/drive',
     'https://www.googleapis.com/auth/drive.file',
@@ -16,12 +15,24 @@ export const GOOGLE_OAUTH_CONFIG = {
 }
 
 /**
+ * Redirect-URI ableiten.
+ * Bevorzugt die tatsaechlich aufgerufene Domain (origin) — dadurch ist die URL
+ * immer korrekt, egal ob NEXT_PUBLIC_SITE_URL gesetzt/eingebacken ist.
+ * Faellt sonst auf NEXT_PUBLIC_SITE_URL bzw. localhost zurueck.
+ */
+export function getRedirectUri(origin?: string | null): string {
+  const base =
+    origin || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  return `${base.replace(/\/$/, '')}/api/auth/google/callback`
+}
+
+/**
  * Generate Google OAuth authorization URL
  */
-export function getGoogleAuthUrl(state: string): string {
+export function getGoogleAuthUrl(state: string, origin?: string | null): string {
   const params = new URLSearchParams({
     client_id: GOOGLE_OAUTH_CONFIG.clientId,
-    redirect_uri: GOOGLE_OAUTH_CONFIG.redirectUri,
+    redirect_uri: getRedirectUri(origin),
     response_type: 'code',
     scope: GOOGLE_OAUTH_CONFIG.scopes.join(' '),
     state: state,
@@ -33,9 +44,10 @@ export function getGoogleAuthUrl(state: string): string {
 }
 
 /**
- * Exchange authorization code for tokens
+ * Exchange authorization code for tokens.
+ * Die redirect_uri MUSS identisch zur Authorisierungsanfrage sein.
  */
-export async function exchangeCodeForTokens(code: string) {
+export async function exchangeCodeForTokens(code: string, origin?: string | null) {
   try {
     const response = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -45,7 +57,7 @@ export async function exchangeCodeForTokens(code: string) {
         client_secret: GOOGLE_OAUTH_CONFIG.clientSecret,
         code: code,
         grant_type: 'authorization_code',
-        redirect_uri: GOOGLE_OAUTH_CONFIG.redirectUri,
+        redirect_uri: getRedirectUri(origin),
       }).toString(),
     })
 

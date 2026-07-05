@@ -8,6 +8,18 @@ export const dynamic = 'force-dynamic'
 const SETTINGS_PATH = '/einstellungen/dokumente'
 
 /**
+ * Oeffentliche Domain aus dem Request ableiten (Vercel setzt x-forwarded-*).
+ * Muss identisch zur Start-Route sein, sonst redirect_uri_mismatch beim Exchange.
+ */
+function getRequestOrigin(request: NextRequest): string {
+  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+  const host =
+    request.headers.get('x-forwarded-host') ?? request.headers.get('host')
+  if (host) return `${proto}://${host}`
+  return request.nextUrl.origin
+}
+
+/**
  * OAuth-Callback: verbindet das zentrale System-Google-Konto.
  * Speichert Token + Root-Ordner in google_drive_system_token (Zeile id=1).
  */
@@ -34,8 +46,8 @@ export async function GET(request: NextRequest) {
       return redirect('error=state_mismatch')
     }
 
-    // Code gegen Tokens tauschen
-    const tokens = await exchangeCodeForTokens(code)
+    // Code gegen Tokens tauschen (gleiche redirect_uri wie in /start)
+    const tokens = await exchangeCodeForTokens(code, getRequestOrigin(request))
 
     // Verbundene Konto-E-Mail ermitteln
     let connectedEmail: string | null = null
