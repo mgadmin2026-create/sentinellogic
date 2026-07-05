@@ -123,7 +123,10 @@ serve(async (req) => {
       Jahresumsatz: contact.jahresumsatz,
     }
 
-    const result = await createDialfireContact(payload, campaignId, config.api_key, config.task_name)
+    // Task-Name: bevorzugt der per Regel gesetzte Wert, sonst Kampagnen-Default
+    const taskName = contact.dialfire_task_name_field || config.task_name
+
+    const result = await createDialfireContact(payload, campaignId, config.api_key, taskName)
 
     const dialfireId = result.data?.$id || result.id || result.$id
 
