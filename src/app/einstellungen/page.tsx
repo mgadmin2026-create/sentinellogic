@@ -17,6 +17,12 @@ const settingsSections = [
     icon: '🔗'
   },
   {
+    title: 'Dokumente & Google Drive',
+    description: 'Zentrales Google-Drive-Konto für alle Dokumente verbinden',
+    href: '/einstellungen/dokumente',
+    icon: '📄'
+  },
+  {
     title: 'Allgemein',
     description: 'Allgemeine Einstellungen (kommt bald)',
     href: '#',

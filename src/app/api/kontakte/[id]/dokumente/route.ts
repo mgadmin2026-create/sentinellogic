@@ -3,7 +3,9 @@ import { createServerClient } from '@/lib/supabase/server'
 import { uploadDocumentToGoogleDrive } from '@/lib/google-drive-oauth'
 import { logFileUploaded } from '@/lib/activities-logger'
 
-// GET: List documents for a contact
+export const dynamic = 'force-dynamic'
+
+// GET: Dokumente eines Kontakts auflisten
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -11,9 +13,8 @@ export async function GET(
   const kontaktId = params.id
 
   try {
-    const supabase = await createServerClient()
+    const supabase = createServerClient()
 
-    // Get contact
     const { data: kontakt, error: kontaktError } = await supabase
       .from('contacts')
       .select('id, first_name, last_name, google_drive_ordner_id, dokumente_count, dokumente_total_size')
@@ -24,7 +25,6 @@ export async function GET(
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
     }
 
-    // Get documents for this contact
     const { data: dokumente, error: dokumenteError } = await supabase
       .from('dokumente_metadata')
       .select('*')
@@ -34,10 +34,7 @@ export async function GET(
 
     if (dokumenteError) {
       console.error('[Dokumente] Error fetching documents:', dokumenteError)
-      return NextResponse.json(
-        { error: 'Failed to fetch documents' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to fetch documents' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -46,6 +43,9 @@ export async function GET(
         id: kontakt.id,
         name: `${kontakt.first_name} ${kontakt.last_name}`,
         ordner_id: kontakt.google_drive_ordner_id,
+        ordner_url: kontakt.google_drive_ordner_id
+          ? `https://drive.google.com/drive/folders/${kontakt.google_drive_ordner_id}`
+          : null,
         dokumente_count: kontakt.dokumente_count || 0,
         dokumente_total_size: kontakt.dokumente_total_size || 0,
       },
@@ -57,7 +57,7 @@ export async function GET(
   }
 }
 
-// POST: Upload document
+// POST: Dokument hochladen (zentrales System-Konto)
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -65,22 +65,11 @@ export async function POST(
   const kontaktId = params.id
 
   try {
-    const supabase = await createServerClient()
+    const supabase = createServerClient()
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    // Get contact
     const { data: kontakt, error: kontaktError } = await supabase
       .from('contacts')
-      .select('id, first_name, last_name, google_drive_ordner_id, google_drive_ordner_name')
+      .select('id, first_name, last_name, google_drive_ordner_id')
       .eq('id', kontaktId)
       .single()
 
@@ -88,32 +77,48 @@ export async function POST(
       return NextResponse.json({ error: 'Contact not found' }, { status: 404 })
     }
 
-    // Parse multipart form data
     const formData = await request.formData()
-    const file = formData.get('file') as File
-    const description = formData.get('description') as string | null
+    const file = formData.get('file') as File | null
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Convert file to buffer
-    const fileBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(fileBuffer)
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const kontaktName = `${kontakt.first_name} ${kontakt.last_name}`.trim()
 
-    console.log(`[Dokumente] Uploading ${file.name} for contact ${kontaktId} by user ${user.id}`)
+    console.log(`[Dokumente] Upload ${file.name} für Kontakt ${kontaktId}`)
 
-    // Upload to Google Drive (with compression) using user's OAuth token
-    const uploadResult = await uploadDocumentToGoogleDrive(
-      user.id,
-      buffer,
-      file.name,
-      file.type,
-      kontaktId,
-      `${kontakt.first_name} ${kontakt.last_name}`
-    )
+    // Upload ins zentrale System-Konto
+    let uploadResult
+    try {
+      uploadResult = await uploadDocumentToGoogleDrive(
+        buffer,
+        file.name,
+        file.type || 'application/octet-stream',
+        kontaktId,
+        kontaktName
+      )
+    } catch (uploadErr) {
+      const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr)
+      console.error('[Dokumente] Upload fehlgeschlagen:', msg)
+      // "nicht verbunden" -> 409, damit die UI eine klare Meldung zeigen kann
+      const notConnected = msg.includes('nicht verbunden') || msg.includes('Refresh-Token')
+      return NextResponse.json(
+        { error: msg },
+        { status: notConnected ? 409 : 502 }
+      )
+    }
 
-    // Save metadata to DB
+    // Ordner-ID am Kontakt merken (erster Upload)
+    if (kontakt.google_drive_ordner_id !== uploadResult.ordnerId) {
+      await supabase
+        .from('contacts')
+        .update({ google_drive_ordner_id: uploadResult.ordnerId })
+        .eq('id', kontaktId)
+    }
+
+    // Metadaten speichern
     const { data: dokument, error: insertError } = await supabase
       .from('dokumente_metadata')
       .insert({
@@ -133,24 +138,23 @@ export async function POST(
 
     if (insertError) {
       console.error('[Dokumente] Failed to save metadata:', insertError)
-      return NextResponse.json(
-        { error: 'Failed to save document metadata' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Failed to save document metadata' }, { status: 500 })
     }
 
-    // Update contact dokumente count
-    await supabase.rpc('update_kontakt_dokumente_stats', {
-      p_kontakt_id: kontaktId,
-    })
+    // Kontakt-Statistik aktualisieren
+    await supabase.rpc('update_kontakt_dokumente_stats', { p_kontakt_id: kontaktId })
 
-    // Log activity
-    await logFileUploaded(
-      kontaktId,
-      `${kontakt.first_name} ${kontakt.last_name}`,
-      file.name,
-      `${uploadResult.compressionRatio}% komprimiert`
-    )
+    // Aktivität loggen
+    try {
+      await logFileUploaded(
+        kontaktId,
+        kontaktName,
+        file.name,
+        `${uploadResult.compressionRatio}% komprimiert`
+      )
+    } catch (logErr) {
+      console.warn('[Dokumente] Activity-Log fehlgeschlagen:', logErr)
+    }
 
     return NextResponse.json({
       success: true,
@@ -158,6 +162,7 @@ export async function POST(
         id: dokument.id,
         file_id: uploadResult.fileId,
         file_name: uploadResult.fileName,
+        web_view_link: uploadResult.webViewLink,
         original_size: uploadResult.originalSize,
         compressed_size: uploadResult.compressedSize,
         compression_ratio: uploadResult.compressionRatio,

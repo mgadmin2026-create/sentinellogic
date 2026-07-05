@@ -1,47 +1,30 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
 import { getGoogleAuthUrl } from '@/lib/google-oauth'
 import { randomBytes } from 'crypto'
 
+export const dynamic = 'force-dynamic'
+
+/**
+ * Startet den OAuth-Flow zum Verbinden des zentralen System-Google-Kontos.
+ * Der Admin wird direkt zu Google weitergeleitet. Ein State-Cookie schuetzt vor CSRF.
+ */
 export async function GET() {
   try {
-    const supabase = createServerClient()
-
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({
-        success: false,
-        error: 'Not authenticated',
-      }, { status: 401 })
-    }
-
-    // Generate state for CSRF protection
     const state = randomBytes(32).toString('hex')
-
-    // Store state in a temporary table (expires in 10 minutes)
-    await supabase
-      .from('google_oauth_tokens')
-      .upsert({
-        user_id: user.id,
-        access_token: '', // Placeholder, will be filled on callback
-        scope: state, // Temporarily store state here
-      })
-
-    console.log('[Google Auth] Starting OAuth flow for user:', user.id)
-
     const authUrl = getGoogleAuthUrl(state)
 
-    return NextResponse.json({
-      success: true,
-      authUrl: authUrl,
+    const response = NextResponse.redirect(authUrl)
+    response.cookies.set('gdrive_oauth_state', state, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 600, // 10 Minuten
     })
+    return response
   } catch (err) {
     console.error('[Google Auth] Start error:', err)
-    return NextResponse.json({
-      success: false,
-      error: err instanceof Error ? err.message : 'Auth start failed',
-    }, { status: 500 })
+    const msg = err instanceof Error ? err.message : 'Auth start failed'
+    return NextResponse.json({ success: false, error: msg }, { status: 500 })
   }
 }

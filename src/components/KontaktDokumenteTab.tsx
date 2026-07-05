@@ -27,6 +27,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
     totalSize: 0,
     totalOriginalSize: 0,
   })
+  const [ordnerUrl, setOrdnerUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Fetch documents on mount
@@ -42,6 +43,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
 
       if (data.success) {
         setDokumente(data.dokumente || [])
+        setOrdnerUrl(data.kontakt.ordner_url || null)
         setStats({
           count: data.kontakt.dokumente_count,
           totalSize: data.kontakt.dokumente_total_size,
@@ -100,7 +102,14 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
         })
 
         if (!res.ok) {
-          throw new Error(`Upload fehlgeschlagen: ${file.name}`)
+          const data = await res.json().catch(() => null)
+          if (res.status === 409) {
+            throw new Error(
+              data?.error ||
+                'Google Drive ist noch nicht verbunden. Bitte in Einstellungen → Dokumente verbinden.'
+            )
+          }
+          throw new Error(data?.error || `Upload fehlgeschlagen: ${file.name}`)
         }
       }
 
@@ -122,14 +131,16 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           <h3 className="text-lg font-semibold text-gray-900">📄 Dokumente</h3>
           <p className="text-sm text-gray-600 mt-1">{stats.count} Dokumente, {formatBytes(stats.totalSize)} gespeichert</p>
         </div>
-        <a
-          href={`https://drive.google.com/drive/folders/1WGRLHNpi3XSMxZrUlDh-5L52uIm2a94R`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
-        >
-          📁 In Google Drive öffnen →
-        </a>
+        {ordnerUrl && (
+          <a
+            href={ordnerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
+          >
+            📁 In Google Drive öffnen →
+          </a>
+        )}
       </div>
 
       {/* Error message */}
