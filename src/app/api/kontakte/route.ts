@@ -42,7 +42,7 @@ async function invokeEdgeFunction(functionName: string, payload: any) {
   }
 }
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
-const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']
+const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 
 // Pipeline-Schritte für Init
 const PIPELINE_STEPS_DEF = [
@@ -91,16 +91,16 @@ export async function POST(request: NextRequest) {
 
     console.log('[POST /api/kontakte] Body:', { klicktipp_tag: body.klicktipp_tag, email: body.email })
 
-    // Pflichtfelder
-    if (!body.first_name || !body.last_name || !body.email) {
+    // Pflichtfelder — E-Mail ist optional (KI-Upload: Dokumente enthalten oft keine Kunden-E-Mail)
+    if (!body.first_name || !body.last_name) {
       return Response.json(
-        { success: false, error: 'Felder erforderlich: first_name, last_name, email' },
+        { success: false, error: 'Felder erforderlich: first_name, last_name' },
         { status: 400 }
       )
     }
 
-    // E-Mail normalisieren
-    const email = String(body.email).trim().toLowerCase()
+    // E-Mail normalisieren (null wenn nicht vorhanden)
+    const email = body.email ? String(body.email).trim().toLowerCase() : null
 
     // Duplikatprüfung (E-Mail + Name — case-insensitive)
     // Zuerst E-Mail prüfen

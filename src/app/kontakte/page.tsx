@@ -193,9 +193,11 @@ const SOURCE_LABELS: Record<string, string> = {
   tiktok: 'TikTok',
   calendly: 'Calendly',
   email: 'E-Mail',
+  ki_upload: 'KI Upload',
 }
 
 const SOURCE_COLORS: Record<string, string> = {
+  ki_upload: 'bg-violet-100 text-violet-700',
   manuell: 'bg-gray-100 text-gray-600',
   csv: 'bg-gray-100 text-gray-700',
   facebook: 'bg-blue-50 text-blue-700',

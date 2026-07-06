@@ -18,10 +18,13 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'dialfire_id', 'dialfire_external_ref', 'dialfire_task_name', 'dialfire_updated_at', 'dialfire_sync_error',
   'automation_disabled', 'dialfire_campaign_auto', 'dialfire_campaign_id', 'dialfire_task_auto', 'dialfire_task_name_field', 'klicktipp_tags_auto', 'klicktipp_tags_field',
   'kontakt_typ',
+  'versicherungsgesellschaft', 'zahlweise', 'sparte', 'rechtsform', 'anrede', 'bemerkung',
+  'insurance_product', 'kontoinhaber', 'iban', 'inhaltssumme', 'beitrag_vorsorge',
+  'geburtstag_gf_inhaber', 'geschaeftsfuehrer_anzahl', 'seit_wann_gewerbe',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
-const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']
+const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 
 // Pipeline-Schritte und ihre Status-Ableitung
 const PIPELINE_STEPS_DEF = [

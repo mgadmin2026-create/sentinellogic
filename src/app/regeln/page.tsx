@@ -30,6 +30,7 @@ const SOURCE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'csv', label: 'CSV' },
   { value: 'tiktok', label: 'TikTok' },
   { value: 'manuell', label: 'Manuell' },
+  { value: 'ki_upload', label: 'KI Upload' },
 ]
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Neu' }, { value: 'contacted', label: 'Kontaktiert' },

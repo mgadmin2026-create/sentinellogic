@@ -226,7 +226,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
             </div>
             <Field label="Telefon Mobil" field="phone_mobile" value={getValue('phone_mobile')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Telefon Büro" field="phone_office" value={getValue('phone_office')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Quelle" field="source" type="select" options={['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell']} value={getValue('source')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Quelle" field="source" type="select" options={['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']} value={getValue('source')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Kontakt-Typ" field="kontakt_typ" type="select" options={['gewerbe', 'privat']} value={getValue('kontakt_typ') || 'gewerbe'} onChange={handleChange} isEditing={isEditing} />
           </div>
           <div className="sm:col-span-2">
