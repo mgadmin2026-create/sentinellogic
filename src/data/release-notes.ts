@@ -21,6 +21,124 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.5.0',
+    date: '2026-07-07',
+    title: 'KI Upload & Intelligente Dokumentenablage',
+    summary:
+      'Versicherungsdokumente hochladen — die KI erkennt den Kunden, legt den Kontakt an und ordnet die Datei automatisch in Google Drive ein',
+    features: [
+      {
+        title: 'KI Upload',
+        description:
+          'Neue Seite /ki-upload: Police, Angebot oder Nachtrag hochladen (PDF oder Foto, auch gescannte Dokumente). Die KI extrahiert Kunde, Adresse, Versicherungsdaten und Vertragsnummer, erkennt Privat/Gewerbe und unterscheidet Versicherungsnehmer vom Vermittler. Nach Prüfung in der editierbaren Maske: ein Klick legt den Kontakt an und legt die Datei ab.',
+        category: 'feature',
+        icon: '🤖',
+      },
+      {
+        title: 'Duplikat-Erkennung beim KI Upload',
+        description:
+          'Existiert der Kunde bereits (E-Mail, Name oder Firma), wird das Dokument wahlweise an den bestehenden Kontakt angehängt statt einen Doppelkontakt zu erzeugen.',
+        category: 'feature',
+        icon: '🔍',
+      },
+      {
+        title: 'Konfigurierbare Ordnerstruktur pro Kontakt-Typ',
+        description:
+          'In Einstellungen → Dokumente lässt sich die Drive-Ordnerstruktur je Kontakt-Typ (Privat/Gewerbe) verwalten: Kategorien + Unterkategorien (max. 2 Ebenen). Umbenennen wirkt automatisch auf alle bestehenden Kunden-Ordner in Google Drive.',
+        category: 'feature',
+        icon: '🗂️',
+      },
+      {
+        title: 'Kontakt-Typ Privat/Gewerbe',
+        description:
+          'Neues Feld am Kontakt (Modal, Übersicht) — steuert, welche Dokumenten-Ordnerstruktur beim Upload gilt. Der KI Upload erkennt den Typ automatisch (z.B. GmbH → Gewerbe).',
+        category: 'feature',
+        icon: '🏢',
+      },
+      {
+        title: 'Upload mit Kategorie-Auswahl',
+        description:
+          'Beim Dokument-Upload im Kontakt wählbar, unter welcher Kategorie die Datei in Drive abgelegt wird. Kategorie-Badge und Filter in der Dokumentenliste und auf /dokumente.',
+        category: 'improvement',
+        icon: '📎',
+      },
+      {
+        title: 'Regel-Trigger "KI Upload"',
+        description:
+          'Automatisierungsregeln können auf die neue Quelle "KI Upload" reagieren — z.B. automatisch Dialfire-Kampagne oder KlickTipp-Tag setzen.',
+        category: 'improvement',
+        icon: '⚡',
+      },
+      {
+        title: 'Versicherungsfelder speicherbar',
+        description:
+          'Gesellschaft, Sparte, Zahlweise, IBAN & Co. in der Kontakt-Übersicht wurden beim Speichern bisher still verworfen — jetzt behoben.',
+        category: 'fix',
+        icon: '🛠️',
+      },
+      {
+        title: 'Secrets aus dem Repository entfernt',
+        description:
+          'Env-Dateien mit Zugangsdaten aus dem Git-Tracking entfernt und .gitignore verschärft.',
+        category: 'security',
+        icon: '🔐',
+      },
+    ],
+    breaking_changes: [],
+    known_issues: [
+      'E-Mail ist jetzt optional bei Kontakten — KlickTipp-Sync läuft nur bei vorhandener E-Mail',
+    ],
+  },
+  {
+    version: '0.4.0',
+    date: '2026-07-05',
+    title: 'Automationen, Integrationen & Zentrale Dokumentenablage',
+    summary:
+      'Automation-Engine mit Regeln, E-Mail-Benachrichtigungen, Dialfire-Fixes und zentrale Google-Drive-Dokumentenablage mit Kompression',
+    features: [
+      {
+        title: 'Automation-Engine',
+        description:
+          'Regeln (/regeln) laufen automatisch bei jeder Kontakt-Erstellung: je nach Quelle werden Dialfire-Kampagne, Task und KlickTipp-Tags gesetzt und die Syncs ausgelöst. Manuelle Batch-Ausführung auf Bestandskontakte inklusive Zähler.',
+        category: 'feature',
+        icon: '⚡',
+      },
+      {
+        title: 'E-Mail-Benachrichtigungen aus Regeln',
+        description:
+          'Regeln mit hinterlegter Benachrichtigungs-E-Mail versenden jetzt tatsächlich: pro neuem Kontakt (automatisch) bzw. eine Zusammenfassung pro manuellem Lauf.',
+        category: 'feature',
+        icon: '📧',
+      },
+      {
+        title: 'Zentrale Google-Drive-Dokumentenablage',
+        description:
+          'Alle Dokumente landen im Drive EINES zentralen System-Kontos (einmalig in Einstellungen → Dokumente verbinden). Pro Kunde wird automatisch ein Ordner angelegt; Bilder und PDFs werden komprimiert (Ersparnis wird angezeigt).',
+        category: 'feature',
+        icon: '📁',
+      },
+      {
+        title: 'Globale Dokumenten-Übersicht',
+        description:
+          'Neue Seite /dokumente: alle Dateien über alle Kontakte mit Statistiken (Anzahl, Speicher, Ersparnis), Suche und Direktlinks zu Google Drive.',
+        category: 'feature',
+        icon: '📄',
+      },
+      {
+        title: 'Dialfire-Sync repariert',
+        description:
+          'Batch-Sync übergibt jetzt die Kampagnen-ID korrekt; Branche, Herkunft und weitere Felder kommen in Dialfire an; der Task kommt aus der jeweiligen Regel.',
+        category: 'fix',
+        icon: '📞',
+      },
+    ],
+    breaking_changes: [],
+    known_issues: [
+      'Dialfire-Kampagnen sind in der Edge-Function hinterlegt (aktuell 2 Kampagnen) — neue Kampagnen erfordern ein Function-Update',
+    ],
+    next_release_date: '2026-07-07',
+  },
+  {
     version: '0.3.1',
     date: '2026-06-22',
     title: 'Tasks UX: Clickable Rows & Detail Page',

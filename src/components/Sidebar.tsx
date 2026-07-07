@@ -155,7 +155,7 @@ export default function Sidebar() {
         <div>
           <p className="text-white/30 text-xs font-medium">Sentimental Logic</p>
           <div className="flex items-center gap-2 mt-1.5">
-            <p className="text-white/20 text-xs">v0.2.0 — MVP</p>
+            <p className="text-white/20 text-xs">v0.5.0</p>
             <a
               href="/release-notes"
               className="text-white/40 hover:text-[#FFC300] transition-colors group relative"

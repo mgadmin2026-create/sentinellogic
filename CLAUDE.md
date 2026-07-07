@@ -25,7 +25,8 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Document Storage** | Google Drive OAuth | Zentrale System-Ablage + Kompression |
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
-| **Version** | 0.4.0 — Automation & Integrations | Aktiv in Entwicklung |
+| **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
+| **Version** | 0.5.0 — KI Upload & Dokumentenablage | Aktiv in Entwicklung |
 
 ---
 
@@ -42,6 +43,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | `users` | Teambenutzer | id, email, name, active |
 | `dokumente_metadata` | Google Drive Dokumente-Index | id, contact_id, file_name, file_size, compressed_size, compression_ratio, google_drive_file_id, uploaded_at |
 | `google_drive_system_token` | OAuth System-Token (Single-Row) | id, access_token, refresh_token, expires_at, connected_email, root_folder_id |
+| `drive_ordner_map` | Drive-IDs der Kategorie-Unterordner pro Kontakt (für Rename-Propagation) | kontakt_id, pfad, drive_folder_id |
 
 ### Supporting Tables
 
@@ -53,9 +55,9 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 ---
 
-## Feature-Status (v0.4.0)
+## Feature-Status (v0.5.0)
 
-### ✅ Implemented (v0.4.0)
+### ✅ Implemented (v0.5.0)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -195,6 +197,28 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.5.0 (2026-07-07) — KI Upload & Intelligente Dokumentenablage
+
+**KI Upload (`/ki-upload`):**
+- ✅ `lib/ki-upload.ts`: claude-opus-4-8 mit nativem PDF/Vision-Input + Structured Outputs (json_schema)
+- ✅ Prompt-Regeln: Versicherungsnehmer ≠ Vermittler/Makler; Hauptperson bei Mehrpersonen-Dokumenten; Kategorie nur aus konfigurierter Struktur (Fallback Sonstiges); kontakt_typ-Ableitung (GmbH → gewerbe)
+- ✅ analyze-Route: Extraktion + Duplikat-Kandidat (E-Mail > Name > Firma)
+- ✅ commit-Route orchestriert bestehende Routen (POST /api/kontakte + /dokumente) — Automation, KlickTipp, Dialfire laufen mit; Duplikat → Dokument anhängen
+- ✅ Prüfmaske: alle Felder editierbar vor Übernahme; Quelle `ki_upload` (auch als Regel-Trigger)
+- ✅ E-Mail bei Kontakten optional (Migration 0024); Vertragsnummer/Beitrag/Laufzeit/weitere Personen → Notizen
+- ✅ E2E verifiziert mit 7 Test-PDFs inkl. gescanntem 11-Seiter (Vision) und Vermittler-Falle
+
+**Dokumenten-Ordnerstruktur:**
+- ✅ `contacts.kontakt_typ` (privat|gewerbe, Default gewerbe) — Toggle im Modal, Select in Übersicht
+- ✅ Struktur-Editor in `/einstellungen/dokumente` je Typ (max. 2 Ebenen, „Sonstiges" fix)
+- ✅ Lazy Drive-Unterordner beim Upload; `drive_ordner_map` persistiert IDs
+- ✅ Rename propagiert auf alle bestehenden Drive-Ordner des Typs + Metadaten
+- ✅ Kategorie-Dropdown beim Upload, Badge + Filter in Dokumentenlisten (Migration 0023)
+
+**Fixes/Security:**
+- ✅ PATCH-Whitelist um Versicherungsfelder ergänzt (Übersicht speicherte sie still nicht)
+- ✅ `.env.local.bak`/`.env.dialfire` aus Git-Tracking entfernt (Werte in Historie → Rotation empfohlen)
+
 ### v0.4.0 (2026-07-05) — Automation, Integrations & Document Management
 
 **Automation Engine & Rules:**
@@ -291,4 +315,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-05 — v0.4.0 Automation Engine, E-Mail Notifications, Dialfire Fixes & Google Drive Document Management*
+*Last Updated: 2026-07-07 — v0.5.0 KI Upload (Claude-Dokumentanalyse), konfigurierbare Ordnerstruktur je Kontakt-Typ, Security-Cleanup*
