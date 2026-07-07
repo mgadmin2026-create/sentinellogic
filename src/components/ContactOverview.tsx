@@ -173,11 +173,11 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
   const [editData, setEditData] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
 
-  // Accordion state
+  // Accordion state — Datensektionen standardmäßig offen, nur Technisches (Integrations) zu
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    unternehmen: false,
-    adresse: false,
-    versicherung: false,
+    unternehmen: true,
+    adresse: true,
+    versicherung: true,
     integrations: false,
   })
 

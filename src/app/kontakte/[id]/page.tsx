@@ -101,7 +101,6 @@ const TABS = [
   { id: 'process', label: 'Prozess', icon: '🎯' },
   { id: 'activities', label: 'Aktivitäten', icon: '📝' },
   { id: 'tasks', label: 'Aufgaben', icon: '✓' },
-  { id: 'notes', label: 'Notizen', icon: '📋' },
   { id: 'dialfire', label: 'Dialfire', icon: '📞' },
   { id: 'documents', label: 'Dokumente', icon: '📄' },
   { id: 'automation', label: 'Automation', icon: '⚙️' },
@@ -134,6 +133,7 @@ export default function KontaktDetailPage() {
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false)
   const [newOppModalOpen, setNewOppModalOpen] = useState(false)
   const [notesEditMode, setNotesEditMode] = useState(false)
+  const [notesExpanded, setNotesExpanded] = useState(false)
   const [notes, setNotes] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
   const [aktivitäten, setAktivitäten] = useState<Aktivität[]>([])
@@ -386,14 +386,131 @@ export default function KontaktDetailPage() {
 
       {/* Tab Content */}
       <div className="p-8">
+        {/* Notizen — immer sichtbar, kompakt */}
+        <div className="bg-amber-50/60 border border-amber-200 rounded-xl mb-6 overflow-hidden">
+          {notesEditMode ? (
+            <div className="p-4 space-y-2">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notizen zum Kontakt…"
+                autoFocus
+                className="w-full h-28 p-3 border border-amber-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-y"
+              />
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    setNotesEditMode(false)
+                    setNotes(kontakt.notes || '')
+                  }}
+                  className="text-xs text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={notesSaving}
+                  className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-4 py-1.5 rounded-lg transition-colors"
+                >
+                  {notesSaving ? 'Speichert…' : 'Speichern'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-start gap-3 px-4 py-3">
+              <button
+                onClick={() => setNotesExpanded((v) => !v)}
+                className="flex-1 min-w-0 text-left group"
+                title={notesExpanded ? 'Einklappen' : 'Ausklappen'}
+              >
+                <span className="text-xs font-semibold text-amber-800 mr-2">📋 Notizen</span>
+                {notes ? (
+                  <span
+                    className={`text-sm text-gray-700 whitespace-pre-wrap ${
+                      notesExpanded ? 'block mt-1.5' : 'inline align-middle'
+                    }`}
+                  >
+                    {notesExpanded ? notes : `${notes.split('\n')[0].slice(0, 120)}${notes.length > 120 || notes.includes('\n') ? '…' : ''}`}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-400 italic">Keine Notizen</span>
+                )}
+              </button>
+              <button
+                onClick={() => setNotesEditMode(true)}
+                className="flex-shrink-0 text-xs text-amber-700 hover:text-amber-900 font-medium"
+              >
+                ✏️ Bearbeiten
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
-          <ContactOverview
-            kontakt={kontakt}
-            onSave={handleSaveOverview}
-            isEditing={isEditingOverview}
-            onEditChange={setIsEditingOverview}
-          />
+          <>
+            {/* Kompakter Prozess-Stepper */}
+            {(() => {
+              const currentIndex = Math.max(0, PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage))
+              const doneCount = (kontakt.pipeline_steps || []).filter((s: any) => s.done).length
+              const isLast = currentIndex === PIPELINE_STEPS.length - 1
+              return (
+                <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 mb-6">
+                  <div className="flex items-center justify-between gap-4 mb-3">
+                    <p className="text-sm text-gray-600 min-w-0 truncate">
+                      <span className="font-semibold text-gray-900">
+                        Schritt {currentIndex + 1}/{PIPELINE_STEPS.length}:
+                      </span>{' '}
+                      {PIPELINE_STEPS[currentIndex]?.label}
+                    </p>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <button
+                        onClick={() => setActiveTab('process')}
+                        className="text-xs text-gray-500 hover:text-gray-900 font-medium"
+                      >
+                        Alle Schritte →
+                      </button>
+                      {!isLast && (
+                        <button
+                          onClick={handleNextStep}
+                          disabled={pipelineSaving}
+                          className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          {pipelineSaving ? '…' : '→ Nächster Schritt'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    {PIPELINE_STEPS.map((step, i) => {
+                      const stepData = (kontakt.pipeline_steps || []).find((s: any) => s.key === step.key)
+                      const done = stepData?.done || false
+                      const current = i === currentIndex
+                      return (
+                        <button
+                          key={step.key}
+                          onClick={() => setActiveTab('process')}
+                          title={`${i + 1}. ${step.label}${done ? ' ✓' : current ? ' (aktuell)' : ''}`}
+                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                            done ? 'bg-emerald-500' : current ? 'bg-yellow-400' : 'bg-gray-200'
+                          } ${current ? 'ring-2 ring-yellow-200' : ''} hover:opacity-75`}
+                        />
+                      )
+                    })}
+                  </div>
+                  {isLast && doneCount === PIPELINE_STEPS.length && (
+                    <p className="text-xs text-emerald-600 font-medium mt-2">🎉 Alle Schritte abgeschlossen</p>
+                  )}
+                </div>
+              )
+            })()}
+            <ContactOverview
+              kontakt={kontakt}
+              onSave={handleSaveOverview}
+              isEditing={isEditingOverview}
+              onEditChange={setIsEditingOverview}
+            />
+          </>
         )}
         {activeTab === 'process' && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -632,60 +749,6 @@ export default function KontaktDetailPage() {
           </div>
         )}
 
-        {/* TAB: Notizen */}
-        {activeTab === 'notes' && (
-          <>
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Notizen</h2>
-              {notesEditMode ? (
-                <div className="space-y-3">
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Notizen zum Kontakt…"
-                    className="w-full h-64 p-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-none"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSaveNotes}
-                      disabled={notesSaving}
-                      className="flex-1 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-                    >
-                      {notesSaving ? 'Speichert…' : 'Speichern'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setNotesEditMode(false)
-                        setNotes(kontakt.notes || '')
-                      }}
-                      className="flex-1 border border-gray-200 text-gray-600 font-medium text-sm px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Abbrechen
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {notes ? (
-                    <div className="bg-gray-50 rounded-lg p-4 whitespace-pre-wrap text-sm text-gray-700 mb-4">{notes}</div>
-                  ) : (
-                    <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-400 mb-4">Keine Notizen vorhanden.</div>
-                  )}
-                  <button onClick={() => setNotesEditMode(true)} className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">
-                    Bearbeiten
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Notizen-Historia */}
-            <div className="mt-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Notizen-Historia</h2>
-              <NotesHistory contactId={kontakt.id} />
-            </div>
-          </>
-        )}
-
         {/* TAB: Dialfire */}
         {activeTab === 'dialfire' && (
           <div className="space-y-8">
@@ -700,6 +763,12 @@ export default function KontaktDetailPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Sync-Zusammenfassung</h2>
               <DialfireSyncPanel kontakt={kontakt} />
+            </div>
+
+            {/* Notizen-Historie (Dialfire-Anrufnotizen) */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Anruf-Notizen (Historie)</h2>
+              <NotesHistory contactId={kontakt.id} />
             </div>
           </div>
         )}

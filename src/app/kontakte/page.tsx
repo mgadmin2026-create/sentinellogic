@@ -36,6 +36,7 @@ interface Kontakt {
   notes?: string
   bestandskunde?: boolean
   insurance_product?: string
+  kontakt_typ?: string
 }
 
 interface ColumnVisibility {
@@ -287,6 +288,9 @@ export default function KontaktePage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<string>('all')
+  const [sourceFilter, setSourceFilter] = useState<string>('all')
+  const [typFilter, setTypFilter] = useState<string>('all')
+  const [stageFilter, setStageFilter] = useState<string>('all')
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -520,6 +524,9 @@ export default function KontaktePage() {
 
   const filtered = sorted.filter((k) => {
     if (activeFilter !== 'all' && k.status !== activeFilter) return false
+    if (sourceFilter !== 'all' && (k.source || 'manuell') !== sourceFilter) return false
+    if (typFilter !== 'all' && (k.kontakt_typ || 'gewerbe') !== typFilter) return false
+    if (stageFilter !== 'all' && k.pipeline_stage !== stageFilter) return false
     const q = search.toLowerCase()
     if (
       q &&
@@ -595,22 +602,80 @@ export default function KontaktePage() {
           </button>
         </div>
 
-        {/* Status-Tabs */}
-        <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1 w-fit overflow-x-auto">
-          {KONTAKT_FILTER.map((f) => {
-            const count = f.value === 'all' ? kontakte.length : kontakte.filter((k) => k.status === f.value).length
-            return (
-              <button
-                key={f.value}
-                onClick={() => setActiveFilter(f.value)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                  activeFilter === f.value ? 'bg-yellow-400 text-gray-900' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                {f.label} <span className={`ml-1 text-xs ${activeFilter === f.value ? 'text-gray-700' : 'text-gray-400'}`}>{count}</span>
-              </button>
-            )
-          })}
+        {/* Status-Tabs + weitere Filter */}
+        <div className="flex gap-3 flex-wrap items-center">
+          <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1 w-fit overflow-x-auto">
+            {KONTAKT_FILTER.map((f) => {
+              const count = f.value === 'all' ? kontakte.length : kontakte.filter((k) => k.status === f.value).length
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setActiveFilter(f.value)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
+                    activeFilter === f.value ? 'bg-yellow-400 text-gray-900' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {f.label} <span className={`ml-1 text-xs ${activeFilter === f.value ? 'text-gray-700' : 'text-gray-400'}`}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+              sourceFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+            }`}
+            title="Nach Quelle filtern"
+          >
+            <option value="all">Quelle: Alle</option>
+            {Object.entries(SOURCE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+
+          <select
+            value={typFilter}
+            onChange={(e) => setTypFilter(e.target.value)}
+            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+              typFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+            }`}
+            title="Nach Kontakt-Typ filtern"
+          >
+            <option value="all">Typ: Alle</option>
+            <option value="gewerbe">🏢 Gewerbe</option>
+            <option value="privat">👤 Privat</option>
+          </select>
+
+          <select
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 max-w-56 ${
+              stageFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+            }`}
+            title="Nach Prozessschritt filtern"
+          >
+            <option value="all">Schritt: Alle</option>
+            {PIPELINE_STEPS.map((s, i) => (
+              <option key={s.key} value={s.key}>{i + 1}. {s.label}</option>
+            ))}
+          </select>
+
+          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || activeFilter !== 'all' || search) && (
+            <button
+              onClick={() => {
+                setActiveFilter('all')
+                setSourceFilter('all')
+                setTypFilter('all')
+                setStageFilter('all')
+                setSearch('')
+              }}
+              className="text-xs text-gray-500 hover:text-gray-900 font-medium underline-offset-2 hover:underline"
+            >
+              ✕ Filter zurücksetzen
+            </button>
+          )}
         </div>
       </div>
 

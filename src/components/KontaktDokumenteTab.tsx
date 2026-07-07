@@ -286,12 +286,26 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <a
+                        href={`https://drive.google.com/file/d/${doc.file_id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-gray-900 truncate hover:text-blue-600 hover:underline"
+                        title="In Google Drive öffnen"
+                      >
                         📄 {doc.file_name}
-                      </p>
+                      </a>
                       <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
                         {(doc.kategorie || 'Sonstiges').replace('/', ' / ')}
                       </span>
+                      <a
+                        href={`https://drive.google.com/file/d/${doc.file_id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Öffnen ↗
+                      </a>
                     </div>
                     <div className="flex gap-3 mt-2 text-xs text-gray-600">
                       <span>
