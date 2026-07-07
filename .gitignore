@@ -34,3 +34,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Env-Dateien mit Secrets — niemals committen (nur .env.example ist erlaubt)
+.env.local.bak
+.env.dialfire
+.env
+.env.*
+!.env.example
