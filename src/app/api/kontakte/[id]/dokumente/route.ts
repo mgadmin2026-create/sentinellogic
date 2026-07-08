@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { uploadDocumentToGoogleDrive } from '@/lib/google-drive-oauth'
+import { uploadDocumentToGoogleDrive, getOrdnerstruktur, type OrdnerstrukturNode } from '@/lib/google-drive-oauth'
 import { logFileUploaded } from '@/lib/activities-logger'
+import { analysiereVersicherungsdokument } from '@/lib/ki-upload'
+
+function flatten(nodes: OrdnerstrukturNode[]): string[] {
+  const paths: string[] = []
+  for (const node of nodes) {
+    paths.push(node.name)
+    for (const child of node.children ?? []) {
+      paths.push(`${node.name}/${child.name}`)
+    }
+  }
+  return paths
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -148,6 +160,40 @@ export async function POST(
 
     // Kontakt-Statistik aktualisieren
     await supabase.rpc('update_kontakt_dokumente_stats', { p_kontakt_id: kontaktId })
+
+    // KI-Analyse: Vertragsdetails extrahieren (async, nicht blockierend)
+    try {
+      const struktur = await getOrdnerstruktur()
+      const extraktion = await analysiereVersicherungsdokument(
+        buffer,
+        file.type || 'application/octet-stream',
+        flatten(struktur.privat),
+        flatten(struktur.gewerbe)
+      )
+
+      // Wenn Vertrag erkannt → in contracts Tabelle speichern
+      if (extraktion.is_contract && extraktion.benefits) {
+        try {
+          await supabase.from('contracts').insert({
+            contact_id: kontaktId,
+            contract_number: extraktion.vertragsnummer || null,
+            insurance_type: extraktion.versicherungsgesellschaft || null,
+            contract_type: extraktion.contract_type || 'unknown',
+            insurance_category: extraktion.versicherungstyp || null,
+            monthly_premium: extraktion.beitrag || null,
+            duration_start: extraktion.vertragsbeginn ? new Date(extraktion.vertragsbeginn).toISOString().split('T')[0] : null,
+            duration_end: extraktion.vertragsende ? new Date(extraktion.vertragsende).toISOString().split('T')[0] : null,
+            benefits: extraktion.benefits,
+            created_by: 'dokument_upload',
+          })
+          console.log(`[Dokumente] Vertrag erkannt und gespeichert für Kontakt ${kontaktId}`)
+        } catch (err) {
+          console.warn('[Dokumente] Vertrags-Speicherung fehlgeschlagen (nicht blockierend):', err)
+        }
+      }
+    } catch (err) {
+      console.warn('[Dokumente] KI-Analyse fehlgeschlagen (nicht blockierend):', err)
+    }
 
     // Aktivität loggen
     try {
