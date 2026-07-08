@@ -113,18 +113,26 @@ export async function getSystemDriveClient(): Promise<{
       throw new Error('Refresh-Token fehlt. Bitte Google Drive erneut verbinden.')
     }
     console.log('[Google Drive] System-Token abgelaufen, erneuere...')
-    const refreshed = await refreshAccessToken(token.refresh_token)
-    accessToken = refreshed.accessToken
+    try {
+      const refreshed = await refreshAccessToken(token.refresh_token)
+      accessToken = refreshed.accessToken
 
-    const supabase = createServerClient()
-    await supabase
-      .from('google_drive_system_token')
-      .update({
-        access_token: refreshed.accessToken,
-        expires_at: refreshed.expiresAt,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', 1)
+      const supabase = createServerClient()
+      await supabase
+        .from('google_drive_system_token')
+        .update({
+          access_token: refreshed.accessToken,
+          expires_at: refreshed.expiresAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', 1)
+      console.log('[Google Drive] Token erfolgreich erneuert')
+    } catch (refreshErr) {
+      console.error('[Google Drive] Token-Refresh fehlgeschlagen:', refreshErr)
+      throw new Error(
+        'Google Drive Token-Refresh fehlgeschlagen. Bitte Google Drive in Einstellungen → Dokumente erneut verbinden.'
+      )
+    }
   }
 
   return { drive: buildDriveClient(accessToken), rootFolderId: token.root_folder_id }
