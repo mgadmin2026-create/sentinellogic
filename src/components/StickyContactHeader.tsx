@@ -19,6 +19,7 @@ const tabs = [
   { id: 'tasks', label: '✓ Aufgaben' },
   { id: 'dialfire', label: '📞 Dialfire' },
   { id: 'documents', label: '📎 Dokumente' },
+  { id: 'contracts', label: '📋 Verträge' },
   { id: 'automation', label: '⚡ Automation' },
 ]
 
