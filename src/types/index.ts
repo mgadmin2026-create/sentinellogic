@@ -170,6 +170,29 @@ export interface DialfireCreateResponse {
   error?: string
 }
 
+// ── Contract (Versicherungsvertrag) ────────────────────
+export interface ContractBenefit {
+  type: string
+  description: string
+  coverage?: string
+}
+
+export interface Contract {
+  id: string
+  contact_id: string
+  contract_number?: string
+  insurance_type?: string                 // z.B. "Allianz", "Debeka"
+  contract_type: 'eigen' | 'fremd' | 'unknown'
+  insurance_category?: string             // z.B. "Krankenversicherung"
+  monthly_premium?: string
+  duration_start?: string
+  duration_end?: string
+  benefits: ContractBenefit[]
+  created_at: string
+  created_by: string
+  updated_at: string
+}
+
 // API Response Wrapper
 export interface ApiSuccess<T> {
   success: true

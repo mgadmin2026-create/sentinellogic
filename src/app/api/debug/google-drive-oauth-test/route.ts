@@ -24,7 +24,8 @@ export async function GET() {
       'system-test-' + Date.now() + '.txt',
       'text/plain',
       'test-contact',
-      'System Test'
+      'System',
+      'Test'
     )
 
     return NextResponse.json({

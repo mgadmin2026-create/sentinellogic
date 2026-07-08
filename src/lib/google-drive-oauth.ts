@@ -21,6 +21,34 @@ const gzip = promisify(zlib.gzip)
 
 const ROOT_FOLDER_NAME = 'SentinelLogic Dokumente'
 
+/**
+ * Normalisiert Vor- und Nachname für Ordnernamen:
+ * - Lowercase
+ * - Umlaute ersetzen (ä→ae, ö→oe, ü→ue)
+ * - Spaces durch Underscore
+ * - Sonderzeichen entfernen
+ */
+function normalizeContactName(firstName: string, lastName: string): string {
+  const normalize = (str: string) => {
+    return str
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_-]/g, '')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+  }
+  const fn = normalize(firstName)
+  const ln = normalize(lastName)
+  if (fn && ln) return `${fn}_${ln}`
+  if (ln) return ln
+  if (fn) return fn
+  return 'unnamed'
+}
+
 export interface SystemToken {
   access_token: string | null
   refresh_token: string | null
@@ -131,14 +159,17 @@ export async function findOrCreateRootFolder(drive: drive_v3.Drive): Promise<str
 
 /**
  * Kontakt-Ordner innerhalb des Root-Ordners finden oder anlegen.
+ * Format: {vorname_nachname} ({kontakt_id_kurz})
  */
 export async function findOrCreateContactFolder(
   drive: drive_v3.Drive,
   rootFolderId: string,
   kontaktId: string,
-  kontaktName: string
+  firstName: string,
+  lastName: string
 ): Promise<{ id: string; name: string }> {
-  const folderName = `${kontaktName} (${kontaktId.slice(0, 8)})`
+  const normalizedName = normalizeContactName(firstName, lastName)
+  const folderName = `${normalizedName} (${kontaktId.slice(0, 8)})`
   const escapedName = folderName.replace(/'/g, "\\'")
 
   const res = await drive.files.list({
@@ -331,7 +362,8 @@ export async function uploadDocumentToGoogleDrive(
   fileName: string,
   mimeType: string,
   kontaktId: string,
-  kontaktName: string,
+  firstName: string,
+  lastName: string,
   kategoriePfad: string = 'Sonstiges'
 ): Promise<UploadResult> {
   const { drive, rootFolderId } = await getSystemDriveClient()
@@ -347,7 +379,7 @@ export async function uploadDocumentToGoogleDrive(
       .eq('id', 1)
   }
 
-  const folder = await findOrCreateContactFolder(drive, root, kontaktId, kontaktName)
+  const folder = await findOrCreateContactFolder(drive, root, kontaktId, firstName, lastName)
 
   // Kategorie-Unterordner (max. 2 Ebenen) aufloesen; Datei landet dort
   const kategorie = kategoriePfad.trim() || 'Sonstiges'

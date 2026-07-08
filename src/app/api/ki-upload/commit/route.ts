@@ -5,10 +5,17 @@
 // 3. Dokument via interner POST /api/kontakte/[id]/dokumente in Google Drive ablegen
 //    (Kompression, Kategorie-Ordner, Metadaten, Statistik, Activity-Log)
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
+
+interface Leistung {
+  type: string
+  description: string
+  coverage?: string
+}
 
 interface CommitDaten {
   existing_kontakt_id?: string
@@ -34,6 +41,10 @@ interface CommitDaten {
   dokumenttyp?: string
   zusammenfassung?: string
   weitere_personen?: string[]
+  // Vertragsdetails (neu v0.6.0)
+  is_contract?: boolean
+  contract_type?: 'eigen' | 'fremd' | 'unknown'
+  benefits?: Leistung[]
 }
 
 function buildNotes(d: CommitDaten): string {
@@ -43,6 +54,8 @@ function buildNotes(d: CommitDaten): string {
     d.beitrag ? `Beitrag: ${d.beitrag}` : null,
     d.vertragsbeginn ? `Vertragsbeginn: ${d.vertragsbeginn}` : null,
     d.vertragsende ? `Vertragsende: ${d.vertragsende}` : null,
+    d.is_contract && d.contract_type ? `Vertragstyp: ${d.contract_type === 'eigen' ? '🟢 Eigenvertrag' : d.contract_type === 'fremd' ? '🔵 Fremdvertrag' : '🟡 Unbekannt'}` : null,
+    d.benefits?.length ? `Leistungen:\n${d.benefits.map((l) => `  • ${l.type}: ${l.description}${l.coverage ? ` (${l.coverage})` : ''}`).join('\n')}` : null,
     d.weitere_personen?.length ? `Weitere versicherte Personen: ${d.weitere_personen.join(', ')}` : null,
   ].filter(Boolean)
   return zeilen.join('\n')
@@ -143,6 +156,27 @@ export async function POST(request: NextRequest) {
         },
         { status: 502 }
       )
+    }
+
+    // ── 3.5 Vertrags-Detailsdaten speichern ────────────────────────
+    if (daten.is_contract && daten.benefits) {
+      const supabase = createServerClient()
+      try {
+        await supabase.from('contracts').insert({
+          contact_id: kontaktId,
+          contract_number: daten.vertragsnummer || null,
+          insurance_type: daten.versicherungsgesellschaft || null,
+          contract_type: daten.contract_type || 'unknown',
+          insurance_category: daten.versicherungstyp || null,
+          monthly_premium: daten.beitrag || null,
+          duration_start: daten.vertragsbeginn ? new Date(daten.vertragsbeginn).toISOString().split('T')[0] : null,
+          duration_end: daten.vertragsende ? new Date(daten.vertragsende).toISOString().split('T')[0] : null,
+          benefits: daten.benefits,
+          created_by: 'ki_upload',
+        })
+      } catch (err) {
+        console.warn('[KI-Upload] Contracts-Speicherung fehlgeschlagen (nicht blockierend):', err)
+      }
     }
 
     // Activity: KI-Upload dokumentieren

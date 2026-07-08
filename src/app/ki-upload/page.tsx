@@ -3,6 +3,12 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
+interface Leistung {
+  type: string
+  description: string
+  coverage?: string
+}
+
 interface Extraktion {
   dokumenttyp: string
   kontakt_typ: 'privat' | 'gewerbe'
@@ -26,6 +32,10 @@ interface Extraktion {
   kategorie: string
   zusammenfassung: string
   weitere_personen: string[]
+  // Vertragsdetails (neu v0.6.0)
+  is_contract: boolean
+  contract_type: 'eigen' | 'fremd' | 'unknown'
+  benefits: Leistung[]
 }
 
 interface Duplikat {
@@ -298,6 +308,49 @@ export default function KiUploadPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Vertragsdetails */}
+              {daten.is_contract && (
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      📋 Vertrag — Typ & Leistungen
+                    </label>
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                      daten.contract_type === 'eigen' ? 'bg-green-100 text-green-700' :
+                      daten.contract_type === 'fremd' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {daten.contract_type === 'eigen' ? '🟢 Eigenvertrag' :
+                       daten.contract_type === 'fremd' ? '🔵 Fremdvertrag' :
+                       '🟡 Unbekannt'}
+                    </span>
+                  </div>
+
+                  {daten.benefits && daten.benefits.length > 0 && (
+                    <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left font-semibold text-gray-700 py-1">Leistung</th>
+                            <th className="text-left font-semibold text-gray-700 py-1">Beschreibung</th>
+                            <th className="text-left font-semibold text-gray-700 py-1">Deckung</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {daten.benefits.map((b, i) => (
+                            <tr key={i} className="border-b border-gray-100">
+                              <td className="py-1 font-medium text-gray-900">{b.type}</td>
+                              <td className="py-1 text-gray-700">{b.description}</td>
+                              <td className="py-1 text-gray-600">{b.coverage || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Ablage */}
               <div className="border-t border-gray-100 pt-4">

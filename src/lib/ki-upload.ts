@@ -9,6 +9,12 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const MODEL = 'claude-opus-4-8'
 
+export interface Leistung {
+  type: string
+  description: string
+  coverage?: string
+}
+
 export interface KiExtraktion {
   dokumenttyp: 'police' | 'angebot' | 'nachtrag' | 'rechnung' | 'sonstiges'
   kontakt_typ: 'privat' | 'gewerbe'
@@ -32,6 +38,10 @@ export interface KiExtraktion {
   kategorie: string
   zusammenfassung: string
   weitere_personen: string[]
+  // Vertragsdetails (neu v0.6.0)
+  is_contract: boolean
+  contract_type: 'eigen' | 'fremd' | 'unknown'
+  benefits: Leistung[]
 }
 
 const EXTRAKTION_SCHEMA = {
@@ -71,6 +81,30 @@ const EXTRAKTION_SCHEMA = {
       items: { type: 'string' },
       description: 'Weitere versicherte Personen (Name), falls das Dokument mehrere enthält',
     },
+    // Vertragsdetails (neu v0.6.0)
+    is_contract: {
+      type: 'boolean',
+      description: 'true wenn es sich um einen Versicherungsvertrag/eine Police handelt',
+    },
+    contract_type: {
+      type: 'string',
+      enum: ['eigen', 'fremd', 'unknown'],
+      description: 'eigen: Allianz + Melih Gün; fremd: andere Versicherer; unknown: unklar',
+    },
+    benefits: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', description: 'Art der Leistung (z.B. Krankenversicherung, Rente)' },
+          description: { type: 'string', description: 'Detail-Beschreibung der Leistung' },
+          coverage: { type: 'string', description: 'Deckung/Betrag falls genannt (z.B. €2000/Monat)' },
+        },
+        required: ['type', 'description'],
+        additionalProperties: false,
+      },
+      description: 'Leistungen aus dem Vertrag, falls vorhanden',
+    },
   },
   required: [
     'dokumenttyp', 'kontakt_typ', 'first_name', 'last_name', 'company_name',
@@ -78,6 +112,7 @@ const EXTRAKTION_SCHEMA = {
     'versicherungsgesellschaft', 'versicherungstyp', 'sparte', 'vertragsnummer',
     'beitrag', 'zahlweise', 'vertragsbeginn', 'vertragsende',
     'kategorie', 'zusammenfassung', 'weitere_personen',
+    'is_contract', 'contract_type', 'benefits',
   ],
   additionalProperties: false,
 } as const
@@ -101,7 +136,21 @@ Erlaubte Kategorien für kontakt_typ "gewerbe":
 ${kategorienGewerbe.map((k) => `- ${k}`).join('\n') || '- (keine konfiguriert)'}
 - Sonstiges
 
-6. Felder ohne Information: leerer String bzw. leeres Array. Nichts erfinden.`
+6. is_contract & Leistungen (benefits):
+   - is_contract=true wenn es ein Versicherungsvertrag/eine Police ist (auch Angebote/Aufträge).
+   - is_contract=false für Rechnungen, Mahnungen, Schreiben ohne Vertragsdetails.
+   - benefits=[]: Extrahiere die Leistungen/Deckungen aus dem Vertrag. Jede Leistung hat:
+     * type: Art der Leistung (z.B. "Krankenversicherung", "Zahnbehandlung", "Unfallversicherung")
+     * description: Was ist versichert (z.B. "Ambulante und stationäre Behandlung", "Bis zu €100/Jahr")
+     * coverage: Optionale Deckungssumme (z.B. "€50.000", "€200/Monat")
+
+7. contract_type (EIGEN vs. FREMD):
+   - eigen: Wenn BEIDE "Allianz" UND "Melih Gün" im Dokument erwähnt sind.
+   - fremd: Alle anderen Versicherer (Debeka, DKV, Signal, etc.).
+   - unknown: Wenn Eigenschaftsdaten unklar sind.
+   ➜ Case-INSENSITIVE Suche durchführen!
+
+8. Felder ohne Information: leerer String bzw. leeres Array. Nichts erfinden.`
 }
 
 export async function analysiereVersicherungsdokument(

@@ -99,7 +99,8 @@ export async function POST(
         file.name,
         file.type || 'application/octet-stream',
         kontaktId,
-        kontaktName,
+        kontakt.first_name || '',
+        kontakt.last_name || '',
         kategorie
       )
     } catch (uploadErr) {

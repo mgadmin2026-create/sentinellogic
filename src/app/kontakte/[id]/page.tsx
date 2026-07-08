@@ -12,6 +12,7 @@ import { NotesHistory } from '@/components/NotesHistory'
 import { DialfireSyncPanel } from '@/components/DialfireSyncPanel'
 import { DialfireResponseTable } from '@/components/DialfireResponseTable'
 import { KontaktDokumenteTab } from '@/components/KontaktDokumenteTab'
+import { KontaktVertraegeTab } from '@/components/KontaktVertraegeTab'
 
 interface Kontakt {
   id: string
@@ -103,6 +104,7 @@ const TABS = [
   { id: 'tasks', label: 'Aufgaben', icon: '✓' },
   { id: 'dialfire', label: 'Dialfire', icon: '📞' },
   { id: 'documents', label: 'Dokumente', icon: '📄' },
+  { id: 'contracts', label: 'Verträge', icon: '📋' },
   { id: 'automation', label: 'Automation', icon: '⚙️' },
 ]
 
@@ -777,6 +779,12 @@ export default function KontaktDetailPage() {
         {activeTab === 'documents' && (
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <KontaktDokumenteTab kontaktId={kontaktId} />
+          </div>
+        )}
+
+        {activeTab === 'contracts' && (
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <KontaktVertraegeTab kontaktId={kontaktId} />
           </div>
         )}
       </div>
