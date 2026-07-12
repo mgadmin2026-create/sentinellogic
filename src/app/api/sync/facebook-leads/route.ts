@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
 
     for (const lead of allLeads) {
       try {
-        const contact = mapFacebookFieldsToContact(lead.field_data, lead.qualification_status)
+        const contact = mapFacebookFieldsToContact(lead.field_data, lead.qualification_status, lead._formId)
         contact.facebook_id = lead.id
         contact.facebook_form_id = lead._formId || formIds[0]
         contact.source = 'facebook'
@@ -308,7 +308,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?: string): Record<string, any> {
+function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?: string, formId?: string): Record<string, any> {
   const contact: Record<string, any> = {
     metadata: {},
   }
@@ -316,6 +316,13 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
   // Store Facebook phase/qualification status
   if (qualificationStatus) {
     contact.facebook_phase = qualificationStatus
+  }
+
+  // Set insurance_product based on form ID
+  if (formId === '1251160670355401') {
+    contact.insurance_product = 'PKV'
+  } else if (formId === '1488535808896676') {
+    contact.insurance_product = 'Unternehmerschutz'
   }
 
   const fieldMap: Record<string, string> = {
@@ -359,8 +366,13 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
       contact[fieldMap[fbName]] = value
     } else if (customFieldMap[fbName]) {
       const mappedField = customFieldMap[fbName]
-      // Store all custom fields as text (mitarbeitanzahl can be "1_bis_5", "6_bis_20", etc.)
-      contact[mappedField] = value
+      // Don't override insurance_product if it was already set based on form ID
+      if (mappedField === 'insurance_product' && contact.insurance_product) {
+        // Skip: already set from form ID
+      } else {
+        // Store all custom fields as text (mitarbeitanzahl can be "1_bis_5", "6_bis_20", etc.)
+        contact[mappedField] = value
+      }
     }
 
     contact.metadata[fbName] = value
