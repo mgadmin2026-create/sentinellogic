@@ -11,7 +11,6 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    const formId = process.env.FACEBOOK_FORM_ID || '1488535808896676'
     const accessToken = process.env.FACEBOOK_ACCESS_TOKEN
 
     if (!accessToken) {
@@ -21,26 +20,35 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log(`🔄 Starting Facebook Lead sync for form ${formId}`)
+    // Support multiple form IDs (comma-separated in env var)
+    const formIdString = process.env.FACEBOOK_FORM_IDS || process.env.FACEBOOK_FORM_ID || '1488535808896676'
+    const formIds = formIdString.split(',').map(id => id.trim())
+
+    console.log(`🔄 Starting Facebook Lead sync for forms: ${formIds.join(', ')}`)
 
     let allLeads: any[] = []
-    let after: string | null = null
-    let hasMore = true
-    let iterations = 0
     const maxIterations = 50
 
-    while (hasMore && iterations < maxIterations) {
-      iterations++
+    // Fetch leads from all forms
+    for (const formId of formIds) {
+      console.log(`📥 Fetching leads from form ${formId}...`)
 
-      const url = new URL(`https://graph.facebook.com/v18.0/${formId}/leads`)
-      url.searchParams.append('fields', 'id,created_time,field_data,qualification_status')
-      url.searchParams.append('limit', '100')
+      let after: string | null = null
+      let hasMore = true
+      let iterations = 0
 
-      if (after) {
-        url.searchParams.append('after', after)
-      }
+      while (hasMore && iterations < maxIterations) {
+        iterations++
 
-      console.log(`📥 Fetching batch ${iterations}...`)
+        const url = new URL(`https://graph.facebook.com/v18.0/${formId}/leads`)
+        url.searchParams.append('fields', 'id,created_time,field_data,qualification_status')
+        url.searchParams.append('limit', '100')
+
+        if (after) {
+          url.searchParams.append('after', after)
+        }
+
+        console.log(`📥 Fetching batch ${iterations} from form ${formId}...`)
 
       // FIX 1: Use Authorization header instead of query parameter
       const response = await fetch(url.toString(), {
@@ -81,14 +89,15 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      if (data.paging?.cursors?.after) {
-        after = data.paging.cursors.after
-      } else {
-        hasMore = false
+        if (data.paging?.cursors?.after) {
+          after = data.paging.cursors.after
+        } else {
+          hasMore = false
+        }
       }
     }
 
-    console.log(`📊 Total leads fetched: ${allLeads.length}`)
+    console.log(`📊 Total leads fetched from all forms: ${allLeads.length}`)
 
     let synced = 0
     let skipped = 0
