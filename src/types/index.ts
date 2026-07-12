@@ -46,6 +46,7 @@ export interface Contact {
   mitarbeitanzahl?: string
   // Insurance Info
   insurance_product?: string
+  prüfung_grund?: string
   situation?: string
   krankenversicherung_status?: string
   // Pipeline
