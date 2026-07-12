@@ -32,6 +32,22 @@ export interface Contact {
   dialfire_id?: string
   notes?: string
   notes_updated_at?: string
+  // Facebook Lead Fields
+  facebook_id?: string
+  facebook_form_id?: string
+  facebook_phase?: string
+  // Location
+  city?: string
+  state?: string
+  postal_code?: string
+  // Business Info
+  industry?: string
+  jahresumsatz?: string
+  mitarbeitanzahl?: string
+  // Insurance Info
+  insurance_product?: string
+  situation?: string
+  krankenversicherung_status?: string
   // Pipeline
   pipeline_stage?: string
   pipeline_steps?: Array<{ key: string; done: boolean; completed_at?: string; due_date?: string }>

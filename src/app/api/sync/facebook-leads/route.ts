@@ -323,8 +323,11 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
   const customFieldMap: Record<string, string> = {
     'in_welcher_branche_seid_ihr_tätig?': 'industry',
     'welche_absicherung_möchtest_du_prüfen_lassen?': 'insurance_product',
+    'was_möchtest_du_prüfen_lassen?': 'insurance_product', // Alternative Feldname
     'wie_hoch_ist_euer_jahresumsatz?': 'jahresumsatz',
     'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeitanzahl',
+    'welche_situation_passt_aktuell_am_besten_zu_dir?': 'situation',
+    'wie_bist_du_aktuell_krankenversichert?': 'krankenversicherung_status',
   }
 
   let fullName = ''
@@ -344,12 +347,8 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
       contact[fieldMap[fbName]] = value
     } else if (customFieldMap[fbName]) {
       const mappedField = customFieldMap[fbName]
-      // Convert mitarbeitanzahl to integer if it's a numeric string
-      if (mappedField === 'mitarbeitanzahl' && /^\d+$/.test(value)) {
-        contact[mappedField] = parseInt(value, 10)
-      } else {
-        contact[mappedField] = value
-      }
+      // Store all custom fields as text (mitarbeitanzahl can be "1_bis_5", "6_bis_20", etc.)
+      contact[mappedField] = value
     }
 
     contact.metadata[fbName] = value
