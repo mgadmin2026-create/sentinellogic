@@ -5,6 +5,7 @@ import { SOURCE_LABELS, type LeadStatus, type LeadSource } from '@/data/mock'
 interface Rule {
   id: string; created_at: string; name: string
   condition_source: LeadSource | 'all'
+  condition_insurance_product?: string
   actions: {
     klicktipp_tag?: string; dialfire_campaign?: string; dialfire_task_name?: string
     set_status?: LeadStatus; send_notification?: boolean
@@ -32,6 +33,11 @@ const SOURCE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'manuell', label: 'Manuell' },
   { value: 'ki_upload', label: 'KI Upload' },
 ]
+const INSURANCE_PRODUCT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Alle Versicherungstypen' },
+  { value: 'PKV', label: 'PKV (Private Krankenversicherung)' },
+  { value: 'Unternehmerschutz', label: 'Unternehmerschutz' },
+]
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Neu' }, { value: 'contacted', label: 'Kontaktiert' },
   { value: 'qualified', label: 'Qualifiziert' }, { value: 'customer', label: 'Kunde' },
@@ -49,6 +55,7 @@ export default function RegelnPage() {
 
   // Form state
   const [newSource, setNewSource] = useState('facebook')
+  const [newInsuranceProduct, setNewInsuranceProduct] = useState('')
   const [newKlicktipp, setNewKlicktipp] = useState('')
   const [newDialfire, setNewDialfire] = useState('')
   const [newDialfireTask, setNewDialfireTask] = useState('')
@@ -132,18 +139,24 @@ export default function RegelnPage() {
       if (newNotificationEmail.trim()) actions.notification_email = newNotificationEmail.trim()
     }
 
+    const insuranceLbl = INSURANCE_PRODUCT_OPTIONS.find((i) => i.value === newInsuranceProduct)?.label
+    const ruleName = insuranceLbl && insuranceLbl !== 'Alle Versicherungstypen'
+      ? `${sourceLbl} + ${insuranceLbl} → Neue Regel`
+      : `${sourceLbl} → Neue Regel`
+
     await fetch('/api/rules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: `${sourceLbl} → Neue Regel`,
+        name: ruleName,
         condition_source: newSource,
+        condition_insurance_product: newInsuranceProduct || null,
         actions,
         active: true,
       }),
     })
     setSaving(false); setModalOpen(false)
-    setNewSource('facebook'); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
+    setNewSource('facebook'); setNewInsuranceProduct(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
     setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
     loadRules()
   }
@@ -201,11 +214,16 @@ export default function RegelnPage() {
 
                   <div className="flex items-stretch gap-3">
                     {/* WENN */}
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 min-w-[160px]">
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 min-w-[200px]">
                       <p className="text-xs font-bold text-blue-500 uppercase tracking-wide mb-1">WENN</p>
-                      <p className="text-sm font-semibold text-[#1A1A1A]">
+                      <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
                         Quelle = {SOURCE_OPTIONS.find((s) => s.value === rule.condition_source)?.label ?? rule.condition_source}
                       </p>
+                      {rule.condition_insurance_product && (
+                        <p className="text-sm font-semibold text-[#1A1A1A] text-blue-700">
+                          + Typ = {INSURANCE_PRODUCT_OPTIONS.find((i) => i.value === rule.condition_insurance_product)?.label ?? rule.condition_insurance_product}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center text-gray-300">
@@ -290,6 +308,17 @@ export default function RegelnPage() {
                 <select value={newSource} onChange={(e) => setNewSource(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
                   {SOURCE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Insurance Product */}
+              <div>
+                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Versicherungstyp (optional)</label>
+                <select value={newInsuranceProduct} onChange={(e) => setNewInsuranceProduct(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  {INSURANCE_PRODUCT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
