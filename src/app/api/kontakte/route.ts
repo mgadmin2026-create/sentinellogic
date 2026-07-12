@@ -199,7 +199,12 @@ export async function POST(request: NextRequest) {
     // Execute automation rules (if not disabled)
     const automationDisabled = body.automation_disabled === true
     if (data?.id) {
-      const automationResult = await executeAutomation(data.id, data.source, automationDisabled)
+      const automationResult = await executeAutomation(
+        data.id,
+        data.source,
+        automationDisabled,
+        data.insurance_product
+      )
       if (automationResult.error) {
         console.warn('[Automation] Failed:', automationResult.error)
       }

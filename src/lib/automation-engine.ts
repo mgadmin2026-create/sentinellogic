@@ -7,6 +7,7 @@ interface Rule {
   name?: string
   active: boolean
   condition_source: string
+  condition_insurance_product?: string
   actions: {
     klicktipp_tag?: string
     dialfire_campaign?: string
@@ -34,7 +35,8 @@ interface AutomationResult {
 export async function executeAutomation(
   contactId: string,
   contactSource: string,
-  automationDisabled: boolean
+  automationDisabled: boolean,
+  contactInsuranceProduct?: string
 ): Promise<AutomationResult> {
   try {
     const supabase = createServerClient()
@@ -69,13 +71,21 @@ export async function executeAutomation(
       return { executed: false, fields_set: {}, error: rulesError.message }
     }
 
-    // Find matching rule for this source
-    const matchingRule = rules?.find(
-      (rule: Rule) => rule.condition_source === 'all' || rule.condition_source === contactSource
-    )
+    // Find matching rule for this source and insurance product
+    const matchingRule = rules?.find((rule: Rule) => {
+      // Check source condition
+      const sourceMatches = rule.condition_source === 'all' || rule.condition_source === contactSource
+
+      // Check insurance product condition (if specified)
+      const insuranceMatches =
+        !rule.condition_insurance_product ||
+        rule.condition_insurance_product === contactInsuranceProduct
+
+      return sourceMatches && insuranceMatches
+    })
 
     if (!matchingRule) {
-      console.log(`[Automation] No matching rule for source: ${contactSource}`)
+      console.log(`[Automation] No matching rule for source: ${contactSource}, insurance: ${contactInsuranceProduct || 'all'}`)
       return { executed: false, fields_set: {} }
     }
 
