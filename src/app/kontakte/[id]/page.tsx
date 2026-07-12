@@ -60,6 +60,9 @@ interface Kontakt {
   jahresumsatz?: string
   mitarbeitanzahl?: number
   versicherungstyp?: string
+  prüfung_grund?: string
+  krankenversicherung_status?: string
+  situation?: string
   dialfire_updated_at?: string
   dialfire_sync_error?: string
   created_at: string
