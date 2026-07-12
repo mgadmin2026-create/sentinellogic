@@ -50,44 +50,46 @@ export async function GET(request: NextRequest) {
 
         console.log(`📥 Fetching batch ${iterations} from form ${formId}...`)
 
-      // FIX 1: Use Authorization header instead of query parameter
-      const response = await fetch(url.toString(), {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
+        // FIX 1: Use Authorization header instead of query parameter
+        const response = await fetch(url.toString(), {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`Facebook API Error (${response.status}):`, errorText)
-        return new NextResponse(
-          JSON.stringify({
-            error: 'Facebook API Error',
-            details: errorText,
-            status: response.status,
-          }),
-          { status: response.status }
-        )
-      }
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error(`Facebook API Error (${response.status}):`, errorText)
+          return new NextResponse(
+            JSON.stringify({
+              error: 'Facebook API Error',
+              details: errorText,
+              status: response.status,
+            }),
+            { status: response.status }
+          )
+        }
 
-      let data: any
-      try {
-        data = await response.json()
-      } catch (parseError) {
-        console.error('Failed to parse Facebook response:', parseError)
-        return new NextResponse(
-          JSON.stringify({ error: 'Invalid JSON response from Facebook' }),
-          { status: 500 }
-        )
-      }
+        let data: any
+        try {
+          data = await response.json()
+        } catch (parseError) {
+          console.error('Failed to parse Facebook response:', parseError)
+          return new NextResponse(
+            JSON.stringify({ error: 'Invalid JSON response from Facebook' }),
+            { status: 500 }
+          )
+        }
 
-      if (data.data && data.data.length > 0) {
-        allLeads = [...allLeads, ...data.data]
-        console.log(
-          `✅ Fetched ${data.data.length} leads (total so far: ${allLeads.length})`
-        )
-      }
+        if (data.data && data.data.length > 0) {
+          // Attach formId to each lead for later use
+          const leadsWithFormId = data.data.map((lead: any) => ({ ...lead, _formId: formId }))
+          allLeads = [...allLeads, ...leadsWithFormId]
+          console.log(
+            `✅ Fetched ${data.data.length} leads (total so far: ${allLeads.length})`
+          )
+        }
 
         if (data.paging?.cursors?.after) {
           after = data.paging.cursors.after
@@ -110,7 +112,7 @@ export async function GET(request: NextRequest) {
       try {
         const contact = mapFacebookFieldsToContact(lead.field_data, lead.qualification_status)
         contact.facebook_id = lead.id
-        contact.facebook_form_id = formId
+        contact.facebook_form_id = lead._formId || formIds[0]
         contact.source = 'facebook'
 
         if (lead.created_time) {
@@ -152,7 +154,7 @@ export async function GET(request: NextRequest) {
             .from('contacts')
             .update({
               facebook_id: lead.id,
-              facebook_form_id: formId,
+              facebook_form_id: lead._formId || formIds[0],
             })
             .eq('id', existingByEmail.id)
 
@@ -180,7 +182,7 @@ export async function GET(request: NextRequest) {
               'Facebook lead linked to existing contact',
               {
                 facebook_id: lead.id,
-                form_id: formId,
+                form_id: lead._formId || formIds[0],
               }
             )
             updated++
@@ -205,6 +207,7 @@ export async function GET(request: NextRequest) {
           const contactId = insertedData[0].id
           console.log(`✅ Contact ${contactId} created/updated from Facebook lead ${lead.id}`)
 
+          const currentFormId = lead._formId || formIds[0]
           await logActivity(
             null,
             contactId,
@@ -212,7 +215,7 @@ export async function GET(request: NextRequest) {
             'Lead imported from Facebook form sync',
             {
               facebook_id: lead.id,
-              form_id: formId,
+              form_id: currentFormId,
               source: 'facebook',
               facebook_phase: contact.facebook_phase || null,
               form_data: lead.field_data || {},
@@ -224,13 +227,13 @@ export async function GET(request: NextRequest) {
             .from('contact_notes_history')
             .insert({
               contact_id: contactId,
-              content: `Facebook Lead Import\nForm ID: ${formId}\nLead ID: ${lead.id}\nPhase: ${contact.facebook_phase || 'Neu'}`,
+              content: `Facebook Lead Import\nForm ID: ${currentFormId}\nLead ID: ${lead.id}\nPhase: ${contact.facebook_phase || 'Neu'}`,
               type: 'facebook_sync',
               category: 'dialfire',
               created_by: 'system',
               metadata: {
                 facebook_id: lead.id,
-                form_id: formId,
+                form_id: currentFormId,
                 facebook_phase: contact.facebook_phase,
                 form_data: lead.field_data || {},
               },
