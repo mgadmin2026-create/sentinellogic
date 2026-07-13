@@ -65,6 +65,41 @@ interface Kontakt {
   situation?: string
   dialfire_updated_at?: string
   dialfire_sync_error?: string
+  // PKV Insurance Fields
+  geburtstag?: string
+  jahreseinkommen?: string
+  groesse?: number
+  gewicht?: number
+  gesundheitszustand?: string
+  seit_wann_selbststaendig?: string
+  dienstverhaltnis?: string
+  // Insurance Records (1-5)
+  versicherungsgesellschaft_1?: string
+  leistungen_1?: string
+  aktueller_beitrag_1?: string
+  kontoinhaber_1?: string
+  iban_1?: string
+  versicherungsgesellschaft_2?: string
+  leistungen_2?: string
+  aktueller_beitrag_2?: string
+  kontoinhaber_2?: string
+  iban_2?: string
+  versicherungsgesellschaft_3?: string
+  leistungen_3?: string
+  aktueller_beitrag_3?: string
+  kontoinhaber_3?: string
+  iban_3?: string
+  versicherungsgesellschaft_4?: string
+  leistungen_4?: string
+  aktueller_beitrag_4?: string
+  kontoinhaber_4?: string
+  iban_4?: string
+  versicherungsgesellschaft_5?: string
+  leistungen_5?: string
+  aktueller_beitrag_5?: string
+  kontoinhaber_5?: string
+  iban_5?: string
+  notizen_2?: string
   created_at: string
 }
 

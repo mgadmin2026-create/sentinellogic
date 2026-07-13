@@ -48,6 +48,41 @@ interface Kontakt {
   kontoinhaber?: string
   iban?: string
   sparte?: string
+  // PKV Insurance Fields
+  geburtstag?: string
+  jahreseinkommen?: string
+  groesse?: number
+  gewicht?: number
+  gesundheitszustand?: string
+  seit_wann_selbststaendig?: string
+  dienstverhaltnis?: string
+  // Insurance Records (1-5)
+  versicherungsgesellschaft_1?: string
+  leistungen_1?: string
+  aktueller_beitrag_1?: string
+  kontoinhaber_1?: string
+  iban_1?: string
+  versicherungsgesellschaft_2?: string
+  leistungen_2?: string
+  aktueller_beitrag_2?: string
+  kontoinhaber_2?: string
+  iban_2?: string
+  versicherungsgesellschaft_3?: string
+  leistungen_3?: string
+  aktueller_beitrag_3?: string
+  kontoinhaber_3?: string
+  iban_3?: string
+  versicherungsgesellschaft_4?: string
+  leistungen_4?: string
+  aktueller_beitrag_4?: string
+  kontoinhaber_4?: string
+  iban_4?: string
+  versicherungsgesellschaft_5?: string
+  leistungen_5?: string
+  aktueller_beitrag_5?: string
+  kontoinhaber_5?: string
+  iban_5?: string
+  notizen_2?: string
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -181,6 +216,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
     unternehmen: true,
     adresse: true,
     versicherung: true,
+    pkv_versicherungen: false,
     integrations: false,
   })
 
@@ -324,6 +360,51 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           </div>
           <Field label="Krankenversicherungsstatus" field="krankenversicherung_status" value={getValue('krankenversicherung_status')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Situation" field="situation" value={getValue('situation')} onChange={handleChange} isEditing={isEditing} />
+        </div>
+      </AccordionSection>
+
+      {/* SECONDARY SECTION: PKV Versicherungen (Collapsible) */}
+      <AccordionSection
+        title="PKV Versicherungen"
+        icon="💼"
+        isOpen={openSections.pkv_versicherungen}
+        onToggle={() => toggleSection('pkv_versicherungen')}
+      >
+        <div className="space-y-6">
+          {/* Personal Info */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Persönliche Daten</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+              <Field label="Geburtstag" field="geburtstag" type="date" value={getValue('geburtstag')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Jahreseinkommen" field="jahreseinkommen" type="number" value={getValue('jahreseinkommen')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Größe (cm)" field="groesse" type="number" value={getValue('groesse')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Gewicht (kg)" field="gewicht" type="number" value={getValue('gewicht')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Gesundheitszustand" field="gesundheitszustand" value={getValue('gesundheitszustand')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Seit wann Selbstständig" field="seit_wann_selbststaendig" type="date" value={getValue('seit_wann_selbststaendig')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Dienstverhältnis" field="dienstverhaltnis" value={getValue('dienstverhaltnis')} onChange={handleChange} isEditing={isEditing} />
+            </div>
+          </div>
+
+          {/* Insurance Records 1-5 */}
+          {[1, 2, 3, 4, 5].map(num => (
+            <div key={`insurance-${num}`}>
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Versicherung {num}</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4 p-3 bg-gray-50 rounded-lg">
+                <Field label="Versicherungsgesellschaft" field={`versicherungsgesellschaft_${num}`} value={getValue(`versicherungsgesellschaft_${num}`)} onChange={handleChange} isEditing={isEditing} />
+                <Field label="Leistungen" field={`leistungen_${num}`} value={getValue(`leistungen_${num}`)} onChange={handleChange} isEditing={isEditing} />
+                <Field label="Aktueller Beitrag" field={`aktueller_beitrag_${num}`} type="number" value={getValue(`aktueller_beitrag_${num}`)} onChange={handleChange} isEditing={isEditing} />
+                <Field label="Kontoinhaber" field={`kontoinhaber_${num}`} value={getValue(`kontoinhaber_${num}`)} onChange={handleChange} isEditing={isEditing} />
+                <div className="sm:col-span-2">
+                  <Field label="IBAN" field={`iban_${num}`} value={getValue(`iban_${num}`)} onChange={handleChange} isEditing={isEditing} />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Additional Notes */}
+          <div className="sm:col-span-2">
+            <Field label="Notizen 2" field="notizen_2" value={getValue('notizen_2')} onChange={handleChange} isEditing={isEditing} />
+          </div>
         </div>
       </AccordionSection>
 
