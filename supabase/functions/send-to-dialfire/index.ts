@@ -28,19 +28,13 @@ function getCampaignConfig(campaignId: string): { api_key: string; task_name: st
 interface DialfireContactPayload {
   $ref: string
   $phone?: string
-  // Contact Basics
   first_name?: string
   last_name?: string
   email?: string
-  // Company
   company_name?: string
-  Firmenname?: string
-  Firma?: string
-  // Address
   strasse?: string
   plz?: string
   ort?: string
-  // Professional
   Tätigkeit?: string
   Herkunft?: string
   "Genaue_Tätigkeit"?: string
@@ -61,7 +55,7 @@ interface DialfireContactPayload {
   "aktueller_Beitrag"?: number | string
   Kontoinhaber?: string
   IBAN?: string
-  [key: string]: any // Allow for numbered insurance fields (2-5)
+  [key: string]: any
 }
 
 async function createDialfireContact(
@@ -127,7 +121,7 @@ serve(async (req) => {
 
     if (!config.api_key) {
       console.error(`[Dialfire] Missing API key for campaign: ${campaignId}`)
-      throw new Error(`Missing API key for campaign ${campaignId}. Check environment variables: DIALFIRE_API_KEY or DIALFIRE_API_KEY_FACEBOOK`)
+      throw new Error(`Missing API key for campaign ${campaignId}. Check environment variables: DIALFIRE_API_KEY or DIALFIRE_API_KEY_FACEBOOK or DIALFIRE_API_KEY_PKV`)
     }
 
     const payload: DialfireContactPayload = {
@@ -168,28 +162,25 @@ serve(async (req) => {
       Kontoinhaber: contact.kontoinhaber_1,
       IBAN: contact.iban_1,
 
-      // Insurance 2
+      // Insurance 2-5 (dynamic fields)
       "Versicherungsgesellschaft_2": contact.versicherungsgesellschaft_2,
       "Leistungen_2": contact.leistungen_2,
       "aktueller_Beitrag_2": contact.aktueller_beitrag_2,
       "Kontoinhaber_2": contact.kontoinhaber_2,
       "IBAN_2": contact.iban_2,
 
-      // Insurance 3
       "Versicherungsgesellschaft_3": contact.versicherungsgesellschaft_3,
       "Leistungen_3": contact.leistungen_3,
       "aktueller_Beitrag_3": contact.aktueller_beitrag_3,
       "Kontoinhaber_3": contact.kontoinhaber_3,
       "IBAN_3": contact.iban_3,
 
-      // Insurance 4
       "Versicherungsgesellschaft_4": contact.versicherungsgesellschaft_4,
       "Leistungen_4": contact.leistungen_4,
       "aktueller_Beitrag_4": contact.aktueller_beitrag_4,
       "Kontoinhaber_4": contact.kontoinhaber_4,
       "IBAN_4": contact.iban_4,
 
-      // Insurance 5
       "Versicherungsgesellschaft_5": contact.versicherungsgesellschaft_5,
       "Leistungen_5": contact.leistungen_5,
       "aktueller_Beitrag_5": contact.aktueller_beitrag_5,
