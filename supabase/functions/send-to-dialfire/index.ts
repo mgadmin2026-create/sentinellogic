@@ -28,17 +28,40 @@ function getCampaignConfig(campaignId: string): { api_key: string; task_name: st
 interface DialfireContactPayload {
   $ref: string
   $phone?: string
+  // Contact Basics
   first_name?: string
   last_name?: string
   email?: string
+  // Company
   company_name?: string
+  Firmenname?: string
+  Firma?: string
+  // Address
   strasse?: string
   plz?: string
   ort?: string
+  // Professional
   Tätigkeit?: string
+  Herkunft?: string
+  "Genaue_Tätigkeit"?: string
   Mitarbeiter?: number | string
   Jahresumsatz?: string
-  [key: string]: any
+  // Personal Info (PKV)
+  Anrede?: string
+  Geburtstag?: string
+  Jahreseinkommen?: number | string
+  Größe?: number
+  Gewicht?: number
+  "Gesundheitszustand_"?: string
+  "seit_wann_selbstständig"?: string
+  "Dienstverhältnis_"?: string
+  // Insurance Records (1-5)
+  Versicherungsgesellschaft?: string
+  Leistungen?: string
+  "aktueller_Beitrag"?: number | string
+  Kontoinhaber?: string
+  IBAN?: string
+  [key: string]: any // Allow for numbered insurance fields (2-5)
 }
 
 async function createDialfireContact(
@@ -126,6 +149,55 @@ serve(async (req) => {
       "Genaue_Tätigkeit": contact.industry,
       Mitarbeiter: contact.mitarbeitanzahl,
       Jahresumsatz: contact.jahresumsatz,
+
+      // Personal Information (PKV Campaign)
+      Anrede: contact.anrede,
+      Geburtstag: contact.geburtstag,
+      Jahreseinkommen: contact.jahreseinkommen,
+      Größe: contact.groesse,
+      Gewicht: contact.gewicht,
+      "Gesundheitszustand_": contact.gesundheitszustand,
+      "seit_wann_selbstständig": contact.seit_wann_selbststaendig,
+      "Dienstverhältnis_": contact.dienstverhaltnis,
+
+      // Insurance Records (Support for 5 Insurance Records)
+      // Insurance 1
+      Versicherungsgesellschaft: contact.versicherungsgesellschaft_1,
+      Leistungen: contact.leistungen_1,
+      "aktueller_Beitrag": contact.aktueller_beitrag_1,
+      Kontoinhaber: contact.kontoinhaber_1,
+      IBAN: contact.iban_1,
+
+      // Insurance 2
+      "Versicherungsgesellschaft_2": contact.versicherungsgesellschaft_2,
+      "Leistungen_2": contact.leistungen_2,
+      "aktueller_Beitrag_2": contact.aktueller_beitrag_2,
+      "Kontoinhaber_2": contact.kontoinhaber_2,
+      "IBAN_2": contact.iban_2,
+
+      // Insurance 3
+      "Versicherungsgesellschaft_3": contact.versicherungsgesellschaft_3,
+      "Leistungen_3": contact.leistungen_3,
+      "aktueller_Beitrag_3": contact.aktueller_beitrag_3,
+      "Kontoinhaber_3": contact.kontoinhaber_3,
+      "IBAN_3": contact.iban_3,
+
+      // Insurance 4
+      "Versicherungsgesellschaft_4": contact.versicherungsgesellschaft_4,
+      "Leistungen_4": contact.leistungen_4,
+      "aktueller_Beitrag_4": contact.aktueller_beitrag_4,
+      "Kontoinhaber_4": contact.kontoinhaber_4,
+      "IBAN_4": contact.iban_4,
+
+      // Insurance 5
+      "Versicherungsgesellschaft_5": contact.versicherungsgesellschaft_5,
+      "Leistungen_5": contact.leistungen_5,
+      "aktueller_Beitrag_5": contact.aktueller_beitrag_5,
+      "Kontoinhaber_5": contact.kontoinhaber_5,
+      "IBAN_5": contact.iban_5,
+
+      // Additional Notes
+      "Notizen2": contact.notizen_2,
     }
 
     // Task-Name: bevorzugt der per Regel gesetzte Wert, sonst Kampagnen-Default
