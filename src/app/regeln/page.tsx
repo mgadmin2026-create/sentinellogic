@@ -52,6 +52,7 @@ export default function RegelnPage() {
   const [applyMessage, setApplyMessage] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [config, setConfig] = useState<IntegrationConfig>({})
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
 
   // Form state
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
@@ -155,11 +156,25 @@ export default function RegelnPage() {
       ...(editingRuleId ? {} : { active: true })
     }
 
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (data.success) {
+        const isEdit = !!editingRuleId
+        setToast({ type: 'success', msg: isEdit ? '✅ Regel erfolgreich aktualisiert' : '✅ Regel erfolgreich erstellt' })
+        setTimeout(() => setToast(null), 3000)
+      } else {
+        setToast({ type: 'error', msg: `❌ Fehler: ${data.error}` })
+        setTimeout(() => setToast(null), 3000)
+      }
+    } catch (err) {
+      setToast({ type: 'error', msg: `❌ Fehler: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}` })
+      setTimeout(() => setToast(null), 3000)
+    }
     setSaving(false); setModalOpen(false); setEditingRuleId(null)
     setNewSource('facebook'); setNewInsuranceProduct(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
     setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
@@ -215,6 +230,17 @@ export default function RegelnPage() {
       {applyMessage && (
         <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
           {applyMessage}
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 px-4 py-3 rounded-lg text-sm font-semibold transition-opacity ${
+          toast.type === 'success'
+            ? 'bg-green-50 text-green-700 border border-green-200'
+            : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {toast.msg}
         </div>
       )}
 
