@@ -36,6 +36,7 @@ interface Kontakt {
   notes?: string
   bestandskunde?: boolean
   insurance_product?: string
+  'prüfung_grund'?: string
   kontakt_typ?: string
 }
 
@@ -293,6 +294,7 @@ export default function KontaktePage() {
   const [stageFilter, setStageFilter] = useState<string>('all')
   const [contactTypeFilter, setContactTypeFilter] = useState<string>('all')
   const [insuranceProductFilter, setInsuranceProductFilter] = useState<string>('all')
+  const [pruefungFilter, setPruefungFilter] = useState<string>('all')
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -531,6 +533,7 @@ export default function KontaktePage() {
     if (stageFilter !== 'all' && k.pipeline_stage !== stageFilter) return false
     if (contactTypeFilter !== 'all' && k.kontakt_typ !== contactTypeFilter) return false
     if (insuranceProductFilter !== 'all' && k.insurance_product !== insuranceProductFilter) return false
+    if (pruefungFilter !== 'all' && (k['prüfung_grund'] || '') !== pruefungFilter) return false
     const q = search.toLowerCase()
     if (
       q &&
@@ -543,6 +546,14 @@ export default function KontaktePage() {
       return false
     return true
   })
+
+  // Filter-Optionen dynamisch aus den geladenen Kontakten ableiten
+  const insuranceProductOptions = Array.from(
+    new Set(kontakte.map((k) => k.insurance_product).filter((v): v is string => !!v))
+  ).sort()
+  const pruefungOptions = Array.from(
+    new Set(kontakte.map((k) => k['prüfung_grund']).filter((v): v is string => !!v))
+  ).sort()
 
   const toggleSort = (field: 'name' | 'created_at' | 'status' | 'progress') => {
     if (sortBy === field) {
@@ -688,13 +699,28 @@ export default function KontaktePage() {
             title="Nach Versicherungsprodukt filtern"
           >
             <option value="all">Versicherung: Alle</option>
-            <option value="PKV">🏥 PKV</option>
-            <option value="BU">📋 BU</option>
-            <option value="KV">💼 KV</option>
-            <option value="OTHER">📌 Sonstiges</option>
+            {insuranceProductOptions.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
           </select>
 
-          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || contactTypeFilter !== 'all' || insuranceProductFilter !== 'all' || activeFilter !== 'all' || search) && (
+          {pruefungOptions.length > 0 && (
+            <select
+              value={pruefungFilter}
+              onChange={(e) => setPruefungFilter(e.target.value)}
+              className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+                pruefungFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+              }`}
+              title="Nach Prüfgrund filtern"
+            >
+              <option value="all">Prüfgrund: Alle</option>
+              {pruefungOptions.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          )}
+
+          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || contactTypeFilter !== 'all' || insuranceProductFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || search) && (
             <button
               onClick={() => {
                 setActiveFilter('all')
@@ -703,6 +729,7 @@ export default function KontaktePage() {
                 setStageFilter('all')
                 setContactTypeFilter('all')
                 setInsuranceProductFilter('all')
+                setPruefungFilter('all')
                 setSearch('')
               }}
               className="text-xs text-gray-500 hover:text-gray-900 font-medium underline-offset-2 hover:underline"
