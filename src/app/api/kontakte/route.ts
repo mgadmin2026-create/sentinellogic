@@ -364,12 +364,7 @@ export async function POST(request: NextRequest) {
 
         if (!dialfireResult) {
           console.warn(`[Dialfire] invokeEdgeFunction returned null for ${data.email}`)
-          await supabase
-            .from('contacts')
-            .update({
-              dialfire_sync_error: 'Edge Function call failed or returned null',
-            })
-            .eq('id', data.id)
+          await logActivity(null, data.id, 'dialfire_sync_failed', 'Dialfire sync failed: Edge Function call failed or returned null')
         } else if (dialfireResult?.success) {
           const dialfireId = dialfireResult.dialfire_id
 
@@ -391,24 +386,10 @@ export async function POST(request: NextRequest) {
         } else {
           console.warn(`[Dialfire] Sync fehlgeschlagen für ${data.email}: ${dialfireResult?.error}`)
           await logActivity(null, data.id, 'dialfire_sync_failed', `Dialfire sync failed: ${dialfireResult?.error || 'Unknown error'}`)
-          // Speichere Error
-          await supabase
-            .from('contacts')
-            .update({
-              dialfire_sync_error: dialfireResult?.error || 'Unknown error',
-            })
-            .eq('id', data.id)
         }
       } catch (err) {
         console.error(`[Dialfire] Fehler beim Sync für ${data.email}:`, err)
-        // Speichere Error (non-blocking)
-        // Ignore update errors
-        await supabase
-          .from('contacts')
-          .update({
-            dialfire_sync_error: String(err),
-          })
-          .eq('id', data.id)
+        await logActivity(null, data.id, 'dialfire_sync_failed', `Dialfire sync failed: ${String(err)}`)
       }
     }
 

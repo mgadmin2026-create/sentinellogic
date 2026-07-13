@@ -43,8 +43,12 @@ interface DialfireContact {
     status_detail?: string
     duration?: number
   }>
-  $version?: string
+  [key: string]: any
 }
+
+// PKV-Kampagne: hier gehören die unsuffixierten Dialfire-Versicherungsfelder
+// zu Datensatz #1 (nicht zu den alten Gewerbe-Einzelspalten)
+const PKV_CAMPAIGN_ID = '6X42NJWGH4YA6HC7'
 
 interface SyncResult {
   contact_id: string
@@ -99,14 +103,11 @@ async function fetchDialfireContact(
 }
 
 // Helper: Calculate deltas between Sentinel and Dialfire
-function calculateDeltas(
-  sentinelContact: any,
-  dialfireContact: DialfireContact
-): { changes: Record<string, { old: any; new: any }>; changedFields: string[] } {
-  const changes: Record<string, { old: any; new: any }> = {}
+function buildFieldMap(campaignId: string): Record<string, string[]> {
+  const isPkv = campaignId === PKV_CAMPAIGN_ID
 
-  // Field mapping: Dialfire → Sentinel
-  const fieldMap: Record<string, string[]> = {
+  // Field mapping: Dialfire → Sentinel (kampagnenunabhängige Basis)
+  const map: Record<string, string[]> = {
     first_name: ['first_name', 'vorname'],
     last_name: ['last_name', 'nachname'],
     email: ['email'],
@@ -121,18 +122,75 @@ function calculateDeltas(
     jahresumsatz: ['Jahresumsatz'],
     anrede: ['Anrede'],
     rechtsform: ['Rechtsform'],
-    geburtstag_gf_inhaber: ['Geburtstag'],
     geschaeftsfuehrer_anzahl: ['Geschäftsführer_'],
     seit_wann_gewerbe: ['Seit_wann_Gewerbe_'],
-    versicherungsgesellschaft: ['Versicherungsgesellschaft'],
     zahlweise: ['Zahlweise___Monat_Viertel_Halb_Jaehrlich_'],
     beitrag_vorsorge: ['Beitrag_Vorsorge'],
-    kontoinhaber: ['Kontoinhaber'],
-    iban: ['IBAN'],
-    bemerkung: ['Bemerkung', 'Notizen', 'Notizen2'],
+    bemerkung: ['Bemerkung', 'Notizen'],
     sparte: ['Sparte'],
     inhaltssumme: ['Inhaltssumme'],
+    // PKV-Persönlich + Haus-Nr (eindeutige Dialfire-Feldnamen, kein Konflikt)
+    hausnummer: ['Haus_Nr_'],
+    prüfung_grund: ['Was_ist_zu_prüfen_'],
+    krankenversicherung_status: ['aktuelle_Kranken_versichert_'],
+    situation: ['Aktuelle_Situation'],
+    jahreseinkommen: ['Jahreseinkommen'],
+    groesse: ['Größe'],
+    gewicht: ['Gewicht'],
+    gesundheitszustand: ['Gesundheitszustand_'],
+    seit_wann_selbststaendig: ['seit_wann_selbstständig'],
+    dienstverhaltnis: ['Dienstverhältnis_'],
+    notizen_2: ['Notizen2'],
+    // Versicherung 2-5 (nur numerierte Dialfire-Felder → kein Konflikt)
+    versicherungsgesellschaft_2: ['Versicherungsgesellschaft_2'],
+    leistungen_2: ['Leistungen_2'],
+    aktueller_beitrag_2: ['aktueller_Beitrag_2'],
+    kontoinhaber_2: ['Kontoinhaber_2'],
+    iban_2: ['IBAN_2'],
+    versicherungsgesellschaft_3: ['Versicherungsgesellschaft_3'],
+    leistungen_3: ['Leistungen_3'],
+    aktueller_beitrag_3: ['aktueller_Beitrag_3'],
+    kontoinhaber_3: ['Kontoinhaber_3'],
+    iban_3: ['IBAN_3'],
+    versicherungsgesellschaft_4: ['Versicherungsgesellschaft_4'],
+    leistungen_4: ['Leistungen_4'],
+    aktueller_beitrag_4: ['aktueller_Beitrag_4'],
+    kontoinhaber_4: ['Kontoinhaber_4'],
+    iban_4: ['IBAN_4'],
+    versicherungsgesellschaft_5: ['Versicherungsgesellschaft_5'],
+    leistungen_5: ['Leistungen_5'],
+    aktueller_beitrag_5: ['aktueller_Beitrag_5'],
+    kontoinhaber_5: ['Kontoinhaber_5'],
+    iban_5: ['IBAN_5'],
   }
+
+  // Konflikt-Felder: dasselbe unsuffixierte Dialfire-Feld bedeutet je nach
+  // Kampagne etwas anderes -> kampagnenabhängig auflösen
+  if (isPkv) {
+    map.geburtstag = ['Geburtstag']
+    map.versicherungsgesellschaft_1 = ['Versicherungsgesellschaft']
+    map.leistungen_1 = ['Leistungen']
+    map.aktueller_beitrag_1 = ['aktueller_Beitrag']
+    map.kontoinhaber_1 = ['Kontoinhaber']
+    map.iban_1 = ['IBAN']
+  } else {
+    map.geburtstag_gf_inhaber = ['Geburtstag']
+    map.versicherungsgesellschaft = ['Versicherungsgesellschaft']
+    map.kontoinhaber = ['Kontoinhaber']
+    map.iban = ['IBAN']
+  }
+
+  return map
+}
+
+function calculateDeltas(
+  sentinelContact: any,
+  dialfireContact: DialfireContact,
+  campaignId: string
+): { changes: Record<string, { old: any; new: any }>; changedFields: string[] } {
+  const changes: Record<string, { old: any; new: any }> = {}
+
+  const fieldMap = buildFieldMap(campaignId)
 
   // Extract Dialfire values (prefer English, fallback to German)
   const dialfireValues: Record<string, any> = {}
@@ -157,23 +215,42 @@ function calculateDeltas(
   dialfireValues['dialfire_retry_count'] = dialfireContact.$task_log?.length || 0
   dialfireValues['dialfire_updated_at'] = new Date().toISOString()
 
+  // Numerische Sentinel-Spalten: Dialfire liefert Strings -> konvertieren
+  const numericFields = new Set([
+    'mitarbeitanzahl', 'geschaeftsfuehrer_anzahl', 'jahresumsatz', 'jahreseinkommen',
+    'groesse', 'gewicht', 'beitrag_vorsorge', 'inhaltssumme',
+    'aktueller_beitrag_1', 'aktueller_beitrag_2', 'aktueller_beitrag_3',
+    'aktueller_beitrag_4', 'aktueller_beitrag_5',
+  ])
+
   // Compare and detect changes
   for (const [field, newValue] of Object.entries(dialfireValues)) {
-    const oldValue = sentinelContact[field]
+    const isMeta = field.startsWith('dialfire_')
 
-    // Normalize for comparison
+    // Leere Dialfire-Werte NICHT zurückschreiben: würde bestehende Sentinel-Daten
+    // mit "" überschreiben und bei Zahlenspalten einen Fehler werfen.
+    // (dialfire_* Meta-Felder werden intern gesetzt und sind immer gültig.)
+    if (!isMeta) {
+      if (newValue === undefined || newValue === null) continue
+      if (typeof newValue === 'string' && newValue.trim() === '') continue
+    }
+
+    let compareNewValue: any = newValue
+
+    // Zahlen konvertieren; ungültige/leere Zahl -> überspringen
+    if (numericFields.has(field) && typeof newValue === 'string') {
+      const parsed = Number(newValue.replace(',', '.').replace(/[^\d.-]/g, ''))
+      if (Number.isNaN(parsed)) continue
+      compareNewValue = parsed
+    }
+
+    const oldValue = sentinelContact[field]
     const oldNorm = oldValue === null ? undefined : oldValue
-    const newNorm = newValue === null ? undefined : newValue
+    const newNorm = compareNewValue === null ? undefined : compareNewValue
 
     // Skip if unchanged
     if (oldNorm === newNorm) {
       continue
-    }
-
-    // Convert mitarbeitanzahl to int if needed
-    let compareNewValue = newValue
-    if (field === 'mitarbeitanzahl' && typeof newValue === 'string') {
-      compareNewValue = parseInt(newValue, 10)
     }
 
     changes[field] = { old: oldNorm, new: compareNewValue }
@@ -255,7 +332,7 @@ async function pullSyncContact(
     }
 
     // 3. Calculate deltas
-    const { changes, changedFields } = calculateDeltas(sentinelContact, dialfireContact)
+    const { changes, changedFields } = calculateDeltas(sentinelContact, dialfireContact, campaignId)
 
     // 4. If no changes, skip
     if (changedFields.length === 0) {

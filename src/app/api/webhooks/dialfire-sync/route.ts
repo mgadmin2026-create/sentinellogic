@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     // Update Supabase mit Dialfire-Daten
     const updateData: Record<string, any> = {
       dialfire_id: dialfireContact.$id,
-      dialfire_external_ref: dialfireContact.$ref || supabaseContactId,
       dialfire_updated_at: new Date().toISOString(),
     }
 

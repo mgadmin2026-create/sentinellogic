@@ -15,12 +15,21 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'pipeline_stage', 'pipeline_steps',
   'qualität', 'bestandskunde', 'jahresumsatz', 'mitarbeitanzahl', 'versicherungstyp', 'assigned_user_name',
   'klicktipp_id', 'klicktipp_tags', 'klicktipp_tag_ids', 'klicktipp_last_sync',
-  'dialfire_id', 'dialfire_external_ref', 'dialfire_task_name', 'dialfire_updated_at', 'dialfire_sync_error',
+  'dialfire_id', 'dialfire_updated_at',
   'automation_disabled', 'dialfire_campaign_auto', 'dialfire_campaign_id', 'dialfire_task_auto', 'dialfire_task_name_field', 'klicktipp_tags_auto', 'klicktipp_tags_field',
   'kontakt_typ',
   'versicherungsgesellschaft', 'zahlweise', 'sparte', 'rechtsform', 'anrede', 'bemerkung',
   'insurance_product', 'kontoinhaber', 'iban', 'inhaltssumme', 'beitrag_vorsorge',
   'geburtstag_gf_inhaber', 'geschaeftsfuehrer_anzahl', 'seit_wann_gewerbe',
+  // PKV-Felder (Kampagne 6X42NJWGH4YA6HC7)
+  'hausnummer', 'prüfung_grund', 'krankenversicherung_status', 'situation',
+  'geburtstag', 'jahreseinkommen', 'groesse', 'gewicht', 'gesundheitszustand',
+  'seit_wann_selbststaendig', 'dienstverhaltnis', 'notizen_2',
+  'versicherungsgesellschaft_1', 'leistungen_1', 'aktueller_beitrag_1', 'kontoinhaber_1', 'iban_1',
+  'versicherungsgesellschaft_2', 'leistungen_2', 'aktueller_beitrag_2', 'kontoinhaber_2', 'iban_2',
+  'versicherungsgesellschaft_3', 'leistungen_3', 'aktueller_beitrag_3', 'kontoinhaber_3', 'iban_3',
+  'versicherungsgesellschaft_4', 'leistungen_4', 'aktueller_beitrag_4', 'kontoinhaber_4', 'iban_4',
+  'versicherungsgesellschaft_5', 'leistungen_5', 'aktueller_beitrag_5', 'kontoinhaber_5', 'iban_5',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']

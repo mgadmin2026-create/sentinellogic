@@ -242,14 +242,17 @@ export async function POST(
               const dialfireId = dialfireResult.dialfire_id
 
               // Update contact with dialfire_id
-              await supabase
+              const { error: dfIdError } = await supabase
                 .from('contacts')
                 .update({
                   dialfire_id: dialfireId,
-                  dialfire_external_ref: contact.id,
                   dialfire_updated_at: new Date().toISOString(),
                 })
                 .eq('id', contact.id)
+
+              if (dfIdError) {
+                console.error(`[Dialfire Batch] Fehler beim Speichern der ID für ${contact.email}: ${dfIdError.message}`)
+              }
 
               dialfireSynced++
               dialfireOutcome = 'synced'
