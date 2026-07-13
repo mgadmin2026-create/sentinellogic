@@ -291,6 +291,8 @@ export default function KontaktePage() {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [typFilter, setTypFilter] = useState<string>('all')
   const [stageFilter, setStageFilter] = useState<string>('all')
+  const [contactTypeFilter, setContactTypeFilter] = useState<string>('all')
+  const [insuranceProductFilter, setInsuranceProductFilter] = useState<string>('all')
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -527,6 +529,8 @@ export default function KontaktePage() {
     if (sourceFilter !== 'all' && (k.source || 'manuell') !== sourceFilter) return false
     if (typFilter !== 'all' && (k.kontakt_typ || 'gewerbe') !== typFilter) return false
     if (stageFilter !== 'all' && k.pipeline_stage !== stageFilter) return false
+    if (contactTypeFilter !== 'all' && k.kontakt_typ !== contactTypeFilter) return false
+    if (insuranceProductFilter !== 'all' && k.insurance_product !== insuranceProductFilter) return false
     const q = search.toLowerCase()
     if (
       q &&
@@ -662,13 +666,43 @@ export default function KontaktePage() {
             ))}
           </select>
 
-          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || activeFilter !== 'all' || search) && (
+          <select
+            value={contactTypeFilter}
+            onChange={(e) => setContactTypeFilter(e.target.value)}
+            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+              contactTypeFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+            }`}
+            title="Nach Kontakttyp filtern"
+          >
+            <option value="all">Kontakttyp: Alle</option>
+            <option value="gewerbe">🏢 Gewerbe</option>
+            <option value="privat">👤 Privat</option>
+          </select>
+
+          <select
+            value={insuranceProductFilter}
+            onChange={(e) => setInsuranceProductFilter(e.target.value)}
+            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+              insuranceProductFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+            }`}
+            title="Nach Versicherungsprodukt filtern"
+          >
+            <option value="all">Versicherung: Alle</option>
+            <option value="PKV">🏥 PKV</option>
+            <option value="BU">📋 BU</option>
+            <option value="KV">💼 KV</option>
+            <option value="OTHER">📌 Sonstiges</option>
+          </select>
+
+          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || contactTypeFilter !== 'all' || insuranceProductFilter !== 'all' || activeFilter !== 'all' || search) && (
             <button
               onClick={() => {
                 setActiveFilter('all')
                 setSourceFilter('all')
                 setTypFilter('all')
                 setStageFilter('all')
+                setContactTypeFilter('all')
+                setInsuranceProductFilter('all')
                 setSearch('')
               }}
               className="text-xs text-gray-500 hover:text-gray-900 font-medium underline-offset-2 hover:underline"
