@@ -86,7 +86,7 @@ export async function POST(
 
     // Wenn Versicherungstyp in der Regel definiert ist, auch danach filtern
     if (rule.condition_insurance_product) {
-      query = query.eq('contact_type', rule.condition_insurance_product)
+      query = query.eq('insurance_product', rule.condition_insurance_product)
     }
 
     const { data: contacts, error: contactsError } = await query
