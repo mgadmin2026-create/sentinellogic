@@ -23,13 +23,19 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient()
     const body = await request.json()
-    const { name, condition_source, actions } = body
+    const { name, condition_source, condition_insurance_product, actions } = body
     if (!name || !condition_source || !actions) {
       return Response.json({ success: false, error: 'name, condition_source und actions sind Pflicht' }, { status: 400 })
     }
     const { data, error } = await supabase
       .from('rules')
-      .insert({ name, condition_source, actions, active: body.active ?? true })
+      .insert({
+        name,
+        condition_source,
+        condition_insurance_product: condition_insurance_product || null,
+        actions,
+        active: body.active ?? true
+      })
       .select().single()
     if (error) throw new Error(error.message)
     return Response.json({ success: true, data }, { status: 201 })

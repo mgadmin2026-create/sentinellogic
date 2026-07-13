@@ -54,6 +54,7 @@ export default function RegelnPage() {
   const [config, setConfig] = useState<IntegrationConfig>({})
 
   // Form state
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [newSource, setNewSource] = useState('facebook')
   const [newInsuranceProduct, setNewInsuranceProduct] = useState('')
   const [newKlicktipp, setNewKlicktipp] = useState('')
@@ -141,24 +142,41 @@ export default function RegelnPage() {
 
     const insuranceLbl = INSURANCE_PRODUCT_OPTIONS.find((i) => i.value === newInsuranceProduct)?.label
     const ruleName = insuranceLbl && insuranceLbl !== 'Alle Versicherungstypen'
-      ? `${sourceLbl} + ${insuranceLbl} → Neue Regel`
-      : `${sourceLbl} → Neue Regel`
+      ? `${sourceLbl} + ${insuranceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
+      : `${sourceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
 
-    await fetch('/api/rules', {
-      method: 'POST',
+    const url = editingRuleId ? `/api/rules/${editingRuleId}` : '/api/rules'
+    const method = editingRuleId ? 'PATCH' : 'POST'
+    const payload = {
+      name: ruleName,
+      condition_source: newSource,
+      condition_insurance_product: newInsuranceProduct || null,
+      actions,
+      ...(editingRuleId ? {} : { active: true })
+    }
+
+    await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: ruleName,
-        condition_source: newSource,
-        condition_insurance_product: newInsuranceProduct || null,
-        actions,
-        active: true,
-      }),
+      body: JSON.stringify(payload),
     })
-    setSaving(false); setModalOpen(false)
+    setSaving(false); setModalOpen(false); setEditingRuleId(null)
     setNewSource('facebook'); setNewInsuranceProduct(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
     setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
     loadRules()
+  }
+
+  function editRule(rule: Rule) {
+    setEditingRuleId(rule.id)
+    setNewSource(rule.condition_source)
+    setNewInsuranceProduct(rule.condition_insurance_product || '')
+    setNewKlicktipp(rule.actions.klicktipp_tag || '')
+    setNewDialfire(rule.actions.dialfire_campaign || '')
+    setNewDialfireTask(rule.actions.dialfire_task_name || '')
+    setNewStatus(rule.actions.set_status || '')
+    setNewNotification(rule.actions.send_notification || false)
+    setNewNotificationEmail(rule.actions.notification_email || '')
+    setModalOpen(true)
   }
 
   return (
@@ -170,7 +188,12 @@ export default function RegelnPage() {
             {loading ? 'Lädt…' : `${rules.filter((r) => r.active).length} aktive Regeln — werden bei jedem neuen Lead ausgeführt`}
           </p>
         </div>
-        <button onClick={() => setModalOpen(true)}
+        <button onClick={() => {
+          setEditingRuleId(null)
+          setNewSource('facebook'); setNewInsuranceProduct(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
+          setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
+          setModalOpen(true)
+        }}
           className="flex items-center gap-2 bg-[#FFC300] hover:bg-[#e6b000] text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Neue Regel erstellen
@@ -284,8 +307,13 @@ export default function RegelnPage() {
                     className={`relative w-9 h-5 rounded-full transition-colors ${rule.active ? 'bg-emerald-500' : 'bg-gray-200'}`}>
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${rule.active ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </button>
+                  <button onClick={() => editRule(rule)}
+                    className="text-gray-400 hover:text-blue-600 text-lg transition-colors"
+                    title="Regel bearbeiten">
+                    ✎
+                  </button>
                   <button onClick={() => setDeleteId(rule.id)}
-                    className="text-gray-400 hover:text-red-500 text-lg">
+                    className="text-gray-400 hover:text-red-500 text-lg transition-colors">
                     ✕
                   </button>
                 </div>
@@ -299,7 +327,13 @@ export default function RegelnPage() {
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-2xl font-bold text-[#1A1A1A] mb-6">Neue Regel erstellen</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-[#1A1A1A]">
+                {editingRuleId ? '✎ Regel bearbeiten' : '➕ Neue Regel erstellen'}
+              </h2>
+              <button onClick={() => { setModalOpen(false); setEditingRuleId(null) }}
+                className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+            </div>
 
             <div className="space-y-4">
               {/* Source */}
@@ -388,13 +422,13 @@ export default function RegelnPage() {
 
             {/* Buttons */}
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setModalOpen(false)}
+              <button onClick={() => { setModalOpen(false); setEditingRuleId(null) }}
                 className="flex-1 border border-gray-200 text-[#1A1A1A] font-semibold py-2 rounded-lg hover:bg-gray-50 transition-colors">
                 Abbrechen
               </button>
               <button onClick={saveRule} disabled={saving}
                 className="flex-1 bg-[#FFC300] hover:bg-[#e6b000] disabled:opacity-50 text-[#1A1A1A] font-semibold py-2 rounded-lg transition-colors">
-                {saving ? 'Speichert…' : 'Regel erstellen'}
+                {saving ? 'Speichert…' : editingRuleId ? 'Speichern' : 'Regel erstellen'}
               </button>
             </div>
           </div>
