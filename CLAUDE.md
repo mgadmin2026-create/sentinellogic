@@ -181,7 +181,10 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ### Do's
 
 - ✅ Commit bei jeder Feature/Fix
-- ✅ Teste lokal mit `npm run dev`
+- ✅ **Teste ALLE Funktionalitätserweiterungen** (UI/API/Automation) vor dem Push
+  - Nutze `verify` Skill oder starte dev server: `npm run dev`
+  - Verifiziere: Datenspeicherung, Edge Cases, Error Handling
+  - Kein Push ohne Test ✓
 - ✅ Update Release Notes
 - ✅ Nutze Activity Logger in API Routes
 - ✅ Respektiere 12-Schritt-Pipeline
