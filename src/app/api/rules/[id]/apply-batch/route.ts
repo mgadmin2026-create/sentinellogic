@@ -75,14 +75,21 @@ export async function POST(
       .update({ runs: (rule.runs ?? 0) + 1 })
       .eq('id', ruleId)
 
-    // 2. Find contacts matching rule source
+    // 2. Find contacts matching rule source AND insurance type (if specified)
     // Skip: automation_disabled=true, status='customer'
-    const { data: contacts, error: contactsError } = await supabase
+    let query = supabase
       .from('contacts')
       .select('*')
       .eq('source', rule.condition_source)
       .eq('automation_disabled', false)
       .neq('status', 'customer')
+
+    // Wenn Versicherungstyp in der Regel definiert ist, auch danach filtern
+    if (rule.condition_insurance_product) {
+      query = query.eq('contact_type', rule.condition_insurance_product)
+    }
+
+    const { data: contacts, error: contactsError } = await query
 
     if (contactsError) {
       return NextResponse.json(
