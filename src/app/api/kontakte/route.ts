@@ -218,8 +218,8 @@ export async function POST(request: NextRequest) {
       notizen_2: body.notizen_2 ? String(body.notizen_2).trim() : null,
       // Extended Dialfire Fields
       hausnummer: body.hausnummer ? String(body.hausnummer).trim() : null,
-      pruefungsgrund: body.pruefungsgrund ? String(body.pruefungsgrund).trim() : null,
-      krankenversicherungsstatus: body.krankenversicherungsstatus ? String(body.krankenversicherungsstatus).trim() : null,
+      prüfung_grund: body.prüfung_grund ? String(body.prüfung_grund).trim() : null,
+      krankenversicherung_status: body.krankenversicherung_status ? String(body.krankenversicherung_status).trim() : null,
       situation: body.situation ? String(body.situation).trim() : null,
     }
 

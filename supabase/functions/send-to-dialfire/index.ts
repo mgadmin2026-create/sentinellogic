@@ -158,8 +158,8 @@ serve(async (req) => {
       "Gesundheitszustand_": contact.gesundheitszustand,
       "seit_wann_selbstständig": contact.seit_wann_selbststaendig,
       "Dienstverhältnis_": contact.dienstverhaltnis,
-      "Was_ist_zu_prüfen_": contact.pruefungsgrund,
-      "aktuelle_Kranken_versichert_": contact.krankenversicherungsstatus,
+      "Was_ist_zu_prüfen_": contact.prüfung_grund,
+      "aktuelle_Kranken_versichert_": contact.krankenversicherung_status,
       "Aktuelle_Situation": contact.situation,
 
       // Insurance Records (Support for 5 Insurance Records)
