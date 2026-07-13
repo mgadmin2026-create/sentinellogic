@@ -35,6 +35,7 @@ interface DialfireContactPayload {
   strasse?: string
   plz?: string
   ort?: string
+  "Haus_Nr_"?: string
   Tätigkeit?: string
   Herkunft?: string
   "Genaue_Tätigkeit"?: string
@@ -49,6 +50,9 @@ interface DialfireContactPayload {
   "Gesundheitszustand_"?: string
   "seit_wann_selbstständig"?: string
   "Dienstverhältnis_"?: string
+  "Was_ist_zu_prüfen_"?: string
+  "aktuelle_Kranken_versichert_"?: string
+  "Aktuelle_Situation"?: string
   // Insurance Records (1-5)
   Versicherungsgesellschaft?: string
   Leistungen?: string
@@ -138,6 +142,7 @@ serve(async (req) => {
       strasse: contact.street,
       plz: contact.postal_code,
       ort: contact.city,
+      "Haus_Nr_": contact.hausnummer,
       Tätigkeit: contact.position,
       Herkunft: contact.source,
       "Genaue_Tätigkeit": contact.industry,
@@ -153,6 +158,9 @@ serve(async (req) => {
       "Gesundheitszustand_": contact.gesundheitszustand,
       "seit_wann_selbstständig": contact.seit_wann_selbststaendig,
       "Dienstverhältnis_": contact.dienstverhaltnis,
+      "Was_ist_zu_prüfen_": contact.pruefungsgrund,
+      "aktuelle_Kranken_versichert_": contact.krankenversicherungsstatus,
+      "Aktuelle_Situation": contact.situation,
 
       // Insurance Records (Support for 5 Insurance Records)
       // Insurance 1

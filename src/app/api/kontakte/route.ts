@@ -216,6 +216,11 @@ export async function POST(request: NextRequest) {
       kontoinhaber_5: body.kontoinhaber_5 ? String(body.kontoinhaber_5).trim() : null,
       iban_5: body.iban_5 ? String(body.iban_5).trim() : null,
       notizen_2: body.notizen_2 ? String(body.notizen_2).trim() : null,
+      // Extended Dialfire Fields
+      hausnummer: body.hausnummer ? String(body.hausnummer).trim() : null,
+      pruefungsgrund: body.pruefungsgrund ? String(body.pruefungsgrund).trim() : null,
+      krankenversicherungsstatus: body.krankenversicherungsstatus ? String(body.krankenversicherungsstatus).trim() : null,
+      situation: body.situation ? String(body.situation).trim() : null,
     }
 
     const { data, error } = await supabase
