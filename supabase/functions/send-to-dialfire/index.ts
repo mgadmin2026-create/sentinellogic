@@ -70,7 +70,7 @@ async function createDialfireContact(
 ) {
   const url = `${DIALFIRE_API_URL}/api/campaigns/${campaignId}/tasks/${taskName}/contacts/create`
 
-  console.log(`[Dialfire] Calling: ${campaignId} / task: ${taskName}`)
+  console.log(`[Dialfire] CREATE: ${campaignId} / task: ${taskName}`)
 
   const res = await fetch(url, {
     method: "POST",
@@ -85,10 +85,12 @@ async function createDialfireContact(
     const text = await res.text()
 
     if (res.status === 409) {
-      console.log(`[Dialfire] Contact exists (409): ${text}`)
+      console.log(`[Dialfire] Contact exists (409), will UPDATE instead: ${text}`)
       const match = text.match(/contacts\/([A-Z0-9]+)/)
       if (match) {
-        return { id: match[1] }
+        const dialfireId = match[1]
+        console.log(`[Dialfire] Extracted Dialfire ID from 409: ${dialfireId}, calling UPDATE`)
+        return await updateDialfireContact(payload, campaignId, dialfireId, apiKey)
       }
       throw new Error(`Dialfire 409 but could not extract ID: ${text}`)
     }
@@ -97,6 +99,44 @@ async function createDialfireContact(
   }
 
   return await res.json()
+}
+
+async function updateDialfireContact(
+  payload: DialfireContactPayload,
+  campaignId: string,
+  dialfireId: string,
+  apiKey: string
+) {
+  const url = `${DIALFIRE_API_URL}/api/campaigns/${campaignId}/contacts/${dialfireId}/update`
+
+  console.log(`[Dialfire] UPDATE: ${campaignId} / ID: ${dialfireId}`)
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+
+  const text = await res.text()
+
+  if (!res.ok) {
+    throw new Error(`Dialfire UPDATE API ${res.status}: ${text}`)
+  }
+
+  // Die UPDATE-API liefert oft einen leeren Body -> Fallback auf bekannte ID
+  if (!text) {
+    console.log(`[Dialfire] UPDATE ok (leerer Body), ID: ${dialfireId}`)
+    return { id: dialfireId }
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    console.log(`[Dialfire] UPDATE ok (kein JSON), ID: ${dialfireId}`)
+    return { id: dialfireId }
+  }
 }
 
 serve(async (req) => {
@@ -202,7 +242,24 @@ serve(async (req) => {
     // Task-Name: bevorzugt der per Regel gesetzte Wert, sonst Kampagnen-Default
     const taskName = contact.dialfire_task_name_field || config.task_name
 
-    const result = await createDialfireContact(payload, campaignId, config.api_key, taskName)
+    // DEBUG: Log die neuen Felder
+    console.log(`[Dialfire Debug] prüfung_grund: ${contact.prüfung_grund}`)
+    console.log(`[Dialfire Debug] krankenversicherung_status: ${contact.krankenversicherung_status}`)
+    console.log(`[Dialfire Debug] situation: ${contact.situation}`)
+    console.log(`[Dialfire Debug] payload.Was_ist_zu_prüfen_: ${payload["Was_ist_zu_prüfen_"]}`)
+    console.log(`[Dialfire Debug] payload.aktuelle_Kranken_versichert_: ${payload["aktuelle_Kranken_versichert_"]}`)
+    console.log(`[Dialfire Debug] payload.Aktuelle_Situation: ${payload["Aktuelle_Situation"]}`)
+
+    let result
+
+    // Wenn dialfire_id bereits existiert → direktes UPDATE
+    if (contact.dialfire_id) {
+      console.log(`[Dialfire] Contact already has dialfire_id (${contact.dialfire_id}), using UPDATE`)
+      result = await updateDialfireContact(payload, campaignId, contact.dialfire_id, config.api_key)
+    } else {
+      // Neu → CREATE (versucht, bei 409 wird UPDATE aufgerufen)
+      result = await createDialfireContact(payload, campaignId, config.api_key, taskName)
+    }
 
     const dialfireId = result.data?.$id || result.id || result.$id
 

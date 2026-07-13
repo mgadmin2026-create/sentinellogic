@@ -293,7 +293,7 @@ export async function POST(request: NextRequest) {
     if (data?.id) {
       const { data: contactData } = await supabase
         .from('contacts')
-        .select('dialfire_campaign_id, dialfire_task_name_field')
+        .select('*')
         .eq('id', data.id)
         .single()
       updatedContact = contactData
@@ -302,22 +302,61 @@ export async function POST(request: NextRequest) {
     // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
     if (data?.id && updatedContact?.dialfire_campaign_id) {
       try {
+        const c = updatedContact ?? data
         const dialfireResult = await invokeEdgeFunction('send-to-dialfire', {
           contact: {
             id: data.id,
-            email: data.email,
-            first_name: data.first_name,
-            last_name: data.last_name,
-            phone_mobile: data.phone_mobile || data.phone_office,
-            company_name: data.company_name,
-            street: data.street,
-            postal_code: data.postal_code,
-            city: data.city,
-            position: data.position,
-            industry: data.industry,
-            source: data.source,
-            mitarbeitanzahl: data.mitarbeitanzahl,
-            jahresumsatz: data.jahresumsatz,
+            email: c.email,
+            first_name: c.first_name,
+            last_name: c.last_name,
+            phone_mobile: c.phone_mobile || c.phone_office,
+            company_name: c.company_name,
+            street: c.street,
+            postal_code: c.postal_code,
+            city: c.city,
+            position: c.position,
+            industry: c.industry,
+            source: c.source,
+            mitarbeitanzahl: c.mitarbeitanzahl,
+            jahresumsatz: c.jahresumsatz,
+            anrede: c.anrede,
+            geburtstag: c.geburtstag,
+            jahreseinkommen: c.jahreseinkommen,
+            groesse: c.groesse,
+            gewicht: c.gewicht,
+            gesundheitszustand: c.gesundheitszustand,
+            seit_wann_selbststaendig: c.seit_wann_selbststaendig,
+            dienstverhaltnis: c.dienstverhaltnis,
+            hausnummer: c.hausnummer,
+            prüfung_grund: c.prüfung_grund,
+            krankenversicherung_status: c.krankenversicherung_status,
+            situation: c.situation,
+            versicherungsgesellschaft_1: c.versicherungsgesellschaft_1,
+            leistungen_1: c.leistungen_1,
+            aktueller_beitrag_1: c.aktueller_beitrag_1,
+            kontoinhaber_1: c.kontoinhaber_1,
+            iban_1: c.iban_1,
+            versicherungsgesellschaft_2: c.versicherungsgesellschaft_2,
+            leistungen_2: c.leistungen_2,
+            aktueller_beitrag_2: c.aktueller_beitrag_2,
+            kontoinhaber_2: c.kontoinhaber_2,
+            iban_2: c.iban_2,
+            versicherungsgesellschaft_3: c.versicherungsgesellschaft_3,
+            leistungen_3: c.leistungen_3,
+            aktueller_beitrag_3: c.aktueller_beitrag_3,
+            kontoinhaber_3: c.kontoinhaber_3,
+            iban_3: c.iban_3,
+            versicherungsgesellschaft_4: c.versicherungsgesellschaft_4,
+            leistungen_4: c.leistungen_4,
+            aktueller_beitrag_4: c.aktueller_beitrag_4,
+            kontoinhaber_4: c.kontoinhaber_4,
+            iban_4: c.iban_4,
+            versicherungsgesellschaft_5: c.versicherungsgesellschaft_5,
+            leistungen_5: c.leistungen_5,
+            aktueller_beitrag_5: c.aktueller_beitrag_5,
+            kontoinhaber_5: c.kontoinhaber_5,
+            iban_5: c.iban_5,
+            notizen_2: c.notizen_2,
             dialfire_campaign_id: updatedContact?.dialfire_campaign_id,
             dialfire_task_name_field: updatedContact?.dialfire_task_name_field,
           },

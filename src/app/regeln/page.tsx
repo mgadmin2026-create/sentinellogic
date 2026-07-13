@@ -50,6 +50,7 @@ export default function RegelnPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [applyingRuleId, setApplyingRuleId] = useState<string | null>(null)
   const [applyMessage, setApplyMessage] = useState<string>('')
+  const [applyResult, setApplyResult] = useState<any | null>(null)
   const [saving, setSaving] = useState(false)
   const [config, setConfig] = useState<IntegrationConfig>({})
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
@@ -89,6 +90,7 @@ export default function RegelnPage() {
   async function applyBatchRule(ruleId: string) {
     setApplyingRuleId(ruleId)
     setApplyMessage('')
+    setApplyResult(null)
 
     try {
       const res = await fetch(`/api/rules/${ruleId}/apply-batch`, {
@@ -97,22 +99,16 @@ export default function RegelnPage() {
       const result = await res.json()
 
       if (result.success) {
-        setApplyMessage(`✅ ${result.message} (${result.applied} Kontakte aktualisiert)`)
+        setApplyMessage(`✅ ${result.message}`)
+        setApplyResult(result)
         loadRules() // Ausführungszähler in der Anzeige aktualisieren
       } else {
         setApplyMessage(`❌ Fehler: ${result.error}`)
       }
-
-      setTimeout(() => {
-        setApplyMessage('')
-        setApplyingRuleId(null)
-      }, 5000)
     } catch (err) {
       setApplyMessage(`❌ Fehler: ${err instanceof Error ? err.message : 'Unknown error'}`)
-      setTimeout(() => {
-        setApplyMessage('')
-        setApplyingRuleId(null)
-      }, 5000)
+    } finally {
+      setApplyingRuleId(null)
     }
   }
 
@@ -226,10 +222,86 @@ export default function RegelnPage() {
         </p>
       </div>
 
-      {/* Feedback Message */}
+      {/* Feedback Message + Detail-Report */}
       {applyMessage && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-          {applyMessage}
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+          <div className="flex items-start justify-between gap-4">
+            <span className="font-medium">{applyMessage}</span>
+            <button
+              onClick={() => { setApplyMessage(''); setApplyResult(null) }}
+              className="text-blue-400 hover:text-blue-700 shrink-0"
+              aria-label="Schließen"
+            >
+              ✕
+            </button>
+          </div>
+
+          {applyResult && (
+            <div className="mt-3 space-y-3">
+              {/* Kennzahlen */}
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-1 rounded bg-white border border-blue-200">📇 {applyResult.total} geprüft</span>
+                <span className="px-2 py-1 rounded bg-green-100 text-green-800">✅ {applyResult.applied} angewendet</span>
+                {applyResult.skipped > 0 && (
+                  <span className="px-2 py-1 rounded bg-gray-100 text-gray-600">⏭️ {applyResult.skipped} übersprungen</span>
+                )}
+                {applyResult.failed > 0 && (
+                  <span className="px-2 py-1 rounded bg-red-100 text-red-800">❌ {applyResult.failed} fehlgeschlagen</span>
+                )}
+                {applyResult.dialfireSynced > 0 && (
+                  <span className="px-2 py-1 rounded bg-purple-100 text-purple-800">📞 {applyResult.dialfireSynced} zu Dialfire</span>
+                )}
+                {applyResult.dialfireFailed > 0 && (
+                  <span className="px-2 py-1 rounded bg-orange-100 text-orange-800">⚠️ {applyResult.dialfireFailed} Dialfire-Fehler</span>
+                )}
+              </div>
+
+              {/* Was die Regel tut */}
+              {applyResult.actionsSummary?.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-blue-600 uppercase mb-1">Ausgeführte Aktionen</div>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {applyResult.actionsSummary.map((a: string, i: number) => (
+                      <li key={i}>{a}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Betroffene Kontakte */}
+              {applyResult.affectedContacts?.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-blue-600 uppercase mb-1">
+                    Betroffene Kontakte ({applyResult.affectedContacts.length})
+                  </div>
+                  <div className="max-h-48 overflow-y-auto rounded border border-blue-200 bg-white divide-y divide-blue-100">
+                    {applyResult.affectedContacts.map((c: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-1.5">
+                        <span className="truncate">
+                          <span className="font-medium">{c.name}</span>
+                          <span className="text-gray-400 ml-2">{c.email}</span>
+                        </span>
+                        {c.dialfire === 'synced' && <span className="text-purple-600 text-xs shrink-0">📞 synced</span>}
+                        {c.dialfire === 'failed' && <span className="text-orange-600 text-xs shrink-0">⚠️ Dialfire-Fehler</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Fehlerdetails */}
+              {applyResult.errors?.length > 0 && (
+                <div>
+                  <div className="text-xs font-semibold text-red-600 uppercase mb-1">Fehler</div>
+                  <ul className="list-disc list-inside space-y-0.5 text-red-700">
+                    {applyResult.errors.map((e: string, i: number) => (
+                      <li key={i}>{e}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

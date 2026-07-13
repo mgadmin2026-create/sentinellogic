@@ -106,7 +106,18 @@ export async function POST(
     const contactList = contacts ?? []
     let appliedCount = 0
     let failedCount = 0
+    let skippedCount = 0
+    let dialfireSynced = 0
+    let dialfireFailed = 0
     const errors: string[] = []
+    const affectedContacts: { email: string; name: string; dialfire: 'synced' | 'failed' | 'none' }[] = []
+
+    // Menschenlesbare Beschreibung dessen, was die Regel tut
+    const actionsSummary: string[] = []
+    if (rule.actions.set_status) actionsSummary.push(`Status → "${rule.actions.set_status}"`)
+    if (rule.actions.dialfire_campaign) actionsSummary.push(`Dialfire-Kampagne "${rule.actions.dialfire_campaign}"${rule.actions.dialfire_task_name ? ` (Task: ${rule.actions.dialfire_task_name})` : ''}`)
+    if (rule.actions.klicktipp_tag) actionsSummary.push(`KlickTipp-Tag "${rule.actions.klicktipp_tag}"`)
+    if (rule.actions.send_notification && rule.actions.notification_email) actionsSummary.push(`Benachrichtigung an ${rule.actions.notification_email}`)
 
     for (const contact of contactList) {
       try {
@@ -136,8 +147,12 @@ export async function POST(
 
         // Skip if no actions
         if (Object.keys(fieldsToSet).length === 0) {
+          skippedCount++
           continue
         }
+
+        const contactName = `${contact.first_name ?? ''} ${contact.last_name ?? ''}`.trim() || contact.email
+        let dialfireOutcome: 'synced' | 'failed' | 'none' = 'none'
 
         // Update contact
         const { error: updateError } = await supabase
@@ -180,6 +195,44 @@ export async function POST(
                 source: contact.source,
                 mitarbeitanzahl: contact.mitarbeitanzahl,
                 jahresumsatz: contact.jahresumsatz,
+                anrede: contact.anrede,
+                geburtstag: contact.geburtstag,
+                jahreseinkommen: contact.jahreseinkommen,
+                groesse: contact.groesse,
+                gewicht: contact.gewicht,
+                gesundheitszustand: contact.gesundheitszustand,
+                seit_wann_selbststaendig: contact.seit_wann_selbststaendig,
+                dienstverhaltnis: contact.dienstverhaltnis,
+                hausnummer: contact.hausnummer,
+                prüfung_grund: contact.prüfung_grund,
+                krankenversicherung_status: contact.krankenversicherung_status,
+                situation: contact.situation,
+                versicherungsgesellschaft_1: contact.versicherungsgesellschaft_1,
+                leistungen_1: contact.leistungen_1,
+                aktueller_beitrag_1: contact.aktueller_beitrag_1,
+                kontoinhaber_1: contact.kontoinhaber_1,
+                iban_1: contact.iban_1,
+                versicherungsgesellschaft_2: contact.versicherungsgesellschaft_2,
+                leistungen_2: contact.leistungen_2,
+                aktueller_beitrag_2: contact.aktueller_beitrag_2,
+                kontoinhaber_2: contact.kontoinhaber_2,
+                iban_2: contact.iban_2,
+                versicherungsgesellschaft_3: contact.versicherungsgesellschaft_3,
+                leistungen_3: contact.leistungen_3,
+                aktueller_beitrag_3: contact.aktueller_beitrag_3,
+                kontoinhaber_3: contact.kontoinhaber_3,
+                iban_3: contact.iban_3,
+                versicherungsgesellschaft_4: contact.versicherungsgesellschaft_4,
+                leistungen_4: contact.leistungen_4,
+                aktueller_beitrag_4: contact.aktueller_beitrag_4,
+                kontoinhaber_4: contact.kontoinhaber_4,
+                iban_4: contact.iban_4,
+                versicherungsgesellschaft_5: contact.versicherungsgesellschaft_5,
+                leistungen_5: contact.leistungen_5,
+                aktueller_beitrag_5: contact.aktueller_beitrag_5,
+                kontoinhaber_5: contact.kontoinhaber_5,
+                iban_5: contact.iban_5,
+                notizen_2: contact.notizen_2,
                 dialfire_campaign_id: fieldsToSet.dialfire_campaign_id,
                 dialfire_task_name_field: fieldsToSet.dialfire_task_name_field,
               },
@@ -198,6 +251,8 @@ export async function POST(
                 })
                 .eq('id', contact.id)
 
+              dialfireSynced++
+              dialfireOutcome = 'synced'
               console.log(`[Dialfire Batch] Synced: ${contact.email} -> ID: ${dialfireId}`)
               await logActivity(
                 null,
@@ -206,6 +261,8 @@ export async function POST(
                 `Dialfire synced via batch rule (ID: ${dialfireId})`
               )
             } else {
+              dialfireFailed++
+              dialfireOutcome = 'failed'
               console.warn(`[Dialfire Batch] Failed for ${contact.email}: ${dialfireResult?.error}`)
               await logActivity(
                 null,
@@ -215,10 +272,13 @@ export async function POST(
               )
             }
           } catch (err) {
+            dialfireFailed++
+            dialfireOutcome = 'failed'
             console.error(`[Dialfire Batch] Error for ${contact.email}:`, err)
           }
         }
 
+        affectedContacts.push({ email: contact.email, name: contactName, dialfire: dialfireOutcome })
         appliedCount++
       } catch (err) {
         errors.push(`${contact.email}: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -242,10 +302,15 @@ export async function POST(
     // 4. Return summary
     return NextResponse.json({
       success: true,
-      message: `Regel auf ${appliedCount} Kontakte angewendet`,
+      message: `Regel auf ${appliedCount} von ${contactList.length} Kontakten angewendet`,
       applied: appliedCount,
       failed: failedCount,
+      skipped: skippedCount,
       total: contactList.length,
+      dialfireSynced,
+      dialfireFailed,
+      actionsSummary,
+      affectedContacts,
       errors: errors.length > 0 ? errors : undefined,
     })
   } catch (err) {
