@@ -15,6 +15,11 @@ function getCampaignConfig(campaignId: string): { api_key: string; task_name: st
         api_key: Deno.env.get("DIALFIRE_API_KEY_FACEBOOK") || "",
         task_name: "anrufen_stufe",
       }
+    case "6X42NJWGH4YA6HC7":
+      return {
+        api_key: Deno.env.get("DIALFIRE_API_KEY_PKV") || "",
+        task_name: "anrufen_stufe",
+      }
     default:
       return null
   }
