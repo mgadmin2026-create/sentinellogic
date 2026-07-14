@@ -216,10 +216,12 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
 
   // Accordion state — Datensektionen standardmäßig offen, nur Technisches (Integrations) zu
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    grunddaten: true,
+    beruf: true,
     unternehmen: true,
-    adresse: true,
     versicherung: true,
-    pkv_versicherungen: false,
+    pkv_versicherungen: true,
+    adresse: false,
     integrations: false,
   })
 
@@ -253,85 +255,129 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
     <div className={`space-y-4 sm:space-y-6 p-4 sm:p-6 rounded-lg transition-colors ${
       isEditing ? 'bg-yellow-50 border-l-4 border-yellow-400' : ''
     }`}>
-      {/* PRIMARY SECTION 1: Kontaktdaten (Always Open) */}
-      <AccordionSection title="Kontaktdaten" icon="👤" isOpen={true} onToggle={() => {}} isPrimary={true}>
-        <div className="space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-            <Field label="Vorname" field="first_name" value={getValue('first_name')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Nachname" field="last_name" value={getValue('last_name')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Anrede" field="anrede" value={getValue('anrede')} onChange={handleChange} isEditing={isEditing} />
-            <div>
-              <p className="text-xs text-gray-500 font-semibold">E-Mail</p>
-              <p className="text-sm text-gray-900 mt-1">
-                <a href={`mailto:${kontakt.email}`} className="text-yellow-600 hover:underline">{kontakt.email}</a>
-              </p>
-            </div>
-            <Field label="Telefon Mobil" field="phone_mobile" value={getValue('phone_mobile')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Telefon Büro" field="phone_office" value={getValue('phone_office')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Quelle" field="source" type="select" options={['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']} value={getValue('source')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Kontakt-Typ" field="kontakt_typ" type="select" options={['gewerbe', 'privat']} value={getValue('kontakt_typ') || 'gewerbe'} onChange={handleChange} isEditing={isEditing} />
-          </div>
-          <div className="sm:col-span-2">
-            <Field label="Bemerkung [Dialfire]" field="bemerkung" value={getValue('bemerkung')} onChange={handleChange} isEditing={isEditing} />
-          </div>
-        </div>
-      </AccordionSection>
-
-      {/* PRIMARY SECTION 2: Status (Always Open) */}
-      <AccordionSection title="Status & Pipeline" icon="📊" isOpen={true} onToggle={() => {}} isPrimary={true}>
-        <div className="space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg sm:col-span-1">
-              <div className="flex-1">
-                <p className="text-xs text-gray-500 font-semibold">Status</p>
-                <p className="text-sm mt-1">
-                  <span className={`inline-flex text-sm font-medium px-3 py-1.5 rounded-full ${STATUS_COLORS[kontakt.status]}`}>
-                    {STATUS_LABELS[kontakt.status]}
-                  </span>
-                </p>
-              </div>
-            </div>
-            <Field label="Qualität" field="qualität" type="select" options={['kalt', 'warm', 'heiss', 'sehr-heiss']} value={getValue('qualität')} onChange={handleChange} isEditing={isEditing} />
+      {/* STATUS & QUALITÄT — SINGLE ROW (TOP) */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-4">
+          {/* Status (Read-only Badge) */}
+          <div>
+            <p className="text-xs text-gray-500 font-semibold mb-2">Status</p>
+            <span className={`inline-flex text-sm font-medium px-3 py-1.5 rounded-full ${STATUS_COLORS[kontakt.status]}`}>
+              {STATUS_LABELS[kontakt.status]}
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-            <Field label="Verantwortlicher" field="assigned_user_name" value={getValue('assigned_user_name')} onChange={handleChange} isEditing={isEditing} />
+          {/* Qualität (Dropdown) */}
+          <Field label="Qualität" field="qualität" type="select" options={['kalt', 'warm', 'heiss', 'sehr-heiss']} value={getValue('qualität')} onChange={handleChange} isEditing={isEditing} />
+
+          {/* Bestandskunde (Checkbox) */}
+          <div>
+            <p className="text-xs text-gray-500 font-semibold mb-2">Bestandskunde</p>
             {isEditing ? (
-              <div className="flex items-end">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={getValue('bestandskunde') || false}
-                    onChange={(e) => handleChange('bestandskunde', e.target.checked)}
-                    className="w-4 h-4 rounded"
-                  />
-                  <span className="text-sm font-medium text-gray-900">Bestandskunde</span>
-                </label>
-              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={getValue('bestandskunde') || false}
+                  onChange={(e) => handleChange('bestandskunde', e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm font-medium text-gray-900">Ja</span>
+              </label>
             ) : (
-              <div>
-                <p className="text-xs text-gray-500 font-semibold">Bestandskunde</p>
-                <p className="text-sm text-gray-900 mt-2">{getValue('bestandskunde') ? '✓ Ja' : '—'}</p>
-              </div>
+              <p className="text-sm text-gray-900">{getValue('bestandskunde') ? '✓ Ja' : '—'}</p>
             )}
           </div>
+
+          {/* Verantwortlicher */}
+          <Field label="Verantwortlicher" field="assigned_user_name" value={getValue('assigned_user_name')} onChange={handleChange} isEditing={isEditing} />
+        </div>
+      </div>
+
+      {/* GRUNDDATEN: Kontaktdaten + Adresse + Persönliche Daten */}
+      <AccordionSection title="Grunddaten" icon="👤" isOpen={openSections.grunddaten} onToggle={() => toggleSection('grunddaten')} isPrimary={false}>
+        <div className="space-y-6">
+          {/* Subsection: Kontaktdaten */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Kontaktdaten</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+              <Field label="Vorname" field="first_name" value={getValue('first_name')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Nachname" field="last_name" value={getValue('last_name')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Anrede" field="anrede" value={getValue('anrede')} onChange={handleChange} isEditing={isEditing} />
+              <div>
+                <p className="text-xs text-gray-500 font-medium">E-Mail</p>
+                <p className="text-sm text-gray-900 mt-1">
+                  <a href={`mailto:${kontakt.email}`} className="text-yellow-600 hover:underline">{kontakt.email}</a>
+                </p>
+              </div>
+              <Field label="Telefon Mobil" field="phone_mobile" value={getValue('phone_mobile')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Telefon Büro" field="phone_office" value={getValue('phone_office')} onChange={handleChange} isEditing={isEditing} />
+            </div>
+          </div>
+
+          {/* Subsection: Adresse */}
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Adresse</h4>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+                <Field label="Straße" field="street" value={getValue('street')} onChange={handleChange} isEditing={isEditing} />
+                <Field label="Hausnummer" field="hausnummer" value={getValue('hausnummer')} onChange={handleChange} isEditing={isEditing} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4">
+                <Field label="PLZ" field="postal_code" value={getValue('postal_code')} onChange={handleChange} isEditing={isEditing} />
+                <Field label="Stadt" field="city" value={getValue('city')} onChange={handleChange} isEditing={isEditing} />
+                <Field label="Land" field="country" value={getValue('country')} onChange={handleChange} isEditing={isEditing} />
+              </div>
+            </div>
+          </div>
+
+          {/* Subsection: Persönliche Daten */}
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Persönliche Daten</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+              <Field label="Geburtstag" field="geburtstag" type="date" value={getValue('geburtstag')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Gesundheitszustand" field="gesundheitszustand" value={getValue('gesundheitszustand')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Größe (cm)" field="groesse" type="number" value={getValue('groesse')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Gewicht (kg)" field="gewicht" type="number" value={getValue('gewicht')} onChange={handleChange} isEditing={isEditing} />
+            </div>
+          </div>
+
+          {/* Subsection: Sonstiges */}
+          <div className="pt-4 border-t border-gray-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+              <Field label="Quelle" field="source" type="select" options={['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']} value={getValue('source')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Kontakt-Typ" field="kontakt_typ" type="select" options={['gewerbe', 'privat']} value={getValue('kontakt_typ') || 'gewerbe'} onChange={handleChange} isEditing={isEditing} />
+            </div>
+            <div className="mt-4">
+              <Field label="Bemerkung [Dialfire]" field="bemerkung" value={getValue('bemerkung')} onChange={handleChange} isEditing={isEditing} />
+            </div>
+          </div>
         </div>
       </AccordionSection>
 
-      {/* SECONDARY SECTION: Unternehmen (Collapsible) */}
+      {/* BERUFLICHE SITUATION */}
+      <AccordionSection title="Berufliche Situation" icon="💼" isOpen={openSections.beruf} onToggle={() => toggleSection('beruf')}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4">
+          <Field label="Dienstverhältnis" field="dienstverhaltnis" value={getValue('dienstverhaltnis')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Seit wann selbstständig" field="seit_wann_selbststaendig" type="date" value={getValue('seit_wann_selbststaendig')} onChange={handleChange} isEditing={isEditing} />
+          <Field label="Jahreseinkommen (€)" field="jahreseinkommen" type="number" value={getValue('jahreseinkommen')} onChange={handleChange} isEditing={isEditing} />
+        </div>
+      </AccordionSection>
+
+      {/* UNTERNEHMEN & BRANCHE */}
       <AccordionSection
-        title="Firma & Branche"
+        title="Unternehmen & Branche"
         icon="🏢"
         isOpen={openSections.unternehmen}
         onToggle={() => toggleSection('unternehmen')}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-          <Field label="Firma" field="company_name" value={getValue('company_name')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Position" field="position" value={getValue('position')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Branche" field="industry" value={getValue('industry')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Website" field="website" type="url" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+            <Field label="Firma" field="company_name" value={getValue('company_name')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Position" field="position" value={getValue('position')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Branche" field="industry" value={getValue('industry')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Website" field="website" type="url" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
+          </div>
         </div>
       </AccordionSection>
 
@@ -366,87 +412,123 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
         </div>
       </AccordionSection>
 
-      {/* SECONDARY SECTION: PKV Versicherungen (Collapsible) */}
+      {/* PKV VERSICHERUNG (Always Visible) */}
       <AccordionSection
-        title="PKV Versicherungen"
+        title="PKV Versicherung"
         icon="💼"
         isOpen={openSections.pkv_versicherungen}
         onToggle={() => toggleSection('pkv_versicherungen')}
       >
         <div className="space-y-6">
-          {/* Personal Info */}
+          {/* Versicherungsverträge als Tabelle */}
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Persönliche Daten</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-              <Field label="Geburtstag" field="geburtstag" type="date" value={getValue('geburtstag')} onChange={handleChange} isEditing={isEditing} />
-              <Field label="Jahreseinkommen" field="jahreseinkommen" type="number" value={getValue('jahreseinkommen')} onChange={handleChange} isEditing={isEditing} />
-              <Field label="Größe (cm)" field="groesse" type="number" value={getValue('groesse')} onChange={handleChange} isEditing={isEditing} />
-              <Field label="Gewicht (kg)" field="gewicht" type="number" value={getValue('gewicht')} onChange={handleChange} isEditing={isEditing} />
-              <Field label="Gesundheitszustand" field="gesundheitszustand" value={getValue('gesundheitszustand')} onChange={handleChange} isEditing={isEditing} />
-              <Field label="Seit wann Selbstständig" field="seit_wann_selbststaendig" type="date" value={getValue('seit_wann_selbststaendig')} onChange={handleChange} isEditing={isEditing} />
-              <Field label="Dienstverhältnis" field="dienstverhaltnis" value={getValue('dienstverhaltnis')} onChange={handleChange} isEditing={isEditing} />
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Versicherungsverträge (bis zu 5)</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm bg-white rounded-lg border border-gray-200">
+                <thead className="bg-orange-100 border-b border-orange-200">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold text-orange-900">#</th>
+                    <th className="text-left px-3 py-2 font-semibold text-orange-900">Versicherungsgesellschaft</th>
+                    <th className="text-left px-3 py-2 font-semibold text-orange-900">Leistungen</th>
+                    <th className="text-left px-3 py-2 font-semibold text-orange-900">Beitrag €/Monat</th>
+                    <th className="text-left px-3 py-2 font-semibold text-orange-900">IBAN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4, 5].map((num, idx) => (
+                    <tr key={`insurance-${num}`} className={idx % 2 === 1 ? 'bg-orange-50' : ''}>
+                      <td className="px-3 py-2 font-medium text-gray-900">{num}</td>
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={getValue(`versicherungsgesellschaft_${num}`) || ''}
+                            onChange={(e) => handleChange(`versicherungsgesellschaft_${num}`, e.target.value)}
+                            className="w-full px-2 py-1 text-xs border border-orange-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                            placeholder="—"
+                          />
+                        ) : (
+                          <span className="text-gray-900">{getValue(`versicherungsgesellschaft_${num}`) || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={getValue(`leistungen_${num}`) || ''}
+                            onChange={(e) => handleChange(`leistungen_${num}`, e.target.value)}
+                            className="w-full px-2 py-1 text-xs border border-orange-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                            placeholder="—"
+                          />
+                        ) : (
+                          <span className="text-gray-900">{getValue(`leistungen_${num}`) || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            value={getValue(`aktueller_beitrag_${num}`) || ''}
+                            onChange={(e) => handleChange(`aktueller_beitrag_${num}`, e.target.value ? parseInt(e.target.value) : null)}
+                            className="w-full px-2 py-1 text-xs border border-orange-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-orange-400"
+                            placeholder="—"
+                          />
+                        ) : (
+                          <span className="text-gray-900">{getValue(`aktueller_beitrag_${num}`) || '—'}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={getValue(`iban_${num}`) || ''}
+                            onChange={(e) => handleChange(`iban_${num}`, e.target.value)}
+                            className="w-full px-2 py-1 text-xs border border-orange-300 rounded bg-white focus:outline-none focus:ring-1 focus:ring-orange-400 font-mono"
+                            placeholder="—"
+                          />
+                        ) : (
+                          <span className="text-gray-900 font-mono text-xs">{getValue(`iban_${num}`) || '—'}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Insurance Records 1-5 */}
-          {[1, 2, 3, 4, 5].map(num => (
-            <div key={`insurance-${num}`}>
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Versicherung {num}</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4 p-3 bg-gray-50 rounded-lg">
-                <Field label="Versicherungsgesellschaft" field={`versicherungsgesellschaft_${num}`} value={getValue(`versicherungsgesellschaft_${num}`)} onChange={handleChange} isEditing={isEditing} />
-                <Field label="Leistungen" field={`leistungen_${num}`} value={getValue(`leistungen_${num}`)} onChange={handleChange} isEditing={isEditing} />
-                <Field label="Aktueller Beitrag" field={`aktueller_beitrag_${num}`} type="number" value={getValue(`aktueller_beitrag_${num}`)} onChange={handleChange} isEditing={isEditing} />
-                <Field label="Kontoinhaber" field={`kontoinhaber_${num}`} value={getValue(`kontoinhaber_${num}`)} onChange={handleChange} isEditing={isEditing} />
-                <div className="sm:col-span-2">
-                  <Field label="IBAN" field={`iban_${num}`} value={getValue(`iban_${num}`)} onChange={handleChange} isEditing={isEditing} />
-                </div>
-              </div>
-            </div>
-          ))}
-
           {/* Additional Notes */}
-          <div className="sm:col-span-2">
-            <Field label="Notizen 2" field="notizen_2" value={getValue('notizen_2')} onChange={handleChange} isEditing={isEditing} />
+          <div className="pt-4 border-t border-gray-100">
+            <Field label="Notizen" field="notizen_2" value={getValue('notizen_2')} onChange={handleChange} isEditing={isEditing} />
           </div>
         </div>
       </AccordionSection>
 
-      {/* SECONDARY SECTION: Adresse (Collapsible) */}
+      {/* ADRESSE — AMIS Verifikation (Collapsible) */}
       <AccordionSection
-        title="Adresse"
+        title="Adresse & Verifikation"
         icon="📍"
         isOpen={openSections.adresse}
         onToggle={() => toggleSection('adresse')}
       >
-        <div className="space-y-4 sm:space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-            <Field label="Straße" field="street" value={getValue('street')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Hausnummer" field="hausnummer" value={getValue('hausnummer')} onChange={handleChange} isEditing={isEditing} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4">
-            <Field label="PLZ" field="postal_code" value={getValue('postal_code')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Ort" field="city" value={getValue('city')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Land" field="country" value={getValue('country')} onChange={handleChange} isEditing={isEditing} />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-            {isEditing ? (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={getValue('amis_identity_document_checked') || false}
-                  onChange={(e) => handleChange('amis_identity_document_checked', e.target.checked)}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-sm font-medium text-gray-900">Identität per Dokument geprüft</span>
-              </label>
-            ) : (
-              <div>
-                <p className="text-xs text-gray-500 font-medium">Identität per Dokument geprüft</p>
-                <p className="text-sm text-gray-900 mt-1">{getValue('amis_identity_document_checked') ? '✓ Ja' : '—'}</p>
-              </div>
-            )}
-            <Field label="AMIS Verwendung" field="amis_usage" type="select" options={['privat']} value={getValue('amis_usage') || 'privat'} onChange={handleChange} isEditing={isEditing} />
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+          {isEditing ? (
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={getValue('amis_identity_document_checked') || false}
+                onChange={(e) => handleChange('amis_identity_document_checked', e.target.checked)}
+                className="w-4 h-4 rounded"
+              />
+              <span className="text-sm font-medium text-gray-900">Identität per Dokument geprüft</span>
+            </label>
+          ) : (
+            <div>
+              <p className="text-xs text-gray-500 font-medium">Identität per Dokument geprüft</p>
+              <p className="text-sm text-gray-900 mt-1">{getValue('amis_identity_document_checked') ? '✓ Ja' : '—'}</p>
+            </div>
+          )}
+          <Field label="AMIS Verwendung" field="amis_usage" type="select" options={['privat']} value={getValue('amis_usage') || 'privat'} onChange={handleChange} isEditing={isEditing} />
         </div>
       </AccordionSection>
 
