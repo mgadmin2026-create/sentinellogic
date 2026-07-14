@@ -11,10 +11,14 @@ interface Kontakt {
   company_name?: string
   industry?: string
   position?: string
+  anrede?: string
   street?: string
+  hausnummer?: string
   postal_code?: string
   city?: string
   country?: string
+  amis_identity_document_checked?: boolean
+  amis_usage?: string
   website?: string
   source?: string
   status?: string
@@ -31,6 +35,7 @@ interface Kontakt {
   dialfire_campaign_id?: string
   dialfire_task_name_field?: string
   klicktipp_tag_ids?: number[]
+  geburtstag?: string
 }
 
 interface Props {
@@ -130,6 +135,18 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Anrede / Geschlecht</label>
+                <select
+                  value={formData.anrede || ''}
+                  onChange={(e) => setFormData({ ...formData, anrede: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                >
+                  <option value="">Bitte wählen</option>
+                  <option value="Herr">Herr</option>
+                  <option value="Frau">Frau</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Vorname *</label>
                 <input
                   type="text"
@@ -149,6 +166,15 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
                   onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
                   placeholder="Mustermann"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Geburtsdatum</label>
+                <input
+                  type="date"
+                  value={formData.geburtstag || ''}
+                  onChange={(e) => setFormData({ ...formData, geburtstag: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
                 />
               </div>
             </div>
@@ -276,15 +302,27 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
           {/* Section 3: Adresse */}
           <div className="border-b border-gray-100 pb-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">📍 Adresse</h3>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">Straße</label>
-              <input
-                type="text"
-                value={formData.street || ''}
-                onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
-                placeholder="Beispielstraße 42"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Straße</label>
+                <input
+                  type="text"
+                  value={formData.street || ''}
+                  onChange={(e) => setFormData({ ...formData, street: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="Pariser Platz"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Hausnummer</label>
+                <input
+                  type="text"
+                  value={formData.hausnummer || ''}
+                  onChange={(e) => setFormData({ ...formData, hausnummer: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                  placeholder="1"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
@@ -317,6 +355,31 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
                   placeholder="Deutschland"
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="amis_identity_document_checked"
+                  checked={formData.amis_identity_document_checked || false}
+                  onChange={(e) => setFormData({ ...formData, amis_identity_document_checked: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-300 text-yellow-500"
+                />
+                <label htmlFor="amis_identity_document_checked" className="text-sm font-medium text-gray-900">
+                  Identität anhand eines gültigen Dokuments geprüft
+                </label>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">AMIS Verwendung</label>
+                <select
+                  value={formData.amis_usage || 'privat'}
+                  onChange={(e) => setFormData({ ...formData, amis_usage: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                >
+                  <option value="privat">Privat</option>
+                </select>
               </div>
             </div>
           </div>

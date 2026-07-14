@@ -43,18 +43,21 @@ export async function POST(request: NextRequest, { params }: Params) {
     const gender = genderFromContact(contact)
     const birthDate = formatGermanDate(contact.geburtstag ?? contact.geburtstag_gf_inhaber ?? contact.birth_date)
     const phone = contact.phone_mobile ?? contact.phone_office ?? null
+    const amisUsage = contact.amis_usage ?? 'privat'
 
     const missing: string[] = []
     if (!gender.gender_male && !gender.gender_female) missing.push('Anrede/Geschlecht')
     if (!contact.first_name) missing.push('Vorname')
     if (!contact.last_name) missing.push('Nachname')
     if (!birthDate) missing.push('Geburtsdatum')
+    if (!contact.amis_identity_document_checked) missing.push('Identitätsprüfung per Dokument')
     if (!contact.street) missing.push('Straße')
     if (!contact.hausnummer) missing.push('Hausnummer')
     if (!contact.postal_code) missing.push('PLZ')
     if (!contact.city) missing.push('Stadt')
     if (!phone) missing.push('Telefonnummer')
     if (!contact.email) missing.push('E-Mail')
+    if (amisUsage !== 'privat') missing.push('AMIS Verwendung privat')
 
     if (missing.length > 0) {
       return Response.json({
@@ -72,6 +75,8 @@ export async function POST(request: NextRequest, { params }: Params) {
       postal_code: contact.postal_code,
       city: contact.city,
       country: contact.country ?? 'Deutschland',
+      identity_document_checked: true,
+      usage: amisUsage,
     }
 
     const title = taskType === 'person_create'

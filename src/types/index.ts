@@ -21,6 +21,7 @@ export interface Contact {
   email: string
   phone_mobile?: string
   phone_office?: string
+  anrede?: string
   company_name?: string
   status: ContactStatus
   assigned_user_id?: string
@@ -40,6 +41,12 @@ export interface Contact {
   city?: string
   state?: string
   postal_code?: string
+  street?: string
+  hausnummer?: string
+  country?: string
+  geburtstag?: string
+  amis_identity_document_checked?: boolean
+  amis_usage?: string
   // Business Info
   industry?: string
   jahresumsatz?: string

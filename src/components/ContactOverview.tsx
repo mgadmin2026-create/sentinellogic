@@ -12,10 +12,13 @@ interface Kontakt {
   company_name?: string
   industry?: string
   position?: string
+  hausnummer?: string
   street?: string
   postal_code?: string
   city?: string
   country?: string
+  amis_identity_document_checked?: boolean
+  amis_usage?: string
   website?: string
   source?: string
   status: string
@@ -417,10 +420,30 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       >
         <div className="space-y-4 sm:space-y-4">
           <Field label="Straße" field="street" value={getValue('street')} onChange={handleChange} isEditing={isEditing} />
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-4">
+            <Field label="Hausnummer" field="hausnummer" value={getValue('hausnummer')} onChange={handleChange} isEditing={isEditing} />
             <Field label="PLZ" field="postal_code" value={getValue('postal_code')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Ort" field="city" value={getValue('city')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Land" field="country" value={getValue('country')} onChange={handleChange} isEditing={isEditing} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+            {isEditing ? (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={getValue('amis_identity_document_checked') || false}
+                  onChange={(e) => handleChange('amis_identity_document_checked', e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm font-medium text-gray-900">Identität per Dokument geprüft</span>
+              </label>
+            ) : (
+              <div>
+                <p className="text-xs text-gray-500 font-medium">Identität per Dokument geprüft</p>
+                <p className="text-sm text-gray-900 mt-1">{getValue('amis_identity_document_checked') ? '✓ Ja' : '—'}</p>
+              </div>
+            )}
+            <Field label="AMIS Verwendung" field="amis_usage" type="select" options={['privat']} value={getValue('amis_usage') || 'privat'} onChange={handleChange} isEditing={isEditing} />
           </div>
         </div>
       </AccordionSection>
