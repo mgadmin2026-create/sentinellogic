@@ -155,7 +155,7 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
 
   const customFieldMap: Record<string, string> = {
     'in_welcher_branche_seid_ihr_tätig?': 'industry',
-    'welche_absicherung_möchtest_du_prüfen_lassen?': 'insurance_product',
+    'welche_absicherung_möchtest_du_prüfen_lassen?': 'sparte',
     'wie_hoch_ist_euer_jahresumsatz?': 'jahresumsatz',
     'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeitanzahl',
   }

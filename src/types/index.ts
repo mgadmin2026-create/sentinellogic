@@ -52,7 +52,7 @@ export interface Contact {
   jahresumsatz?: string
   mitarbeitanzahl?: string
   // Insurance Info
-  insurance_product?: string
+  sparte?: string
   prüfung_grund?: string
   situation?: string
   krankenversicherung_status?: string

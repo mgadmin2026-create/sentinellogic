@@ -309,9 +309,9 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
     umsatz: 'jahresumsatz',
 
     // Insurance product (what they want to check/insure)
-    'welche_absicherung_möchtest_du_prüfen_lassen?': 'insurance_product',
-    absicherung: 'insurance_product',
-    insurance_product: 'insurance_product',
+    'welche_absicherung_möchtest_du_prüfen_lassen?': 'sparte',
+    absicherung: 'sparte',
+    sparte: 'sparte',
 
     // Other
     website: 'website',

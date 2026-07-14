@@ -35,7 +35,7 @@ interface Kontakt {
   updated_at?: string
   notes?: string
   bestandskunde?: boolean
-  insurance_product?: string
+  sparte?: string
   'prüfung_grund'?: string
   kontakt_typ?: string
 }
@@ -76,7 +76,7 @@ interface ColumnVisibility {
   updated_at: boolean
   notes: boolean
   bestandskunde: boolean
-  insurance_product: boolean
+  sparte: boolean
   // UI-Spalten
   progress: boolean
   actions: boolean
@@ -124,7 +124,7 @@ const COLUMN_CATEGORIES: Record<string, ColumnCategory> = {
     label: 'Metadaten',
     description: 'Zeitstempel, Noten, Status',
     icon: '📝',
-    fields: ['created_at', 'updated_at', 'notes', 'bestandskunde', 'insurance_product']
+    fields: ['created_at', 'updated_at', 'notes', 'bestandskunde', 'sparte']
   }
 }
 
@@ -158,7 +158,7 @@ const FIELD_LABELS: Record<keyof ColumnVisibility, string> = {
   updated_at: 'Aktualisiert',
   notes: 'Notizen',
   bestandskunde: 'Bestandskunde',
-  insurance_product: 'Versicherungsprodukt',
+  sparte: 'Sparte',
   progress: 'Fortschritt',
   actions: 'Aktionen'
 }
@@ -170,7 +170,7 @@ const COLUMN_ORDER: (keyof ColumnVisibility)[] = [
   'street', 'postal_code', 'city', 'country',
   'status', 'qualität', 'pipeline_stage', 'assigned_user',
   'source', 'facebook_id', 'facebook_phase', 'dialfire_campaign', 'dialfire_task', 'klicktipp_tags',
-  'created_at', 'updated_at', 'notes', 'bestandskunde', 'insurance_product',
+  'created_at', 'updated_at', 'notes', 'bestandskunde', 'sparte',
   'progress', 'actions'
 ]
 
@@ -278,7 +278,7 @@ const DEFAULT_COLUMNS: ColumnVisibility = {
   updated_at: false,
   notes: false,
   bestandskunde: false,
-  insurance_product: false,
+  sparte: false,
   // UI
   progress: true,
   actions: true,
@@ -293,7 +293,7 @@ export default function KontaktePage() {
   const [typFilter, setTypFilter] = useState<string>('all')
   const [stageFilter, setStageFilter] = useState<string>('all')
   const [contactTypeFilter, setContactTypeFilter] = useState<string>('all')
-  const [insuranceProductFilter, setInsuranceProductFilter] = useState<string>('all')
+  const [sparteFilter, setSparteFilter] = useState<string>('all')
   const [pruefungFilter, setPruefungFilter] = useState<string>('all')
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
@@ -532,7 +532,7 @@ export default function KontaktePage() {
     if (typFilter !== 'all' && (k.kontakt_typ || 'gewerbe') !== typFilter) return false
     if (stageFilter !== 'all' && k.pipeline_stage !== stageFilter) return false
     if (contactTypeFilter !== 'all' && k.kontakt_typ !== contactTypeFilter) return false
-    if (insuranceProductFilter !== 'all' && k.insurance_product !== insuranceProductFilter) return false
+    if (sparteFilter !== 'all' && k.sparte !== sparteFilter) return false
     if (pruefungFilter !== 'all' && (k['prüfung_grund'] || '') !== pruefungFilter) return false
     const q = search.toLowerCase()
     if (
@@ -548,8 +548,8 @@ export default function KontaktePage() {
   })
 
   // Filter-Optionen dynamisch aus den geladenen Kontakten ableiten
-  const insuranceProductOptions = Array.from(
-    new Set(kontakte.map((k) => k.insurance_product).filter((v): v is string => !!v))
+  const sparteOptions = Array.from(
+    new Set(kontakte.map((k) => k.sparte).filter((v): v is string => !!v))
   ).sort()
   const pruefungOptions = Array.from(
     new Set(kontakte.map((k) => k['prüfung_grund']).filter((v): v is string => !!v))
@@ -691,15 +691,15 @@ export default function KontaktePage() {
           </select>
 
           <select
-            value={insuranceProductFilter}
-            onChange={(e) => setInsuranceProductFilter(e.target.value)}
+            value={sparteFilter}
+            onChange={(e) => setSparteFilter(e.target.value)}
             className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-              insuranceProductFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+              sparteFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
             }`}
-            title="Nach Versicherungsprodukt filtern"
+            title="Nach Sparte filtern"
           >
-            <option value="all">Versicherung: Alle</option>
-            {insuranceProductOptions.map((p) => (
+            <option value="all">Sparte: Alle</option>
+            {sparteOptions.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
@@ -720,7 +720,7 @@ export default function KontaktePage() {
             </select>
           )}
 
-          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || contactTypeFilter !== 'all' || insuranceProductFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || search) && (
+          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || contactTypeFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || search) && (
             <button
               onClick={() => {
                 setActiveFilter('all')
@@ -728,7 +728,7 @@ export default function KontaktePage() {
                 setTypFilter('all')
                 setStageFilter('all')
                 setContactTypeFilter('all')
-                setInsuranceProductFilter('all')
+                setSparteFilter('all')
                 setPruefungFilter('all')
                 setSearch('')
               }}

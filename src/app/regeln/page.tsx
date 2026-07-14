@@ -5,7 +5,7 @@ import { SOURCE_LABELS, type LeadStatus, type LeadSource } from '@/data/mock'
 interface Rule {
   id: string; created_at: string; name: string
   condition_source: LeadSource | 'all'
-  condition_insurance_product?: string
+  condition_sparte?: string
   actions: {
     klicktipp_tag?: string; dialfire_campaign?: string; dialfire_task_name?: string
     set_status?: LeadStatus; send_notification?: boolean
@@ -33,8 +33,8 @@ const SOURCE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'manuell', label: 'Manuell' },
   { value: 'ki_upload', label: 'KI Upload' },
 ]
-const INSURANCE_PRODUCT_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Alle Versicherungstypen' },
+const SPARTE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '', label: 'Alle Sparten' },
   { value: 'PKV', label: 'PKV (Private Krankenversicherung)' },
   { value: 'Unternehmerschutz', label: 'Unternehmerschutz' },
 ]
@@ -58,7 +58,7 @@ export default function RegelnPage() {
   // Form state
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [newSource, setNewSource] = useState('facebook')
-  const [newInsuranceProduct, setNewInsuranceProduct] = useState('')
+  const [newSparte, setNewSparte] = useState('')
   const [newKlicktipp, setNewKlicktipp] = useState('')
   const [newDialfire, setNewDialfire] = useState('')
   const [newDialfireTask, setNewDialfireTask] = useState('')
@@ -137,7 +137,7 @@ export default function RegelnPage() {
       if (newNotificationEmail.trim()) actions.notification_email = newNotificationEmail.trim()
     }
 
-    const insuranceLbl = INSURANCE_PRODUCT_OPTIONS.find((i) => i.value === newInsuranceProduct)?.label
+    const sparteLbl = SPARTE_OPTIONS.find((i) => i.value === newSparte)?.label
     const ruleName = insuranceLbl && insuranceLbl !== 'Alle Versicherungstypen'
       ? `${sourceLbl} + ${insuranceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
       : `${sourceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
@@ -147,7 +147,7 @@ export default function RegelnPage() {
     const payload = {
       name: ruleName,
       condition_source: newSource,
-      condition_insurance_product: newInsuranceProduct || null,
+      condition_sparte: newSparte || null,
       actions,
       ...(editingRuleId ? {} : { active: true })
     }
@@ -172,7 +172,7 @@ export default function RegelnPage() {
       setTimeout(() => setToast(null), 3000)
     }
     setSaving(false); setModalOpen(false); setEditingRuleId(null)
-    setNewSource('facebook'); setNewInsuranceProduct(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
+    setNewSource('facebook'); setNewSparte(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
     setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
     loadRules()
   }
@@ -180,7 +180,7 @@ export default function RegelnPage() {
   function editRule(rule: Rule) {
     setEditingRuleId(rule.id)
     setNewSource(rule.condition_source)
-    setNewInsuranceProduct(rule.condition_insurance_product || '')
+    setNewSparte(rule.condition_sparte || '')
     setNewKlicktipp(rule.actions.klicktipp_tag || '')
     setNewDialfire(rule.actions.dialfire_campaign || '')
     setNewDialfireTask(rule.actions.dialfire_task_name || '')
@@ -201,7 +201,7 @@ export default function RegelnPage() {
         </div>
         <button onClick={() => {
           setEditingRuleId(null)
-          setNewSource('facebook'); setNewInsuranceProduct(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
+          setNewSource('facebook'); setNewSparte(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
           setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
           setModalOpen(true)
         }}
@@ -340,9 +340,9 @@ export default function RegelnPage() {
                       <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
                         Quelle = {SOURCE_OPTIONS.find((s) => s.value === rule.condition_source)?.label ?? rule.condition_source}
                       </p>
-                      {rule.condition_insurance_product && (
+                      {rule.condition_sparte && (
                         <p className="text-sm font-semibold text-[#1A1A1A] text-blue-700">
-                          + Typ = {INSURANCE_PRODUCT_OPTIONS.find((i) => i.value === rule.condition_insurance_product)?.label ?? rule.condition_insurance_product}
+                          + Sparte = {SPARTE_OPTIONS.find((i) => i.value === rule.condition_sparte)?.label ?? rule.condition_sparte}
                         </p>
                       )}
                     </div>
@@ -448,7 +448,7 @@ export default function RegelnPage() {
               {/* Insurance Product */}
               <div>
                 <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Versicherungstyp (optional)</label>
-                <select value={newInsuranceProduct} onChange={(e) => setNewInsuranceProduct(e.target.value)}
+                <select value={newSparte} onChange={(e) => setNewSparte(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
                   {INSURANCE_PRODUCT_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>

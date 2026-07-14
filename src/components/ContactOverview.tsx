@@ -29,7 +29,7 @@ interface Kontakt {
   mitarbeitanzahl?: number
   versicherungstyp?: string
   kontakt_typ?: string
-  insurance_product?: string
+  sparte?: string
   prüfung_grund?: string
   krankenversicherung_status?: string
   situation?: string
@@ -402,7 +402,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           <Field label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Inhaltssumme" field="inhaltssumme" value={getValue('inhaltssumme')} onChange={handleChange} isEditing={isEditing} />
           <div className="sm:col-span-2">
-            <Field label="Versicherungsprodukt" field="insurance_product" value={getValue('insurance_product')} onChange={handleChange} isEditing={isEditing} />
+            <Field label="Versicherungsprodukt" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
           </div>
           <div className="sm:col-span-2">
             <Field label="Prüfungsgrund" field="prüfung_grund" value={getValue('prüfung_grund')} onChange={handleChange} isEditing={isEditing} />

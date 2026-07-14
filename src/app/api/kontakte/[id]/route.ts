@@ -19,7 +19,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'automation_disabled', 'dialfire_campaign_auto', 'dialfire_campaign_id', 'dialfire_task_auto', 'dialfire_task_name_field', 'klicktipp_tags_auto', 'klicktipp_tags_field',
   'kontakt_typ',
   'versicherungsgesellschaft', 'zahlweise', 'sparte', 'rechtsform', 'anrede', 'bemerkung',
-  'insurance_product', 'kontoinhaber', 'iban', 'inhaltssumme', 'beitrag_vorsorge',
+  'sparte', 'kontoinhaber', 'iban', 'inhaltssumme', 'beitrag_vorsorge',
   'geburtstag_gf_inhaber', 'geschaeftsfuehrer_anzahl', 'seit_wann_gewerbe',
   // PKV-Felder (Kampagne 6X42NJWGH4YA6HC7)
   'hausnummer', 'prüfung_grund', 'krankenversicherung_status', 'situation',

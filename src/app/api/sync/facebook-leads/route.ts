@@ -318,11 +318,11 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
     contact.facebook_phase = qualificationStatus
   }
 
-  // Set insurance_product based on form ID
+  // Set sparte based on form ID
   if (formId === '1251160670355401') {
-    contact.insurance_product = 'PKV'
+    contact.sparte = 'PKV'
   } else if (formId === '1488535808896676') {
-    contact.insurance_product = 'Unternehmerschutz'
+    contact.sparte = 'Unternehmerschutz'
   }
 
   const fieldMap: Record<string, string> = {
@@ -341,7 +341,7 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
 
   const customFieldMap: Record<string, string> = {
     'in_welcher_branche_seid_ihr_tätig?': 'industry',
-    'welche_absicherung_möchtest_du_prüfen_lassen?': 'insurance_product',
+    'welche_absicherung_möchtest_du_prüfen_lassen?': 'sparte',
     'was_möchtest_du_prüfen_lassen?': 'prüfung_grund', // Was soll geprüft werden
     'wie_hoch_ist_euer_jahresumsatz?': 'jahresumsatz',
     'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeitanzahl',
@@ -366,8 +366,8 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
       contact[fieldMap[fbName]] = value
     } else if (customFieldMap[fbName]) {
       const mappedField = customFieldMap[fbName]
-      // Don't override insurance_product if it was already set based on form ID
-      if (mappedField === 'insurance_product' && contact.insurance_product) {
+      // Don't override sparte if it was already set based on form ID
+      if (mappedField === 'sparte' && contact.sparte) {
         // Skip: already set from form ID
       } else {
         // Store all custom fields as text (mitarbeitanzahl can be "1_bis_5", "6_bis_20", etc.)

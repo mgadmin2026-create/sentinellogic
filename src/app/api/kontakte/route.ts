@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
         data.id,
         data.source,
         automationDisabled,
-        data.insurance_product
+        data.sparte
       )
       if (automationResult.error) {
         console.warn('[Automation] Failed:', automationResult.error)
