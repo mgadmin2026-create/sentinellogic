@@ -419,9 +419,11 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
         onToggle={() => toggleSection('adresse')}
       >
         <div className="space-y-4 sm:space-y-4">
-          <Field label="Straße" field="street" value={getValue('street')} onChange={handleChange} isEditing={isEditing} />
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+            <Field label="Straße" field="street" value={getValue('street')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Hausnummer" field="hausnummer" value={getValue('hausnummer')} onChange={handleChange} isEditing={isEditing} />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4">
             <Field label="PLZ" field="postal_code" value={getValue('postal_code')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Ort" field="city" value={getValue('city')} onChange={handleChange} isEditing={isEditing} />
             <Field label="Land" field="country" value={getValue('country')} onChange={handleChange} isEditing={isEditing} />

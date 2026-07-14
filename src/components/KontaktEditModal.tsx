@@ -302,8 +302,8 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
           {/* Section 3: Adresse */}
           <div className="border-b border-gray-100 pb-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">📍 Adresse</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="sm:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Straße</label>
                 <input
                   type="text"
