@@ -1,7 +1,8 @@
 'use client'
-// Sidebar-Navigation — immer sichtbar, links, dunkel
+// Sidebar-Navigation — Desktop: statisch links. Mobile: Drawer mit Hamburger.
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 
 const NAV_ITEMS = [
   {
@@ -115,23 +116,75 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
 
+  // Drawer bei Navigation schließen
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
   return (
-    <aside className="w-56 flex-shrink-0 bg-[#1A1A1A] flex flex-col h-screen sticky top-0">
-      {/* Logo */}
-      <div className="px-5 py-6 border-b border-white/10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded bg-[#FFC300] flex items-center justify-center flex-shrink-0">
-            <span className="text-[#1A1A1A] font-bold text-xs">SL</span>
-          </div>
-          <span className="text-white font-semibold text-sm leading-tight">
-            Sentimental<br />Logic
-          </span>
+    <>
+      {/* Mobile Top-Bar (nur < md) */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-[#1A1A1A] flex items-center gap-3 px-4">
+        <button
+          onClick={() => setOpen(true)}
+          aria-label="Menü öffnen"
+          className="text-white/80 hover:text-white -ml-1 p-2 rounded-lg hover:bg-white/10"
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <div className="w-6 h-6 rounded bg-[#FFC300] flex items-center justify-center flex-shrink-0">
+          <span className="text-[#1A1A1A] font-bold text-[11px]">SL</span>
         </div>
+        <span className="text-white font-semibold text-sm">Sentimental Logic</span>
       </div>
+
+      {/* Scrim (nur < md, wenn offen) */}
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          className="md:hidden fixed inset-0 z-40 bg-black/50"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-[#1A1A1A] flex flex-col h-screen
+          transform transition-transform duration-200 ease-out
+          ${open ? 'translate-x-0' : '-translate-x-full'}
+          md:static md:translate-x-0 md:w-56 md:flex-shrink-0 md:z-auto md:sticky md:top-0
+        `}
+      >
+        {/* Logo + Schließen (mobil) */}
+        <div className="px-5 py-6 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded bg-[#FFC300] flex items-center justify-center flex-shrink-0">
+              <span className="text-[#1A1A1A] font-bold text-xs">SL</span>
+            </div>
+            <span className="text-white font-semibold text-sm leading-tight">
+              Sentimental<br />Logic
+            </span>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label="Menü schließen"
+            className="md:hidden text-white/60 hover:text-white p-1"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
@@ -182,6 +235,7 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }

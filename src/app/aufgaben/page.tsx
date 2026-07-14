@@ -147,7 +147,7 @@ export default function AufgabenPage() {
   })
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Aufgaben</h1>
@@ -222,7 +222,7 @@ export default function AufgabenPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -310,6 +310,64 @@ export default function AufgabenPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Karten-Ansicht — nur Mobile */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <p className="text-center text-gray-400 py-12 text-sm">Aufgaben werden geladen…</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-gray-400 py-12 text-sm">
+            {aufgaben.length === 0 ? 'Noch keine Aufgaben vorhanden.' : 'Keine Aufgaben gefunden.'}
+          </p>
+        ) : (
+          filtered.map((aufgabe) => (
+            <div key={aufgabe.id} className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}>
+              <div className="flex items-start justify-between gap-3">
+                <Link href={`/aufgaben/${aufgabe.id}`} className="font-semibold text-yellow-600 hover:underline min-w-0">
+                  {aufgabe.titel}
+                </Link>
+                <span className={`text-xs font-bold flex-shrink-0 ${PRIORITÄT_COLORS[aufgabe.priorität]}`}>
+                  {PRIORITÄT_LABELS[aufgabe.priorität]}
+                </span>
+              </div>
+
+              {aufgabe.contact_name && aufgabe.contact_id && (
+                <Link href={`/kontakte/${aufgabe.contact_id}`} className="inline-block text-sm text-gray-600 hover:text-yellow-600 hover:underline mt-1">
+                  {aufgabe.contact_name}
+                </Link>
+              )}
+
+              <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100">
+                <span className={`text-xs ${isOverdue(aufgabe.fällig) && aufgabe.status !== 'erledigt' ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                  {new Date(aufgabe.fällig).toLocaleDateString('de-DE')}
+                  {isOverdue(aufgabe.fällig) && aufgabe.status !== 'erledigt' && ' ⏰'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={aufgabe.status}
+                    onChange={(e) => handleStatusChange(aufgabe.id, e.target.value)}
+                    className={`text-xs font-medium px-2 py-1.5 rounded-full border-0 ${STATUS_COLORS[aufgabe.status]}`}
+                  >
+                    {Object.entries(STATUS_LABELS).map(([v, label]) => (
+                      <option key={v} value={v}>{label}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => setDeleteConfirm(aufgabe.id)}
+                    className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50"
+                    aria-label="Löschen"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <AufgabenEditModal kontaktId={selectedContactId} isOpen={modalOpen} onClose={() => setModalOpen(false)} onSave={handleCreateAufgabe} />

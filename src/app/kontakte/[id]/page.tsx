@@ -26,6 +26,8 @@ interface Kontakt {
   industry?: string
   position?: string
   street?: string
+  hausnummer?: string
+  anrede?: string
   postal_code?: string
   city?: string
   country?: string
@@ -114,11 +116,20 @@ interface Aktivität {
 
 interface Aufgabe {
   id: string
+  created_at?: string
   titel: string
   status: 'offen' | 'in_bearbeitung' | 'erledigt'
   priorität: 'niedrig' | 'mittel' | 'hoch'
   fällig: string
   assigned_user_name?: string
+  triggered_by_process_step?: string
+  amis_task_type?: 'person_create' | 'person_create_quote'
+  amis_status?: 'person_created' | 'quoted' | 'error' | null
+  amis_quote_number?: string | null
+  amis_premium?: string | null
+  amis_screenshot_path?: string | null
+  amis_error?: string | null
+  amis_processed_at?: string | null
 }
 
 
@@ -186,6 +197,8 @@ export default function KontaktDetailPage() {
   const [pipelineSaving, setPipelineSaving] = useState(false)
   const [dialfireResponse, setDialfireResponse] = useState<Record<string, any> | null>(null)
   const [dialfireSnapshot, setDialfireSnapshot] = useState<any>(null)
+  const [amisCreating, setAmisCreating] = useState<'person_create' | 'person_create_quote' | null>(null)
+  const [amisMessage, setAmisMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
     loadKontakt()
@@ -390,6 +403,29 @@ export default function KontaktDetailPage() {
     }
   }
 
+  async function handleCreateAmisTask(taskType: 'person_create' | 'person_create_quote') {
+    try {
+      setAmisCreating(taskType)
+      setAmisMessage(null)
+      const res = await fetch(`/api/kontakte/${kontaktId}/amis-now`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskType }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'AMIS-Aufgabe konnte nicht erstellt werden')
+      }
+      setAmisMessage({ type: 'ok', text: 'AMIS.NOW Aufgabe wurde erstellt und wartet auf den Agenten.' })
+      await loadKontakt()
+    } catch (err: any) {
+      setAmisMessage({ type: 'error', text: err?.message || 'AMIS-Aufgabe konnte nicht erstellt werden' })
+    } finally {
+      setAmisCreating(null)
+    }
+  }
+
+
   if (loading) {
     return (
       <div className="p-8">
@@ -410,6 +446,29 @@ export default function KontaktDetailPage() {
   }
 
   const fullName = `${kontakt.first_name} ${kontakt.last_name}`
+  const latestAmisTask = aufgaben
+    .filter((aufgabe) => aufgabe.triggered_by_process_step === 'amis_now')
+    .sort((a, b) => String(b.amis_processed_at || b.created_at || b.fällig || '').localeCompare(String(a.amis_processed_at || a.created_at || a.fällig || '')))[0]
+  const amisStatusLabel = latestAmisTask?.amis_status === 'quoted'
+    ? 'Angebot berechnet'
+    : latestAmisTask?.amis_status === 'person_created'
+      ? 'Person angelegt'
+      : latestAmisTask?.amis_status === 'error'
+        ? 'Fehler'
+        : latestAmisTask?.status === 'in_bearbeitung'
+          ? 'In Bearbeitung'
+          : latestAmisTask?.status === 'offen'
+            ? 'Wartet auf Agent'
+            : latestAmisTask
+              ? 'Erledigt'
+              : 'Keine AMIS-Aufgabe'
+  const amisStatusClass = latestAmisTask?.amis_status === 'error'
+    ? 'bg-red-100 text-red-800 border-red-200'
+    : latestAmisTask?.status === 'in_bearbeitung'
+      ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      : latestAmisTask?.amis_status === 'quoted' || latestAmisTask?.amis_status === 'person_created'
+        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+        : 'bg-gray-100 text-gray-700 border-gray-200'
 
   return (
     <div>
@@ -499,6 +558,76 @@ export default function KontaktDetailPage() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* AMIS.NOW Aktionen */}
+        <div className="bg-white border border-gray-200 rounded-xl mb-6 overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">AMIS.NOW</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Browser-Agent auf dem Allianz-Rechner verarbeitet diese Aufgaben.</p>
+            </div>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${amisStatusClass}`}>
+              {amisStatusLabel}
+            </span>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleCreateAmisTask('person_create')}
+                disabled={amisCreating !== null}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {amisCreating === 'person_create' ? 'Erstellt…' : 'Person anlegen AMIS NOW'}
+              </button>
+              <button
+                onClick={() => handleCreateAmisTask('person_create_quote')}
+                disabled={amisCreating !== null}
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-yellow-400 hover:bg-yellow-500 text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {amisCreating === 'person_create_quote' ? 'Erstellt…' : 'Angebot berechnen AMIS NOW'}
+              </button>
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+              >
+                Aufgaben ansehen
+              </button>
+            </div>
+
+            {amisMessage && (
+              <p className={`text-xs font-medium ${amisMessage.type === 'ok' ? 'text-emerald-700' : 'text-red-700'}`}>
+                {amisMessage.text}
+              </p>
+            )}
+
+            {latestAmisTask && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs bg-gray-50 rounded-lg p-3">
+                <div>
+                  <p className="text-gray-500 font-semibold">Letzte Aufgabe</p>
+                  <p className="text-gray-900 mt-1">{latestAmisTask.titel}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 font-semibold">Status</p>
+                  <p className="text-gray-900 mt-1">{amisStatusLabel}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 font-semibold">Angebotsnummer</p>
+                  <p className="text-gray-900 mt-1">{latestAmisTask.amis_quote_number || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 font-semibold">Beitrag</p>
+                  <p className="text-gray-900 mt-1">{latestAmisTask.amis_premium || '—'}</p>
+                </div>
+                {latestAmisTask.amis_error && (
+                  <div className="sm:col-span-2 lg:col-span-4">
+                    <p className="text-gray-500 font-semibold">Fehler</p>
+                    <p className="text-red-700 mt-1">{latestAmisTask.amis_error}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* TAB: Übersicht */}

@@ -128,7 +128,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
               <p className="text-xs text-gray-500 mt-1">Steuert die Dokumenten-Ordnerstruktur in Google Drive</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Vorname *</label>
                 <input
@@ -165,7 +165,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Telefon Mobil</label>
                 <input
@@ -192,7 +192,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
           {/* Section 2: Firma */}
           <div className="border-b border-gray-100 pb-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">🏢 Firma</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Firma</label>
                 <input
@@ -215,7 +215,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Branche</label>
                 <input
@@ -238,7 +238,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Jahresumsatz</label>
                 <input
@@ -287,7 +287,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">PLZ</label>
                 <input
@@ -324,7 +324,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
           {/* Section 4: Quelle */}
           <div className="border-b border-gray-100 pb-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">📌 Quelle</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Quelle</label>
                 <select
@@ -351,7 +351,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">Qualität</label>
                 <select

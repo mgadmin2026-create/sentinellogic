@@ -82,7 +82,7 @@ export default function ReportingPage() {
   const columns = result?.rows?.length ? Object.keys(result.rows[0]) : []
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
       <p className="text-sm text-gray-500 mb-6">
         Frag in eigenen Worten – die Auswertung wird live aus der Datenbank erstellt.

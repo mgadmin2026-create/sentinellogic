@@ -639,7 +639,7 @@ export default function KontaktePage() {
           <select
             value={sourceFilter}
             onChange={(e) => setSourceFilter(e.target.value)}
-            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
               sourceFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
             }`}
             title="Nach Quelle filtern"
@@ -653,7 +653,7 @@ export default function KontaktePage() {
           <select
             value={typFilter}
             onChange={(e) => setTypFilter(e.target.value)}
-            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
               typFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
             }`}
             title="Nach Kontakt-Typ filtern"
@@ -680,7 +680,7 @@ export default function KontaktePage() {
           <select
             value={contactTypeFilter}
             onChange={(e) => setContactTypeFilter(e.target.value)}
-            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
               contactTypeFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
             }`}
             title="Nach Kontakttyp filtern"
@@ -693,7 +693,7 @@ export default function KontaktePage() {
           <select
             value={insuranceProductFilter}
             onChange={(e) => setInsuranceProductFilter(e.target.value)}
-            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
               insuranceProductFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
             }`}
             title="Nach Versicherungsprodukt filtern"
@@ -708,7 +708,7 @@ export default function KontaktePage() {
             <select
               value={pruefungFilter}
               onChange={(e) => setPruefungFilter(e.target.value)}
-              className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+              className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
                 pruefungFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
               }`}
               title="Nach Prüfgrund filtern"
@@ -740,8 +740,8 @@ export default function KontaktePage() {
         </div>
       </div>
 
-      {/* Tabelle — DYNAMISCHE SPALTEN */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -1027,6 +1027,91 @@ export default function KontaktePage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Karten-Ansicht — nur Mobile */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <p className="text-center text-gray-400 py-12 text-sm">Kontakte werden geladen…</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-center text-gray-400 py-12 text-sm">
+            {kontakte.length === 0 ? 'Noch keine Kontakte vorhanden.' : 'Keine Kontakte gefunden.'}
+          </p>
+        ) : (
+          filtered.map((kontakt) => (
+            <div key={kontakt.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+              <div className="flex items-start justify-between gap-3">
+                <Link href={`/kontakte/${kontakt.id}`} className="min-w-0 group">
+                  <p className="font-semibold text-yellow-600 group-hover:underline truncate">
+                    {kontakt.first_name} {kontakt.last_name}
+                  </p>
+                  {kontakt.company_name && (
+                    <p className="text-sm text-gray-600 truncate">{kontakt.company_name}</p>
+                  )}
+                  <p className="text-xs text-gray-400 truncate mt-0.5">{kontakt.email || kontakt.id}</p>
+                </Link>
+                <select
+                  value={kontakt.status}
+                  onChange={(e) => handleStatusChange(kontakt.id, e.target.value)}
+                  className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 flex-shrink-0"
+                >
+                  {Object.entries(STATUS_LABELS).map(([optKey, label]) => (
+                    <option key={optKey} value={optKey}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {kontakt.source && (
+                  <span className={`inline-flex text-xs font-medium px-2 py-1 rounded-full ${SOURCE_COLORS[kontakt.source] || SOURCE_COLORS['manuell']}`}>
+                    {SOURCE_LABELS[kontakt.source] || kontakt.source}
+                  </span>
+                )}
+                <span className="text-xs text-gray-500">{getStepLabel(kontakt.pipeline_stage)}</span>
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${(getStepNumber(kontakt.pipeline_stage) / 12) * 100}%` }} />
+                  </div>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{getStepNumber(kontakt.pipeline_stage)}/12</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-100">
+                <button
+                  onClick={() => setShowQuickNote(kontakt.id)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                  aria-label="Notiz"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                  Notiz
+                </button>
+                <Link
+                  href={`/kontakte/${kontakt.id}`}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20a2 2 0 012 2v14" /></svg>
+                  Öffnen
+                </Link>
+                <button
+                  onClick={() => handleCopyKontakt(kontakt)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-yellow-600 hover:bg-yellow-50"
+                  aria-label="Kopieren"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                  Kopieren
+                </button>
+                <button
+                  onClick={() => setDeleteConfirm(kontakt.id)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-red-600 hover:bg-red-50"
+                  aria-label="Löschen"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+                  Löschen
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Column Customization Modal - NEW FLEXIBLE SYSTEM */}
