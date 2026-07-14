@@ -19,7 +19,7 @@ TABELLE contacts  — Kontakte/Leads (Haupttabelle, jeder Kunde/Interessent)
                          --   calc_offers, download_offers, contract_overview, send_offers,
                          --   offer_meeting, sales_talk, contracts_store, aftercare
   kontakt_typ text       -- 'privat' | 'gewerbe'
-  insurance_product text -- Versicherungsprodukt: 'PKV' oder 'Unternehmerschutz' (NULL möglich)
+  sparte text            -- Versicherungssparte: 'PKV' oder 'Unternehmerschutz' (NULL möglich)
   "prüfung_grund" text   -- Prüfgrund: bei PKV z.B. Freitext; bei Unternehmerschutz:
                          --   'betriebshaftpflicht','strafrechtsschutz','unternehmerschutz_paket','d&o'
   "krankenversicherung_status" text, situation text  -- PKV-Felder
