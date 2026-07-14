@@ -13,6 +13,7 @@ import { DialfireSyncPanel } from '@/components/DialfireSyncPanel'
 import { DialfireResponseTable } from '@/components/DialfireResponseTable'
 import { KontaktDokumenteTab } from '@/components/KontaktDokumenteTab'
 import { KontaktVertraegeTab } from '@/components/KontaktVertraegeTab'
+import { ContactEmailModal } from '@/components/ContactEmailModal'
 
 interface Kontakt {
   id: string
@@ -179,6 +180,7 @@ export default function KontaktDetailPage() {
   const [aktivitäten, setAktivitäten] = useState<Aktivität[]>([])
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [isEditingOverview, setIsEditingOverview] = useState(false)
   const [overviewSaving, setOverviewSaving] = useState(false)
   const [pipelineSaving, setPipelineSaving] = useState(false)
@@ -417,11 +419,24 @@ export default function KontaktDetailPage() {
         lastName={kontakt.last_name}
         companyName={kontakt.company_name}
         phone={kontakt.phone_mobile}
+        email={kontakt.email}
+        phoneMobile={kontakt.phone_mobile}
+        phoneOffice={kontakt.phone_office}
+        onEmailClick={() => setEmailModalOpen(true)}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isEditing={isEditingOverview}
         onEditChange={setIsEditingOverview}
         onDelete={() => setDeleteConfirm(true)}
+      />
+
+      <ContactEmailModal
+        open={emailModalOpen}
+        contactId={kontaktId}
+        defaultTo={kontakt.email}
+        contactName={fullName}
+        onClose={() => setEmailModalOpen(false)}
+        onSent={() => loadKontakt()}
       />
 
       {/* Tab Content */}

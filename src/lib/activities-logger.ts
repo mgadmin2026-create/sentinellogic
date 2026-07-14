@@ -22,6 +22,8 @@ export type ActivityType =
   | 'automation_skipped'
   | 'notification_sent'
   | 'notification_failed'
+  | 'email_sent'
+  | 'email_failed'
 
 interface ActivityData {
   [key: string]: any

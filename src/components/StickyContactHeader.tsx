@@ -1,10 +1,16 @@
 'use client'
 
+import { toWhatsAppNumber } from '@/lib/phone'
+
 interface StickyContactHeaderProps {
   firstName?: string
   lastName?: string
   companyName?: string
   phone?: string
+  email?: string
+  phoneMobile?: string
+  phoneOffice?: string
+  onEmailClick?: () => void
   activeTab: string
   setActiveTab: (tab: string) => void
   isEditing: boolean
@@ -28,12 +34,19 @@ export function StickyContactHeader({
   lastName,
   companyName,
   phone,
+  email,
+  phoneMobile,
+  phoneOffice,
+  onEmailClick,
   activeTab,
   setActiveTab,
   isEditing,
   onEditChange,
   onDelete,
 }: StickyContactHeaderProps) {
+  const callNumber = phoneMobile || phoneOffice || phone
+  const waNumber = toWhatsAppNumber(callNumber)
+
   return (
     <div className={`sticky top-0 z-40 transition-colors ${
       isEditing
@@ -62,6 +75,41 @@ export function StickyContactHeader({
               <p className="text-xs sm:text-sm text-gray-500">
                 📱 {phone}
               </p>
+            )}
+
+            {/* Kontakt-Aktionen: E-Mail / Anrufen / WhatsApp */}
+            {(email || callNumber) && (
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                {email && (
+                  <button
+                    onClick={onEmailClick}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors"
+                    title={`E-Mail an ${email}`}
+                  >
+                    ✉️ E-Mail
+                  </button>
+                )}
+                {callNumber && (
+                  <a
+                    href={`tel:${callNumber}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                    title={`Anrufen: ${callNumber}`}
+                  >
+                    📞 Anrufen
+                  </a>
+                )}
+                {waNumber && (
+                  <a
+                    href={`https://wa.me/${waNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors"
+                    title="WhatsApp-Chat öffnen"
+                  >
+                    💬 WhatsApp
+                  </a>
+                )}
+              </div>
             )}
           </div>
 
