@@ -1,0 +1,61 @@
+{
+  "crmBaseUrl": "https://crm.example.com",
+  "amisNowUrl": "https://amis-now.example.com",
+  "pollIntervalMs": 30000,
+  "edgeDebugPort": 9222,
+  "dryRun": true,
+  "personCreateOnly": false,
+  "defaultTaskType": "person_create_quote",
+  "personCreate": {
+    "enabled": true,
+    "openActions": [
+      "button:has(nx-icon[data-nx-icon-name='plus']), nx-icon[data-nx-icon-name='plus']",
+      "button:has-text('Person anlegen'), [role='menuitem']:has-text('Person anlegen')"
+    ],
+    "openButton": "button:has-text('Person anlegen')",
+    "modal": "nx-modal-container[role='dialog']:has-text('Person anlegen')",
+    "submitButton": "nx-modal-container[role='dialog']:has-text('Person anlegen') #submitBtn",
+    "successWait": "nx-modal-container[role='dialog']:has-text('Person anlegen')",
+    "required": [
+      "amis_input.gender_male",
+      "amis_input.gender_female",
+      "customer.first_name",
+      "customer.last_name",
+      "amis_input.birth_date",
+      "amis_input.street",
+      "amis_input.house_number",
+      "amis_input.postal_code",
+      "amis_input.city",
+      "customer.phone",
+      "customer.email"
+    ],
+    "radios": {
+      "input#personDataFormRadioGender-0-input": "amis_input.gender_male",
+      "input#personDataFormRadioGender-1-input": "amis_input.gender_female"
+    },
+    "checkboxes": {
+      "nx-checkbox:has-text('Identität der Person') input[type='checkbox']": true
+    },
+    "fields": {
+      "#personDataFormInputFirstName": "customer.first_name",
+      "#personDataFormInputName": "customer.last_name",
+      "#contactDataFormInputEmail-0": "customer.email",
+      "input[aria-label='Rufnummer']": "customer.phone",
+      "input[data-test='address-search']": "${amis_input.street} ${amis_input.house_number}, ${amis_input.postal_code} ${amis_input.city}"
+    },
+    "dateMasks": {
+      "#personDataFormInputBirthdate": "amis_input.birth_date"
+    }
+  },
+  "selectors": {
+    "fields": {
+      "input[name='vorname']": "customer.first_name",
+      "input[name='nachname']": "customer.last_name",
+      "input[name='firma']": "customer.company_name",
+      "input[name='email']": "customer.email"
+    },
+    "calculateButton": "button:has-text('Berechnen')",
+    "premium": "[data-testid='premium'], text=/Beitrag/i",
+    "quoteNumber": "[data-testid='quote-number'], text=/Angebotsnummer/i"
+  }
+}

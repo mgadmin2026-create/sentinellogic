@@ -1,0 +1,7 @@
+.env
+config.json
+logs/
+screenshots/
+.edge-profile/
+node_modules/
+package-lock.json

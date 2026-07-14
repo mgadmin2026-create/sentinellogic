@@ -1,0 +1,18 @@
+{
+  "name": "amis-now-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portable Windows agent for polling CRM quote jobs and steering AMIS.Now in Microsoft Edge.",
+  "main": "src/agent.js",
+  "scripts": {
+    "start": "node src/agent.js",
+    "test-person": "node src/agent.js --test-job ./test-data/person-mvp.json --person-create-only",
+    "test-person-quote": "node src/agent.js --test-job ./test-data/person-quote-mvp.json"
+  },
+  "dependencies": {
+    "playwright-core": "^1.55.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "amis_task_type": "person_create_quote",
+  "customer": {
+    "first_name": "Max",
+    "last_name": "Mustermann",
+    "email": "max.mustermann.test@example.com",
+    "phone": "15112345678",
+    "company_name": null,
+    "city": "Berlin"
+  },
+  "amis_input": {
+    "gender_male": true,
+    "gender_female": false,
+    "birth_date": "01.01.1990",
+    "street": "Pariser Platz",
+    "house_number": "1",
+    "postal_code": "10115",
+    "city": "Berlin"
+  }
+}
