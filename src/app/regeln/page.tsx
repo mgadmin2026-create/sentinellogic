@@ -138,8 +138,8 @@ export default function RegelnPage() {
     }
 
     const sparteLbl = SPARTE_OPTIONS.find((i) => i.value === newSparte)?.label
-    const ruleName = insuranceLbl && insuranceLbl !== 'Alle Versicherungstypen'
-      ? `${sourceLbl} + ${insuranceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
+    const ruleName = sparteLbl && sparteLbl !== 'Alle Sparten'
+      ? `${sourceLbl} + ${sparteLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
       : `${sourceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
 
     const url = editingRuleId ? `/api/rules/${editingRuleId}` : '/api/rules'
