@@ -50,7 +50,6 @@ interface Kontakt {
   beitrag_vorsorge?: number
   kontoinhaber?: string
   iban?: string
-  sparte?: string
   // PKV Insurance Fields
   geburtstag?: string
   jahreseinkommen?: string
