@@ -450,7 +450,7 @@ export default function RegelnPage() {
                 <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Versicherungstyp (optional)</label>
                 <select value={newSparte} onChange={(e) => setNewSparte(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
-                  {INSURANCE_PRODUCT_OPTIONS.map((opt) => (
+                  {SPARTE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
