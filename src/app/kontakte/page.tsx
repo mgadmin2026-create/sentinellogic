@@ -896,7 +896,7 @@ export default function KontaktePage() {
       {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}
       <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-gray-50/95 border-b border-gray-100">
               <tr className="border-b border-gray-100 bg-gray-50/80">
                 {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
@@ -933,7 +933,7 @@ export default function KontaktePage() {
                         {/* Resize Handle */}
                         <div
                           onMouseDown={(e) => handleResizeStart(e, key)}
-                          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-yellow-400 transition-colors ${resizingColumn === key ? 'bg-yellow-400' : 'hover:bg-gray-300'}`}
+                          className={`absolute top-0 right-0 w-3 h-full cursor-col-resize hover:bg-yellow-400 transition-colors ${resizingColumn === key ? 'bg-yellow-400' : 'hover:bg-gray-300'}`}
                           title="Ziehen zum Ändern der Spaltenbreite"
                         />
                       </th>
