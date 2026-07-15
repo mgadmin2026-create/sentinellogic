@@ -894,11 +894,10 @@ export default function KontaktePage() {
       </div>
 
       {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}
-      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-        {/* Fixed Header */}
-        <div className="overflow-x-auto overflow-y-hidden border-b border-gray-100">
-          <table className="w-full">
-            <thead>
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-gray-50/95 border-b border-gray-100">
               <tr className="border-b border-gray-100 bg-gray-50/80">
                 {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
                 {columnOrder
@@ -958,12 +957,6 @@ export default function KontaktePage() {
                 )}
               </tr>
             </thead>
-          </table>
-        </div>
-
-        {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto">
-          <table className="w-full text-sm">
             <tbody>
               {loading ? (
                 <tr>
