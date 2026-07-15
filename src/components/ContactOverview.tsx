@@ -531,7 +531,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
-                checked={getValue('amis_identity_document_checked') || false}
+                  checked={getValue('amis_identity_document_checked') ?? true}
                 onChange={(e) => handleChange('amis_identity_document_checked', e.target.checked)}
                 className="w-4 h-4 rounded"
               />
@@ -540,7 +540,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           ) : (
             <div>
               <p className="text-xs text-gray-500 font-medium">Identität per Dokument geprüft</p>
-              <p className="text-sm text-gray-900 mt-1">{getValue('amis_identity_document_checked') ? '✓ Ja' : '—'}</p>
+                <p className="text-sm text-gray-900 mt-1">{(getValue('amis_identity_document_checked') ?? true) ? '✓ Ja' : '—'}</p>
             </div>
           )}
           <Field label="AMIS Verwendung" field="amis_usage" type="select" options={['privat']} value={getValue('amis_usage') || 'privat'} onChange={handleChange} isEditing={isEditing} />

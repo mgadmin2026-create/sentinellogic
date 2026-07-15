@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (!contact.first_name) missing.push('Vorname')
     if (!contact.last_name) missing.push('Nachname')
     if (!birthDate) missing.push('Geburtsdatum')
-    if (!contact.amis_identity_document_checked) missing.push('Identitätsprüfung per Dokument')
+    if (contact.amis_identity_document_checked === false) missing.push('Identitätsprüfung per Dokument')
     if (!contact.street) missing.push('Straße')
     if (!contact.hausnummer) missing.push('Hausnummer')
     if (!contact.postal_code) missing.push('PLZ')

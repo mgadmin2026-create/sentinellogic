@@ -1,6 +1,6 @@
 -- AMIS.NOW person creation fields stored on contacts.
 ALTER TABLE contacts
-  ADD COLUMN IF NOT EXISTS amis_identity_document_checked BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS amis_identity_document_checked BOOLEAN DEFAULT true,
   ADD COLUMN IF NOT EXISTS amis_usage TEXT DEFAULT 'privat';
 
 DO $$

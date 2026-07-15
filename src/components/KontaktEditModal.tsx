@@ -363,7 +363,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
                 <input
                   type="checkbox"
                   id="amis_identity_document_checked"
-                  checked={formData.amis_identity_document_checked || false}
+                  checked={formData.amis_identity_document_checked ?? true}
                   onChange={(e) => setFormData({ ...formData, amis_identity_document_checked: e.target.checked })}
                   className="w-4 h-4 rounded border-gray-300 text-yellow-500"
                 />
