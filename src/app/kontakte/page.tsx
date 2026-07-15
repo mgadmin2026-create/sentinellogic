@@ -287,15 +287,15 @@ const DEFAULT_COLUMNS: ColumnVisibility = {
 
 // Default column widths (in pixels)
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  first_name: 100,
-  last_name: 90,
-  company_name: 110,
-  email: 120,
-  status: 80,
-  pipeline_stage: 90,
-  source: 80,
-  progress: 80,
-  actions: 100,
+  first_name: 60,
+  last_name: 50,
+  company_name: 70,
+  email: 80,
+  status: 50,
+  pipeline_stage: 60,
+  source: 50,
+  progress: 50,
+  actions: 60,
 }
 
 export default function KontaktePage() {
@@ -427,7 +427,7 @@ export default function KontaktePage() {
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const diff = moveEvent.clientX - startX
-      const newWidth = Math.max(30, startWidth + diff)
+      const newWidth = Math.max(20, startWidth + diff)
 
       setColumnWidths(prev => ({
         ...prev,
