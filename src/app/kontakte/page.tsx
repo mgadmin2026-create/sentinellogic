@@ -299,25 +299,46 @@ export default function KontaktePage() {
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  // Sortierung
-  const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'status' | 'progress'>('name')
+  // Sortierung - erweitert für alle Spalten
+  const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>('name')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
 
   // Spalten-Customization
   const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>(DEFAULT_COLUMNS)
+  const [columnOrder, setColumnOrder] = useState<(keyof ColumnVisibility)[]>(COLUMN_ORDER)
   const [showColumnModal, setShowColumnModal] = useState(false)
   const [columnSearchQuery, setColumnSearchQuery] = useState('')
+  const [columnDensity, setColumnDensity] = useState<'compact' | 'normal' | 'spacious'>('normal')
   const [showQuickNote, setShowQuickNote] = useState<string | null>(null)
   const [quickNoteText, setQuickNoteText] = useState('')
 
   // Load column preferences from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('kontakte-columns')
-    if (saved) {
+    const savedVisibility = localStorage.getItem('kontakte-columns')
+    const savedOrder = localStorage.getItem('kontakte-column-order')
+    const savedDensity = localStorage.getItem('kontakte-density')
+
+    if (savedVisibility) {
       try {
-        setVisibleColumns(JSON.parse(saved))
+        setVisibleColumns(JSON.parse(savedVisibility))
       } catch (err) {
-        console.error('Error loading column preferences:', err)
+        console.error('Error loading column visibility:', err)
+      }
+    }
+
+    if (savedOrder) {
+      try {
+        setColumnOrder(JSON.parse(savedOrder))
+      } catch (err) {
+        console.error('Error loading column order:', err)
+      }
+    }
+
+    if (savedDensity) {
+      try {
+        setColumnDensity(JSON.parse(savedDensity))
+      } catch (err) {
+        console.error('Error loading density:', err)
       }
     }
   }, [])
@@ -327,6 +348,15 @@ export default function KontaktePage() {
     const updated = { ...visibleColumns, [column]: !visibleColumns[column] }
     setVisibleColumns(updated)
     localStorage.setItem('kontakte-columns', JSON.stringify(updated))
+  }
+
+  // Spalten verschieben (Drag & Drop Support via Array-Index)
+  const moveColumn = (fromIndex: number, toIndex: number) => {
+    const newOrder = [...columnOrder]
+    const [removed] = newOrder.splice(fromIndex, 1)
+    newOrder.splice(toIndex, 0, removed)
+    setColumnOrder(newOrder)
+    localStorage.setItem('kontakte-column-order', JSON.stringify(newOrder))
   }
 
   // Handle search in column modal
@@ -347,13 +377,27 @@ export default function KontaktePage() {
     })
     setVisibleColumns(updated)
     localStorage.setItem('kontakte-columns', JSON.stringify(updated))
+
+    // Ensure all fields are in columnOrder
+    const newOrder = [...columnOrder]
+    categoryConfig.fields.forEach((field) => {
+      if (!newOrder.includes(field)) {
+        newOrder.push(field)
+      }
+    })
+    setColumnOrder(newOrder)
+    localStorage.setItem('kontakte-column-order', JSON.stringify(newOrder))
   }
 
   // Reset all columns to default
   const handleResetColumns = () => {
     setVisibleColumns(DEFAULT_COLUMNS)
+    setColumnOrder(COLUMN_ORDER)
+    setColumnDensity('normal')
     setColumnSearchQuery('')
     localStorage.setItem('kontakte-columns', JSON.stringify(DEFAULT_COLUMNS))
+    localStorage.setItem('kontakte-column-order', JSON.stringify(COLUMN_ORDER))
+    localStorage.setItem('kontakte-density', JSON.stringify('normal'))
   }
 
   // Get count of visible columns (excluding UI columns)
@@ -504,23 +548,29 @@ export default function KontaktePage() {
     }
   }
 
-  // Sortierungs-Logik
+  // Sortierungs-Logik - erweitert für alle Spalten
   const sorted = [...kontakte].sort((a, b) => {
     let compareValue = 0
 
-    switch (sortBy) {
-      case 'name':
-        compareValue = `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
-        break
-      case 'created_at':
-        compareValue = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        break
-      case 'status':
-        compareValue = (a.status || '').localeCompare(b.status || '')
-        break
-      case 'progress':
-        compareValue = getStepNumber(a.pipeline_stage) - getStepNumber(b.pipeline_stage)
-        break
+    if (sortBy === 'name') {
+      compareValue = `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`)
+    } else if (sortBy === 'progress') {
+      compareValue = getStepNumber(a.pipeline_stage) - getStepNumber(b.pipeline_stage)
+    } else {
+      const aVal = (a as any)[sortBy]
+      const bVal = (b as any)[sortBy]
+
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        compareValue = aVal - bVal
+      } else if (aVal instanceof Date || bVal instanceof Date) {
+        const aTime = aVal instanceof Date ? aVal.getTime() : new Date(aVal).getTime()
+        const bTime = bVal instanceof Date ? bVal.getTime() : new Date(bVal).getTime()
+        compareValue = aTime - bTime
+      } else if (typeof aVal === 'boolean' && typeof bVal === 'boolean') {
+        compareValue = (aVal ? 1 : 0) - (bVal ? 1 : 0)
+      } else {
+        compareValue = String(aVal || '').localeCompare(String(bVal || ''))
+      }
     }
 
     return sortOrder === 'asc' ? compareValue : -compareValue
@@ -555,7 +605,7 @@ export default function KontaktePage() {
     new Set(kontakte.map((k) => k['prüfung_grund']).filter((v): v is string => !!v))
   ).sort()
 
-  const toggleSort = (field: 'name' | 'created_at' | 'status' | 'progress') => {
+  const toggleSort = (field: keyof Kontakt | 'name' | 'progress') => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
     } else {
@@ -564,9 +614,18 @@ export default function KontaktePage() {
     }
   }
 
-  const SortIcon = ({ field }: { field: 'name' | 'created_at' | 'status' | 'progress' }) => {
+  const SortIcon = ({ field }: { field: keyof Kontakt | 'name' | 'progress' }) => {
     if (sortBy !== field) return <span className="text-gray-300">⇅</span>
     return <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+  }
+
+  // Column width helper - responsive & compact
+  const getColumnWidth = () => {
+    switch (columnDensity) {
+      case 'compact': return { min: 'min-w-28', header: 'px-2', cell: 'px-2' }
+      case 'spacious': return { min: 'min-w-56', header: 'px-6', cell: 'px-6' }
+      default: return { min: 'min-w-40', header: 'px-4', cell: 'px-4' }
+    }
   }
 
   return (
@@ -745,48 +804,36 @@ export default function KontaktePage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/80 sticky top-0">
-                {/* DYNAMISCH: Loop through all visible columns in DEFINED ORDER */}
-                {COLUMN_ORDER
+              <tr className="border-b border-gray-100 bg-gray-50/80 sticky top-0 z-10">
+                {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
+                {columnOrder
                   .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
-                  .map((columnKey) => {
+                  .map((columnKey, idx) => {
                     const key = columnKey as keyof ColumnVisibility
-                    const isSortable = ['first_name', 'created_at', 'status'].includes(key)
                     const label = FIELD_LABELS[key]
-                    const isCritical = ['first_name', 'last_name', 'company_name', 'status', 'pipeline_stage', 'source', 'progress'].includes(key)
                     const isBlueField = key.includes('dialfire')
-
-                    // Adaptive column widths
-                    const getMinWidth = () => {
-                      if (['first_name', 'last_name'].includes(key)) return 'min-w-48'
-                      if (['company_name', 'pipeline_stage'].includes(key)) return 'min-w-40'
-                      if (['email', 'notes'].includes(key)) return 'min-w-36'
-                      return 'min-w-32'
-                    }
+                    const isFirstColumn = idx === 0
 
                     return (
                       <th
                         key={key}
-                        className={`text-left text-xs font-semibold ${isBlueField ? 'text-blue-600' : 'text-gray-500'} uppercase tracking-wide px-3 sm:px-4 py-3 ${getMinWidth()} ${!isCritical ? 'hidden sm:table-cell' : ''}`}
+                        className={`text-left text-xs font-semibold ${isBlueField ? 'text-blue-600' : 'text-gray-500'} uppercase tracking-wide ${getColumnWidth().header} py-2.5 ${getColumnWidth().min} ${isFirstColumn ? 'sticky left-0 z-20 bg-gray-50/95' : ''}`}
                       >
-                        {isSortable && (key === 'first_name' || key === 'created_at') ? (
-                          <button
-                            onClick={() => toggleSort(key as 'name' | 'created_at' | 'status' | 'progress')}
-                            className="flex items-center gap-1 hover:text-gray-700"
-                          >
-                            {label} {key === 'first_name' && <SortIcon field="name" />}
-                            {key === 'created_at' && <SortIcon field="created_at" />}
-                          </button>
-                        ) : (
-                          label
-                        )}
+                        <button
+                          onClick={() => toggleSort(key === 'first_name' ? 'name' : (key as keyof Kontakt))}
+                          className="flex items-center gap-1 hover:text-gray-700 w-full"
+                          title={`Nach ${label} sortieren`}
+                        >
+                          <span className="truncate">{label}</span>
+                          <SortIcon field={key === 'first_name' ? 'name' : (key as keyof Kontakt)} />
+                        </button>
                       </th>
                     )
                   })}
 
                 {/* PROGRESS Column (if visible) */}
                 {visibleColumns.progress && (
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 sm:px-4 py-3 min-w-28">
+                  <th className={`text-left text-xs font-semibold text-gray-500 uppercase tracking-wide ${getColumnWidth().header} py-2.5 min-w-28`}>
                     <button onClick={() => toggleSort('progress')} className="flex items-center gap-1 hover:text-gray-700">
                       Fort. <SortIcon field="progress" />
                     </button>
@@ -795,7 +842,7 @@ export default function KontaktePage() {
 
                 {/* ACTIONS Column (always at end if visible) */}
                 {visibleColumns.actions && (
-                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 sm:px-3 py-3 min-w-20 text-right">
+                  <th className={`text-left text-xs font-semibold text-gray-500 uppercase tracking-wide ${getColumnWidth().header} py-2.5 min-w-24 text-right sticky right-0 z-20 bg-gray-50/95`}>
                     Aktionen
                   </th>
                 )}
@@ -820,12 +867,12 @@ export default function KontaktePage() {
                     key={kontakt.id}
                     className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
                   >
-                    {/* DYNAMISCH: Loop through all visible columns in DEFINED ORDER */}
-                    {COLUMN_ORDER
+                    {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
+                    {columnOrder
                       .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
-                      .map((columnKey) => {
+                      .map((columnKey, idx) => {
                         const key = columnKey as keyof ColumnVisibility
-                        const isCritical = ['first_name', 'last_name', 'company_name', 'status', 'pipeline_stage', 'source', 'progress'].includes(key)
+                        const isFirstColumn = idx === 0
                         let value: any = (kontakt as any)[key]
 
                         // Format value based on column type
@@ -920,18 +967,10 @@ export default function KontaktePage() {
                           )
                         }
 
-                        // Adaptive column widths (match headers)
-                        const getTdMinWidth = () => {
-                          if (['first_name', 'last_name'].includes(key)) return 'min-w-48'
-                          if (['company_name', 'pipeline_stage'].includes(key)) return 'min-w-40'
-                          if (['email', 'notes'].includes(key)) return 'min-w-36'
-                          return 'min-w-32'
-                        }
-
                         return (
                           <td
                             key={key}
-                            className={`px-3 sm:px-4 py-3 ${getTdMinWidth()} ${!isCritical ? 'hidden sm:table-cell' : ''}`}
+                            className={`${getColumnWidth().cell} py-2.5 ${getColumnWidth().min} ${isFirstColumn ? 'sticky left-0 z-10 bg-white' : ''}`}
                           >
                             {displayContent}
                           </td>
@@ -940,9 +979,9 @@ export default function KontaktePage() {
 
                     {/* PROGRESS Column (if visible) */}
                     {visibleColumns.progress && (
-                      <td className="px-3 sm:px-4 py-3 min-w-28">
+                      <td className={`${getColumnWidth().cell} py-2.5 min-w-28`}>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
+                          <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                             <div
                               className="h-full bg-yellow-400 rounded-full transition-all"
                               style={{
@@ -959,7 +998,7 @@ export default function KontaktePage() {
 
                     {/* ACTIONS Column (always at end if visible) */}
                     {visibleColumns.actions && (
-                      <td className="px-2 sm:px-3 py-3 min-w-20 text-right">
+                      <td className={`${getColumnWidth().cell} py-2.5 min-w-24 text-right sticky right-0 z-10 bg-white`}>
                         <div className="flex items-center gap-0.5 justify-end">
                           {/* Quick Note */}
                           <button
@@ -1132,6 +1171,29 @@ export default function KontaktePage() {
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
+              </div>
+
+              {/* Density Control */}
+              <div className="mb-4 flex gap-2">
+                <label className="text-sm font-medium text-gray-700">Spaltenbreite:</label>
+                <div className="flex gap-2">
+                  {(['compact', 'normal', 'spacious'] as const).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => {
+                        setColumnDensity(d)
+                        localStorage.setItem('kontakte-density', JSON.stringify(d))
+                      }}
+                      className={`text-xs font-medium px-2.5 py-1.5 rounded border transition-colors ${
+                        columnDensity === d
+                          ? 'bg-yellow-400 text-gray-900 border-yellow-500'
+                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {d === 'compact' ? 'Kompakt' : d === 'normal' ? 'Normal' : 'Geräumig'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Search Field */}
