@@ -307,7 +307,6 @@ export default function KontaktePage() {
   const [sourceFilter, setSourceFilter] = useState<string>('all')
   const [typFilter, setTypFilter] = useState<string>('all')
   const [stageFilter, setStageFilter] = useState<string>('all')
-  const [contactTypeFilter, setContactTypeFilter] = useState<string>('all')
   const [sparteFilter, setSparteFilter] = useState<string>('all')
   const [pruefungFilter, setPruefungFilter] = useState<string>('all')
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -675,7 +674,6 @@ export default function KontaktePage() {
     if (sourceFilter !== 'all' && (k.source || 'manuell') !== sourceFilter) return false
     if (typFilter !== 'all' && (k.kontakt_typ || 'gewerbe') !== typFilter) return false
     if (stageFilter !== 'all' && k.pipeline_stage !== stageFilter) return false
-    if (contactTypeFilter !== 'all' && k.kontakt_typ !== contactTypeFilter) return false
     if (sparteFilter !== 'all' && k.sparte !== sparteFilter) return false
     if (pruefungFilter !== 'all' && (k['prüfung_grund'] || '') !== pruefungFilter) return false
     const q = search.toLowerCase()
@@ -770,24 +768,25 @@ export default function KontaktePage() {
           </button>
         </div>
 
-        {/* Status-Tabs + weitere Filter */}
-        <div className="flex gap-3 flex-wrap items-center">
-          <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1 w-fit overflow-x-auto">
+        {/* Status + weitere Filter */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <select
+            value={activeFilter}
+            onChange={(e) => setActiveFilter(e.target.value)}
+            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+              activeFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+            }`}
+            title="Nach Status filtern"
+          >
             {KONTAKT_FILTER.map((f) => {
               const count = f.value === 'all' ? kontakte.length : kontakte.filter((k) => k.status === f.value).length
               return (
-                <button
-                  key={f.value}
-                  onClick={() => setActiveFilter(f.value)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                    activeFilter === f.value ? 'bg-yellow-400 text-gray-900' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  {f.label} <span className={`ml-1 text-xs ${activeFilter === f.value ? 'text-gray-700' : 'text-gray-400'}`}>{count}</span>
-                </button>
+                <option key={f.value} value={f.value}>
+                  {f.label} ({count})
+                </option>
               )
             })}
-          </div>
+          </select>
 
           <select
             value={sourceFilter}
@@ -819,7 +818,7 @@ export default function KontaktePage() {
           <select
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
-            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 max-w-56 ${
+            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
               stageFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
             }`}
             title="Nach Prozessschritt filtern"
@@ -828,19 +827,6 @@ export default function KontaktePage() {
             {PIPELINE_STEPS.map((s, i) => (
               <option key={s.key} value={s.key}>{i + 1}. {s.label}</option>
             ))}
-          </select>
-
-          <select
-            value={contactTypeFilter}
-            onChange={(e) => setContactTypeFilter(e.target.value)}
-            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-              contactTypeFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
-            }`}
-            title="Nach Kontakttyp filtern"
-          >
-            <option value="all">Kontakttyp: Alle</option>
-            <option value="gewerbe">🏢 Gewerbe</option>
-            <option value="privat">👤 Privat</option>
           </select>
 
           <select
@@ -873,14 +859,13 @@ export default function KontaktePage() {
             </select>
           )}
 
-          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || contactTypeFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || search) && (
+          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || search) && (
             <button
               onClick={() => {
                 setActiveFilter('all')
                 setSourceFilter('all')
                 setTypFilter('all')
                 setStageFilter('all')
-                setContactTypeFilter('all')
                 setSparteFilter('all')
                 setPruefungFilter('all')
                 setSearch('')
