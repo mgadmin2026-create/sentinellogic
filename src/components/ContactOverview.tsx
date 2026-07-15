@@ -258,13 +258,8 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* STATUS & QUALITÄT — SINGLE ROW (TOP) */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-4">
-          {/* Status (Read-only Badge) */}
-          <div>
-            <p className="text-xs text-gray-500 font-semibold mb-2">Status</p>
-            <span className={`inline-flex text-sm font-medium px-3 py-1.5 rounded-full ${STATUS_COLORS[kontakt.status]}`}>
-              {STATUS_LABELS[kontakt.status]}
-            </span>
-          </div>
+          {/* Status (Editable Select) */}
+          <Field label="Status" field="status" type="select" options={['new', 'contacted', 'qualified', 'customer']} value={getValue('status')} onChange={handleChange} isEditing={isEditing} />
 
           {/* Qualität (Dropdown) */}
           <Field label="Qualität" field="qualität" type="select" options={['kalt', 'warm', 'heiss', 'sehr-heiss']} value={getValue('qualität')} onChange={handleChange} isEditing={isEditing} />
