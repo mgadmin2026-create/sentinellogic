@@ -287,15 +287,15 @@ const DEFAULT_COLUMNS: ColumnVisibility = {
 
 // Default column widths (in pixels)
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  first_name: 140,
-  last_name: 130,
-  company_name: 150,
-  email: 160,
-  status: 100,
-  pipeline_stage: 120,
-  source: 100,
-  progress: 100,
-  actions: 120,
+  first_name: 100,
+  last_name: 90,
+  company_name: 110,
+  email: 120,
+  status: 80,
+  pipeline_stage: 90,
+  source: 80,
+  progress: 80,
+  actions: 100,
 }
 
 export default function KontaktePage() {
