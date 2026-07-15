@@ -900,9 +900,6 @@ export default function KontaktePage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/80 sticky top-0 z-10">
                 {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
                 {columnOrder
                   .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
