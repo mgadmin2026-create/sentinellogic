@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 
@@ -284,7 +285,21 @@ const DEFAULT_COLUMNS: ColumnVisibility = {
   actions: true,
 }
 
+// Default column widths (in pixels)
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  first_name: 140,
+  last_name: 130,
+  company_name: 150,
+  email: 160,
+  status: 100,
+  pipeline_stage: 120,
+  source: 100,
+  progress: 100,
+  actions: 120,
+}
+
 export default function KontaktePage() {
+  const router = useRouter()
   const [kontakte, setKontakte] = useState<Kontakt[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -306,17 +321,22 @@ export default function KontaktePage() {
   // Spalten-Customization
   const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>(DEFAULT_COLUMNS)
   const [columnOrder, setColumnOrder] = useState<(keyof ColumnVisibility)[]>(COLUMN_ORDER)
+  const [columnWidths, setColumnWidths] = useState<Record<keyof ColumnVisibility, number>>({} as any)
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null)
+  const [resizingColumn, setResizingColumn] = useState<string | null>(null)
   const [showColumnModal, setShowColumnModal] = useState(false)
   const [columnSearchQuery, setColumnSearchQuery] = useState('')
   const [columnDensity, setColumnDensity] = useState<'compact' | 'normal' | 'spacious'>('normal')
   const [showQuickNote, setShowQuickNote] = useState<string | null>(null)
   const [quickNoteText, setQuickNoteText] = useState('')
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
 
   // Load column preferences from localStorage
   useEffect(() => {
     const savedVisibility = localStorage.getItem('kontakte-columns')
     const savedOrder = localStorage.getItem('kontakte-column-order')
     const savedDensity = localStorage.getItem('kontakte-density')
+    const savedWidths = localStorage.getItem('kontakte-column-widths')
 
     if (savedVisibility) {
       try {
@@ -341,6 +361,17 @@ export default function KontaktePage() {
         console.error('Error loading density:', err)
       }
     }
+
+    if (savedWidths) {
+      try {
+        setColumnWidths(JSON.parse(savedWidths))
+      } catch (err) {
+        console.error('Error loading column widths:', err)
+        setColumnWidths(DEFAULT_COLUMN_WIDTHS as any)
+      }
+    } else {
+      setColumnWidths(DEFAULT_COLUMN_WIDTHS as any)
+    }
   }, [])
 
   // Save column preferences to localStorage
@@ -357,6 +388,67 @@ export default function KontaktePage() {
     newOrder.splice(toIndex, 0, removed)
     setColumnOrder(newOrder)
     localStorage.setItem('kontakte-column-order', JSON.stringify(newOrder))
+  }
+
+  // Drag-to-Reorder für Spalten
+  const handleColumnDragStart = (e: React.DragEvent, columnKey: string) => {
+    setDraggedColumn(columnKey)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleColumnDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const handleColumnDrop = (e: React.DragEvent, targetColumnKey: string) => {
+    e.preventDefault()
+    if (!draggedColumn || draggedColumn === targetColumnKey) {
+      setDraggedColumn(null)
+      return
+    }
+
+    const fromIdx = columnOrder.indexOf(draggedColumn as keyof ColumnVisibility)
+    const toIdx = columnOrder.indexOf(targetColumnKey as keyof ColumnVisibility)
+
+    if (fromIdx !== -1 && toIdx !== -1) {
+      moveColumn(fromIdx, toIdx)
+    }
+    setDraggedColumn(null)
+  }
+
+  // Drag-to-Resize für Spalten
+  const handleResizeStart = (e: React.MouseEvent, columnKey: string) => {
+    e.preventDefault()
+    setResizingColumn(columnKey)
+
+    const startX = e.clientX
+    const startWidth = columnWidths[columnKey as keyof ColumnVisibility] || DEFAULT_COLUMN_WIDTHS[columnKey] || 120
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const diff = moveEvent.clientX - startX
+      const newWidth = Math.max(60, startWidth + diff)
+
+      setColumnWidths(prev => ({
+        ...prev,
+        [columnKey]: newWidth
+      }))
+    }
+
+    const handleMouseUp = () => {
+      setResizingColumn(null)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+
+      // Speichern in localStorage
+      setColumnWidths(prev => {
+        localStorage.setItem('kontakte-column-widths', JSON.stringify(prev))
+        return prev
+      })
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
   }
 
   // Handle search in column modal
@@ -394,10 +486,12 @@ export default function KontaktePage() {
     setVisibleColumns(DEFAULT_COLUMNS)
     setColumnOrder(COLUMN_ORDER)
     setColumnDensity('normal')
+    setColumnWidths(DEFAULT_COLUMN_WIDTHS as any)
     setColumnSearchQuery('')
     localStorage.setItem('kontakte-columns', JSON.stringify(DEFAULT_COLUMNS))
     localStorage.setItem('kontakte-column-order', JSON.stringify(COLUMN_ORDER))
     localStorage.setItem('kontakte-density', JSON.stringify('normal'))
+    localStorage.setItem('kontakte-column-widths', JSON.stringify(DEFAULT_COLUMN_WIDTHS))
   }
 
   // Get count of visible columns (excluding UI columns)
@@ -800,8 +894,12 @@ export default function KontaktePage() {
       </div>
 
       {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}
-      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+        {/* Fixed Header */}
+        <div className="overflow-x-auto overflow-y-hidden border-b border-gray-100">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-100 bg-gray-50/80">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50/80 sticky top-0 z-10">
@@ -812,29 +910,44 @@ export default function KontaktePage() {
                     const key = columnKey as keyof ColumnVisibility
                     const label = FIELD_LABELS[key]
                     const isBlueField = key.includes('dialfire')
-                    const isFirstColumn = idx === 0
+                    const width = columnWidths[key] || DEFAULT_COLUMN_WIDTHS[key] || 120
+                    const isDragging = draggedColumn === key
 
                     return (
                       <th
                         key={key}
-                        className={`text-left text-xs font-semibold ${isBlueField ? 'text-blue-600' : 'text-gray-500'} uppercase tracking-wide ${getColumnWidth().header} py-2.5 ${getColumnWidth().min} ${isFirstColumn ? 'sticky left-0 z-20 bg-gray-50/95' : ''}`}
+                        draggable
+                        onDragStart={(e) => handleColumnDragStart(e, key)}
+                        onDragOver={handleColumnDragOver}
+                        onDrop={(e) => handleColumnDrop(e, key)}
+                        className={`text-left text-sm font-semibold ${isBlueField ? 'text-blue-600' : 'text-gray-700'} uppercase tracking-wide py-3 px-4 relative select-none transition-colors ${isDragging ? 'bg-yellow-50' : ''}`}
+                        style={{ width: `${width}px`, minWidth: `${width}px` }}
                       >
-                        <button
-                          onClick={() => toggleSort(key === 'first_name' ? 'name' : (key as keyof Kontakt))}
-                          className="flex items-center gap-1 hover:text-gray-700 w-full"
-                          title={`Nach ${label} sortieren`}
-                        >
-                          <span className="truncate">{label}</span>
-                          <SortIcon field={key === 'first_name' ? 'name' : (key as keyof Kontakt)} />
-                        </button>
+                        <div className="flex items-center gap-1 cursor-move">
+                          <button
+                            onClick={() => toggleSort(key === 'first_name' ? 'name' : (key as keyof Kontakt))}
+                            className="flex items-center gap-1 hover:text-gray-900 flex-1 min-w-0"
+                            title={`Nach ${label} sortieren`}
+                          >
+                            <span className="truncate">{label}</span>
+                            <SortIcon field={key === 'first_name' ? 'name' : (key as keyof Kontakt)} />
+                          </button>
+                        </div>
+
+                        {/* Resize Handle */}
+                        <div
+                          onMouseDown={(e) => handleResizeStart(e, key)}
+                          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-yellow-400 transition-colors ${resizingColumn === key ? 'bg-yellow-400' : 'hover:bg-gray-300'}`}
+                          title="Ziehen zum Ändern der Spaltenbreite"
+                        />
                       </th>
                     )
                   })}
 
                 {/* PROGRESS Column (if visible) */}
                 {visibleColumns.progress && (
-                  <th className={`text-left text-xs font-semibold text-gray-500 uppercase tracking-wide ${getColumnWidth().header} py-2.5 min-w-28`}>
-                    <button onClick={() => toggleSort('progress')} className="flex items-center gap-1 hover:text-gray-700">
+                  <th className={`text-left text-sm font-semibold text-gray-700 uppercase tracking-wide py-3 px-4 relative select-none`} style={{ width: '110px', minWidth: '110px' }}>
+                    <button onClick={() => toggleSort('progress')} className="flex items-center gap-1 hover:text-gray-900">
                       Fort. <SortIcon field="progress" />
                     </button>
                   </th>
@@ -842,12 +955,18 @@ export default function KontaktePage() {
 
                 {/* ACTIONS Column (always at end if visible) */}
                 {visibleColumns.actions && (
-                  <th className={`text-left text-xs font-semibold text-gray-500 uppercase tracking-wide ${getColumnWidth().header} py-2.5 min-w-24 text-right sticky right-0 z-20 bg-gray-50/95`}>
+                  <th className={`text-left text-sm font-semibold text-gray-700 uppercase tracking-wide py-3 px-4 text-right`} style={{ width: '120px', minWidth: '120px' }}>
                     Aktionen
                   </th>
                 )}
               </tr>
             </thead>
+          </table>
+        </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto overflow-x-auto">
+          <table className="w-full text-sm">
             <tbody>
               {loading ? (
                 <tr>
@@ -865,14 +984,21 @@ export default function KontaktePage() {
                 filtered.map((kontakt) => (
                   <tr
                     key={kontakt.id}
-                    className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                    onClick={() => router.push(`/kontakte/${kontakt.id}`)}
+                    onMouseEnter={() => setHoveredRowId(kontakt.id)}
+                    onMouseLeave={() => setHoveredRowId(null)}
+                    className={`border-b border-gray-100 cursor-pointer transition-all ${
+                      hoveredRowId === kontakt.id
+                        ? 'bg-yellow-50 shadow-md border-2 border-yellow-300'
+                        : 'border-gray-100 hover:bg-gray-50/50'
+                    }`}
                   >
                     {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
                     {columnOrder
                       .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
                       .map((columnKey, idx) => {
                         const key = columnKey as keyof ColumnVisibility
-                        const isFirstColumn = idx === 0
+                        const width = columnWidths[key] || DEFAULT_COLUMN_WIDTHS[key] || 120
                         let value: any = (kontakt as any)[key]
 
                         // Format value based on column type
@@ -880,12 +1006,12 @@ export default function KontaktePage() {
 
                         if (key === 'first_name') {
                           displayContent = (
-                            <Link href={`/kontakte/${kontakt.id}`} className="group">
-                              <p className="font-semibold text-yellow-600 group-hover:underline truncate">
+                            <div>
+                              <p className="font-semibold text-gray-900 truncate">
                                 {kontakt.first_name} {kontakt.last_name}
                               </p>
-                              <p className="text-xs text-gray-400 mt-0.5 truncate">{kontakt.email || kontakt.id}</p>
-                            </Link>
+                              <p className="text-xs text-gray-500 mt-0.5 truncate">{kontakt.email || kontakt.id}</p>
+                            </div>
                           )
                         } else if (key === 'status') {
                           displayContent = (
@@ -970,7 +1096,8 @@ export default function KontaktePage() {
                         return (
                           <td
                             key={key}
-                            className={`${getColumnWidth().cell} py-2.5 ${getColumnWidth().min} ${isFirstColumn ? 'sticky left-0 z-10 bg-white' : ''}`}
+                            className={`px-4 py-3 text-sm`}
+                            style={{ width: `${width}px`, minWidth: `${width}px` }}
                           >
                             {displayContent}
                           </td>
@@ -979,9 +1106,9 @@ export default function KontaktePage() {
 
                     {/* PROGRESS Column (if visible) */}
                     {visibleColumns.progress && (
-                      <td className={`${getColumnWidth().cell} py-2.5 min-w-28`}>
+                      <td className={`px-4 py-3 text-sm`} style={{ width: '110px', minWidth: '110px' }}>
                         <div className="flex items-center gap-1.5">
-                          <div className="w-14 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
+                          <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                             <div
                               className="h-full bg-yellow-400 rounded-full transition-all"
                               style={{
@@ -998,11 +1125,12 @@ export default function KontaktePage() {
 
                     {/* ACTIONS Column (always at end if visible) */}
                     {visibleColumns.actions && (
-                      <td className={`${getColumnWidth().cell} py-2.5 min-w-24 text-right sticky right-0 z-10 bg-white`}>
-                        <div className="flex items-center gap-0.5 justify-end">
+                      <td className={`px-4 py-3 text-right`} style={{ width: '120px', minWidth: '120px' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-0.5 justify-end pointer-events-auto">
                           {/* Quick Note */}
                           <button
                             onClick={(e) => {
+                              e.preventDefault()
                               e.stopPropagation()
                               setShowQuickNote(kontakt.id)
                             }}
@@ -1016,21 +1144,25 @@ export default function KontaktePage() {
                           </button>
 
                           {/* Details */}
-                          <Link
-                            href={`/kontakte/${kontakt.id}`}
+                          <button
                             className="p-1 rounded text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-all flex-shrink-0"
                             title="Details"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              router.push(`/kontakte/${kontakt.id}`)
+                            }}
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
                               <path d="M6.5 2H20a2 2 0 012 2v14" />
                             </svg>
-                          </Link>
+                          </button>
 
                           {/* Copy */}
                           <button
                             onClick={(e) => {
+                              e.preventDefault()
                               e.stopPropagation()
                               handleCopyKontakt(kontakt)
                             }}
@@ -1046,6 +1178,7 @@ export default function KontaktePage() {
                           {/* Delete */}
                           <button
                             onClick={(e) => {
+                              e.preventDefault()
                               e.stopPropagation()
                               setDeleteConfirm(kontakt.id)
                             }}
