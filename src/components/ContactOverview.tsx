@@ -52,6 +52,7 @@ interface Kontakt {
   iban?: string
   // PKV Insurance Fields
   geburtstag?: string
+  geschlecht?: string
   jahreseinkommen?: string
   groesse?: number
   gewicht?: number
@@ -333,9 +334,10 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Persönliche Daten</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
               <Field label="Geburtstag" field="geburtstag" type="date" value={getValue('geburtstag')} onChange={handleChange} isEditing={isEditing} />
-              <Field label="Gesundheitszustand" field="gesundheitszustand" value={getValue('gesundheitszustand')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Geschlecht" field="geschlecht" type="select" options={['männlich', 'weiblich', 'divers']} value={getValue('geschlecht')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Größe (cm)" field="groesse" type="number" value={getValue('groesse')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Gewicht (kg)" field="gewicht" type="number" value={getValue('gewicht')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Gesundheitszustand" field="gesundheitszustand" value={getValue('gesundheitszustand')} onChange={handleChange} isEditing={isEditing} />
             </div>
           </div>
 
@@ -368,41 +370,60 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
         isOpen={openSections.unternehmen}
         onToggle={() => toggleSection('unternehmen')}
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-            <Field label="Firma" field="company_name" value={getValue('company_name')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Position" field="position" value={getValue('position')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Branche" field="industry" value={getValue('industry')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Website" field="website" type="url" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
-            <Field label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
+        <div className="space-y-6">
+          {/* Subsection: Grunddaten */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Grunddaten</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+              <Field label="Firma" field="company_name" value={getValue('company_name')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Position" field="position" value={getValue('position')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Branche" field="industry" value={getValue('industry')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Website" field="website" type="url" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
+            </div>
+          </div>
+
+          {/* Subsection: Gewerbliche Daten */}
+          <div className="pt-4 border-t border-gray-100">
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">Gewerbliche Daten</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+              <Field label="Rechtsform" field="rechtsform" value={getValue('rechtsform')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Geburtstag GF/Inhaber" field="geburtstag_gf_inhaber" type="date" value={getValue('geburtstag_gf_inhaber')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Geschäftsführer (Anzahl)" field="geschaeftsfuehrer_anzahl" type="number" value={getValue('geschaeftsfuehrer_anzahl')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="Seit wann Gewerbe" field="seit_wann_gewerbe" type="date" value={getValue('seit_wann_gewerbe')} onChange={handleChange} isEditing={isEditing} />
+            </div>
           </div>
         </div>
       </AccordionSection>
 
-      {/* SECONDARY SECTION: Versicherungsdaten (Collapsible) */}
+      {/* VORVERSICHERUNGSDATEN */}
       <AccordionSection
-        title="Versicherungsdaten"
+        title="Vorversicherungsdaten"
         icon="🛡️"
         isOpen={openSections.versicherung}
         onToggle={() => toggleSection('versicherung')}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-          <Field label="Rechtsform" field="rechtsform" value={getValue('rechtsform')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Geburtstag GF/Inhaber" field="geburtstag_gf_inhaber" type="date" value={getValue('geburtstag_gf_inhaber')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Geschäftsführer (Anzahl)" field="geschaeftsfuehrer_anzahl" type="number" value={getValue('geschaeftsfuehrer_anzahl')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Seit wann Gewerbe" field="seit_wann_gewerbe" type="date" value={getValue('seit_wann_gewerbe')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Versicherungsgesellschaft" field="versicherungsgesellschaft" value={getValue('versicherungsgesellschaft')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Zahlweise" field="zahlweise" value={getValue('zahlweise')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Beitrag Vorsorge" field="beitrag_vorsorge" type="number" value={getValue('beitrag_vorsorge')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Versicherungstyp" field="versicherungstyp" value={getValue('versicherungstyp')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Kontoinhaber" field="kontoinhaber" value={getValue('kontoinhaber')} onChange={handleChange} isEditing={isEditing} />
           <Field label="IBAN" field="iban" value={getValue('iban')} onChange={handleChange} isEditing={isEditing} />
-          <Field label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Inhaltssumme" field="inhaltssumme" value={getValue('inhaltssumme')} onChange={handleChange} isEditing={isEditing} />
-          <div className="sm:col-span-2">
-            <Field label="Versicherungsprodukt" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
-          </div>
+        </div>
+      </AccordionSection>
+
+      {/* ALLGEMEINE VERSICHERUNGSDATEN */}
+      <AccordionSection
+        title="Allgemeine Versicherungsdaten"
+        icon="📋"
+        isOpen={openSections.versicherung}
+        onToggle={() => toggleSection('versicherung')}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
+          <Field label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
           <div className="sm:col-span-2">
             <Field label="Prüfungsgrund" field="prüfung_grund" value={getValue('prüfung_grund')} onChange={handleChange} isEditing={isEditing} />
           </div>
