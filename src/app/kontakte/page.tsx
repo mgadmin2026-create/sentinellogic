@@ -427,7 +427,7 @@ export default function KontaktePage() {
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const diff = moveEvent.clientX - startX
-      const newWidth = Math.max(60, startWidth + diff)
+      const newWidth = Math.max(30, startWidth + diff)
 
       setColumnWidths(prev => ({
         ...prev,
