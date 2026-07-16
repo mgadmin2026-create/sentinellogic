@@ -275,20 +275,23 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
             <AccordionSection
               title="Versicherungen"
               icon="🏥"
-              statusBadge={{ label: '○ Offen', color: 'open' }}
+              statusBadge={{ label: kontakt.opportunities && kontakt.opportunities.length > 0 ? '◐ Angebote offen' : '○ Offen', color: kontakt.opportunities && kontakt.opportunities.length > 0 ? 'partial' : 'open' }}
               isOpen={openSections.versicherungen}
               onToggle={() => toggleSection('versicherungen')}
             >
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <p className="text-sm text-gray-700">
                   <span className="font-medium">PKV Status:</span> {kontakt.krankenversicherung_status || '—'}
                 </p>
                 <p className="text-sm text-gray-700">
                   <span className="font-medium">Versicherungstyp:</span> {kontakt.versicherungstyp || '—'}
                 </p>
-                <div className="text-sm text-gray-600 pt-2 border-t border-gray-100">
-                  <p>Versicherungsgesellschaften sind in Tab "Verträge" aufgelistet</p>
-                </div>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Sparte:</span> {kontakt.sparte || '—'}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Jahreseinkommen:</span> {kontakt.jahreseinkommen ? `€${parseInt(kontakt.jahreseinkommen).toLocaleString('de-DE')}` : '—'}
+                </p>
               </div>
             </AccordionSection>
 
@@ -335,13 +338,27 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
 
             {/* Aktivitäten Section */}
             <AccordionSection
-              title="Aktivitäten"
+              title="Aktivitäten & Notizen"
               icon="📞"
               isOpen={openSections.aktivitaeten}
               onToggle={() => toggleSection('aktivitaeten')}
             >
-              <div className="text-sm text-gray-600">
-                <p>Letzte Aktivitäten werden hier angezeigt (in Entwicklung)</p>
+              <div className="space-y-3">
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Status:</span> {kontakt.status || '—'}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Kontakt-Typ:</span> {kontakt.kontakt_typ ? (kontakt.kontakt_typ === 'gewerbe' ? '🏢 Gewerbe' : '👤 Privat') : '—'}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Bestandskunde:</span> {kontakt.bestandskunde ? '✓ Ja' : 'Nein'}
+                </p>
+                {kontakt.bemerkung && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-xs font-medium text-amber-800 mb-1">Notiz [Dialfire]:</p>
+                    <p className="text-sm text-amber-900">{kontakt.bemerkung}</p>
+                  </div>
+                )}
               </div>
             </AccordionSection>
 
