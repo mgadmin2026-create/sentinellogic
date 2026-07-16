@@ -7,6 +7,7 @@ import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
 import { ContactOverview } from '@/components/ContactOverview'
+import { ContactDetailAnalysisView } from '@/components/ContactDetailAnalysisView'
 import { StickyContactHeader } from '@/components/StickyContactHeader'
 import { NotesHistory } from '@/components/NotesHistory'
 import { DialfireSyncPanel } from '@/components/DialfireSyncPanel'
@@ -179,6 +180,7 @@ export default function KontaktDetailPage() {
   const kontaktId = params.id as string
 
   const [activeTab, setActiveTab] = useState('overview')
+  const [viewMode, setViewMode] = useState<'overview' | 'analysis'>('overview')
   const [kontakt, setKontakt] = useState<Kontakt | null>(null)
   const [loading, setLoading] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -633,67 +635,96 @@ export default function KontaktDetailPage() {
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
           <>
-            {/* Kompakter Prozess-Stepper */}
-            {(() => {
-              const currentIndex = Math.max(0, PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage))
-              const doneCount = (kontakt.pipeline_steps || []).filter((s: any) => s.done).length
-              const isLast = currentIndex === PIPELINE_STEPS.length - 1
-              return (
-                <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 mb-6">
-                  <div className="flex items-center justify-between gap-4 mb-3">
-                    <p className="text-sm text-gray-600 min-w-0 truncate">
-                      <span className="font-semibold text-gray-900">
-                        Schritt {currentIndex + 1}/{PIPELINE_STEPS.length}:
-                      </span>{' '}
-                      {PIPELINE_STEPS[currentIndex]?.label}
-                    </p>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <button
-                        onClick={() => setActiveTab('process')}
-                        className="text-xs text-gray-500 hover:text-gray-900 font-medium"
-                      >
-                        Alle Schritte →
-                      </button>
-                      {!isLast && (
-                        <button
-                          onClick={handleNextStep}
-                          disabled={pipelineSaving}
-                          className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          {pipelineSaving ? '…' : '→ Nächster Schritt'}
-                        </button>
+            {/* View Mode Toggle */}
+            {viewMode === 'overview' && (
+              <>
+                {/* Kompakter Prozess-Stepper */}
+                {(() => {
+                  const currentIndex = Math.max(0, PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage))
+                  const doneCount = (kontakt.pipeline_steps || []).filter((s: any) => s.done).length
+                  const isLast = currentIndex === PIPELINE_STEPS.length - 1
+                  return (
+                    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 mb-6">
+                      <div className="flex items-center justify-between gap-4 mb-3">
+                        <p className="text-sm text-gray-600 min-w-0 truncate">
+                          <span className="font-semibold text-gray-900">
+                            Schritt {currentIndex + 1}/{PIPELINE_STEPS.length}:
+                          </span>{' '}
+                          {PIPELINE_STEPS[currentIndex]?.label}
+                        </p>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <button
+                            onClick={() => setViewMode('analysis')}
+                            className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium px-2 py-1 rounded"
+                          >
+                            Analyse-Ansicht →
+                          </button>
+                          <button
+                            onClick={() => setActiveTab('process')}
+                            className="text-xs text-gray-500 hover:text-gray-900 font-medium"
+                          >
+                            Alle Schritte →
+                          </button>
+                          {!isLast && (
+                            <button
+                              onClick={handleNextStep}
+                              disabled={pipelineSaving}
+                              className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              {pipelineSaving ? '…' : '→ Nächster Schritt'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        {PIPELINE_STEPS.map((step, i) => {
+                          const stepData = (kontakt.pipeline_steps || []).find((s: any) => s.key === step.key)
+                          const done = stepData?.done || false
+                          const current = i === currentIndex
+                          return (
+                            <button
+                              key={step.key}
+                              onClick={() => setActiveTab('process')}
+                              title={`${i + 1}. ${step.label}${done ? ' ✓' : current ? ' (aktuell)' : ''}`}
+                              className={`h-1.5 flex-1 rounded-full transition-colors ${
+                                done ? 'bg-emerald-500' : current ? 'bg-yellow-400' : 'bg-gray-200'
+                              } ${current ? 'ring-2 ring-yellow-200' : ''} hover:opacity-75`}
+                            />
+                          )
+                        })}
+                      </div>
+                      {isLast && doneCount === PIPELINE_STEPS.length && (
+                        <p className="text-xs text-emerald-600 font-medium mt-2">🎉 Alle Schritte abgeschlossen</p>
                       )}
                     </div>
-                  </div>
-                  <div className="flex gap-1">
-                    {PIPELINE_STEPS.map((step, i) => {
-                      const stepData = (kontakt.pipeline_steps || []).find((s: any) => s.key === step.key)
-                      const done = stepData?.done || false
-                      const current = i === currentIndex
-                      return (
-                        <button
-                          key={step.key}
-                          onClick={() => setActiveTab('process')}
-                          title={`${i + 1}. ${step.label}${done ? ' ✓' : current ? ' (aktuell)' : ''}`}
-                          className={`h-1.5 flex-1 rounded-full transition-colors ${
-                            done ? 'bg-emerald-500' : current ? 'bg-yellow-400' : 'bg-gray-200'
-                          } ${current ? 'ring-2 ring-yellow-200' : ''} hover:opacity-75`}
-                        />
-                      )
-                    })}
-                  </div>
-                  {isLast && doneCount === PIPELINE_STEPS.length && (
-                    <p className="text-xs text-emerald-600 font-medium mt-2">🎉 Alle Schritte abgeschlossen</p>
-                  )}
-                </div>
-              )
-            })()}
-            <ContactOverview
-              kontakt={kontakt}
-              onSave={handleSaveOverview}
-              isEditing={isEditingOverview}
-              onEditChange={setIsEditingOverview}
-            />
+                  )
+                })()}
+                <ContactOverview
+                  kontakt={kontakt}
+                  onSave={handleSaveOverview}
+                  isEditing={isEditingOverview}
+                  onEditChange={setIsEditingOverview}
+                />
+              </>
+            )}
+
+            {/* Analysis View (3-spaltig) */}
+            {viewMode === 'analysis' && (
+              <div className="relative">
+                <button
+                  onClick={() => setViewMode('overview')}
+                  className="absolute top-0 right-0 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium px-3 py-1.5 rounded z-10"
+                >
+                  ← Zurück zur Übersicht
+                </button>
+                <ContactDetailAnalysisView
+                  kontakt={kontakt}
+                  onSave={handleSaveOverview}
+                  isEditing={isEditingOverview}
+                  onEditChange={setIsEditingOverview}
+                />
+              </div>
+            )}
           </>
         )}
         {activeTab === 'process' && (
