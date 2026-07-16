@@ -16,6 +16,12 @@ interface StickyContactHeaderProps {
   isEditing: boolean
   onEditChange: (editing: boolean) => void
   onDelete: () => void
+  viewMode?: 'overview' | 'analysis'
+  setViewMode?: (mode: 'overview' | 'analysis') => void
+  amisStatusLabel?: string
+  latestAmisTask?: any
+  handleCreateAmisTask?: (taskType: string) => void
+  amisCreating?: string | null
 }
 
 const tabs = [
@@ -43,6 +49,12 @@ export function StickyContactHeader({
   isEditing,
   onEditChange,
   onDelete,
+  viewMode = 'overview',
+  setViewMode,
+  amisStatusLabel,
+  latestAmisTask,
+  handleCreateAmisTask,
+  amisCreating,
 }: StickyContactHeaderProps) {
   const callNumber = phoneMobile || phoneOffice || phone
   const waNumber = toWhatsAppNumber(callNumber)
@@ -113,13 +125,78 @@ export function StickyContactHeader({
             )}
           </div>
 
-          {/* Right: Edit Mode Indicator + Buttons */}
+          {/* Right: AMIS + Ansicht + Edit Buttons */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {isEditing && (
               <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">
                 ✏️ Bearbeitungsmodus
               </div>
             )}
+
+            {/* AMIS.NOW Dropdown Menu */}
+            {handleCreateAmisTask && (
+              <div className="relative group">
+                <button className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold bg-amber-400 hover:bg-amber-500 text-gray-900 rounded-lg transition-colors">
+                  ⚡ AMIS
+                </button>
+                <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <button
+                    onClick={() => handleCreateAmisTask('person_create')}
+                    disabled={amisCreating !== null}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 border-b border-gray-100"
+                  >
+                    {amisCreating === 'person_create' ? '⏳ Person anlegen...' : '👤 Person anlegen'}
+                  </button>
+                  <button
+                    onClick={() => handleCreateAmisTask('person_create_quote')}
+                    disabled={amisCreating !== null}
+                    className="w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    {amisCreating === 'person_create_quote' ? '⏳ Angebot berechnen...' : '💰 Angebot berechnen'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* AMIS Status Info Icon */}
+            {latestAmisTask && (
+              <div className="relative group">
+                <button className="px-2 py-2 text-sm font-semibold rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors" title="AMIS Status">
+                  ℹ️
+                </button>
+                <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-3 space-y-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-xs">
+                  <div>
+                    <p className="text-gray-500 font-semibold">Letzte Aufgabe</p>
+                    <p className="text-gray-900">{latestAmisTask.titel}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 font-semibold">Status</p>
+                    <p className="text-gray-900">{amisStatusLabel}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 font-semibold">Angebotsnummer</p>
+                    <p className="text-gray-900">{latestAmisTask.amis_quote_number || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 font-semibold">Erstellt</p>
+                    <p className="text-gray-900">{latestAmisTask.created_at ? new Date(latestAmisTask.created_at).toLocaleDateString('de-DE') : '—'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ansicht Wechseln Button */}
+            {setViewMode && (
+              <button
+                onClick={() => setViewMode(viewMode === 'overview' ? 'analysis' : 'overview')}
+                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                title="Ansicht wechseln"
+              >
+                {viewMode === 'overview' ? '📊 Analyse' : '📋 Übersicht'}
+              </button>
+            )}
+
+            {/* Bearbeiten Button */}
             <button
               onClick={() => onEditChange(!isEditing)}
               className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
@@ -130,6 +207,8 @@ export function StickyContactHeader({
             >
               {isEditing ? '✗ Abbrechen' : '✏️ Bearbeiten'}
             </button>
+
+            {/* Löschen Button */}
             <button
               onClick={onDelete}
               className="px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"

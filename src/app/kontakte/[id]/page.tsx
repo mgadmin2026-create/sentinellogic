@@ -489,6 +489,12 @@ export default function KontaktDetailPage() {
         isEditing={isEditingOverview}
         onEditChange={setIsEditingOverview}
         onDelete={() => setDeleteConfirm(true)}
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        amisStatusLabel={amisStatusLabel}
+        latestAmisTask={latestAmisTask}
+        handleCreateAmisTask={handleCreateAmisTask}
+        amisCreating={amisCreating}
       />
 
       <ContactEmailModal
@@ -562,61 +568,14 @@ export default function KontaktDetailPage() {
           )}
         </div>
 
-        {/* AMIS.NOW Aktionen */}
-        <div className="bg-white border border-gray-200 rounded-xl mb-6 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">AMIS.NOW</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Browser-Agent auf dem Allianz-Rechner verarbeitet diese Aufgaben.</p>
-            </div>
-            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${amisStatusClass}`}>
-              {amisStatusLabel}
-            </span>
+        {/* AMIS.NOW Message Display */}
+        {amisMessage && (
+          <div className="mb-6 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+            <p className={`text-sm font-medium ${amisMessage.type === 'ok' ? 'text-emerald-700' : 'text-red-700'}`}>
+              {amisMessage.text}
+            </p>
           </div>
-          <div className="p-5 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handleCreateAmisTask('person_create')}
-                disabled={amisCreating !== null}
-                className="px-3 py-2 text-xs font-semibold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {amisCreating === 'person_create' ? 'Erstellt…' : 'Person anlegen AMIS NOW'}
-              </button>
-              <button
-                onClick={() => handleCreateAmisTask('person_create_quote')}
-                disabled={amisCreating !== null}
-                className="px-3 py-2 text-xs font-semibold rounded-lg bg-yellow-400 hover:bg-yellow-500 text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {amisCreating === 'person_create_quote' ? 'Erstellt…' : 'Angebot berechnen AMIS NOW'}
-              </button>
-              <button
-                onClick={() => setActiveTab('tasks')}
-                className="px-3 py-2 text-xs font-medium rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-              >
-                Aufgaben ansehen
-              </button>
-            </div>
-
-            {amisMessage && (
-              <p className={`text-xs font-medium ${amisMessage.type === 'ok' ? 'text-emerald-700' : 'text-red-700'}`}>
-                {amisMessage.text}
-              </p>
-            )}
-
-            {latestAmisTask && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs bg-gray-50 rounded-lg p-3">
-                <div>
-                  <p className="text-gray-500 font-semibold">Letzte Aufgabe</p>
-                  <p className="text-gray-900 mt-1">{latestAmisTask.titel}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 font-semibold">Status</p>
-                  <p className="text-gray-900 mt-1">{amisStatusLabel}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 font-semibold">Angebotsnummer</p>
-                  <p className="text-gray-900 mt-1">{latestAmisTask.amis_quote_number || '—'}</p>
-                </div>
+        )}
                 <div>
                   <p className="text-gray-500 font-semibold">Beitrag</p>
                   <p className="text-gray-900 mt-1">{latestAmisTask.amis_premium || '—'}</p>
@@ -635,36 +594,6 @@ export default function KontaktDetailPage() {
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
           <>
-            {/* View Mode Toggle Bar */}
-            <div className="mb-6 flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4">
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Ansichtsmodus</p>
-                <p className="text-xs text-gray-500">Wechsel zwischen Übersicht und detaillierter Analyse</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setViewMode('overview')}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                    viewMode === 'overview'
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  📋 Übersicht
-                </button>
-                <button
-                  onClick={() => setViewMode('analysis')}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                    viewMode === 'analysis'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
-                  }`}
-                >
-                  📊 Analyse
-                </button>
-              </div>
-            </div>
-
             {/* View Mode Toggle */}
             {viewMode === 'overview' && (
               <>
@@ -683,12 +612,6 @@ export default function KontaktDetailPage() {
                           {PIPELINE_STEPS[currentIndex]?.label}
                         </p>
                         <div className="flex items-center gap-3 flex-shrink-0">
-                          <button
-                            onClick={() => setViewMode('analysis')}
-                            className="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium px-2 py-1 rounded"
-                          >
-                            Analyse-Ansicht →
-                          </button>
                           <button
                             onClick={() => setActiveTab('process')}
                             className="text-xs text-gray-500 hover:text-gray-900 font-medium"
