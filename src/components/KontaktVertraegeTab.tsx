@@ -22,7 +22,7 @@ export function KontaktVertraegeTab({ kontaktId }: KontaktVertraegeTabProps) {
       const res = await fetch(`/api/kontakte/${kontaktId}/vertraege`)
       if (!res.ok) throw new Error('Verträge konnten nicht geladen werden')
       const data = await res.json()
-      setContracts(data.contracts || [])
+      setContracts(data.data || [])
     } catch (err) {
       console.error('Fehler beim Laden der Verträge:', err)
     } finally {
