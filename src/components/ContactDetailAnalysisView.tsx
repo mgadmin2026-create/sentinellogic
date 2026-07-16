@@ -13,6 +13,14 @@ interface Kontakt {
   company_name?: string
   geburtstag?: string
   status: string
+  opportunities?: Array<{
+    id?: string
+    title?: string
+    name?: string
+    value?: string | number
+    status?: string
+    created_at?: string
+  }>
   [key: string]: any
 }
 
@@ -80,7 +88,8 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
     grunddaten: true,
     unternehmen: true,
     versicherungen: true,
-    aktivitaeten: true,
+    angebote: true,
+    aktivitaeten: false,
     integrations: false,
   })
 
@@ -280,6 +289,47 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
                 <div className="text-sm text-gray-600 pt-2 border-t border-gray-100">
                   <p>Versicherungsgesellschaften sind in Tab "Verträge" aufgelistet</p>
                 </div>
+              </div>
+            </AccordionSection>
+
+            {/* Angebote Section */}
+            <AccordionSection
+              title="Angebote"
+              icon="📊"
+              statusBadge={{ label: '○ Offen', color: 'open' }}
+              isOpen={openSections.angebote}
+              onToggle={() => toggleSection('angebote')}
+            >
+              <div className="space-y-3">
+                {kontakt.opportunities && kontakt.opportunities.length > 0 ? (
+                  kontakt.opportunities.map((opp: any, idx: number) => (
+                    <div key={idx} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{opp.title || opp.name || 'Angebot'}</p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            🗓️ Erstellt: {opp.created_at ? new Date(opp.created_at).toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—'}
+                          </p>
+                          {opp.value && (
+                            <p className="text-xs text-gray-600 mt-0.5">
+                              💶 Wert: €{parseFloat(opp.value).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
+                            </p>
+                          )}
+                        </div>
+                        {opp.status && (
+                          <span className="text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 ml-2 flex-shrink-0">
+                            {opp.status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-sm text-gray-500 py-4 text-center">
+                    <p>Keine Angebote vorhanden</p>
+                    <p className="text-xs mt-1">Angebote werden hier angezeigt, wenn sie erstellt werden</p>
+                  </div>
+                )}
               </div>
             </AccordionSection>
 
