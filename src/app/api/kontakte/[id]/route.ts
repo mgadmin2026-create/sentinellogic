@@ -23,7 +23,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'geburtstag_gf_inhaber', 'geschaeftsfuehrer_anzahl', 'seit_wann_gewerbe',
   // PKV-Felder (Kampagne 6X42NJWGH4YA6HC7)
   'hausnummer', 'prüfung_grund', 'krankenversicherung_status', 'situation',
-  'geburtstag', 'jahreseinkommen', 'groesse', 'gewicht', 'gesundheitszustand',
+  'geburtstag', 'geschlecht', 'jahreseinkommen', 'groesse', 'gewicht', 'gesundheitszustand',
   'seit_wann_selbststaendig', 'dienstverhaltnis', 'notizen_2',
   'versicherungsgesellschaft_1', 'leistungen_1', 'aktueller_beitrag_1', 'kontoinhaber_1', 'iban_1',
   'versicherungsgesellschaft_2', 'leistungen_2', 'aktueller_beitrag_2', 'kontoinhaber_2', 'iban_2',
