@@ -635,6 +635,36 @@ export default function KontaktDetailPage() {
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
           <>
+            {/* View Mode Toggle Bar */}
+            <div className="mb-6 flex items-center justify-between bg-white rounded-lg border border-gray-200 p-4">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Ansichtsmodus</p>
+                <p className="text-xs text-gray-500">Wechsel zwischen Übersicht und detaillierter Analyse</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewMode('overview')}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    viewMode === 'overview'
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  📋 Übersicht
+                </button>
+                <button
+                  onClick={() => setViewMode('analysis')}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    viewMode === 'analysis'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                  }`}
+                >
+                  📊 Analyse
+                </button>
+              </div>
+            </div>
+
             {/* View Mode Toggle */}
             {viewMode === 'overview' && (
               <>
