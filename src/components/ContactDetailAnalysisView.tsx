@@ -242,7 +242,7 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
                   <span className="font-medium">Telefon:</span> {kontakt.phone_mobile || '—'}
                 </p>
                 <p className="text-sm text-gray-700">
-                  <span className="font-medium">Geburtsdatum:</span> {formatDate(kontakt.geburtstag, 'de')} ({age} Jahre)
+                  <span className="font-medium">Geburtsdatum:</span> {kontakt.geburtstag ? `${formatDate(kontakt.geburtstag, 'de')} (${age} Jahre)` : '—'}
                 </p>
               </div>
             </AccordionSection>
