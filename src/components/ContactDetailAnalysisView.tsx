@@ -17,6 +17,16 @@ interface Kontakt {
   [key: string]: any
 }
 
+interface Vertrag {
+  id: string
+  name?: string
+  sparte?: string
+  typ?: string
+  beitrag?: number | string
+  beginn?: string
+  status?: string
+}
+
 interface Props {
   kontakt: Kontakt
   onSave: (changes: Record<string, any>) => Promise<void>
@@ -110,36 +120,83 @@ const EditableField = memo(({
 
 EditableField.displayName = 'EditableField'
 
+interface SectionField {
+  label: string
+  field: string
+  type?: string
+  options?: string[]
+}
+
+interface AccordionSectionProps {
+  title: string
+  icon: string
+  isOpen: boolean
+  onToggle: () => void
+  fields: SectionField[]
+  values: Record<string, any>
+  isEditing: boolean
+  onChange: (field: string, value: any) => void
+  expandedFields: boolean
+  onExpandFields: (expanded: boolean) => void
+  maxVisibleFields?: number
+}
+
 const AccordionSection = memo(({
   title,
   icon,
   isOpen,
   onToggle,
-  children,
-}: {
-  title: string
-  icon: string
-  isOpen: boolean
-  onToggle: () => void
-  children: React.ReactNode
-}) => (
-  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-    <button
-      onClick={onToggle}
-      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition"
-    >
-      <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-        <span className="text-lg">{icon}</span> {title}
-      </h3>
-      <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
-    </button>
-    {isOpen && (
-      <div className="px-4 py-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {children}
-      </div>
-    )}
-  </div>
-))
+  fields,
+  values,
+  isEditing,
+  onChange,
+  expandedFields,
+  onExpandFields,
+  maxVisibleFields = 4,
+}: AccordionSectionProps) => {
+  const visibleFields = expandedFields ? fields : fields.slice(0, maxVisibleFields)
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition"
+      >
+        <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <span className="text-lg">{icon}</span> {title}
+        </h3>
+        <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+      </button>
+      {isOpen && (
+        <div className="px-4 py-3 border-t border-gray-100 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {visibleFields.map(fieldConfig => (
+              <EditableField
+                key={fieldConfig.field}
+                label={fieldConfig.label}
+                field={fieldConfig.field}
+                value={values[fieldConfig.field]}
+                type={fieldConfig.type}
+                isEditing={isEditing}
+                onChange={onChange}
+                options={fieldConfig.options}
+              />
+            ))}
+          </div>
+
+          {fields.length > maxVisibleFields && (
+            <button
+              onClick={() => onExpandFields(!expandedFields)}
+              className="w-full text-xs font-medium text-blue-600 hover:text-blue-700 py-2 border-t"
+            >
+              {expandedFields ? '↑ Weniger anzeigen' : '↓ Mehr anzeigen'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+})
 
 AccordionSection.displayName = 'AccordionSection'
 
@@ -147,13 +204,35 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
   const [editData, setEditData] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
   const [expandedBasicFields, setExpandedBasicFields] = useState(false)
+  const [vertraege, setVertraege] = useState<Vertrag[]>([])
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     versicherungen: true,
     unternehmen: false,
   })
+  const [expandedFieldSections, setExpandedFieldSections] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    loadVertraege()
+  }, [kontakt.id])
+
+  async function loadVertraege() {
+    try {
+      const res = await fetch(`/api/kontakte/${kontakt.id}/vertraege`)
+      if (res.ok) {
+        const json = await res.json()
+        setVertraege(json.data || [])
+      }
+    } catch (err) {
+      console.error('Fehler beim Laden der Verträge:', err)
+    }
+  }
 
   const toggleSection = useCallback((section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
+  }, [])
+
+  const toggleFieldExpand = useCallback((section: string) => {
+    setExpandedFieldSections(prev => ({ ...prev, [section]: !prev[section] }))
   }, [])
 
   const handleChange = useCallback((field: string, value: any) => {
@@ -177,7 +256,7 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
   const daysUntilBday = kontakt.geburtstag ? daysUntilBirthday(kontakt.geburtstag) : -1
   const isBirthdayComing = kontakt.geburtstag ? isBirthdaySoon(kontakt.geburtstag, 7) : false
 
-  const basicFields = [
+  const basicFields: SectionField[] = [
     { label: 'Geburtsdatum', field: 'geburtstag', type: 'date' },
     { label: 'E-Mail', field: 'email', type: 'email' },
     { label: 'Telefon Mobil', field: 'phone_mobile' },
@@ -188,6 +267,27 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
     { label: 'PLZ/Stadt', field: 'city' },
     { label: 'Status', field: 'status', type: 'select', options: ['new', 'contacted', 'qualified', 'customer'] },
     { label: 'Bestandskunde', field: 'bestandskunde', type: 'checkbox' },
+  ]
+
+  const versicherungenFields: SectionField[] = [
+    { label: 'PKV Status', field: 'krankenversicherung_status' },
+    { label: 'Versicherungstyp', field: 'versicherungstyp' },
+    { label: 'Sparte', field: 'sparte' },
+    { label: 'Jahreseinkommen', field: 'jahreseinkommen', type: 'number' },
+    { label: 'Geschlecht', field: 'geschlecht', type: 'select', options: ['männlich', 'weiblich', 'divers'] },
+    { label: 'Größe (cm)', field: 'groesse', type: 'number' },
+    { label: 'Gewicht (kg)', field: 'gewicht', type: 'number' },
+    { label: 'Gesundheitszustand', field: 'gesundheitszustand' },
+  ]
+
+  const unternehmensFields: SectionField[] = [
+    { label: 'Jahresumsatz', field: 'jahresumsatz' },
+    { label: 'Mitarbeiter', field: 'mitarbeitanzahl', type: 'number' },
+    { label: 'Website', field: 'website' },
+    { label: 'Straße', field: 'street' },
+    { label: 'PLZ', field: 'postal_code' },
+    { label: 'Stadt', field: 'city' },
+    { label: 'Land', field: 'country' },
   ]
 
   const visibleBasicFields = expandedBasicFields ? basicFields : basicFields.slice(0, 10)
@@ -294,12 +394,14 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
               icon="🏥"
               isOpen={openSections.versicherungen}
               onToggle={() => toggleSection('versicherungen')}
-            >
-              <EditableField label="PKV Status" field="krankenversicherung_status" value={getValue('krankenversicherung_status')} onChange={handleChange} isEditing={isEditing} />
-              <EditableField label="Versicherungstyp" field="versicherungstyp" value={getValue('versicherungstyp')} onChange={handleChange} isEditing={isEditing} />
-              <EditableField label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
-              <EditableField label="Jahreseinkommen" field="jahreseinkommen" type="number" value={getValue('jahreseinkommen')} onChange={handleChange} isEditing={isEditing} />
-            </AccordionSection>
+              fields={versicherungenFields}
+              values={kontakt}
+              isEditing={isEditing}
+              onChange={handleChange}
+              expandedFields={expandedFieldSections.versicherungen || false}
+              onExpandFields={(expanded) => toggleFieldExpand('versicherungen')}
+              maxVisibleFields={4}
+            />
 
             {/* Unternehmen */}
             <AccordionSection
@@ -307,47 +409,47 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
               icon="🏢"
               isOpen={openSections.unternehmen}
               onToggle={() => toggleSection('unternehmen')}
-            >
-              <EditableField label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
-              <EditableField label="Mitarbeiter" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
-              <EditableField label="Website" field="website" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
-              <EditableField label="Straße" field="street" value={getValue('street')} onChange={handleChange} isEditing={isEditing} />
-            </AccordionSection>
+              fields={unternehmensFields}
+              values={kontakt}
+              isEditing={isEditing}
+              onChange={handleChange}
+              expandedFields={expandedFieldSections.unternehmen || false}
+              onExpandFields={(expanded) => toggleFieldExpand('unternehmen')}
+              maxVisibleFields={4}
+            />
           </div>
 
           {/* Column 3: Contracts & Offers (1 col) */}
           <div className="space-y-4">
             {/* Verträge */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm font-semibold text-gray-900 mb-3">📋 Verträge</p>
-              <div className="space-y-2 text-xs">
-                <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                  <div className="flex justify-between items-start">
-                    <p className="font-medium text-gray-900">PKV Standard</p>
-                    <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">Aktiv</span>
-                  </div>
-                  <div className="mt-1 space-y-1 text-gray-600">
-                    <p><strong>Sparte:</strong> Krankenversicherung</p>
-                    <p><strong>Typ:</strong> Eigenvertrag</p>
-                    <p><strong>Beitrag:</strong> €450/M</p>
-                    <p><strong>Seit:</strong> 01.03.2023</p>
-                  </div>
+              <p className="text-sm font-semibold text-gray-900 mb-3">📋 Verträge ({vertraege.length})</p>
+              {vertraege.length > 0 ? (
+                <div className="space-y-2 text-xs">
+                  {vertraege.map(vertrag => (
+                    <div key={vertrag.id} className="bg-gray-50 p-2 rounded border border-gray-200">
+                      <div className="flex justify-between items-start">
+                        <p className="font-medium text-gray-900">{vertrag.name || 'Unbenannt'}</p>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          vertrag.status === 'Aktiv'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {vertrag.status || '—'}
+                        </span>
+                      </div>
+                      <div className="mt-1 space-y-1 text-gray-600">
+                        {vertrag.sparte && <p><strong>Sparte:</strong> {vertrag.sparte}</p>}
+                        {vertrag.typ && <p><strong>Typ:</strong> {vertrag.typ}</p>}
+                        {vertrag.beitrag && <p><strong>Beitrag:</strong> €{vertrag.beitrag}/M</p>}
+                        {vertrag.beginn && <p><strong>Seit:</strong> {new Date(vertrag.beginn).toLocaleDateString('de-DE')}</p>}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            </div>
-
-            {/* Angebote */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm font-semibold text-gray-900 mb-3">📄 Angebote</p>
-              <div className="space-y-2 text-xs">
-                <div className="bg-gray-50 p-2 rounded border border-gray-200">
-                  <div className="flex justify-between items-start">
-                    <p className="font-medium text-gray-900">Altersvorsorge</p>
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs">Offen</span>
-                  </div>
-                  <p className="mt-1 text-gray-600">Erstellt: 15.07.2024</p>
-                </div>
-              </div>
+              ) : (
+                <p className="text-gray-500 text-xs">Keine Verträge vorhanden</p>
+              )}
             </div>
           </div>
         </div>

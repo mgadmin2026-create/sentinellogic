@@ -1,35 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
-export const dynamic = 'force-dynamic'
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+)
 
-// GET: Verträge eines Kontakts laden
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const kontaktId = params.id
-
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const supabase = createServerClient()
+    const { id } = params
 
-    const { data: contracts, error } = await supabase
-      .from('contracts')
+    // Fetch verträge (Contracts) for this contact
+    const { data, error } = await supabase
+      .from('vertraege')
       .select('*')
-      .eq('contact_id', kontaktId)
+      .eq('kontakt_id', id)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('[Vertraege] Error fetching contracts:', error)
-      return NextResponse.json({ error: 'Failed to fetch contracts' }, { status: 500 })
-    }
+    if (error) throw error
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
-      contracts: contracts || [],
+      data: data || [],
     })
-  } catch (err) {
-    console.error('[Vertraege] GET error:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+  } catch (err: any) {
+    console.error('Error fetching verträge:', err)
+    return Response.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    )
   }
 }
