@@ -11,9 +11,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     // Fetch verträge (Contracts) for this contact
     const { data, error } = await supabase
-      .from('vertraege')
+      .from('contracts')
       .select('*')
-      .eq('kontakt_id', id)
+      .eq('contact_id', id)
       .order('created_at', { ascending: false })
 
     if (error) throw error
