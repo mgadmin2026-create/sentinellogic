@@ -3,6 +3,7 @@ async function runPersonCreateMvp(page, person, options = {}) {
     const steps = [];
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
     const record = (message, data = {}) => steps.push({ message, ...data });
+    const readyTimeoutMs = 120000;
 
     function allDeep(selector, root = document) {
       const results = [...root.querySelectorAll(selector)];
@@ -25,6 +26,32 @@ async function runPersonCreateMvp(page, person, options = {}) {
     function byText(selector, text) {
       return allDeep(selector).find((element) =>
         visible(element) && element.textContent.trim().toLowerCase().includes(text.toLowerCase())
+      );
+    }
+
+    async function waitFor(label, finder, timeoutMs = readyTimeoutMs) {
+      const started = Date.now();
+      let lastHref = location.href;
+      while (Date.now() - started < timeoutMs) {
+        const found = finder();
+        if (found) return found;
+        if (location.href !== lastHref) {
+          lastHref = location.href;
+          record("waiting_navigation", { label, href: lastHref });
+        }
+        await sleep(1000);
+      }
+      throw new Error(`Nicht gefunden: ${label}`);
+    }
+
+    function findPlusButton() {
+      return (
+        allDeep("button").find((button) =>
+          visible(button) && button.querySelector("nx-icon[data-nx-icon-name='plus']")
+        ) ||
+        allDeep("[aria-label*='Neu' i], [aria-label*='Anlegen' i], [title*='Neu' i], [title*='Anlegen' i]").find(visible) ||
+        allDeep("nx-icon[data-nx-icon-name='plus'], nx-icon[name='plus'], .nx-icon--plus, [data-nx-icon-name='plus']").find(visible) ||
+        allDeep("svg, path").find((element) => visible(element) && element.outerHTML.toLowerCase().includes("plus"))
       );
     }
 
@@ -311,22 +338,18 @@ async function runPersonCreateMvp(page, person, options = {}) {
     }
 
     async function openPersonModal() {
-      const plusButton =
-        allDeep("button").find((button) =>
-          visible(button) && button.querySelector("nx-icon[data-nx-icon-name='plus']")
-        ) ||
-        allDeep("[aria-label*='Neu' i], [aria-label*='Anlegen' i], [title*='Neu' i], [title*='Anlegen' i]").find(visible) ||
-        allDeep("nx-icon[data-nx-icon-name='plus'], nx-icon[name='plus'], .nx-icon--plus, [data-nx-icon-name='plus']").find(visible) ||
-        allDeep("svg, path").find((element) => visible(element) && element.outerHTML.toLowerCase().includes("plus"));
+      record("waiting_for_plus");
+      const plusButton = await waitFor("Plus", findPlusButton);
 
       click(plusButton, "Plus");
       await sleep(stepDelayMs);
 
-      const personAction =
+      const personAction = await waitFor("Person anlegen", () =>
         byText("button", "Person anlegen") ||
         byText("[role='menuitem']", "Person anlegen") ||
         byText("a", "Person anlegen") ||
-        byText("span", "Person anlegen")?.closest("button,[role='menuitem'],a");
+        byText("span", "Person anlegen")?.closest("button,[role='menuitem'],a")
+      );
 
       click(personAction, "Person anlegen");
       await sleep(stepDelayMs);
