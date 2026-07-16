@@ -6,6 +6,7 @@
   "main": "src/agent.js",
   "scripts": {
     "start": "node src/agent.js",
+    "once": "node src/agent.js --once",
     "test-person": "node src/agent.js --test-job ./test-data/person-mvp.json --person-create-only",
     "test-person-quote": "node src/agent.js --test-job ./test-data/person-quote-mvp.json"
   },

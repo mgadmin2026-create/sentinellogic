@@ -3,6 +3,7 @@ const path = require("node:path");
 const os = require("node:os");
 const { spawn } = require("node:child_process");
 const { chromium } = require("playwright-core");
+const { runPersonCreateMvp } = require("./person-create-mvp-runner");
 
 const ROOT = path.resolve(__dirname, "..");
 const DEFAULT_CONFIG = path.join(ROOT, "config.json");
@@ -17,6 +18,7 @@ function ensureDir(dir) {
 }
 
 function loadConfig() {
+  loadDotEnv(path.join(ROOT, ".env"));
   const configPath = path.resolve(process.env.AMIS_AGENT_CONFIG || DEFAULT_CONFIG);
   const fileConfig = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf8")) : {};
   return {
@@ -30,11 +32,29 @@ function loadConfig() {
     logDir: process.env.LOG_DIR || fileConfig.logDir || path.join(ROOT, "logs"),
     dryRun: parseBool(process.env.DRY_RUN, fileConfig.dryRun ?? false),
     personCreateOnly: args.includes("--person-create-only") || parseBool(process.env.PERSON_CREATE_ONLY, fileConfig.personCreateOnly ?? false),
+    once: args.includes("--once") || parseBool(process.env.RUN_ONCE, fileConfig.once ?? false),
     defaultTaskType: process.env.DEFAULT_TASK_TYPE || fileConfig.defaultTaskType || "person_create_quote",
     testJobFile: argValue("--test-job") || process.env.TEST_JOB_FILE || fileConfig.testJobFile,
     personCreate: fileConfig.personCreate || {},
     selectors: fileConfig.selectors || {},
   };
+}
+
+function loadDotEnv(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const match = trimmed.match(/^([^=]+)=(.*)$/);
+    if (!match) continue;
+    const key = match[1].trim();
+    let value = match[2].trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] == null) process.env[key] = value;
+  }
 }
 
 function argValue(name) {
@@ -224,6 +244,19 @@ async function createPersonIfConfigured(page, job) {
   if (!personCreate.enabled) return;
 
   validateRequired(job, personCreate.required || []);
+  if ((personCreate.mode || "browser_mvp") === "browser_mvp") {
+    const person = personFromJob(job);
+    log("info", "Running browser MVP person creation", { jobId: job.id, dryRun: config.dryRun });
+    const result = await runPersonCreateMvp(page, person, {
+      runSubmit: !config.dryRun,
+      stepDelayMs: personCreate.stepDelayMs || 700,
+    });
+    for (const step of result.steps || []) {
+      log("info", "Person MVP step", { jobId: job.id, ...step });
+    }
+    return;
+  }
+
   log("info", "Opening person creation modal", { jobId: job.id });
   const openActions = Array.isArray(personCreate.openActions) && personCreate.openActions.length
     ? personCreate.openActions
@@ -265,6 +298,21 @@ async function createPersonIfConfigured(page, job) {
   if (!config.dryRun) {
     await modal.waitFor({ state: "hidden", timeout: 60000 }).catch(() => undefined);
   }
+}
+
+function personFromJob(job) {
+  return {
+    gender: getValue(job, "amis_input.gender_female") ? "female" : "male",
+    firstName: getValue(job, "customer.first_name"),
+    lastName: getValue(job, "customer.last_name"),
+    birthDate: getValue(job, "amis_input.birth_date"),
+    street: getValue(job, "amis_input.street"),
+    houseNumber: getValue(job, "amis_input.house_number"),
+    postalCode: getValue(job, "amis_input.postal_code"),
+    city: getValue(job, "amis_input.city"),
+    phone: getValue(job, "customer.phone"),
+    email: getValue(job, "customer.email"),
+  };
 }
 
 async function readText(page, selector) {
@@ -347,6 +395,7 @@ async function main() {
     personCreateOnly: config.personCreateOnly,
     defaultTaskType: config.defaultTaskType,
     testJobFile: config.testJobFile || null,
+    once: config.once,
   });
   const browser = await ensureEdge();
   process.on("SIGINT", async () => {
@@ -355,7 +404,7 @@ async function main() {
     process.exit(0);
   });
 
-  if (config.testJobFile) {
+  if (config.testJobFile || config.once) {
     await runOnce(browser).catch((error) => log("error", "Local test failed", { error: String(error) }));
     await browser.close().catch(() => undefined);
     return;

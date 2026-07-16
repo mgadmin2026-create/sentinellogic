@@ -15,6 +15,8 @@
     "street": "Pariser Platz",
     "house_number": "1",
     "postal_code": "10115",
-    "city": "Berlin"
+    "city": "Berlin",
+    "identity_document_checked": true,
+    "usage": "privat"
   }
 }

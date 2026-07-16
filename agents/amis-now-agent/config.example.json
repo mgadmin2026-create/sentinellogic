@@ -4,10 +4,13 @@
   "pollIntervalMs": 30000,
   "edgeDebugPort": 9222,
   "dryRun": true,
+  "once": false,
   "personCreateOnly": false,
   "defaultTaskType": "person_create_quote",
   "personCreate": {
     "enabled": true,
+    "mode": "browser_mvp",
+    "stepDelayMs": 700,
     "openActions": [
       "button:has(nx-icon[data-nx-icon-name='plus']), nx-icon[data-nx-icon-name='plus']",
       "button:has-text('Person anlegen'), [role='menuitem']:has-text('Person anlegen')"
