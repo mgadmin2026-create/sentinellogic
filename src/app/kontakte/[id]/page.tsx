@@ -508,6 +508,16 @@ export default function KontaktDetailPage() {
 
       {/* Tab Content */}
       <div className="p-8">
+        {/* Analysis View - shown when viewMode === 'analysis' */}
+        {viewMode === 'analysis' && (
+          <ContactDetailAnalysisView
+            kontakt={kontakt}
+            onSave={handleSaveOverview}
+            isEditing={isEditingOverview}
+            onEditChange={setIsEditingOverview}
+          />
+        )}
+
         {/* Notizen — immer sichtbar, kompakt */}
         <div className="bg-amber-50/60 border border-amber-200 rounded-xl mb-6 overflow-hidden">
           {notesEditMode ? (
@@ -647,23 +657,6 @@ export default function KontaktDetailPage() {
               </>
             )}
 
-            {/* Analysis View (3-spaltig) */}
-            {viewMode === 'analysis' && (
-              <div className="relative">
-                <button
-                  onClick={() => setViewMode('overview')}
-                  className="absolute top-0 right-0 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium px-3 py-1.5 rounded z-10"
-                >
-                  ← Zurück zur Übersicht
-                </button>
-                <ContactDetailAnalysisView
-                  kontakt={kontakt}
-                  onSave={handleSaveOverview}
-                  isEditing={isEditingOverview}
-                  onEditChange={setIsEditingOverview}
-                />
-              </div>
-            )}
           </>
         )}
         {activeTab === 'process' && (
