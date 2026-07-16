@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, memo } from 'react'
+import { useState, useCallback, memo, useEffect } from 'react'
 import { calculateAge, daysUntilBirthday, formatDate, isBirthdaySoon } from '@/lib/dateUtils'
 
 interface Kontakt {
@@ -13,15 +13,16 @@ interface Kontakt {
   company_name?: string
   geburtstag?: string
   status: string
-  opportunities?: Array<{
-    id?: string
-    title?: string
-    name?: string
-    value?: string | number
-    status?: string
-    created_at?: string
-  }>
   [key: string]: any
+}
+
+interface Contract {
+  id: string
+  name?: string
+  file_name?: string
+  created_at?: string
+  file_type?: string
+  is_own?: boolean
 }
 
 interface Props {
@@ -31,71 +32,163 @@ interface Props {
   onEditChange?: (editing: boolean) => void
 }
 
-const AccordionSection = memo(({
-  title,
-  icon,
-  statusBadge,
-  children,
-  isOpen,
-  onToggle,
+// Editable Field Component
+const EditableField = memo(({
+  label,
+  value,
+  field,
+  type = 'text',
+  isEditing,
+  onChange,
+  options,
 }: {
-  title: string
-  icon: string
-  statusBadge?: { label: string; color: string }
-  children: React.ReactNode
-  isOpen: boolean
-  onToggle: () => void
+  label: string
+  value: any
+  field: string
+  type?: string
+  isEditing: boolean
+  onChange: (field: string, value: any) => void
+  options?: string[]
 }) => {
-  const statusColors: Record<string, string> = {
-    complete: 'bg-green-100 text-green-700',
-    partial: 'bg-yellow-100 text-yellow-700',
-    open: 'bg-gray-100 text-gray-700',
+  if (!isEditing) {
+    return (
+      <div>
+        <p className="text-xs font-medium text-gray-500 uppercase">{label}</p>
+        <p className="text-sm text-gray-900 mt-0.5">{value || '—'}</p>
+      </div>
+    )
+  }
+
+  if (type === 'select') {
+    return (
+      <div>
+        <label className="text-xs font-medium text-gray-500 uppercase block mb-1">{label}</label>
+        <select
+          value={value || ''}
+          onChange={(e) => onChange(field, e.target.value)}
+          className="w-full text-sm border-2 border-yellow-300 rounded px-2 py-1 bg-yellow-50"
+        >
+          <option value="">—</option>
+          {options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        </select>
+      </div>
+    )
+  }
+
+  if (type === 'checkbox') {
+    return (
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={value || false}
+            onChange={(e) => onChange(field, e.target.checked)}
+            className="w-4 h-4 rounded border-2 border-yellow-300"
+          />
+          <span className="text-sm text-gray-900 font-medium">{label}</span>
+        </label>
+      </div>
+    )
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xl">{icon}</span>
-          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-        </div>
-        <div className="flex items-center gap-3">
-          {statusBadge && (
-            <span className={`text-xs font-medium px-2 py-1 rounded ${statusColors[statusBadge.color] || ''}`}>
-              {statusBadge.label}
-            </span>
-          )}
-          <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
-        </div>
-      </button>
-
-      {isOpen && (
-        <div className="px-4 py-4 border-t border-gray-100">
-          {children}
-        </div>
-      )}
+    <div>
+      <label className="text-xs font-medium text-gray-500 uppercase block mb-1">{label}</label>
+      <input
+        type={type}
+        value={value || ''}
+        onChange={(e) => onChange(field, type === 'number' ? (e.target.value ? parseInt(e.target.value) : null) : e.target.value)}
+        className="w-full text-sm border-2 border-yellow-300 rounded px-2 py-1 bg-yellow-50"
+      />
     </div>
   )
 })
 
+EditableField.displayName = 'EditableField'
+
+// Accordion Section
+const AccordionSection = memo(({
+  title,
+  icon,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string
+  icon: string
+  isOpen: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) => (
+  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition"
+    >
+      <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+        <span className="text-lg">{icon}</span> {title}
+      </h3>
+      <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+    </button>
+    {isOpen && (
+      <div className="px-4 py-3 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {children}
+      </div>
+    )}
+  </div>
+))
+
 AccordionSection.displayName = 'AccordionSection'
 
 export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, onEditChange }: Props) {
+  const [editData, setEditData] = useState<Record<string, any>>({})
+  const [saving, setSaving] = useState(false)
+  const [contracts, setContracts] = useState<Contract[]>([])
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     grunddaten: true,
     unternehmen: true,
     versicherungen: true,
+    vertraege: true,
     angebote: true,
     aktivitaeten: false,
-    integrations: false,
   })
+
+  useEffect(() => {
+    // Load contracts
+    const loadContracts = async () => {
+      try {
+        const res = await fetch(`/api/kontakte/${kontakt.id}/contracts`)
+        if (res.ok) {
+          const json = await res.json()
+          setContracts(json.data || [])
+        }
+      } catch (err) {
+        console.error('Fehler beim Laden der Verträge:', err)
+      }
+    }
+    loadContracts()
+  }, [kontakt.id])
 
   const toggleSection = useCallback((section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
   }, [])
+
+  const handleChange = useCallback((field: string, value: any) => {
+    setEditData(prev => ({ ...prev, [field]: value }))
+  }, [])
+
+  const handleSave = useCallback(async () => {
+    setSaving(true)
+    try {
+      await onSave(editData)
+      setEditData({})
+      onEditChange?.(false)
+    } finally {
+      setSaving(false)
+    }
+  }, [editData, onSave, onEditChange])
+
+  const getValue = (field: string) => editData[field] !== undefined ? editData[field] : kontakt[field]
 
   // Birthday Logic
   const age = kontakt.geburtstag ? calculateAge(kontakt.geburtstag) : null
@@ -103,337 +196,127 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
   const isBirthdayComing = kontakt.geburtstag ? isBirthdaySoon(kontakt.geburtstag, 7) : false
 
   return (
-    <div className="w-full bg-gray-50 min-h-screen">
-      {/* HEADER */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-[1600px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Linke Seite: Profil-Info */}
-            <div className="flex items-start gap-4">
-              {/* Avatar */}
-              <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl">👤</span>
-              </div>
-
-              {/* Text-Info */}
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">
-                  {kontakt.first_name} {kontakt.last_name}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  {kontakt.company_name && <>{kontakt.company_name} • </>}
-                  {kontakt.phone_mobile && <>{kontakt.phone_mobile}</>}
-                </p>
-
-                {/* Geburtsdatum + Alter */}
-                {kontakt.geburtstag && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    🎂 {formatDate(kontakt.geburtstag, 'de')} ({age} Jahre)
-                  </p>
-                )}
-
-                {/* Birthday Alert */}
-                {isBirthdayComing && (
-                  <div className="mt-2 px-3 py-1.5 bg-red-100 text-red-700 rounded text-xs font-medium inline-block">
-                    🎉 Geburtstag in {daysUntilBday} {daysUntilBday === 1 ? 'Tag' : 'Tagen'}!
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Rechte Seite: Action Buttons */}
-            <div className="flex items-center gap-2">
-              {/* WhatsApp */}
-              <button className="p-2.5 rounded-lg bg-green-500 text-white hover:bg-green-600 transition" title="WhatsApp">
-                <span className="text-lg">💬</span>
-              </button>
-
-              {/* Email */}
-              <button className="p-2.5 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition" title="Email">
-                <span className="text-lg">✉️</span>
-              </button>
-
-              {/* Call */}
-              <button className="p-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition" title="Anrufen">
-                <span className="text-lg">📞</span>
-              </button>
-
-              {/* More */}
-              <button className="p-2.5 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition" title="Mehr">
-                <span className="text-lg">⋯</span>
-              </button>
-            </div>
+    <div className="w-full bg-gray-50 min-h-screen p-6">
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* Birthday Alert */}
+        {isBirthdayComing && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-red-700">
+              🎉 Geburtstag in {daysUntilBday} {daysUntilBday === 1 ? 'Tag' : 'Tagen'}!
+            </p>
           </div>
-        </div>
-      </header>
+        )}
 
-      {/* MAIN CONTENT - 3 Columns */}
-      <main className="max-w-[1600px] mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* SPALTE 1: Profil + Notizen (3/12) */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Profile Card */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="text-center mb-4">
-                <div className="w-20 h-20 rounded-full bg-gray-300 mx-auto mb-3 flex items-center justify-center">
-                  <span className="text-4xl">👤</span>
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">
-                  {kontakt.first_name} {kontakt.last_name}
-                </h3>
-                <p className="text-sm text-gray-600">{kontakt.company_name || '—'}</p>
-              </div>
-
-              <div className="space-y-3 text-sm">
-                {kontakt.email && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase">Email</p>
-                    <p className="text-gray-900">{kontakt.email}</p>
-                  </div>
-                )}
-                {kontakt.phone_mobile && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase">Telefon</p>
-                    <p className="text-gray-900">{kontakt.phone_mobile}</p>
-                  </div>
-                )}
-                {kontakt.city && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 uppercase">Adresse</p>
-                    <p className="text-gray-900">
-                      {kontakt.postal_code} {kontakt.city}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Notizen */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 flex flex-col h-64">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <span>📝</span> Interne Notizen
-              </h3>
-              <textarea
-                className="flex-1 p-3 border border-gray-200 rounded-lg text-sm resize-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-                placeholder="Gesprächsnotizen, Besonderheiten..."
-                defaultValue={kontakt.notizen_2 || ''}
-              />
-            </div>
+        {/* Edit Mode Indicator + Buttons */}
+        {isEditing && (
+          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <span className="text-sm font-semibold text-yellow-800">✏️ Bearbeitungsmodus</span>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="ml-auto px-3 py-1.5 text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded disabled:opacity-50"
+            >
+              {saving ? 'Speichert…' : '✓ Speichern'}
+            </button>
+            <button
+              onClick={() => {
+                setEditData({})
+                onEditChange?.(false)
+              }}
+              className="px-3 py-1.5 text-xs font-semibold bg-gray-300 hover:bg-gray-400 text-gray-900 rounded"
+            >
+              ✕ Abbrechen
+            </button>
           </div>
+        )}
 
-          {/* SPALTE 2: Accordion-Sektionen (6/12) */}
-          <div className="lg:col-span-6 space-y-4">
-            {/* Grunddaten Section */}
-            <AccordionSection
-              title="Grunddaten"
-              icon="📋"
-              statusBadge={{ label: '✓ Vollständig', color: 'complete' }}
-              isOpen={openSections.grunddaten}
-              onToggle={() => toggleSection('grunddaten')}
-            >
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Name:</span> {kontakt.first_name} {kontakt.last_name}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Email:</span> {kontakt.email}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Telefon:</span> {kontakt.phone_mobile || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Geburtsdatum:</span> {kontakt.geburtstag ? `${formatDate(kontakt.geburtstag, 'de')} (${age} Jahre)` : '—'}
-                </p>
-              </div>
-            </AccordionSection>
+        {/* Grunddaten Section */}
+        <AccordionSection
+          title="Grunddaten"
+          icon="📋"
+          isOpen={openSections.grunddaten}
+          onToggle={() => toggleSection('grunddaten')}
+        >
+          <EditableField label="Vorname" field="first_name" value={getValue('first_name')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Nachname" field="last_name" value={getValue('last_name')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Email" field="email" type="email" value={getValue('email')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Telefon Mobil" field="phone_mobile" value={getValue('phone_mobile')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Telefon Büro" field="phone_office" value={getValue('phone_office')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Geburtsdatum" field="geburtstag" type="date" value={getValue('geburtstag')} onChange={handleChange} isEditing={isEditing} />
+          {age && <div><p className="text-xs font-medium text-gray-500 uppercase">Alter</p><p className="text-sm text-gray-900 mt-0.5">{age} Jahre</p></div>}
+          <EditableField label="Anrede" field="anrede" value={getValue('anrede')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Status" field="status" type="select" options={['new', 'contacted', 'qualified', 'customer']} value={getValue('status')} onChange={handleChange} isEditing={isEditing} />
+        </AccordionSection>
 
-            {/* Unternehmen Section */}
-            <AccordionSection
-              title="Unternehmen"
-              icon="🏢"
-              statusBadge={{ label: '◐ Teilweise', color: 'partial' }}
-              isOpen={openSections.unternehmen}
-              onToggle={() => toggleSection('unternehmen')}
-            >
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Firma:</span> {kontakt.company_name || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Position:</span> {kontakt.position || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Branche:</span> {kontakt.industry || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Mitarbeiter:</span> {kontakt.mitarbeitanzahl || '—'}
-                </p>
-              </div>
-            </AccordionSection>
+        {/* Unternehmen Section */}
+        <AccordionSection
+          title="Unternehmen"
+          icon="🏢"
+          isOpen={openSections.unternehmen}
+          onToggle={() => toggleSection('unternehmen')}
+        >
+          <EditableField label="Firma" field="company_name" value={getValue('company_name')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Position" field="position" value={getValue('position')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Branche" field="industry" value={getValue('industry')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Website" field="website" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Straße" field="street" value={getValue('street')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="PLZ" field="postal_code" value={getValue('postal_code')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Stadt" field="city" value={getValue('city')} onChange={handleChange} isEditing={isEditing} />
+        </AccordionSection>
 
-            {/* Versicherungen Section */}
-            <AccordionSection
-              title="Versicherungen"
-              icon="🏥"
-              statusBadge={{ label: kontakt.opportunities && kontakt.opportunities.length > 0 ? '◐ Angebote offen' : '○ Offen', color: kontakt.opportunities && kontakt.opportunities.length > 0 ? 'partial' : 'open' }}
-              isOpen={openSections.versicherungen}
-              onToggle={() => toggleSection('versicherungen')}
-            >
-              <div className="space-y-3">
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">PKV Status:</span> {kontakt.krankenversicherung_status || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Versicherungstyp:</span> {kontakt.versicherungstyp || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Sparte:</span> {kontakt.sparte || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Jahreseinkommen:</span> {kontakt.jahreseinkommen ? `€${parseInt(kontakt.jahreseinkommen).toLocaleString('de-DE')}` : '—'}
-                </p>
-              </div>
-            </AccordionSection>
+        {/* Versicherungen Section */}
+        <AccordionSection
+          title="Versicherungen"
+          icon="🏥"
+          isOpen={openSections.versicherungen}
+          onToggle={() => toggleSection('versicherungen')}
+        >
+          <EditableField label="PKV Status" field="krankenversicherung_status" value={getValue('krankenversicherung_status')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Versicherungstyp" field="versicherungstyp" value={getValue('versicherungstyp')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Jahreseinkommen" field="jahreseinkommen" type="number" value={getValue('jahreseinkommen')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Geschlecht" field="geschlecht" type="select" options={['männlich', 'weiblich', 'divers']} value={getValue('geschlecht')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Größe (cm)" field="groesse" type="number" value={getValue('groesse')} onChange={handleChange} isEditing={isEditing} />
+        </AccordionSection>
 
-            {/* Angebote Section */}
-            <AccordionSection
-              title="Angebote"
-              icon="📊"
-              statusBadge={{ label: '○ Offen', color: 'open' }}
-              isOpen={openSections.angebote}
-              onToggle={() => toggleSection('angebote')}
-            >
-              <div className="space-y-3">
-                {kontakt.opportunities && kontakt.opportunities.length > 0 ? (
-                  kontakt.opportunities.map((opp: any, idx: number) => (
-                    <div key={idx} className="p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900">{opp.title || opp.name || 'Angebot'}</p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            🗓️ Erstellt: {opp.created_at ? new Date(opp.created_at).toLocaleDateString('de-DE', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—'}
-                          </p>
-                          {opp.value && (
-                            <p className="text-xs text-gray-600 mt-0.5">
-                              💶 Wert: €{parseFloat(opp.value).toLocaleString('de-DE', { minimumFractionDigits: 2 })}
-                            </p>
-                          )}
-                        </div>
-                        {opp.status && (
-                          <span className="text-xs font-medium px-2 py-1 rounded bg-blue-100 text-blue-700 ml-2 flex-shrink-0">
-                            {opp.status}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-gray-500 py-4 text-center">
-                    <p>Keine Angebote vorhanden</p>
-                    <p className="text-xs mt-1">Angebote werden hier angezeigt, wenn sie erstellt werden</p>
-                  </div>
-                )}
-              </div>
-            </AccordionSection>
-
-            {/* Aktivitäten Section */}
-            <AccordionSection
-              title="Aktivitäten & Notizen"
-              icon="📞"
-              isOpen={openSections.aktivitaeten}
-              onToggle={() => toggleSection('aktivitaeten')}
-            >
-              <div className="space-y-3">
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Status:</span> {kontakt.status || '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Kontakt-Typ:</span> {kontakt.kontakt_typ ? (kontakt.kontakt_typ === 'gewerbe' ? '🏢 Gewerbe' : '👤 Privat') : '—'}
-                </p>
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Bestandskunde:</span> {kontakt.bestandskunde ? '✓ Ja' : 'Nein'}
-                </p>
-                {kontakt.bemerkung && (
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p className="text-xs font-medium text-amber-800 mb-1">Notiz [Dialfire]:</p>
-                    <p className="text-sm text-amber-900">{kontakt.bemerkung}</p>
-                  </div>
-                )}
-              </div>
-            </AccordionSection>
-
-            {/* Integrations Section */}
-            <AccordionSection
-              title="Integrations"
-              icon="🔗"
-              isOpen={openSections.integrations}
-              onToggle={() => toggleSection('integrations')}
-            >
-              <div className="space-y-3 text-sm">
-                {kontakt.klicktipp_tags && (
-                  <p className="text-gray-700">
-                    <span className="font-medium">KlickTipp Tags:</span> {kontakt.klicktipp_tags.join(', ') || '—'}
+        {/* Verträge Section */}
+        <AccordionSection
+          title="Verträge"
+          icon="📄"
+          isOpen={openSections.vertraege}
+          onToggle={() => toggleSection('vertraege')}
+        >
+          {contracts.length > 0 ? (
+            <div className="col-span-full space-y-2">
+              {contracts.map(contract => (
+                <div key={contract.id} className="p-3 bg-gray-50 rounded border border-gray-200">
+                  <p className="text-sm font-medium text-gray-900">{contract.name || contract.file_name}</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {contract.created_at ? `Hochgeladen: ${new Date(contract.created_at).toLocaleDateString('de-DE')}` : ''}
                   </p>
-                )}
-                {kontakt.dialfire_campaign_id && (
-                  <p className="text-gray-700">
-                    <span className="font-medium">Dialfire:</span> {kontakt.dialfire_campaign_id}
-                  </p>
-                )}
-                {kontakt.facebook_id && (
-                  <p className="text-gray-700">
-                    <span className="font-medium">Facebook:</span> {kontakt.facebook_id}
-                  </p>
-                )}
-              </div>
-            </AccordionSection>
-          </div>
-
-          {/* SPALTE 3: Kontakt-Info + Verträge (3/12) */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Kontakt-Info Box */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span>ℹ️</span> Kontakt Info
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase">Status</p>
-                  <p className="text-gray-900 mt-1">{kontakt.status || '—'}</p>
                 </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase">Quelle</p>
-                  <p className="text-gray-900 mt-1">{kontakt.source || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase">Kontakt-Typ</p>
-                  <p className="text-gray-900 mt-1">{kontakt.kontakt_typ || '—'}</p>
-                </div>
-              </div>
+              ))}
             </div>
+          ) : (
+            <div className="col-span-full text-sm text-gray-500 py-4">Keine Verträge vorhanden</div>
+          )}
+        </AccordionSection>
 
-            {/* Verträge Placeholder */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span>📄</span> Verträge
-              </h3>
-              <div className="text-sm text-gray-600">
-                <p>Verträge werden hier angezeigt mit Farbcodierung:</p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-green-100 border-2 border-green-500 rounded"></div>
-                    <span className="text-xs">Eigenverträge (Grün)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 bg-red-100 border-2 border-red-500 rounded"></div>
-                    <span className="text-xs">Fremdverträge (Rot)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+        {/* Aktivitäten Section */}
+        <AccordionSection
+          title="Aktivitäten"
+          icon="📞"
+          isOpen={openSections.aktivitaeten}
+          onToggle={() => toggleSection('aktivitaeten')}
+        >
+          <EditableField label="Kontakt-Typ" field="kontakt_typ" type="select" options={['gewerbe', 'privat']} value={getValue('kontakt_typ')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Bestandskunde" field="bestandskunde" type="checkbox" value={getValue('bestandskunde')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Qualität" field="qualität" type="select" options={['kalt', 'warm', 'heiss', 'sehr-heiss']} value={getValue('qualität')} onChange={handleChange} isEditing={isEditing} />
+          <EditableField label="Bemerkung" field="bemerkung" value={getValue('bemerkung')} onChange={handleChange} isEditing={isEditing} />
+        </AccordionSection>
+      </div>
     </div>
   )
 }
