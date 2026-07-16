@@ -508,8 +508,8 @@ export default function KontaktDetailPage() {
 
       {/* Tab Content */}
       <div className="p-8">
-        {/* Analysis View - shown when viewMode === 'analysis' */}
-        {viewMode === 'analysis' && (
+        {/* Analysis View - shown when viewMode === 'analysis' AND in overview tab */}
+        {viewMode === 'analysis' && activeTab === 'overview' && (
           <ContactDetailAnalysisView
             kontakt={kontakt}
             onSave={handleSaveOverview}
