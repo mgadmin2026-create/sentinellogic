@@ -100,7 +100,7 @@ export function ContactDetailAnalysisView({ kontakt, onSave, isEditing = false, 
   // Birthday Logic
   const age = kontakt.geburtstag ? calculateAge(kontakt.geburtstag) : null
   const daysUntilBday = kontakt.geburtstag ? daysUntilBirthday(kontakt.geburtstag) : -1
-  const isBirthdayComing = isBirthdaySoon(kontakt.geburtstag, 7)
+  const isBirthdayComing = kontakt.geburtstag ? isBirthdaySoon(kontakt.geburtstag, 7) : false
 
   return (
     <div className="w-full bg-gray-50 min-h-screen">
