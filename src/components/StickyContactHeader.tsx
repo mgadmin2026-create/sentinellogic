@@ -20,7 +20,7 @@ interface StickyContactHeaderProps {
   setViewMode?: (mode: 'overview' | 'analysis') => void
   amisStatusLabel?: string
   latestAmisTask?: any
-  handleCreateAmisTask?: (taskType: string) => void
+  handleCreateAmisTask?: (taskType: 'person_create' | 'person_create_quote') => Promise<void>
   amisCreating?: string | null
 }
 
