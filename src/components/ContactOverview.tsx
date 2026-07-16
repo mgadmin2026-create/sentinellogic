@@ -297,12 +297,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
               <Field label="Vorname" field="first_name" value={getValue('first_name')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Nachname" field="last_name" value={getValue('last_name')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Anrede" field="anrede" value={getValue('anrede')} onChange={handleChange} isEditing={isEditing} />
-              <div>
-                <p className="text-xs text-gray-500 font-medium">E-Mail</p>
-                <p className="text-sm text-gray-900 mt-1">
-                  <a href={`mailto:${kontakt.email}`} className="text-yellow-600 hover:underline">{kontakt.email}</a>
-                </p>
-              </div>
+              <Field label="E-Mail" field="email" value={getValue('email')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Telefon Mobil" field="phone_mobile" value={getValue('phone_mobile')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Telefon Büro" field="phone_office" value={getValue('phone_office')} onChange={handleChange} isEditing={isEditing} />
             </div>
