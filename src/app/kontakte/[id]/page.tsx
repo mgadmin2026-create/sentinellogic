@@ -576,20 +576,6 @@ export default function KontaktDetailPage() {
             </p>
           </div>
         )}
-                <div>
-                  <p className="text-gray-500 font-semibold">Beitrag</p>
-                  <p className="text-gray-900 mt-1">{latestAmisTask.amis_premium || '—'}</p>
-                </div>
-                {latestAmisTask.amis_error && (
-                  <div className="sm:col-span-2 lg:col-span-4">
-                    <p className="text-gray-500 font-semibold">Fehler</p>
-                    <p className="text-red-700 mt-1">{latestAmisTask.amis_error}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
