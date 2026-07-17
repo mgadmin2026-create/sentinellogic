@@ -368,7 +368,9 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
             Ziehen Sie Dateien hierher oder klicken zum Auswählen
           </p>
           {uploading && (
-            <p className="text-sm text-yellow-600 mt-2">⏳ Wird hochgeladen...</p>
+            <p className="text-sm text-yellow-600 mt-2">
+              ⏳ KI analysiert Dokument (kann bis zu 30s dauern)…
+            </p>
           )}
         </label>
       </div>
