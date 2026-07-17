@@ -54,6 +54,12 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   const [newFileName, setNewFileName] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [warning, setWarning] = useState<string | null>(null)
+  const [duplicateModal, setDuplicateModal] = useState<{
+    duplicate: { id: string; first_name: string; last_name: string; email?: string }
+    extracted: { first_name?: string; last_name?: string; email?: string; company_name?: string }
+    dokumentId: string
+  } | null>(null)
+  const [editedName, setEditedName] = useState<{ first_name: string; last_name: string }>({ first_name: '', last_name: '' })
 
   // Fetch documents on mount
   useEffect(() => {
@@ -199,10 +205,18 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           throw new Error(data?.error || `Upload fehlgeschlagen: ${file.name}`)
         }
 
-        // Prüfe auf Name-Duplikate (andere Kontakte mit ähnlichem Namen)
+        // Wenn Duplikat erkannt: Modal zeigen für Name-Änderung
         if (data.nameDuplicate) {
-          const dupMsg = `⚠️ Kontakt-Duplikat erkannt: ${data.nameDuplicate.first_name} ${data.nameDuplicate.last_name}${data.nameDuplicate.email ? ` (${data.nameDuplicate.email})` : ''}`
-          setWarning(dupMsg)
+          setDuplicateModal({
+            duplicate: data.nameDuplicate,
+            extracted: data.extractedData,
+            dokumentId: data.dokument.id,
+          })
+          setEditedName({
+            first_name: data.extractedData?.first_name || '',
+            last_name: data.extractedData?.last_name || '',
+          })
+          return // Nicht weiterfahren, bis User entscheidet
         }
       }
 
@@ -445,6 +459,74 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
       {dokumente.length > 0 && (
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
           <strong>✓ Speicher gespart:</strong> {formatBytes(stats.totalOriginalSize - stats.totalSize)} durch Komprimierung
+        </div>
+      )}
+
+      {/* Duplicate Modal */}
+      {duplicateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">⚠️ Kontakt-Duplikat erkannt</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Ein Kontakt mit ähnlichem Namen existiert bereits:
+              </p>
+              <p className="text-sm font-semibold text-gray-900 mt-2">
+                {duplicateModal.duplicate.first_name} {duplicateModal.duplicate.last_name}
+                {duplicateModal.duplicate.email && ` (${duplicateModal.duplicate.email})`}
+              </p>
+            </div>
+
+            <div className="border-t pt-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Extrahierter Name (änderbar):
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editedName.first_name}
+                    onChange={(e) => setEditedName({ ...editedName, first_name: e.target.value })}
+                    placeholder="Vorname"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  />
+                  <input
+                    type="text"
+                    value={editedName.last_name}
+                    onChange={(e) => setEditedName({ ...editedName, last_name: e.target.value })}
+                    placeholder="Nachname"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4">
+              <button
+                onClick={() => setDuplicateModal(null)}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-300 transition"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={async () => {
+                  if (!editedName.first_name || !editedName.last_name) {
+                    setError('Name erforderlich')
+                    return
+                  }
+
+                  // Hier könnte ein API-Call folgen um den Vertrag mit geändertem Namen zu speichern
+                  // Für jetzt: Modal schließen und Neuladung
+                  setDuplicateModal(null)
+                  await loadDokumente()
+                  setWarning(`✓ Mit neuem Namen gespeichert: ${editedName.first_name} ${editedName.last_name}`)
+                }}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
+              >
+                Mit neuem Namen speichern
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

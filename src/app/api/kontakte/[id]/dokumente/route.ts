@@ -192,8 +192,9 @@ export async function POST(
         }
       }
 
-      // Wenn Vertrag erkannt → speichern
-      if (extraktion.is_contract && extraktion.benefits) {
+      // Wenn Vertrag erkannt → speichern (aber NICHT wenn Duplikat erkannt)
+      // Bei Duplikat wird dem User eine Chance gegeben, den Namen zu ändern
+      if (extraktion.is_contract && extraktion.benefits && !nameDuplicate) {
         try {
           await supabase.from('contracts').insert({
             contact_id: kontaktId,
@@ -245,6 +246,13 @@ export async function POST(
         first_name: nameDuplicate.first_name,
         last_name: nameDuplicate.last_name,
         email: nameDuplicate.email,
+      } : null,
+      // Extrahierte Daten bei Duplikat-Erkennung für Name-Änderung
+      extractedData: nameDuplicate ? {
+        first_name: extraktion?.first_name || null,
+        last_name: extraktion?.last_name || null,
+        email: extraktion?.email || null,
+        company_name: extraktion?.company_name || null,
       } : null,
     })
   } catch (err) {
