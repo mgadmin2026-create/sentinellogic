@@ -515,11 +515,29 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
                     return
                   }
 
-                  // Hier könnte ein API-Call folgen um den Vertrag mit geändertem Namen zu speichern
-                  // Für jetzt: Modal schließen und Neuladung
-                  setDuplicateModal(null)
-                  await loadDokumente()
-                  setWarning(`✓ Mit neuem Namen gespeichert: ${editedName.first_name} ${editedName.last_name}`)
+                  try {
+                    const res = await fetch(`/api/kontakte/${kontaktId}/dokumente/save-contract`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        first_name: editedName.first_name,
+                        last_name: editedName.last_name,
+                        email: duplicateModal.extracted?.email || null,
+                        company_name: duplicateModal.extracted?.company_name || null,
+                        contract_data: duplicateModal.extracted || {},
+                      }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok) {
+                      throw new Error(data.error || 'Fehler beim Speichern')
+                    }
+                    setDuplicateModal(null)
+                    await loadDokumente()
+                    setWarning(`✓ Vertrag gespeichert für ${editedName.first_name} ${editedName.last_name}`)
+                    setError(null)
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Fehler beim Speichern')
+                  }
                 }}
                 className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
               >
