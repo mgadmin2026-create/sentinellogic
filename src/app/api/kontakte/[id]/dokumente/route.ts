@@ -16,6 +16,7 @@ function flatten(nodes: OrdnerstrukturNode[]): string[] {
 }
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 120 // Claude-Analyse kann bei gescannten PDFs dauern
 
 // GET: Dokumente eines Kontakts auflisten
 export async function GET(
@@ -93,6 +94,10 @@ export async function POST(
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const kategorie = String(formData.get('kategorie') || 'Sonstiges').trim() || 'Sonstiges'
+    // Wird gesetzt, wenn der User im Duplikat-Modal bestätigt hat (mit gleichem oder geändertem Namen)
+    const overrideFirstName = String(formData.get('overrideFirstName') || '').trim() || null
+    const overrideLastName = String(formData.get('overrideLastName') || '').trim() || null
+    const confirmed = overrideFirstName !== null && overrideLastName !== null
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -102,6 +107,58 @@ export async function POST(
     const kontaktName = `${kontakt.first_name} ${kontakt.last_name}`.trim()
 
     console.log(`[Dokumente] Upload ${file.name} für Kontakt ${kontaktId} (Kategorie: ${kategorie})`)
+
+    // KI-Analyse VOR dem Upload: Wenn ein Namens-Duplikat gefunden wird, wird NICHTS
+    // hochgeladen/gespeichert, bevor der User das im Modal bestätigt hat.
+    let extraktion: any = null
+    let analyseFehler: string | null = null
+
+    if (!confirmed) {
+      try {
+        const struktur = await getOrdnerstruktur()
+        extraktion = await analysiereVersicherungsdokument(
+          buffer,
+          file.type || 'application/octet-stream',
+          flatten(struktur.privat),
+          flatten(struktur.gewerbe)
+        )
+
+        if (extraktion.first_name && extraktion.last_name) {
+          const { data: byName, error: dupError } = await supabase
+            .from('contacts')
+            .select('id, first_name, last_name, email')
+            .ilike('first_name', extraktion.first_name.trim())
+            .ilike('last_name', extraktion.last_name.trim())
+            .neq('id', kontaktId)
+            .maybeSingle()
+
+          if (dupError) {
+            console.error('[Dokumente] Duplikat-Query fehlgeschlagen:', dupError)
+          } else if (byName) {
+            console.log(`[Dokumente] ⚠️ Kontakt-Duplikat gefunden, Upload gestoppt: ${byName.first_name} ${byName.last_name}`)
+            return NextResponse.json({
+              success: false,
+              needsConfirmation: true,
+              nameDuplicate: {
+                id: byName.id,
+                first_name: byName.first_name,
+                last_name: byName.last_name,
+                email: byName.email,
+              },
+              extractedData: {
+                first_name: extraktion.first_name || null,
+                last_name: extraktion.last_name || null,
+                email: extraktion.email || null,
+                company_name: extraktion.company_name || null,
+              },
+            })
+          }
+        }
+      } catch (err) {
+        analyseFehler = err instanceof Error ? err.message : String(err)
+        console.error('[Dokumente] KI-Analyse fehlgeschlagen (Upload läuft trotzdem weiter):', analyseFehler)
+      }
+    }
 
     // Upload ins zentrale System-Konto
     let uploadResult
@@ -161,61 +218,42 @@ export async function POST(
     // Kontakt-Statistik aktualisieren
     await supabase.rpc('update_kontakt_dokumente_stats', { p_kontakt_id: kontaktId })
 
-    // KI-Analyse: Vertragsdetails extrahieren (async, nicht blockierend)
-    let nameDuplicate = null
-    let extraktion: any = null
-    try {
-      const struktur = await getOrdnerstruktur()
-      extraktion = await analysiereVersicherungsdokument(
-        buffer,
-        file.type || 'application/octet-stream',
-        flatten(struktur.privat),
-        flatten(struktur.gewerbe)
-      )
-
-      // Duplikat-Prüfung: Nach extrahiertem Namen suchen
-      if (extraktion.first_name && extraktion.last_name) {
-        try {
-          const { data: byName } = await supabase
-            .from('contacts')
-            .select('id, first_name, last_name, email')
-            .ilike('first_name', extraktion.first_name.trim())
-            .ilike('last_name', extraktion.last_name.trim())
-            .neq('id', kontaktId) // Exclude current contact
-            .maybeSingle()
-
-          if (byName) {
-            nameDuplicate = byName
-            console.log(`[Dokumente] ⚠️ Kontakt-Duplikat gefunden: ${byName.first_name} ${byName.last_name}`)
-          }
-        } catch (err) {
-          console.warn('[Dokumente] Duplikat-Prüfung fehlgeschlagen (nicht blockierend):', err)
-        }
+    // Falls der User im Duplikat-Modal bestätigt hat: KI-Analyse wurde oben übersprungen,
+    // jetzt nachholen (für Vertrags-Erkennung), aber ohne erneute Duplikat-Prüfung/Blockierung.
+    if (confirmed && !extraktion) {
+      try {
+        const struktur = await getOrdnerstruktur()
+        extraktion = await analysiereVersicherungsdokument(
+          buffer,
+          file.type || 'application/octet-stream',
+          flatten(struktur.privat),
+          flatten(struktur.gewerbe)
+        )
+      } catch (err) {
+        analyseFehler = err instanceof Error ? err.message : String(err)
+        console.error('[Dokumente] KI-Analyse (nach Bestätigung) fehlgeschlagen:', analyseFehler)
       }
+    }
 
-      // Wenn Vertrag erkannt → speichern (aber NICHT wenn Duplikat erkannt)
-      // Bei Duplikat wird dem User eine Chance gegeben, den Namen zu ändern
-      if (extraktion.is_contract && extraktion.benefits && !nameDuplicate) {
-        try {
-          await supabase.from('contracts').insert({
-            contact_id: kontaktId,
-            contract_number: extraktion.vertragsnummer || null,
-            insurance_type: extraktion.versicherungsgesellschaft || null,
-            contract_type: extraktion.contract_type || 'unknown',
-            insurance_category: extraktion.versicherungstyp || null,
-            monthly_premium: extraktion.beitrag || null,
-            duration_start: extraktion.vertragsbeginn ? new Date(extraktion.vertragsbeginn).toISOString().split('T')[0] : null,
-            duration_end: extraktion.vertragsende ? new Date(extraktion.vertragsende).toISOString().split('T')[0] : null,
-            benefits: extraktion.benefits,
-            created_by: 'dokument_upload',
-          })
-          console.log(`[Dokumente] Vertrag erkannt und gespeichert für Kontakt ${kontaktId}`)
-        } catch (err) {
-          console.warn('[Dokumente] Vertrags-Speicherung fehlgeschlagen (nicht blockierend):', err)
-        }
+    // Wenn Vertrag erkannt → speichern
+    if (extraktion?.is_contract && extraktion?.benefits) {
+      try {
+        await supabase.from('contracts').insert({
+          contact_id: kontaktId,
+          contract_number: extraktion.vertragsnummer || null,
+          insurance_type: extraktion.versicherungsgesellschaft || null,
+          contract_type: extraktion.contract_type || 'unknown',
+          insurance_category: extraktion.versicherungstyp || null,
+          monthly_premium: extraktion.beitrag || null,
+          duration_start: extraktion.vertragsbeginn ? new Date(extraktion.vertragsbeginn).toISOString().split('T')[0] : null,
+          duration_end: extraktion.vertragsende ? new Date(extraktion.vertragsende).toISOString().split('T')[0] : null,
+          benefits: extraktion.benefits,
+          created_by: 'dokument_upload',
+        })
+        console.log(`[Dokumente] Vertrag erkannt und gespeichert für Kontakt ${kontaktId}`)
+      } catch (err) {
+        console.error('[Dokumente] Vertrags-Speicherung fehlgeschlagen:', err)
       }
-    } catch (err) {
-      console.warn('[Dokumente] KI-Analyse fehlgeschlagen (nicht blockierend):', err)
     }
 
     // Aktivität loggen
@@ -242,19 +280,8 @@ export async function POST(
         compression_ratio: uploadResult.compressionRatio,
         created_at: dokument.created_at,
       },
-      nameDuplicate: nameDuplicate ? {
-        id: nameDuplicate.id,
-        first_name: nameDuplicate.first_name,
-        last_name: nameDuplicate.last_name,
-        email: nameDuplicate.email,
-      } : null,
-      // Extrahierte Daten bei Duplikat-Erkennung für Name-Änderung
-      extractedData: nameDuplicate ? {
-        first_name: extraktion?.first_name || null,
-        last_name: extraktion?.last_name || null,
-        email: extraktion?.email || null,
-        company_name: extraktion?.company_name || null,
-      } : null,
+      // Sichtbar machen, falls die KI-Analyse fehlgeschlagen ist (kein Vertrag erkannt/gespeichert)
+      analyseWarnung: analyseFehler,
     })
   } catch (err) {
     console.error('[Dokumente] POST error:', err)

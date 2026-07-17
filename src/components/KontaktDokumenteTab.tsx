@@ -57,9 +57,10 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   const [duplicateModal, setDuplicateModal] = useState<{
     duplicate: { id: string; first_name: string; last_name: string; email?: string }
     extracted: { first_name?: string; last_name?: string; email?: string; company_name?: string }
-    dokumentId: string
+    pendingFile: File
   } | null>(null)
   const [editedName, setEditedName] = useState<{ first_name: string; last_name: string }>({ first_name: '', last_name: '' })
+  const [confirming, setConfirming] = useState(false)
 
   // Fetch documents on mount
   useEffect(() => {
@@ -205,18 +206,22 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           throw new Error(data?.error || `Upload fehlgeschlagen: ${file.name}`)
         }
 
-        // Wenn Duplikat erkannt: Modal zeigen für Name-Änderung
-        if (data.nameDuplicate) {
+        // Duplikat erkannt: Datei wurde NICHT hochgeladen, Modal für Name-Bestätigung zeigen
+        if (data.needsConfirmation) {
           setDuplicateModal({
             duplicate: data.nameDuplicate,
             extracted: data.extractedData,
-            dokumentId: data.dokument.id,
+            pendingFile: file,
           })
           setEditedName({
             first_name: data.extractedData?.first_name || '',
             last_name: data.extractedData?.last_name || '',
           })
           return // Nicht weiterfahren, bis User entscheidet
+        }
+
+        if (data.analyseWarnung) {
+          setWarning(`⚠️ Dokument hochgeladen, aber KI-Analyse fehlgeschlagen: ${data.analyseWarnung}`)
         }
       }
 
@@ -227,6 +232,41 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
       console.error(err)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const confirmDuplicateUpload = async () => {
+    if (!duplicateModal) return
+    if (!editedName.first_name.trim() || !editedName.last_name.trim()) {
+      setError('Vor- und Nachname erforderlich')
+      return
+    }
+
+    setConfirming(true)
+    setError(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', duplicateModal.pendingFile)
+      formData.append('kategorie', uploadKategorie)
+      formData.append('overrideFirstName', editedName.first_name.trim())
+      formData.append('overrideLastName', editedName.last_name.trim())
+
+      const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data?.error || 'Upload fehlgeschlagen')
+      }
+
+      setDuplicateModal(null)
+      await loadDokumente()
+      setWarning(`✓ Dokument hochgeladen (Name: ${editedName.first_name} ${editedName.last_name})`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
+    } finally {
+      setConfirming(false)
     }
   }
 
@@ -469,7 +509,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
             <div>
               <h2 className="text-lg font-semibold text-gray-900">⚠️ Kontakt-Duplikat erkannt</h2>
               <p className="text-sm text-gray-600 mt-2">
-                Ein Kontakt mit ähnlichem Namen existiert bereits:
+                Die Datei wurde noch <strong>nicht</strong> hochgeladen. Ein Kontakt mit dem im Dokument erkannten Namen existiert bereits:
               </p>
               <p className="text-sm font-semibold text-gray-900 mt-2">
                 {duplicateModal.duplicate.first_name} {duplicateModal.duplicate.last_name}
@@ -504,44 +544,17 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
             <div className="flex gap-2 pt-4">
               <button
                 onClick={() => setDuplicateModal(null)}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-300 transition"
+                disabled={confirming}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-300 transition disabled:opacity-50"
               >
                 Abbrechen
               </button>
               <button
-                onClick={async () => {
-                  if (!editedName.first_name || !editedName.last_name) {
-                    setError('Name erforderlich')
-                    return
-                  }
-
-                  try {
-                    const res = await fetch(`/api/kontakte/${kontaktId}/dokumente/save-contract`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        first_name: editedName.first_name,
-                        last_name: editedName.last_name,
-                        email: duplicateModal.extracted?.email || null,
-                        company_name: duplicateModal.extracted?.company_name || null,
-                        contract_data: duplicateModal.extracted || {},
-                      }),
-                    })
-                    const data = await res.json()
-                    if (!res.ok) {
-                      throw new Error(data.error || 'Fehler beim Speichern')
-                    }
-                    setDuplicateModal(null)
-                    await loadDokumente()
-                    setWarning(`✓ Vertrag gespeichert für ${editedName.first_name} ${editedName.last_name}`)
-                    setError(null)
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : 'Fehler beim Speichern')
-                  }
-                }}
-                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition"
+                onClick={confirmDuplicateUpload}
+                disabled={confirming}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition"
               >
-                Mit neuem Namen speichern
+                {confirming ? '⏳ Wird hochgeladen…' : 'Trotzdem hochladen'}
               </button>
             </div>
           </div>
