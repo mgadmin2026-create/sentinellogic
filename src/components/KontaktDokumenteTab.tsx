@@ -53,6 +53,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [newFileName, setNewFileName] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
 
   // Fetch documents on mount
   useEffect(() => {
@@ -172,6 +173,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
     try {
       setUploading(true)
       setError(null)
+      setWarning(null)
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
@@ -193,6 +195,13 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
             )
           }
           throw new Error(data?.error || `Upload fehlgeschlagen: ${file.name}`)
+        }
+
+        // Prüfe auf Vertrag-Duplikate
+        const data = await res.json()
+        if (data.contractDuplicate) {
+          const dupMsg = `⚠️ Ähnlicher Vertrag existiert bereits: ${data.contractDuplicate.contract_number || data.contractDuplicate.insurance_type}`
+          setWarning(dupMsg)
         }
       }
 
@@ -230,6 +239,13 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
           {error}
+        </div>
+      )}
+
+      {/* Warning message */}
+      {warning && (
+        <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg text-yellow-800 text-sm">
+          {warning}
         </div>
       )}
 
