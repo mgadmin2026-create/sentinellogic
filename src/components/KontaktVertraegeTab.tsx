@@ -12,6 +12,8 @@ export function KontaktVertraegeTab({ kontaktId }: KontaktVertraegeTabProps) {
   const [loading, setLoading] = useState(true)
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadContracts()
@@ -23,10 +25,34 @@ export function KontaktVertraegeTab({ kontaktId }: KontaktVertraegeTabProps) {
       if (!res.ok) throw new Error('Verträge konnten nicht geladen werden')
       const data = await res.json()
       setContracts(data.data || [])
+      setError(null)
     } catch (err) {
       console.error('Fehler beim Laden der Verträge:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(contractId: string) {
+    if (!confirm('Vertrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+      return
+    }
+
+    setDeletingId(contractId)
+    try {
+      const res = await fetch(`/api/kontakte/${kontaktId}/vertraege`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractId }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Fehler beim Löschen')
+      await loadContracts()
+      setShowModal(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Löschen')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -56,6 +82,13 @@ export function KontaktVertraegeTab({ kontaktId }: KontaktVertraegeTabProps) {
 
   return (
     <div className="space-y-4">
+      {/* Error message */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+          ❌ {error}
+        </div>
+      )}
+
       {/* Tabelle */}
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
         <table className="w-full text-sm">
@@ -99,15 +132,25 @@ export function KontaktVertraegeTab({ kontaktId }: KontaktVertraegeTabProps) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <button
-                    onClick={() => {
-                      setSelectedContract(contract)
-                      setShowModal(true)
-                    }}
-                    className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
-                  >
-                    Details
-                  </button>
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={() => {
+                        setSelectedContract(contract)
+                        setShowModal(true)
+                      }}
+                      className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                    >
+                      Details
+                    </button>
+                    <button
+                      onClick={() => handleDelete(contract.id)}
+                      disabled={deletingId === contract.id}
+                      className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50 font-semibold"
+                      title="Löschen"
+                    >
+                      {deletingId === contract.id ? '⏳' : '🗑️'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

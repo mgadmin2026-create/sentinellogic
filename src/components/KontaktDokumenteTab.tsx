@@ -50,6 +50,9 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   const [kategorien, setKategorien] = useState<string[]>([])
   const [uploadKategorie, setUploadKategorie] = useState('Sonstiges')
   const [filterKategorie, setFilterKategorie] = useState<string>('alle')
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [newFileName, setNewFileName] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   // Fetch documents on mount
   useEffect(() => {
@@ -88,6 +91,52 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRename = async (dokumentId: string, currentName: string) => {
+    setRenamingId(dokumentId)
+    setNewFileName(currentName)
+  }
+
+  const commitRename = async (dokumentId: string) => {
+    if (!newFileName.trim() || newFileName === dokumente.find(d => d.id === dokumentId)?.file_name) {
+      setRenamingId(null)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dokumentId, newFileName: newFileName.trim() }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Fehler')
+      await loadDokumente()
+      setRenamingId(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Umbenennen')
+    }
+  }
+
+  const handleDelete = async (dokumentId: string) => {
+    if (confirm('Dokument wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+      setDeletingId(dokumentId)
+      try {
+        const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dokumentId }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error || 'Fehler')
+        await loadDokumente()
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Fehler beim Löschen')
+      } finally {
+        setDeletingId(null)
+      }
     }
   }
 
@@ -285,28 +334,52 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
               <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <a
-                        href={`https://drive.google.com/file/d/${doc.file_id}/view`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm font-medium text-gray-900 truncate hover:text-blue-600 hover:underline"
-                        title="In Google Drive öffnen"
-                      >
-                        📄 {doc.file_name}
-                      </a>
-                      <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
-                        {(doc.kategorie || 'Sonstiges').replace('/', ' / ')}
-                      </span>
-                      <a
-                        href={`https://drive.google.com/file/d/${doc.file_id}/view`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                      >
-                        Öffnen ↗
-                      </a>
-                    </div>
+                    {renamingId === doc.id ? (
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={newFileName}
+                          onChange={(e) => setNewFileName(e.target.value)}
+                          className="flex-1 px-2 py-1 text-sm border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => commitRename(doc.id)}
+                          className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 rounded"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => setRenamingId(null)}
+                          className="px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 rounded"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <a
+                          href={`https://drive.google.com/file/d/${doc.file_id}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-gray-900 truncate hover:text-blue-600 hover:underline"
+                          title="In Google Drive öffnen"
+                        >
+                          📄 {doc.file_name}
+                        </a>
+                        <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                          {(doc.kategorie || 'Sonstiges').replace('/', ' / ')}
+                        </span>
+                        <a
+                          href={`https://drive.google.com/file/d/${doc.file_id}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Öffnen ↗
+                        </a>
+                      </div>
+                    )}
                     <div className="flex gap-3 mt-2 text-xs text-gray-600">
                       <span>
                         Original: <strong>{formatBytes(doc.original_size)}</strong>
@@ -317,11 +390,30 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
                       </span>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
+                  <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
+                    {renamingId !== doc.id && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleRename(doc.id, doc.file_name)}
+                          className="px-2 py-1 text-xs font-medium text-gray-600 hover:bg-yellow-50 rounded transition"
+                          title="Umbenennen"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => handleDelete(doc.id)}
+                          disabled={deletingId === doc.id}
+                          className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 rounded transition"
+                          title="Löschen"
+                        >
+                          {deletingId === doc.id ? '⏳' : '🗑️'}
+                        </button>
+                      </div>
+                    )}
                     <div className="bg-green-50 px-2 py-1 rounded text-xs font-semibold text-green-700">
                       ↓ {doc.compression_ratio}%
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500">
                       {formatDate(doc.created_at)}
                     </p>
                   </div>

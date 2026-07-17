@@ -559,3 +559,36 @@ async function renameKategorieMetadata(
     await supabase.from('dokumente_metadata').update({ kategorie: updated }).eq('id', doc.id)
   }
 }
+
+/**
+ * Datei in Google Drive umbenennen
+ */
+export async function renameFileInGoogleDrive(fileId: string, newName: string): Promise<void> {
+  const { drive } = await getSystemDriveClient()
+
+  try {
+    await drive.files.update({
+      fileId,
+      requestBody: { name: newName },
+    })
+    console.log(`[Google Drive] ✅ Datei umbenannt: ${fileId} → ${newName}`)
+  } catch (err) {
+    console.error(`[Google Drive] Fehler beim Umbenennen (${fileId}):`, err)
+    throw new Error(err instanceof Error ? err.message : 'Fehler beim Umbenennen')
+  }
+}
+
+/**
+ * Datei aus Google Drive löschen
+ */
+export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
+  const { drive } = await getSystemDriveClient()
+
+  try {
+    await drive.files.delete({ fileId })
+    console.log(`[Google Drive] ✅ Datei gelöscht: ${fileId}`)
+  } catch (err) {
+    console.error(`[Google Drive] Fehler beim Löschen (${fileId}):`, err)
+    throw new Error(err instanceof Error ? err.message : 'Fehler beim Löschen')
+  }
+}

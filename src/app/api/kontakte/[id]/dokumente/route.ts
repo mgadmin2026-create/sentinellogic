@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { uploadDocumentToGoogleDrive, getOrdnerstruktur, type OrdnerstrukturNode } from '@/lib/google-drive-oauth'
+import { uploadDocumentToGoogleDrive, getOrdnerstruktur, renameFileInGoogleDrive, deleteFileFromGoogleDrive, type OrdnerstrukturNode } from '@/lib/google-drive-oauth'
 import { logFileUploaded } from '@/lib/activities-logger'
 import { analysiereVersicherungsdokument } from '@/lib/ki-upload'
 
@@ -223,5 +223,126 @@ export async function POST(
   } catch (err) {
     console.error('[Dokumente] POST error:', err)
     return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
+}
+
+// PATCH: Dokument umbenennen
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const kontaktId = params.id
+
+  try {
+    const supabase = createServerClient()
+    const body = await request.json()
+    const { dokumentId, newFileName } = body
+
+    if (!dokumentId || !newFileName) {
+      return NextResponse.json(
+        { error: 'dokumentId und newFileName erforderlich' },
+        { status: 400 }
+      )
+    }
+
+    // Dokument-Metadaten laden
+    const { data: dokument, error: dokumentError } = await supabase
+      .from('dokumente_metadata')
+      .select('*')
+      .eq('id', dokumentId)
+      .eq('kontakt_id', kontaktId)
+      .single()
+
+    if (dokumentError || !dokument) {
+      return NextResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+    }
+
+    // In Google Drive umbenennen
+    await renameFileInGoogleDrive(dokument.file_id, newFileName)
+
+    // Metadaten aktualisieren
+    const { data: updated, error: updateError } = await supabase
+      .from('dokumente_metadata')
+      .update({ file_name: newFileName })
+      .eq('id', dokumentId)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('[Dokumente] Fehler beim Aktualisieren:', updateError)
+      return NextResponse.json({ error: 'Fehler beim Speichern' }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      dokument: updated,
+    })
+  } catch (err) {
+    console.error('[Dokumente] PATCH error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Fehler' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE: Dokument löschen
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const kontaktId = params.id
+
+  try {
+    const supabase = createServerClient()
+    const body = await request.json()
+    const { dokumentId } = body
+
+    if (!dokumentId) {
+      return NextResponse.json(
+        { error: 'dokumentId erforderlich' },
+        { status: 400 }
+      )
+    }
+
+    // Dokument-Metadaten laden
+    const { data: dokument, error: dokumentError } = await supabase
+      .from('dokumente_metadata')
+      .select('*')
+      .eq('id', dokumentId)
+      .eq('kontakt_id', kontaktId)
+      .single()
+
+    if (dokumentError || !dokument) {
+      return NextResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
+    }
+
+    // Aus Google Drive löschen
+    await deleteFileFromGoogleDrive(dokument.file_id)
+
+    // Aus Datenbank löschen (soft-delete via ordner_archived)
+    const { error: deleteError } = await supabase
+      .from('dokumente_metadata')
+      .update({ ordner_archived: true, kontakt_deleted_at: new Date().toISOString() })
+      .eq('id', dokumentId)
+
+    if (deleteError) {
+      console.error('[Dokumente] Fehler beim Löschen:', deleteError)
+      return NextResponse.json({ error: 'Fehler beim Löschen' }, { status: 500 })
+    }
+
+    // Kontakt-Statistik aktualisieren
+    await supabase.rpc('update_kontakt_dokumente_stats', { p_kontakt_id: kontaktId })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Dokument gelöscht',
+    })
+  } catch (err) {
+    console.error('[Dokumente] DELETE error:', err)
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Fehler' },
+      { status: 500 }
+    )
   }
 }
