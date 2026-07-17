@@ -163,9 +163,10 @@ export async function POST(
 
     // KI-Analyse: Vertragsdetails extrahieren (async, nicht blockierend)
     let nameDuplicate = null
+    let extraktion: any = null
     try {
       const struktur = await getOrdnerstruktur()
-      const extraktion = await analysiereVersicherungsdokument(
+      extraktion = await analysiereVersicherungsdokument(
         buffer,
         file.type || 'application/octet-stream',
         flatten(struktur.privat),
