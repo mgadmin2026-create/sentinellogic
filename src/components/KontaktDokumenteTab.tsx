@@ -199,9 +199,9 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           throw new Error(data?.error || `Upload fehlgeschlagen: ${file.name}`)
         }
 
-        // Prüfe auf Vertrag-Duplikate
-        if (data.contractDuplicate) {
-          const dupMsg = `⚠️ Ähnlicher Vertrag existiert bereits: ${data.contractDuplicate.contract_number || data.contractDuplicate.insurance_type}`
+        // Prüfe auf Name-Duplikate (andere Kontakte mit ähnlichem Namen)
+        if (data.nameDuplicate) {
+          const dupMsg = `⚠️ Kontakt-Duplikat erkannt: ${data.nameDuplicate.first_name} ${data.nameDuplicate.last_name}${data.nameDuplicate.email ? ` (${data.nameDuplicate.email})` : ''}`
           setWarning(dupMsg)
         }
       }

@@ -162,7 +162,7 @@ export async function POST(
     await supabase.rpc('update_kontakt_dokumente_stats', { p_kontakt_id: kontaktId })
 
     // KI-Analyse: Vertragsdetails extrahieren (async, nicht blockierend)
-    let contractDuplicate = null
+    let nameDuplicate = null
     try {
       const struktur = await getOrdnerstruktur()
       const extraktion = await analysiereVersicherungsdokument(
@@ -172,36 +172,29 @@ export async function POST(
         flatten(struktur.gewerbe)
       )
 
-      // Wenn Vertrag erkannt → Duplikat prüfen und speichern
+      // Duplikat-Prüfung: Nach extrahiertem Namen suchen
+      if (extraktion.first_name && extraktion.last_name) {
+        try {
+          const { data: byName } = await supabase
+            .from('contacts')
+            .select('id, first_name, last_name, email')
+            .ilike('first_name', extraktion.first_name.trim())
+            .ilike('last_name', extraktion.last_name.trim())
+            .neq('id', kontaktId) // Exclude current contact
+            .maybeSingle()
+
+          if (byName) {
+            nameDuplicate = byName
+            console.log(`[Dokumente] ⚠️ Kontakt-Duplikat gefunden: ${byName.first_name} ${byName.last_name}`)
+          }
+        } catch (err) {
+          console.warn('[Dokumente] Duplikat-Prüfung fehlgeschlagen (nicht blockierend):', err)
+        }
+      }
+
+      // Wenn Vertrag erkannt → speichern
       if (extraktion.is_contract && extraktion.benefits) {
         try {
-          // Duplikat-Prüfung: Suche nach ähnlichem Vertrag
-          const searchCriteria: Record<string, unknown> = { contact_id: kontaktId }
-
-          // Priorisiert: Vertragsnummer (eindeutig)
-          if (extraktion.vertragsnummer) {
-            const { data: byNumber } = await supabase
-              .from('contracts')
-              .select('id, insurance_type, contract_number')
-              .eq('contact_id', kontaktId)
-              .eq('contract_number', extraktion.vertragsnummer)
-              .maybeSingle()
-            if (byNumber) contractDuplicate = byNumber
-          }
-
-          // Fallback: Versicherer + Kategorie
-          if (!contractDuplicate && extraktion.versicherungsgesellschaft && extraktion.versicherungstyp) {
-            const { data: byInsurer } = await supabase
-              .from('contracts')
-              .select('id, insurance_type, contract_number')
-              .eq('contact_id', kontaktId)
-              .eq('insurance_type', extraktion.versicherungsgesellschaft)
-              .eq('insurance_category', extraktion.versicherungstyp)
-              .maybeSingle()
-            if (byInsurer) contractDuplicate = byInsurer
-          }
-
-          // Vertrag speichern (auch wenn Duplikat gefunden, um Upload nicht zu blockieren)
           await supabase.from('contracts').insert({
             contact_id: kontaktId,
             contract_number: extraktion.vertragsnummer || null,
@@ -215,9 +208,6 @@ export async function POST(
             created_by: 'dokument_upload',
           })
           console.log(`[Dokumente] Vertrag erkannt und gespeichert für Kontakt ${kontaktId}`)
-          if (contractDuplicate) {
-            console.log(`[Dokumente] ⚠️ Ähnlicher Vertrag existiert bereits: ${contractDuplicate.contract_number || contractDuplicate.insurance_type}`)
-          }
         } catch (err) {
           console.warn('[Dokumente] Vertrags-Speicherung fehlgeschlagen (nicht blockierend):', err)
         }
@@ -250,10 +240,11 @@ export async function POST(
         compression_ratio: uploadResult.compressionRatio,
         created_at: dokument.created_at,
       },
-      contractDuplicate: contractDuplicate ? {
-        id: contractDuplicate.id,
-        contract_number: contractDuplicate.contract_number,
-        insurance_type: contractDuplicate.insurance_type,
+      nameDuplicate: nameDuplicate ? {
+        id: nameDuplicate.id,
+        first_name: nameDuplicate.first_name,
+        last_name: nameDuplicate.last_name,
+        email: nameDuplicate.email,
       } : null,
     })
   } catch (err) {
