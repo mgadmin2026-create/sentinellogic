@@ -326,7 +326,9 @@ async function compressFile(
       mimeType.includes('presentation') ||
       mimeType === 'application/zip'
     ) {
-      compressedData = await gzip(file, { level: 9 })
+      // PDFs und Office-Dokumente sind bereits komprimiert, nicht erneut komprimieren
+      // gzip würde die Struktur zerstören und die Dateien unlesbar machen
+      compressedData = file
     } else if (mimeType.startsWith('text/')) {
       compressedData = await gzip(file, { level: 9 })
     }
