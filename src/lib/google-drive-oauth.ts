@@ -307,46 +307,8 @@ async function compressFile(
   mimeType: string,
   fileName: string
 ): Promise<{ data: Buffer; compressionRatio: number }> {
-  try {
-    let compressedData = file
-
-    if (mimeType.startsWith('image/')) {
-      if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') {
-        compressedData = await sharp(file).jpeg({ quality: 75, progressive: true }).toBuffer()
-      } else if (mimeType === 'image/png') {
-        compressedData = await sharp(file).png({ compressionLevel: 9 }).toBuffer()
-      } else if (mimeType === 'image/webp' || mimeType === 'image/gif') {
-        compressedData = await sharp(file).webp({ quality: 75 }).toBuffer()
-      }
-    } else if (
-      mimeType === 'application/pdf' ||
-      mimeType.includes('word') ||
-      mimeType.includes('excel') ||
-      mimeType.includes('sheet') ||
-      mimeType.includes('presentation') ||
-      mimeType === 'application/zip'
-    ) {
-      // PDFs und Office-Dokumente sind bereits komprimiert, nicht erneut komprimieren
-      // gzip würde die Struktur zerstören und die Dateien unlesbar machen
-      compressedData = file
-    } else if (mimeType.startsWith('text/')) {
-      compressedData = await gzip(file, { level: 9 })
-    }
-
-    let ratio = Math.round(((file.length - compressedData.length) / file.length) * 100)
-    ratio = Math.max(0, Math.min(100, ratio))
-
-    // Komprimierung hat nichts gebracht (z.B. bereits komprimiertes Format) -> Original nehmen
-    if (compressedData.length >= file.length) {
-      return { data: file, compressionRatio: 0 }
-    }
-
-    console.log(`[Compression] ${fileName}: ${file.length}B → ${compressedData.length}B (${ratio}%)`)
-    return { data: compressedData, compressionRatio: ratio }
-  } catch (err) {
-    console.error(`[Compression] Error compressing ${fileName}:`, err)
-    return { data: file, compressionRatio: 0 }
-  }
+  // Komprimierung deaktiviert - Dateien werden unverändert hochgeladen
+  return { data: file, compressionRatio: 0 }
 }
 
 export interface UploadResult {
