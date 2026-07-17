@@ -186,8 +186,10 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           body: formData,
         })
 
+        // Response einmal auslesen (kann nur einmal gelesen werden)
+        const data = await res.json()
+
         if (!res.ok) {
-          const data = await res.json().catch(() => null)
           if (res.status === 409) {
             throw new Error(
               data?.error ||
@@ -198,7 +200,6 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
         }
 
         // Prüfe auf Vertrag-Duplikate
-        const data = await res.json()
         if (data.contractDuplicate) {
           const dupMsg = `⚠️ Ähnlicher Vertrag existiert bereits: ${data.contractDuplicate.contract_number || data.contractDuplicate.insurance_type}`
           setWarning(dupMsg)
