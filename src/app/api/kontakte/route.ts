@@ -59,8 +59,13 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get('limit') ?? '100', 10)
     const status = url.searchParams.get('status')
     const search = url.searchParams.get('search')
+    const includeArchived = url.searchParams.get('includeArchived') === 'true'
 
     let query = supabase.from('contacts').select('*').order('created_at', { ascending: false })
+
+    if (!includeArchived) {
+      query = query.is('archived_at', null)
+    }
 
     if (status && VALID_STATUSES.includes(status)) {
       query = query.eq('status', status)

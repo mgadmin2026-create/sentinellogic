@@ -3,7 +3,7 @@
 // PATCH  /api/kontakte/[id] — Kontakt-Felder aktualisieren
 // DELETE /api/kontakte/[id] — Kontakt löschen
 import { NextRequest } from 'next/server'
-import { logContactUpdated, logContactDeleted, logPipelineStageChanged, logStatusChanged } from '@/lib/activities-logger'
+import { logContactUpdated, logContactArchived, logPipelineStageChanged, logStatusChanged } from '@/lib/activities-logger'
 import { createServerClient } from '@/lib/supabase/server'
 
 const ALLOWED_UPDATE_FIELDS = new Set([
@@ -220,22 +220,29 @@ export async function PATCH(
   }
 }
 
+// Archiviert den Kontakt (Soft-Delete). Echtes Löschen ist nur noch über
+// direkten Supabase-Zugriff (Tests/Admin) vorgesehen, nicht mehr über die App.
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const supabase = createServerClient()
     const { id } = params
+    const { archiveTasks = false } = await request.json().catch(() => ({ archiveTasks: false }))
 
-    // Get contact before deleting (for logging)
+    // Get contact before archiving (for logging)
     const { data: kontakt } = await supabase
       .from('contacts')
       .select('first_name, last_name')
       .eq('id', id)
       .single()
 
-    // Archive dokumente (Google Drive archival happens async via edge function)
+    if (!kontakt) {
+      return Response.json({ success: false, error: 'Kontakt nicht gefunden' }, { status: 404 })
+    }
+
+    // Dokumente archivieren (wie bisher)
     const { error: archiveError } = await supabase
       .from('dokumente_metadata')
       .update({
@@ -246,15 +253,12 @@ export async function DELETE(
 
     if (archiveError) {
       console.warn('[DELETE /api/kontakte/[id]] Dokumente-Archivierung fehlgeschlagen:', archiveError)
-      // Don't fail the delete if document archival fails - continue with contact deletion
-    } else {
-      console.log(`[DELETE /api/kontakte/[id]] Dokumente archiviert für ${id}`)
     }
 
-    // Kontakt löschen (Cascade-Delete auf tasks, opportunities, activities)
+    // Kontakt archivieren statt löschen
     const { error } = await supabase
       .from('contacts')
-      .delete()
+      .update({ archived_at: new Date().toISOString() })
       .eq('id', id)
 
     if (error) {
@@ -262,14 +266,24 @@ export async function DELETE(
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }
 
-    // Log deletion
-    if (kontakt) {
-      await logContactDeleted(id, `${kontakt.first_name} ${kontakt.last_name}`)
+    // Optional: zugehörige, noch nicht archivierte Aufgaben mitarchivieren
+    if (archiveTasks === true) {
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('contact_id', id)
+        .is('archived_at', null)
+
+      if (taskError) {
+        console.warn('[DELETE /api/kontakte/[id]] Aufgaben-Archivierung fehlgeschlagen:', taskError)
+      }
     }
 
-    return Response.json({ success: true, data: { deleted: true } })
+    await logContactArchived(id, `${kontakt.first_name} ${kontakt.last_name}`, archiveTasks === true)
+
+    return Response.json({ success: true, data: { archived: true, tasksArchived: archiveTasks === true } })
   } catch (err) {
     console.error('[DELETE /api/kontakte/[id]] Fehler:', err)
-    return Response.json({ success: false, error: 'Kontakt konnte nicht gelöscht werden' }, { status: 500 })
+    return Response.json({ success: false, error: 'Kontakt konnte nicht archiviert werden' }, { status: 500 })
   }
 }

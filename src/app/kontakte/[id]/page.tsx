@@ -193,6 +193,7 @@ export default function KontaktDetailPage() {
   const [aktivitäten, setAktivitäten] = useState<Aktivität[]>([])
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [archiveTasksToo, setArchiveTasksToo] = useState(false)
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [isEditingOverview, setIsEditingOverview] = useState(false)
   const [overviewSaving, setOverviewSaving] = useState(false)
@@ -272,13 +273,17 @@ export default function KontaktDetailPage() {
     }
   }
 
-  async function handleDeleteKontakt() {
+  async function handleArchiveKontakt(archiveTasks: boolean) {
     try {
-      const res = await fetch(`/api/kontakte/${kontaktId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Fehler beim Löschen')
+      const res = await fetch(`/api/kontakte/${kontaktId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archiveTasks }),
+      })
+      if (!res.ok) throw new Error('Fehler beim Archivieren')
       router.push('/kontakte')
     } catch (err) {
-      console.error('Fehler beim Löschen:', err)
+      console.error('Fehler beim Archivieren:', err)
     }
   }
 
@@ -964,24 +969,33 @@ export default function KontaktDetailPage() {
         onSave={handleSaveKontakt}
       />
 
-      {/* Delete Confirmation */}
+      {/* Archivieren-Bestätigung */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Kontakt löschen?</h3>
-            <p className="text-gray-600 text-sm mb-6">Dieser Kontakt und alle zugehörigen Aufgaben, Opportunities und Aktivitäten werden gelöscht. Dies kann nicht rückgängig gemacht werden.</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Kontakt archivieren?</h3>
+            <p className="text-gray-600 text-sm mb-4">Dieser Kontakt wird archiviert und aus der Kontaktübersicht ausgeblendet. Die Archivierung kann jederzeit rückgängig gemacht werden.</p>
+            <label className="flex items-center gap-2 mb-6 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={archiveTasksToo}
+                onChange={(e) => setArchiveTasksToo(e.target.checked)}
+                className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+              />
+              Zugehörige Aufgaben ebenfalls archivieren
+            </label>
             <div className="flex gap-3">
               <button
-                onClick={() => setDeleteConfirm(false)}
+                onClick={() => { setDeleteConfirm(false); setArchiveTasksToo(false) }}
                 className="flex-1 border border-gray-200 text-gray-600 font-medium text-sm px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Abbrechen
               </button>
               <button
-                onClick={handleDeleteKontakt}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+                onClick={() => handleArchiveKontakt(archiveTasksToo)}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
               >
-                Ja, löschen
+                Ja, archivieren
               </button>
             </div>
           </div>

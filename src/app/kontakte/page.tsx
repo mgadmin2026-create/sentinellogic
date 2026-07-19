@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
+import { KontaktImportModal } from '@/components/KontaktImportModal'
 
 interface Kontakt {
   id: string
@@ -41,6 +42,7 @@ interface Kontakt {
   kontakt_typ?: string
   is_test_data?: boolean
   test_run_id?: string
+  archived_at?: string | null
 }
 
 interface ColumnVisibility {
@@ -312,8 +314,12 @@ export default function KontaktePage() {
   const [sparteFilter, setSparteFilter] = useState<string>('all')
   const [pruefungFilter, setPruefungFilter] = useState<string>('all')
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen] = useState(false)
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [archiveTasksToo, setArchiveTasksToo] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [restoringId, setRestoringId] = useState<string | null>(null)
 
   // Sortierung - erweitert für alle Spalten
   const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>('name')
@@ -525,7 +531,7 @@ export default function KontaktePage() {
 
   useEffect(() => {
     loadKontakte()
-  }, [activeFilter, search])
+  }, [activeFilter, search, showArchived])
 
   async function loadKontakte() {
     try {
@@ -534,6 +540,7 @@ export default function KontaktePage() {
       params.set('limit', '500')
       if (activeFilter !== 'all') params.set('status', activeFilter)
       if (search) params.set('search', search)
+      if (showArchived) params.set('includeArchived', 'true')
 
       const res = await fetch(`/api/kontakte?${params.toString()}`)
       const json = await res.json()
@@ -570,41 +577,36 @@ export default function KontaktePage() {
     }
   }
 
-  async function handleDeleteKontakt(id: string) {
+  async function handleArchiveKontakt(id: string, archiveTasks: boolean) {
     try {
-      const res = await fetch(`/api/kontakte/${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Löschen fehlgeschlagen')
+      const res = await fetch(`/api/kontakte/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archiveTasks }),
+      })
+      if (!res.ok) throw new Error('Archivieren fehlgeschlagen')
       setDeleteConfirm(null)
+      setArchiveTasksToo(false)
       await loadKontakte()
     } catch (err) {
-      console.error('Fehler beim Löschen:', err)
+      console.error('Fehler beim Archivieren:', err)
     }
   }
 
-  async function handleCopyKontakt(kontakt: Kontakt) {
+  async function handleRestoreKontakt(id: string) {
+    setRestoringId(id)
     try {
-      const copiedData = {
-        ...kontakt,
-        first_name: `${kontakt.first_name} (Kopie)`,
-      }
-      delete (copiedData as any).id
-      delete (copiedData as any).created_at
-
-      const res = await fetch('/api/kontakte', {
+      const res = await fetch(`/api/kontakte/${id}/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(copiedData),
+        body: JSON.stringify({}),
       })
-
-      if (!res.ok) {
-        const error = await res.json()
-        alert(`Fehler beim Kopieren: ${error.error}`)
-      } else {
-        await loadKontakte()
-      }
+      if (!res.ok) throw new Error('Wiederherstellen fehlgeschlagen')
+      await loadKontakte()
     } catch (err) {
-      console.error('Fehler beim Kopieren:', err)
-      alert('Fehler beim Kopieren des Kontakts')
+      console.error('Fehler beim Wiederherstellen:', err)
+    } finally {
+      setRestoringId(null)
     }
   }
 
@@ -730,19 +732,32 @@ export default function KontaktePage() {
           <h1 className="text-3xl font-bold text-gray-900">Kontakte</h1>
           <p className="text-gray-500 text-sm mt-0.5">{loading ? 'Lädt…' : `${kontakte.length} Kontakte gesamt`}</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingKontakt(null)
-            setEditModalOpen(true)
-          }}
-          className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Neu
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImportModalOpen(true)}
+            className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Importieren
+          </button>
+          <button
+            onClick={() => {
+              setEditingKontakt(null)
+              setEditModalOpen(true)
+            }}
+            className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Neu
+          </button>
+        </div>
       </div>
 
       {/* Suche + Filter + Spalten Toggle */}
@@ -860,6 +875,16 @@ export default function KontaktePage() {
               ))}
             </select>
           )}
+
+          <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap px-1">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+            />
+            Archivierte anzeigen
+          </label>
 
           {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || search) && (
             <button
@@ -986,6 +1011,11 @@ export default function KontaktePage() {
                             <div>
                               <p className="font-semibold text-gray-900 truncate">
                                 {kontakt.first_name} {kontakt.last_name}
+                                {kontakt.archived_at && (
+                                  <span className="ml-2 inline-flex rounded-full bg-gray-200 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                                    Archiviert
+                                  </span>
+                                )}
                                 {kontakt.is_test_data && (
                                   <span className="ml-2 inline-flex rounded-full bg-violet-100 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-violet-700">
                                     Testdaten
@@ -1141,37 +1171,40 @@ export default function KontaktePage() {
                             </svg>
                           </button>
 
-                          {/* Copy */}
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleCopyKontakt(kontakt)
-                            }}
-                            className="p-1 rounded text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-all flex-shrink-0"
-                            title="Kopieren"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
-                          </button>
-
-                          {/* Delete */}
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              setDeleteConfirm(kontakt.id)
-                            }}
-                            className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all flex-shrink-0"
-                            title="Löschen"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                            </svg>
-                          </button>
+                          {/* Archivieren / Wiederherstellen */}
+                          {kontakt.archived_at ? (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleRestoreKontakt(kontakt.id)
+                              }}
+                              disabled={restoringId === kontakt.id}
+                              className="p-1 rounded text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all flex-shrink-0 disabled:opacity-50"
+                              title="Wiederherstellen"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" />
+                                <path d="M3 3v5h5" />
+                              </svg>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setArchiveTasksToo(false)
+                                setDeleteConfirm(kontakt.id)
+                              }}
+                              className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all flex-shrink-0"
+                              title="Archivieren"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -1199,6 +1232,11 @@ export default function KontaktePage() {
                   <p className="font-semibold text-yellow-600 group-hover:underline truncate">
                     {kontakt.first_name} {kontakt.last_name}
                   </p>
+                  {kontakt.archived_at && (
+                    <span className="mt-1 mr-1 inline-flex rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
+                      Archiviert
+                    </span>
+                  )}
                   {kontakt.is_test_data && (
                     <span className="mt-1 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
                       Testdaten
@@ -1251,22 +1289,26 @@ export default function KontaktePage() {
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20a2 2 0 012 2v14" /></svg>
                   Öffnen
                 </Link>
-                <button
-                  onClick={() => handleCopyKontakt(kontakt)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-yellow-600 hover:bg-yellow-50"
-                  aria-label="Kopieren"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                  Kopieren
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(kontakt.id)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-red-600 hover:bg-red-50"
-                  aria-label="Löschen"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
-                  Löschen
-                </button>
+                {kontakt.archived_at ? (
+                  <button
+                    onClick={() => handleRestoreKontakt(kontakt.id)}
+                    disabled={restoringId === kontakt.id}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-green-600 hover:bg-green-50 disabled:opacity-50"
+                    aria-label="Wiederherstellen"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
+                    Wiederherstellen
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { setArchiveTasksToo(false); setDeleteConfirm(kontakt.id) }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-red-600 hover:bg-red-50"
+                    aria-label="Archivieren"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>
+                    Archivieren
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -1477,26 +1519,41 @@ export default function KontaktePage() {
         onSave={handleSaveKontakt}
       />
 
-      {/* Delete Confirmation */}
+      <KontaktImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onImported={loadKontakte}
+      />
+
+      {/* Archivieren-Bestätigung */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Kontakt löschen?</h3>
-            <p className="text-gray-600 text-sm mb-6">Dieser Kontakt und alle zugehörigen Aufgaben, Opportunities und Aktivitäten werden gelöscht. Dies kann nicht rückgängig gemacht werden.</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Kontakt archivieren?</h3>
+            <p className="text-gray-600 text-sm mb-4">Dieser Kontakt wird archiviert und aus der Kontaktübersicht ausgeblendet. Die Archivierung kann jederzeit rückgängig gemacht werden.</p>
+            <label className="flex items-center gap-2 mb-6 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={archiveTasksToo}
+                onChange={(e) => setArchiveTasksToo(e.target.checked)}
+                className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+              />
+              Zugehörige Aufgaben ebenfalls archivieren
+            </label>
             <div className="flex gap-3">
               <button
-                onClick={() => setDeleteConfirm(null)}
+                onClick={() => { setDeleteConfirm(null); setArchiveTasksToo(false) }}
                 className="flex-1 border border-gray-200 text-gray-600 font-medium text-sm px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Abbrechen
               </button>
               <button
                 onClick={() => {
-                  handleDeleteKontakt(deleteConfirm)
+                  handleArchiveKontakt(deleteConfirm, archiveTasksToo)
                 }}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
               >
-                Ja, löschen
+                Ja, archivieren
               </button>
             </div>
           </div>

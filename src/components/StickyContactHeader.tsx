@@ -208,9 +208,10 @@ export function StickyContactHeader({
               {isEditing ? '✗ Abbrechen' : '✏️ Bearbeiten'}
             </button>
 
-            {/* Löschen Button */}
+            {/* Archivieren Button */}
             <button
               onClick={onDelete}
+              title="Archivieren"
               className="px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
             >
               🗑️

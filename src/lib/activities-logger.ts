@@ -5,6 +5,8 @@ export type ActivityType =
   | 'contact_created'
   | 'contact_updated'
   | 'contact_deleted'
+  | 'contact_archived'
+  | 'contact_restored'
   | 'pipeline_stage_changed'
   | 'pipeline_step_completed'
   | 'task_created'
@@ -107,6 +109,36 @@ export async function logContactDeleted(contactId: string, contactName: string) 
     contactId,
     'contact_deleted',
     `Kontakt gelöscht: ${contactName}`,
+    { name: contactName }
+  )
+}
+
+/**
+ * Kontakt archiviert (ersetzt das frühere Hard-Delete in der App)
+ */
+export async function logContactArchived(
+  contactId: string,
+  contactName: string,
+  tasksArchived: boolean
+) {
+  await logActivity(
+    null,
+    contactId,
+    'contact_archived',
+    `Kontakt archiviert: ${contactName}${tasksArchived ? ' (inkl. Aufgaben)' : ''}`,
+    { name: contactName, tasksArchived }
+  )
+}
+
+/**
+ * Kontakt aus dem Archiv wiederhergestellt
+ */
+export async function logContactRestored(contactId: string, contactName: string) {
+  await logActivity(
+    null,
+    contactId,
+    'contact_restored',
+    `Kontakt wiederhergestellt: ${contactName}`,
     { name: contactName }
   )
 }
