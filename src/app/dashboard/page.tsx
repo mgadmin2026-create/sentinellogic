@@ -254,6 +254,11 @@ export default function DashboardPage() {
                     <span className="font-medium text-[#1A1A1A]">
                       {lead.first_name} {lead.last_name}
                     </span>
+                    {lead.is_test_data && (
+                      <span className="ml-2 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                        Testdaten
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-3.5 text-gray-600">{lead.company_name ?? '—'}</td>
                   <td className="px-6 py-3.5">

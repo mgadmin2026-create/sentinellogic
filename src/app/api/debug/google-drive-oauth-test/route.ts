@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getSystemToken, uploadDocumentToGoogleDrive } from '@/lib/google-drive-oauth'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Testet das zentrale Google-Drive-System-Konto mit einem Test-Upload.
  */
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     const token = await getSystemToken()
     if (!token) {

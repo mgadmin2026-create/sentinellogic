@@ -24,6 +24,8 @@ export interface Contact {
   anrede?: string
   company_name?: string
   status: ContactStatus
+  is_test_data?: boolean
+  test_run_id?: string
   assigned_user_id?: string
   qualität?: string
   bestandskunde?: boolean

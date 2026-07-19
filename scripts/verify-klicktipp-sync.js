@@ -1,13 +1,13 @@
-const { createClient } = require('@supabase/supabase-js')
-
-const supabase = createClient(
-  'https://wwetuauicumqjczfdtcd.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3ZXR1YXVpY3VtcWpjemZkdGNkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDQ4NzAzOSwiZXhwIjoyMDk2MDYzMDM5fQ.BhmiAUFK4G-VSAkBmP0bJaqPu7UaSs6JQdYJbXYG54U'
-)
+const { createScriptSupabaseClient } = require('./supabase-client')
+const supabase = createScriptSupabaseClient()
 
 const KLICKTIPP_API_URL = 'https://api.klicktipp.com'
-const KLICKTIPP_USER = 'bosydadaq-api2'
-const KLICKTIPP_PASS = 'Sentinel?!1'
+const KLICKTIPP_USER = process.env.KLICKTIPP_USERNAME
+const KLICKTIPP_PASS = process.env.KLICKTIPP_PASSWORD
+
+if (!KLICKTIPP_USER || !KLICKTIPP_PASS) {
+  throw new Error('Klicktipp-Zugangsdaten fehlen')
+}
 
 let sessionId = null
 

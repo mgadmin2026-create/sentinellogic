@@ -1,14 +1,21 @@
 import { NextResponse } from 'next/server'
 
-export async function GET() {
-  try {
-    const email = process.env.KLICKTIPP_USERNAME || 'info@onlinefirst.eu'
-    const password = process.env.KLICKTIPP_PASSWORD || 'Jlraxx3006?!'
+export const dynamic = 'force-dynamic'
 
-    console.log('[Debug Session] Attempting login with:', {
-      email,
-      passwordLength: password.length,
-    })
+export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  try {
+    const email = process.env.KLICKTIPP_USERNAME
+    const password = process.env.KLICKTIPP_PASSWORD
+
+    if (!email || !password) {
+      return NextResponse.json({ error: 'Missing Klicktipp credentials' }, { status: 400 })
+    }
+
+    console.log('[Debug Session] Klicktipp-Zugangsdaten vorhanden')
 
     // Step 1: Login to KlickTipp
     const loginResponse = await fetch('https://api.klicktipp.com/v3/auth/login', {
@@ -27,7 +34,7 @@ export async function GET() {
     console.log('[Debug Session] Login Response:', {
       status: loginResponse.status,
       statusText: loginResponse.statusText,
-      bodyPreview: loginData.substring(0, 200),
+      responseReceived: Boolean(loginData),
     })
 
     if (!loginResponse.ok) {
@@ -35,7 +42,6 @@ export async function GET() {
         {
           error: `Login failed: ${loginResponse.status}`,
           status: loginResponse.status,
-          body: loginData,
         },
         { status: loginResponse.status }
       )
@@ -54,7 +60,7 @@ export async function GET() {
       )
     }
 
-    console.log('[Debug Session] Got session ID:', sessionId.substring(0, 20) + '...')
+    console.log('[Debug Session] Session-ID erhalten')
 
     // Step 2: List tags with session
     const tagsResponse = await fetch('https://api.klicktipp.com/v3/tag', {
@@ -70,7 +76,7 @@ export async function GET() {
     console.log('[Debug Session] Tags Response:', {
       status: tagsResponse.status,
       statusText: tagsResponse.statusText,
-      bodyPreview: tagsData.substring(0, 200),
+      responseReceived: Boolean(tagsData),
     })
 
     if (!tagsResponse.ok) {
@@ -78,7 +84,6 @@ export async function GET() {
         {
           error: `Failed to list tags: ${tagsResponse.status}`,
           status: tagsResponse.status,
-          body: tagsData,
         },
         { status: tagsResponse.status }
       )
@@ -89,7 +94,6 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       message: 'KlickTipp Session Auth is working!',
-      sessionId: sessionId.substring(0, 20) + '...',
       tagsCount: tags.tags?.length || 0,
       tags: tags.tags || [],
     })

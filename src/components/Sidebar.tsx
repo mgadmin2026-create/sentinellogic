@@ -103,6 +103,16 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: '/testdashboard',
+    label: 'Testdashboard',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12a9 9 0 1 1-5.3-8.2" />
+      </svg>
+    ),
+  },
+  {
     href: '/einstellungen',
     label: 'Einstellungen',
     icon: (
@@ -187,7 +197,7 @@ export default function Sidebar() {
         </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const active = isActive(item.href)
           return (

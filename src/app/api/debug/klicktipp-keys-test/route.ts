@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 async function testKeyOrder(order: string, devKey: string, custKey: string) {
   let credentials: string
 
@@ -26,12 +28,15 @@ async function testKeyOrder(order: string, devKey: string, custKey: string) {
     order,
     status: response.status,
     statusText: response.statusText,
-    body: body.substring(0, 100),
-    credentialsPreview: credentials.substring(0, 30) + '...',
+    responseReceived: Boolean(body),
   }
 }
 
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     const developerKey = process.env.KLICKTIPP_DEVELOPER_KEY
     const customerKey = process.env.KLICKTIPP_CUSTOMER_KEY

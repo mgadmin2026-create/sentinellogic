@@ -22,6 +22,8 @@ export interface MockLead {
   status: LeadStatus
   source: LeadSource
   created_at: string
+  is_test_data?: boolean
+  test_run_id?: string
   // Persönliche Daten
   birth_date?: string
   marital_status?: string

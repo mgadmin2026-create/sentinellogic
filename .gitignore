@@ -8,9 +8,13 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
+/playwright/.cache/
 
 # next.js
 /.next/
+/.next-codex/
 /out/
 
 # production

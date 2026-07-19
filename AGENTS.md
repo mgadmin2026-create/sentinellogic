@@ -112,14 +112,22 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 
 - [ ] Lead-Synchronisation (Klicktipp + Dialfire + Sentimental Logic)
 - [ ] Infrastruktur Setup (Supabase, Vercel)
+- [ ] Geschützte Testvariablen in Vercel setzen und ersten Live-Testlauf ausführen
 
 **Abgeschlossen:**
 
 - [x] Projektsetup + Repository
 - [x] AGENTS.md + CLAUDE.md erstellt
+- [x] Testdashboard-Grundansicht unter `/testdashboard` integriert
+- [x] Live-sichere Testdatenmarkierung und selektive Bereinigung implementiert
+- [x] Playwright-Grundkonfiguration, Ergebnisartefakte und erster Dashboard-Test angelegt
+- [x] Fest codierte Supabase-/Klicktipp-Secrets aus Wartungsskripten entfernt
+- [x] Testdatenmigration auf Live-Supabase angewendet und Guard aktiviert
+- [x] Live-Sicherheitsprobe bestanden: ausschließlich markierter Testkontakt wurde bereinigt
+- [x] Playwright-Chromium installiert
 
 **Nächste Aufgabe:**
-→ Supabase Schema anlegen (Tabellen: leads, customers, activities)
+→ Vercel-Testvariablen setzen, Zugangsdaten rotieren und ersten Playwright-Lauf starten
 
 -----
 

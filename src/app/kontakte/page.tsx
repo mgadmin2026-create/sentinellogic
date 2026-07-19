@@ -39,6 +39,8 @@ interface Kontakt {
   sparte?: string
   'prüfung_grund'?: string
   kontakt_typ?: string
+  is_test_data?: boolean
+  test_run_id?: string
 }
 
 interface ColumnVisibility {
@@ -984,6 +986,11 @@ export default function KontaktePage() {
                             <div>
                               <p className="font-semibold text-gray-900 truncate">
                                 {kontakt.first_name} {kontakt.last_name}
+                                {kontakt.is_test_data && (
+                                  <span className="ml-2 inline-flex rounded-full bg-violet-100 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                                    Testdaten
+                                  </span>
+                                )}
                               </p>
                               <p className="text-xs text-gray-500 mt-0.5 truncate">{kontakt.email || kontakt.id}</p>
                             </div>
@@ -1192,6 +1199,11 @@ export default function KontaktePage() {
                   <p className="font-semibold text-yellow-600 group-hover:underline truncate">
                     {kontakt.first_name} {kontakt.last_name}
                   </p>
+                  {kontakt.is_test_data && (
+                    <span className="mt-1 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                      Testdaten
+                    </span>
+                  )}
                   {kontakt.company_name && (
                     <p className="text-sm text-gray-600 truncate">{kontakt.company_name}</p>
                   )}

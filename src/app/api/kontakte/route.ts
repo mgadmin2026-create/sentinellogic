@@ -6,6 +6,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { executeAutomation } from '@/lib/automation-engine'
 import { logActivity, logContactCreated } from '@/lib/activities-logger'
 import { syncContactToKlickTipp } from '@/lib/klicktipp-client'
+import { detectTestContact } from '@/lib/test-data'
 
 // Helper: Rufe Edge Function auf
 async function invokeEdgeFunction(functionName: string, payload: any) {
@@ -101,6 +102,23 @@ export async function POST(request: NextRequest) {
 
     // E-Mail normalisieren (null wenn nicht vorhanden)
     const email = body.email ? String(body.email).trim().toLowerCase() : null
+
+    // Testdaten werden nur bei vollständig sichtbarer Konvention technisch markiert.
+    const testContact = detectTestContact({
+      first_name: body.first_name,
+      email,
+      company_name: body.company_name,
+    })
+
+    if (testContact.hasTestSignal && !testContact.isTestData) {
+      return Response.json(
+        {
+          success: false,
+          error: 'Unvollständige Testdaten-Kennzeichnung. Erforderlich: Vorname [TEST], Firma [TESTDATEN] … und E-Mail pw+<lauf-id>@example.invalid.',
+        },
+        { status: 400 }
+      )
+    }
 
     // Duplikatprüfung (E-Mail + Name — case-insensitive)
     // Zuerst E-Mail prüfen
@@ -221,6 +239,11 @@ export async function POST(request: NextRequest) {
       prüfung_grund: body.prüfung_grund ? String(body.prüfung_grund).trim() : null,
       krankenversicherung_status: body.krankenversicherung_status ? String(body.krankenversicherung_status).trim() : null,
       situation: body.situation ? String(body.situation).trim() : null,
+      // Marker-Spalten erst bei Testdaten mitsenden: Reguläre Kontakte bleiben
+      // auch während des kontrollierten Migration-Rollouts uneingeschränkt nutzbar.
+      ...(testContact.isTestData
+        ? { is_test_data: true, test_run_id: testContact.testRunId }
+        : {}),
     }
 
     const { data, error } = await supabase
@@ -240,7 +263,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Execute automation rules (if not disabled)
-    const automationDisabled = body.automation_disabled === true
+    const automationDisabled = body.automation_disabled === true || testContact.isTestData
     if (data?.id) {
       const automationResult = await executeAutomation(
         data.id,
@@ -254,7 +277,7 @@ export async function POST(request: NextRequest) {
     }
 
     // KlickTipp Sync: Synce neuen Kontakt zu KlickTipp mit Tag "Sentinel"
-    if (data?.id && data?.email) {
+    if (data?.id && data?.email && !testContact.isTestData) {
       try {
         const klicktippResult = await syncContactToKlickTipp({
           id: data.id,
@@ -300,7 +323,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
-    if (data?.id && updatedContact?.dialfire_campaign_id) {
+    if (data?.id && updatedContact?.dialfire_campaign_id && !testContact.isTestData) {
       try {
         const c = updatedContact ?? data
         const dialfireResult = await invokeEdgeFunction('send-to-dialfire', {

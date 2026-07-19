@@ -1,0 +1,53 @@
+name: Playwright Regressionstests
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Deploy to Vercel']
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: sentimental-logic-live-regression
+  cancel-in-progress: false
+
+jobs:
+  regression:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Chromium installieren
+        run: npx playwright install --with-deps chromium
+
+      - name: Regressionstests ausführen
+        run: npm run test:e2e
+        env:
+          PLAYWRIGHT_BASE_URL: https://sentinellogic.vercel.app
+          TEST_DATA_CLEANUP_TOKEN: ${{ secrets.TEST_DATA_CLEANUP_TOKEN }}
+
+      - name: Testergebnisse archivieren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-regression-${{ github.run_number }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14

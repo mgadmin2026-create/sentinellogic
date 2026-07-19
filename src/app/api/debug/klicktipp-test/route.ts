@@ -1,15 +1,19 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   try {
     const developerKey = process.env.KLICKTIPP_DEVELOPER_KEY
     const customerKey = process.env.KLICKTIPP_CUSTOMER_KEY
 
-    console.log('[Debug] Keys loaded:', {
-      developerKeyLength: developerKey?.length,
-      developerKeyPreview: developerKey?.substring(0, 20) + '...',
-      customerKeyLength: customerKey?.length,
-      customerKeyPreview: customerKey?.substring(0, 20) + '...',
+    console.log('[Debug] Klicktipp-Schlüssel geladen:', {
+      developerKeyPresent: Boolean(developerKey),
+      customerKeyPresent: Boolean(customerKey),
     })
 
     if (!developerKey || !customerKey) {
@@ -23,12 +27,6 @@ export async function GET() {
     const credentials = `${developerKey}:${customerKey}`
     const encoded = Buffer.from(credentials).toString('base64')
     const authHeader = `Basic ${encoded}`
-
-    console.log('[Debug] Auth header created:', {
-      credentialsLength: credentials.length,
-      encodedLength: encoded.length,
-      preview: authHeader.substring(0, 30) + '...',
-    })
 
     // Test API Call - List Tags (try without version)
     const response = await fetch('https://api.klicktipp.com/tag', {
@@ -44,7 +42,7 @@ export async function GET() {
     console.log('[Debug] API Response:', {
       status: response.status,
       statusText: response.statusText,
-      bodyPreview: responseText.substring(0, 200),
+      responseReceived: Boolean(responseText),
     })
 
     if (!response.ok) {
@@ -53,7 +51,6 @@ export async function GET() {
           error: `KlickTipp API returned ${response.status}`,
           status: response.status,
           statusText: response.statusText,
-          body: responseText,
         },
         { status: response.status }
       )

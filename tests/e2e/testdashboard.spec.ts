@@ -1,0 +1,16 @@
+import { expect, test } from '@playwright/test'
+
+test.describe('Testdashboard', () => {
+  test('zeigt Testfälle und den Live-sicheren Testbetrieb', async ({ page }) => {
+    await page.goto('/testdashboard')
+
+    await expect(page.getByRole('heading', { name: 'Testdashboard', level: 1 })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Test-Kennzahlen' })).toBeVisible()
+    await expect(page.getByText('Anmeldung und Dashboard-Aufruf')).toBeVisible()
+
+    await page.getByTestId('testdashboard-tab-umgebung').click()
+
+    await expect(page.getByRole('heading', { name: 'Ablauf eines Live-sicheren Testlaufs' })).toBeVisible()
+    await expect(page.getByText('Die Bereinigung verwendet niemals TRUNCATE.', { exact: false })).toBeVisible()
+  })
+})
