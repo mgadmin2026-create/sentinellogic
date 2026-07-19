@@ -1,7 +1,7 @@
 # Playwright-Tests in der Live-Umgebung
 
-**Stand:** 17. Juli 2026
-**Status:** Technische Grundlage implementiert, Datenbankmigration noch nicht angewendet
+**Stand:** 19. Juli 2026
+**Status:** Live-Testbetrieb aktiv, automatische Ergebnisübertragung eingerichtet
 
 ## Ziel
 
@@ -56,6 +56,14 @@ Weitere Integrationen müssen vor Aufnahme in einen Testfall ebenfalls auf Testd
 6. Playwright legt neue, sichtbar gekennzeichnete Testkontakte an.
 7. Nach dem Lauf findet keine Bereinigung statt.
 8. Der Datenstand bleibt bis zum nächsten Testlauf analysierbar.
+9. Nach der Durchführung überträgt GitHub Actions ausschließlich nicht-personenbezogene Ergebnisdaten an `/api/test-runs`.
+10. Das Testdashboard aktualisiert Durchführungen, Erfolgsquote und letzte Aktivität aus Supabase.
+
+## Gespeicherte Ergebnisdaten
+
+Pro Testlauf werden Lauf-ID, Status, Commit, Branch, Umgebung, Zeitstempel, Dauer und aggregierte Zählwerte gespeichert. Einzeltestergebnisse enthalten nur Testtitel, Suite, Status, Dauer und eine gekürzte, von Secrets bereinigte Fehlermeldung.
+
+Kundendaten, Screenshots, Videos und Playwright-Traces werden nicht in Supabase gespeichert. Diese Diagnoseartefakte verbleiben zeitlich begrenzt in GitHub Actions.
 
 ## Was niemals geschieht
 

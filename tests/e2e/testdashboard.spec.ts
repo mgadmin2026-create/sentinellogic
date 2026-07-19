@@ -6,7 +6,10 @@ test.describe('Testdashboard', () => {
 
     await expect(page.getByRole('heading', { name: 'Testdashboard', level: 1 })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Test-Kennzahlen' })).toBeVisible()
-    await expect(page.getByText('Anmeldung und Dashboard-Aufruf')).toBeVisible()
+    await expect(page.getByText('Testdashboard und Testbetrieb anzeigen')).toBeVisible()
+
+    await page.getByTestId('testdashboard-tab-durchfuehrungen').click()
+    await expect(page.getByTestId('testdashboard-tab-durchfuehrungen')).toHaveAttribute('aria-selected', 'true')
 
     await page.getByTestId('testdashboard-tab-umgebung').click()
 

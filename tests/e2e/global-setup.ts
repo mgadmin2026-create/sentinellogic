@@ -25,7 +25,10 @@ export default async function globalSetup(config: FullConfig) {
     throw new Error('TEST_DATA_CLEANUP_TOKEN fehlt oder ist zu kurz.')
   }
 
-  const runId = `pw-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}`
+  const configuredRunId = process.env.PLAYWRIGHT_RUN_ID
+  const runId = configuredRunId && /^[a-zA-Z0-9._:-]{1,100}$/.test(configuredRunId)
+    ? configuredRunId
+    : `pw-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}`
   const response = await fetch(`${baseUrl}/api/test-environment`, {
     method: 'POST',
     headers: {

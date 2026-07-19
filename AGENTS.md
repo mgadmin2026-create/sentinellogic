@@ -112,7 +112,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 
 - [ ] Lead-Synchronisation (Klicktipp + Dialfire + Sentimental Logic)
 - [ ] Infrastruktur Setup (Supabase, Vercel)
-- [ ] Geschützte Testvariablen in Vercel setzen und ersten Live-Testlauf ausführen
+- [ ] Regressionstest-Katalog nach jedem neuen Feature erweitern
 
 **Abgeschlossen:**
 
@@ -125,9 +125,12 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Testdatenmigration auf Live-Supabase angewendet und Guard aktiviert
 - [x] Live-Sicherheitsprobe bestanden: ausschließlich markierter Testkontakt wurde bereinigt
 - [x] Playwright-Chromium installiert
+- [x] Erster Playwright-Live-Lauf erfolgreich durchgeführt
+- [x] GitHub Actions und Vercel über geschütztes Cleanup-Token verbunden
+- [x] Dauerhafte Testlauf-Historie, KPIs und Aktivitäten im Testdashboard implementiert
 
 **Nächste Aufgabe:**
-→ Vercel-Testvariablen setzen, Zugangsdaten rotieren und ersten Playwright-Lauf starten
+→ Pro neuem Feature passende Regressionstests festlegen und den Testkatalog schrittweise erweitern
 
 -----
 
