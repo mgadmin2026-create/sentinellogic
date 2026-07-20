@@ -45,7 +45,6 @@ interface Kontakt {
     due_date?: string
   }>
   assigned_user_id?: string
-  assigned_user_name?: string
   qualität?: string
   bestandskunde?: boolean
   notes?: string
@@ -117,6 +116,7 @@ interface Aktivität {
   description: string
   data?: Record<string, any>
   created_at: string
+  user?: { name: string } | null
 }
 
 interface Aufgabe {
@@ -126,7 +126,7 @@ interface Aufgabe {
   status: 'offen' | 'in_bearbeitung' | 'erledigt'
   priorität: 'niedrig' | 'mittel' | 'hoch'
   fällig: string
-  assigned_user_name?: string
+  assigned_user?: { name: string }
   triggered_by_process_step?: string
   amis_task_type?: 'person_create' | 'person_create_quote'
   amis_status?: 'person_created' | 'quoted' | 'error' | null
@@ -835,6 +835,7 @@ export default function KontaktDetailPage() {
                           <p className="text-xs text-gray-400">
                             {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                           </p>
+                          <span className="text-xs text-gray-400">· {akt.user?.name || 'System'}</span>
                           {akt.type && (
                             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getActivityColor(akt.type)}`}>
                               {akt.type.replace('_', ' ')}
@@ -871,7 +872,7 @@ export default function KontaktDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 bg-gray-50">
-                      {['Titel', 'Status', 'Priorität', 'Fällig'].map((h) => (
+                      {['Titel', 'Status', 'Priorität', 'Fällig', 'Verantwortlicher'].map((h) => (
                         <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-6 py-3">
                           {h}
                         </th>
@@ -919,6 +920,7 @@ export default function KontaktDetailPage() {
                           </span>
                         </td>
                         <td className="px-6 py-3.5 text-gray-600">{new Date(aufgabe.fällig).toLocaleDateString('de-DE')}</td>
+                        <td className="px-6 py-3.5 text-gray-600">{aufgabe.assigned_user?.name || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
