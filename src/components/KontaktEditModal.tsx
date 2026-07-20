@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { TagInput, type Tag } from '@/components/TagInput'
 
 interface Kontakt {
   id?: string
@@ -36,6 +37,7 @@ interface Kontakt {
   dialfire_task_name_field?: string
   klicktipp_tag_ids?: number[]
   geburtstag?: string
+  tags?: Tag[]
 }
 
 interface Props {
@@ -58,6 +60,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [tags, setTags] = useState<Tag[]>(kontakt?.tags ?? [])
 
   if (!isOpen) return null
 
@@ -68,6 +71,15 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
 
     try {
       await onSave(formData)
+      // Tags sind nicht Teil der PATCH-Whitelist — separat speichern (nur bei
+      // bestehenden Kontakten, da bei Neuanlage die ID hier noch nicht bekannt ist)
+      if (kontakt?.id) {
+        await fetch(`/api/kontakte/${kontakt.id}/tags`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tagIds: tags.map((t) => t.id) }),
+        }).catch(() => {})
+      }
       onClose()
     } catch (err: any) {
       setError(err.message || 'Fehler beim Speichern')
@@ -484,6 +496,14 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
               </button>
             </div>
           </div>
+
+          {/* Section 5b: Tags */}
+          {isEdit && (
+            <div className="border-b border-gray-100 pb-6">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">🏷️ Tags</h3>
+              <TagInput value={tags} onChange={setTags} />
+            </div>
+          )}
 
           {/* Section 6: Notizen */}
           <div>

@@ -43,6 +43,7 @@ interface Kontakt {
   is_test_data?: boolean
   test_run_id?: string
   archived_at?: string | null
+  tags?: { id: string; name: string }[]
 }
 
 interface ColumnVisibility {
@@ -313,6 +314,9 @@ export default function KontaktePage() {
   const [stageFilter, setStageFilter] = useState<string>('all')
   const [sparteFilter, setSparteFilter] = useState<string>('all')
   const [pruefungFilter, setPruefungFilter] = useState<string>('all')
+  const [tagFilter, setTagFilter] = useState<string[]>([])
+  const [allTags, setAllTags] = useState<{ id: string; name: string }[]>([])
+  const [tagFilterOpen, setTagFilterOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
@@ -337,6 +341,14 @@ export default function KontaktePage() {
   const [showQuickNote, setShowQuickNote] = useState<string | null>(null)
   const [quickNoteText, setQuickNoteText] = useState('')
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
+
+  // Alle Tags für den Filter laden
+  useEffect(() => {
+    fetch('/api/kontakt-tags')
+      .then((r) => r.json())
+      .then((res) => { if (res.success) setAllTags(res.data) })
+      .catch(() => {})
+  }, [])
 
   // Load column preferences from localStorage
   useEffect(() => {
@@ -680,6 +692,7 @@ export default function KontaktePage() {
     if (stageFilter !== 'all' && k.pipeline_stage !== stageFilter) return false
     if (sparteFilter !== 'all' && k.sparte !== sparteFilter) return false
     if (pruefungFilter !== 'all' && (k['prüfung_grund'] || '') !== pruefungFilter) return false
+    if (tagFilter.length > 0 && !tagFilter.every((tId) => (k.tags ?? []).some((t) => t.id === tId))) return false
     const q = search.toLowerCase()
     if (
       q &&
@@ -876,6 +889,39 @@ export default function KontaktePage() {
             </select>
           )}
 
+          {allTags.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setTagFilterOpen((v) => !v)}
+                className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+                  tagFilter.length > 0 ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
+                }`}
+              >
+                🏷️ Tags{tagFilter.length > 0 ? ` (${tagFilter.length})` : ': Alle'}
+              </button>
+              {tagFilterOpen && (
+                <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto p-2">
+                  {allTags.map((tag) => (
+                    <label key={tag.id} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={tagFilter.includes(tag.id)}
+                        onChange={(e) => {
+                          setTagFilter((prev) =>
+                            e.target.checked ? [...prev, tag.id] : prev.filter((id) => id !== tag.id)
+                          )
+                        }}
+                        className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                      />
+                      {tag.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap px-1">
             <input
               type="checkbox"
@@ -886,7 +932,7 @@ export default function KontaktePage() {
             Archivierte anzeigen
           </label>
 
-          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || search) && (
+          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || tagFilter.length > 0 || search) && (
             <button
               onClick={() => {
                 setActiveFilter('all')
@@ -895,6 +941,7 @@ export default function KontaktePage() {
                 setStageFilter('all')
                 setSparteFilter('all')
                 setPruefungFilter('all')
+                setTagFilter([])
                 setSearch('')
               }}
               className="text-xs text-gray-500 hover:text-gray-900 font-medium underline-offset-2 hover:underline"

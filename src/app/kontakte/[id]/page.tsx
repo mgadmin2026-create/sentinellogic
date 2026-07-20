@@ -15,6 +15,7 @@ import { DialfireResponseTable } from '@/components/DialfireResponseTable'
 import { KontaktDokumenteTab } from '@/components/KontaktDokumenteTab'
 import { KontaktVertraegeTab } from '@/components/KontaktVertraegeTab'
 import { ContactEmailModal } from '@/components/ContactEmailModal'
+import { TagInput, type Tag } from '@/components/TagInput'
 
 interface Kontakt {
   id: string
@@ -105,6 +106,8 @@ interface Kontakt {
   iban_5?: string
   notizen_2?: string
   created_at: string
+  archived_at?: string | null
+  tags?: { id: string; name: string }[]
 }
 
 interface Aktivität {
@@ -202,6 +205,7 @@ export default function KontaktDetailPage() {
   const [dialfireSnapshot, setDialfireSnapshot] = useState<any>(null)
   const [amisCreating, setAmisCreating] = useState<'person_create' | 'person_create_quote' | null>(null)
   const [amisMessage, setAmisMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
+  const [kontaktTags, setKontaktTags] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
     loadKontakt()
@@ -218,6 +222,7 @@ export default function KontaktDetailPage() {
         setNotes(data.notes || '')
         setAktivitäten(data.activities || [])
         setAufgaben(data.tasks || [])
+        setKontaktTags(data.tags || [])
 
         // Load Dialfire response snapshot
         if (data.dialfire_id) {
@@ -284,6 +289,19 @@ export default function KontaktDetailPage() {
       router.push('/kontakte')
     } catch (err) {
       console.error('Fehler beim Archivieren:', err)
+    }
+  }
+
+  async function handleTagsChange(tags: Tag[]) {
+    setKontaktTags(tags)
+    try {
+      await fetch(`/api/kontakte/${kontaktId}/tags`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagIds: tags.map((t) => t.id) }),
+      })
+    } catch (err) {
+      console.error('Fehler beim Speichern der Tags:', err)
     }
   }
 
@@ -581,6 +599,12 @@ export default function KontaktDetailPage() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Tags */}
+        <div className="mb-6 bg-white rounded-xl border border-gray-200 px-4 py-3">
+          <span className="text-xs font-semibold text-gray-700 block mb-2">🏷️ Tags</span>
+          <TagInput value={kontaktTags} onChange={handleTagsChange} placeholder="Tag hinzufügen…" />
         </div>
 
         {/* AMIS.NOW Message Display */}

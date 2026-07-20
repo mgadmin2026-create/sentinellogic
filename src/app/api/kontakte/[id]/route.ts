@@ -95,12 +95,18 @@ export async function GET(
       .eq('contact_id', id)
       .order('created_at', { ascending: false })
 
+    const { data: tagRows } = await supabase
+      .from('contact_tag_map')
+      .select('tag:tag_id(id, name)')
+      .eq('contact_id', id)
+
     return Response.json({
       success: true,
       data: {
         ...contact,
         activities: activities ?? [],
         tasks: tasks ?? [],
+        tags: (tagRows ?? []).map((r: any) => r.tag),
       },
     })
   } catch (error) {

@@ -27,7 +27,16 @@ TABELLE contacts  — Kontakte/Leads (Haupttabelle, jeder Kunde/Interessent)
   mitarbeitanzahl int, jahresumsatz numeric, jahreseinkommen numeric
   dialfire_id text, dialfire_campaign_id text
   dialfire_last_call_at timestamptz, dialfire_last_call_status text, dialfire_disposition text
+  archived_at timestamptz    -- NULL = aktiv, sonst Zeitpunkt der Archivierung (Soft-Delete)
   created_at timestamptz, updated_at timestamptz
+
+TABELLE tags  — Interne, frei vergebbare Kontakt-Tags (kein Bezug zu KlickTipp-Tags)
+  id uuid, name text
+  created_at timestamptz
+
+TABELLE contact_tag_map  — Zuordnung Kontakt ↔ Tag (many-to-many)
+  id uuid, contact_id uuid, tag_id uuid
+  created_at timestamptz
 
 TABELLE activities  — Aktivitäts-/Audit-Log pro Kontakt
   id uuid
@@ -44,6 +53,7 @@ TABELLE tasks  — Aufgaben
   "priorität" text       -- 'niedrig','mittel','hoch'
   "fällig" date          -- Fälligkeitsdatum
   assigned_user_name text
+  archived_at timestamptz    -- NULL = aktiv, sonst mit dem Kontakt mitarchiviert
   created_at timestamptz, updated_at timestamptz
 
 TABELLE opportunities  — Verkaufschancen pro Kontakt
@@ -76,4 +86,6 @@ Beziehungen:
   opportunities.contact_id -> contacts.id
   contracts.contact_id     -> contacts.id
   dialfire_sync_log.contact_id -> contacts.id
+  contact_tag_map.contact_id -> contacts.id
+  contact_tag_map.tag_id     -> tags.id
 `.trim()

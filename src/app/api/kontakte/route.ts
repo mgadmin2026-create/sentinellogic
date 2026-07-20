@@ -83,7 +83,24 @@ export async function GET(request: NextRequest) {
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }
 
-    return Response.json({ success: true, data: data ?? [] })
+    // Tags gebündelt nachladen (ein Query statt N+1)
+    let contacts = data ?? []
+    if (contacts.length > 0) {
+      const { data: tagRows } = await supabase
+        .from('contact_tag_map')
+        .select('contact_id, tag:tag_id(id, name)')
+        .in('contact_id', contacts.map((c) => c.id))
+
+      const tagsByContact = new Map<string, { id: string; name: string }[]>()
+      for (const row of tagRows ?? []) {
+        const list = tagsByContact.get((row as any).contact_id) ?? []
+        list.push((row as any).tag)
+        tagsByContact.set((row as any).contact_id, list)
+      }
+      contacts = contacts.map((c) => ({ ...c, tags: tagsByContact.get(c.id) ?? [] }))
+    }
+
+    return Response.json({ success: true, data: contacts })
   } catch (err) {
     console.error('[GET /api/kontakte] Fehler:', err)
     return Response.json({ success: false, error: 'Kontakte konnten nicht geladen werden' }, { status: 500 })
