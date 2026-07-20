@@ -132,9 +132,11 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Einzeltestergebnisse je Testlauf mit Grün-/Rot-Status im Testdashboard sichtbar gemacht
 - [x] Geschützte Aktivierung/Deaktivierung automatisierter Testfälle mit echter Überspringen-Steuerung in GitHub Actions implementiert
 - [x] Migration `0042_test_case_control.sql` auf Live-Supabase angewendet
+- [x] E2E-002 und E2E-003 für Kontaktanlage sowie Stammdaten-/Statusänderung automatisiert und aktiviert
+- [x] Kontaktverwaltung und Kontaktdetailseite mit E2E-011 (Detailnavigation) und E2E-012 (Aufgabenanlage) erweitert
 
 **Nächste Aufgabe:**
-→ Zwei verbleibende Playwright-Selektoren für Archivstatus und Tag-Chip stabilisieren, danach vollständigen Regressionstest erneut ausführen
+→ Vollständigen Regressionstest ausführen, neue Kontakt-Szenarien auswerten und die zwei bekannten Selektorfehler für Archivstatus und Tag-Chip stabilisieren
 
 -----
 

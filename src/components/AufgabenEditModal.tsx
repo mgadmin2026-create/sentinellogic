@@ -93,6 +93,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Titel *</label>
             <input
+              data-testid="task-title"
               type="text"
               required
               value={form.titel}
@@ -105,6 +106,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Beschreibung</label>
             <textarea
+              data-testid="task-description"
               value={form.beschreibung || ''}
               onChange={(e) => setForm({ ...form, beschreibung: e.target.value })}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm h-20 resize-none"
@@ -116,6 +118,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Fällig *</label>
               <input
+                data-testid="task-due-date"
                 type="date"
                 required
                 value={form.fällig}
@@ -126,6 +129,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Priorität</label>
               <select
+                data-testid="task-priority"
                 value={form.priorität || 'mittel'}
                 onChange={(e) => setForm({ ...form, priorität: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"

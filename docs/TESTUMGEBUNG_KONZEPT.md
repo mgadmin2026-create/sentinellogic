@@ -69,6 +69,8 @@ Die Steuerung wird im Dashboard mit dem serverseitigen `TEST_DATA_CLEANUP_TOKEN`
 
 Vor jedem GitHub-Actions-Lauf lädt `scripts/load-test-case-control.ts` diese IDs. Ist die Steuerung nicht erreichbar oder die Migration nicht eingerichtet, startet der Testlauf nicht mit einem unbekannten Schaltzustand.
 
+Aktuell automatisierte Kontaktabläufe umfassen Neuanlage und Suche (E2E-002), Stammdaten- und Statusänderung (E2E-003), Archivierung, Import, Export, Tags, Navigation aus der Kontaktliste in die Detailseite (E2E-011) sowie die Aufgabenanlage direkt am Kontakt (E2E-012).
+
 ## Gespeicherte Ergebnisdaten
 
 Pro Testlauf werden Lauf-ID, Status, Commit, Branch, Umgebung, Zeitstempel, Dauer und aggregierte Zählwerte gespeichert. Einzeltestergebnisse enthalten nur Testtitel, Suite, Status, Dauer und eine gekürzte, von Secrets bereinigte Fehlermeldung.

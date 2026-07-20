@@ -116,7 +116,7 @@ interface FieldProps {
 const Field = memo(({ label, field, type = 'text', options, value, onChange, isEditing }: FieldProps) => {
   if (!isEditing) {
     return (
-      <div>
+      <div data-testid={`contact-field-${field}`}>
         <p className="text-xs text-gray-500 font-medium">{label}</p>
         <p className="text-sm text-gray-900 mt-1">{value || '—'}</p>
       </div>
@@ -125,7 +125,7 @@ const Field = memo(({ label, field, type = 'text', options, value, onChange, isE
 
   if (type === 'select') {
     return (
-      <div>
+      <div data-testid={`contact-field-${field}`}>
         <p className="text-xs text-gray-500 font-medium">{label}</p>
         <select
           value={value || ''}
@@ -140,7 +140,7 @@ const Field = memo(({ label, field, type = 'text', options, value, onChange, isE
   }
 
   return (
-    <div>
+    <div data-testid={`contact-field-${field}`}>
       <p className="text-xs text-gray-500 font-medium">{label}</p>
       <input
         type={type}
