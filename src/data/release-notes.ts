@@ -21,6 +21,36 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.7.0',
+    date: '2026-07-20',
+    title: 'Benutzerkonten: Login, Rollen & Team-Verwaltung',
+    summary:
+      'Die App verlangt jetzt einen Login, unterscheidet zwischen Admin und Mitarbeiter, und jeder User kann sein eigenes Profil und Passwort verwalten',
+    features: [
+      {
+        title: 'Login & Zugriffsschutz',
+        description:
+          'Alle Seiten und API-Routen (außer Webhooks) verlangen jetzt eine angemeldete Session. Ohne Login erfolgt eine automatische Weiterleitung zu /login.',
+        category: 'security',
+        icon: '🔐',
+      },
+      {
+        title: 'Team-Verwaltung für Admins',
+        description:
+          'Unter /einstellungen/team können Admins Mitarbeiter-Konten anlegen (mit Temp-Passwort, kein E-Mail-Versand nötig), Rollen ändern, Konten aktivieren/deaktivieren, Passwörter zurücksetzen und Konten löschen.',
+        category: 'feature',
+        icon: '👥',
+      },
+      {
+        title: 'Mein Profil',
+        description:
+          'Jeder eingeloggte User kann über den neuen Menüpunkt „Mein Profil" im Sidebar-Footer seinen Namen und seine E-Mail ändern sowie sein eigenes Passwort ändern (mit Verifikation des aktuellen Passworts) — unabhängig vom Admin-Passwort-Reset.',
+        category: 'feature',
+        icon: '👤',
+      },
+    ],
+  },
+  {
     version: '0.6.0',
     date: '2026-07-20',
     title: 'Kontakte: Archivieren, Tags, Export & erweiterter Import',

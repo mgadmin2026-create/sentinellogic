@@ -19,14 +19,14 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Frontend** | Next.js 14 + TypeScript | React-basiert, App Router |
 | **Styling** | Tailwind CSS | Utility-first CSS |
 | **Database** | Supabase PostgreSQL | pgvector-ready, RLS-capable |
-| **Auth** | TBD | Session-based (planned) |
+| **Auth** | Supabase Auth (`@supabase/ssr`) | Session-based Login, Middleware-Zugriffsschutz, Rollen admin/mitarbeiter |
 | **Hosting** | Vercel | Auto-deploy on `git push main` |
 | **Email** | Resend API | Transaktional (Domain: onlinefirst.eu) |
 | **Document Storage** | Google Drive OAuth | Zentrale System-Ablage + Kompression |
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.6.0 — Kontakte: Archivieren, Tags, Export & erweiterter Import | Aktiv in Entwicklung |
+| **Version** | 0.7.0 — Benutzerkonten: Login, Rollen, Team-Verwaltung & Self-Service-Profil | Aktiv in Entwicklung |
 
 ---
 
@@ -57,12 +57,15 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 ---
 
-## Feature-Status (v0.6.0)
+## Feature-Status (v0.7.0)
 
-### ✅ Implemented (v0.6.0)
+### ✅ Implemented (v0.7.0)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
+| **Benutzerkonten & Login** | ✅ Done | Supabase Auth (`@supabase/ssr`), `middleware.ts` schützt alle Seiten/APIs außer Login + Webhooks; `public.users.role` als freies Textfeld (nicht Enum) für spätere zusätzliche Rollen; zentrale `isAdmin()`-Prüfung als Basis für spätere granulare Rechtevergabe |
+| **Team-Verwaltung (admin-only)** | ✅ Done | `/einstellungen/team`: Mitarbeiter anlegen (Temp-Passwort, kein E-Mail-Versand nötig), Rolle ändern, aktivieren/deaktivieren, Passwort zurücksetzen, löschen |
+| **Self-Service-Profil** | ✅ Done | `/profil`: eigenen Namen/E-Mail ändern, eigenes Passwort ändern (mit Verifikation des aktuellen Passworts) — ergänzt den Admin-Passwort-Reset, ersetzt ihn nicht |
 | **Kontakt-Verwaltung** | ✅ Done | CRUD, Duplikat-Prüfung, Automation-Integration |
 | **Kontakte archivieren** | ✅ Done | Ersetzt Hard-Delete; Bestätigung inkl. Option „Aufgaben mitarchivieren"; Wiederherstellen-Funktion; Liste blendet Archivierte standardmäßig aus (Toggle „Archivierte anzeigen"); echtes Löschen nur noch via direktem Supabase-Zugriff (Tests/Admin) |
 | **Interne Tags** | ✅ Done | Eigene `tags`/`contact_tag_map`-Tabellen; Freitext-Input mit Autocomplete; Mehrfach-Filter (UND-Verknüpfung) in der Liste; über NL→SQL-Reporting abfragbar |
@@ -88,8 +91,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 | Feature | Target | Notes |
 |---------|--------|-------|
-| **User Authentication** | v0.5 | Session-based Login |
-| **Teams & Permissions** | v0.5 | Role-based Access Control |
+| **Granulare Rechtevergabe pro User** | v0.8+ | Über admin/mitarbeiter hinaus; Architektur (freies `role`-Textfeld, zentrale `isAdmin()`-Prüfung) ist dafür vorbereitet |
 | **Auto/Manuell Toggles** | v0.5 | Pro Feld deaktivierbar; UI mit Dropdown/Label |
 | **Automation Settings UI** | v0.5 | `/einstellungen` Sektion: Dialfire Kampagnen, Tasks, KlickTipp Tags (texarea → system_config) |
 | **Advanced Filtering** | v0.5 | Search, Filter, Sort auf allen Listen |
