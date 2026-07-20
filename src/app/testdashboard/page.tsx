@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import type { TestRunRecord, TestRunsResponse, TestRunStatus } from '@/types/test-dashboard'
 
 type DashboardTab = 'testfaelle' | 'durchfuehrungen' | 'umgebung'
@@ -102,6 +102,23 @@ function formatDate(value: string): string {
 }
 
 function RunsView({ runs, loading, error }: { runs: TestRunRecord[]; loading: boolean; error: string | null }) {
+  const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (runs[0]) {
+      setExpandedRunIds((current) => current.size > 0 ? current : new Set([runs[0].id]))
+    }
+  }, [runs])
+
+  function toggleRun(runId: string) {
+    setExpandedRunIds((current) => {
+      const next = new Set(current)
+      if (next.has(runId)) next.delete(runId)
+      else next.add(runId)
+      return next
+    })
+  }
+
   if (loading) {
     return <div className="px-6 py-14 text-center text-sm text-gray-500">Testdurchführungen werden geladen …</div>
   }
@@ -114,7 +131,7 @@ function RunsView({ runs, loading, error }: { runs: TestRunRecord[]; loading: bo
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[880px] text-left text-sm">
+      <table className="w-full min-w-[980px] text-left text-sm">
         <thead className="bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
           <tr>
             <th className="px-6 py-3">Ergebnis</th>
@@ -123,34 +140,113 @@ function RunsView({ runs, loading, error }: { runs: TestRunRecord[]; loading: bo
             <th className="px-6 py-3">Tests</th>
             <th className="px-6 py-3">Dauer</th>
             <th className="px-6 py-3">Zeitpunkt</th>
+            <th className="px-6 py-3 text-right">Einzeltests</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {runs.map((run) => (
-            <tr key={run.id} className="hover:bg-gray-50/70">
-              <td className="px-6 py-4">
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${RUN_STATUS_STYLES[run.status]}`}>
-                  {RUN_STATUS_LABELS[run.status]}
-                </span>
-              </td>
-              <td className="px-6 py-4">
-                {run.sourceUrl ? (
-                  <a href={run.sourceUrl} target="_blank" rel="noreferrer" className="font-mono text-xs font-semibold text-blue-700 hover:underline">
-                    {run.runId}
-                  </a>
-                ) : <span className="font-mono text-xs text-gray-600">{run.runId}</span>}
-                <p className="mt-1 text-xs text-gray-400">{run.environment}</p>
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-gray-600">{run.commitSha?.slice(0, 7) ?? '—'}</td>
-              <td className="whitespace-nowrap px-6 py-4">
-                <span className="font-semibold text-emerald-700">{run.passedCount} ✓</span>
-                {run.failedCount > 0 && <span className="ml-3 font-semibold text-red-700">{run.failedCount} ✕</span>}
-                {run.skippedCount > 0 && <span className="ml-3 text-gray-500">{run.skippedCount} –</span>}
-              </td>
-              <td className="whitespace-nowrap px-6 py-4 text-gray-600">{formatDuration(run.durationMs)}</td>
-              <td className="whitespace-nowrap px-6 py-4 text-xs text-gray-500">{formatDate(run.completedAt)}</td>
-            </tr>
-          ))}
+          {runs.map((run, runIndex) => {
+            const isExpanded = expandedRunIds.has(run.id)
+            const detailsId = `test-run-details-${run.id}`
+
+            return (
+              <Fragment key={run.id}>
+                <tr className="hover:bg-gray-50/70">
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${RUN_STATUS_STYLES[run.status]}`}>
+                      {RUN_STATUS_LABELS[run.status]}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {run.sourceUrl ? (
+                      <a href={run.sourceUrl} target="_blank" rel="noreferrer" className="font-mono text-xs font-semibold text-blue-700 hover:underline">
+                        {run.runId}
+                      </a>
+                    ) : <span className="font-mono text-xs text-gray-600">{run.runId}</span>}
+                    <p className="mt-1 text-xs text-gray-400">{run.environment}</p>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-gray-600">{run.commitSha?.slice(0, 7) ?? '—'}</td>
+                  <td className="whitespace-nowrap px-6 py-4">
+                    <span className="font-semibold text-emerald-700">{run.passedCount} ✓</span>
+                    {run.failedCount > 0 && <span className="ml-3 font-semibold text-red-700">{run.failedCount} ✕</span>}
+                    {run.skippedCount > 0 && <span className="ml-3 text-gray-500">{run.skippedCount} –</span>}
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-gray-600">{formatDuration(run.durationMs)}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-xs text-gray-500">{formatDate(run.completedAt)}</td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      type="button"
+                      aria-expanded={isExpanded}
+                      aria-controls={detailsId}
+                      onClick={() => toggleRun(run.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+                    >
+                      {isExpanded ? 'Ausblenden' : 'Anzeigen'}
+                      <svg className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                  </td>
+                </tr>
+                {isExpanded && (
+                  <tr>
+                    <td colSpan={7} className="bg-gray-50/80 px-6 py-5">
+                      <div
+                        id={detailsId}
+                        data-testid={runIndex === 0 ? 'latest-test-run-details' : undefined}
+                        className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm font-semibold text-gray-900">Einzeltests</h3>
+                            <p className="mt-1 text-xs text-gray-500">Grün = erfolgreich, Rot = fehlgeschlagen.</p>
+                          </div>
+                          <span className="text-xs text-gray-500">{run.results.length} Ergebnisse</span>
+                        </div>
+
+                        {run.results.length > 0 ? (
+                          <ul className="mt-4 divide-y divide-gray-100 border-t border-gray-100">
+                            {run.results.map((result, resultIndex) => (
+                              <li key={`${result.title}-${resultIndex}`} className="py-3">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                  <div className="min-w-0">
+                                    <div className="flex items-start gap-2.5">
+                                      <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${result.status === 'passed' ? 'bg-emerald-500' : result.status === 'failed' ? 'bg-red-500' : result.status === 'interrupted' ? 'bg-orange-500' : 'bg-gray-400'}`} />
+                                      <div>
+                                        <p className="text-sm font-semibold text-gray-900">{result.title}</p>
+                                        {result.suite && <p className="mt-0.5 text-xs text-gray-500">{result.suite}</p>}
+                                      </div>
+                                    </div>
+                                    {result.errorMessage && (
+                                      <p className="ml-5 mt-2 break-words rounded-lg border border-red-100 bg-red-50 px-3 py-2 font-mono text-[11px] leading-5 text-red-700">
+                                        {result.errorMessage}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-3 pl-5 sm:pl-0">
+                                    <span className="text-xs text-gray-400">{formatDuration(result.durationMs)}</span>
+                                    <span
+                                      data-test-result-status={result.status}
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${RUN_STATUS_STYLES[result.status]}`}
+                                    >
+                                      {RUN_STATUS_LABELS[result.status]}
+                                    </span>
+                                  </div>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-5 text-center text-xs text-gray-500">
+                            Für diesen älteren Lauf wurden noch keine Einzeltestergebnisse gespeichert.
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
     </div>
