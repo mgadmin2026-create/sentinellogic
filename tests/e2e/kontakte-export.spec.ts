@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test'
-import { createPlaywrightTestContact } from './support/test-data'
+import { createPlaywrightTestContact, expectOk } from './support/test-data'
 
 test.describe('Kontakte: Export', () => {
   test('CSV-Export enthält die gefilterten Kontaktdaten', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('ExportTest')
     const createRes = await request.post('/api/kontakte', { data: contact })
-    expect(createRes.ok()).toBeTruthy()
+    await expectOk(createRes, 'Testkontakt anlegen')
 
     await page.goto('/kontakte')
     await page.getByPlaceholder('Nach Name, E-Mail oder Firma suchen…').fill(contact.last_name)
-    await expect(page.getByText(`${contact.first_name} ${contact.last_name}`)).toBeVisible()
+    await expect(page.getByTestId('kontakte-tabelle').getByText(`${contact.first_name} ${contact.last_name}`)).toBeVisible()
 
     await page.getByRole('button', { name: /Exportieren/ }).click()
     const downloadPromise = page.waitForEvent('download')
@@ -27,11 +27,11 @@ test.describe('Kontakte: Export', () => {
   test('Excel- und PDF-Export liefern herunterladbare Dateien', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('ExportSmokeTest')
     const createRes = await request.post('/api/kontakte', { data: contact })
-    expect(createRes.ok()).toBeTruthy()
+    await expectOk(createRes, 'Testkontakt anlegen')
 
     await page.goto('/kontakte')
     await page.getByPlaceholder('Nach Name, E-Mail oder Firma suchen…').fill(contact.last_name)
-    await expect(page.getByText(`${contact.first_name} ${contact.last_name}`)).toBeVisible()
+    await expect(page.getByTestId('kontakte-tabelle').getByText(`${contact.first_name} ${contact.last_name}`)).toBeVisible()
 
     for (const [label, ext] of [['Als XLSX', 'xlsx'], ['Als PDF', 'pdf']] as const) {
       await page.getByRole('button', { name: /Exportieren/ }).click()

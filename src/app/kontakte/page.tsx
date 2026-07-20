@@ -1017,7 +1017,7 @@ export default function KontaktePage() {
       </div>
 
       {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}
-      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div data-testid="kontakte-tabelle" className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
           <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-gray-50/95 border-b border-gray-100">

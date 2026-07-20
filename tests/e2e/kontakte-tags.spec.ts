@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { createPlaywrightTestContact } from './support/test-data'
+import { createPlaywrightTestContact, expectOk } from './support/test-data'
 
 test.describe('Kontakte: Tags', () => {
   test('Tag anlegen, zuweisen, filtern und umbenennen', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('TagTest')
     const fullName = `${contact.first_name} ${contact.last_name}`
     const createRes = await request.post('/api/kontakte', { data: contact })
-    expect(createRes.ok()).toBeTruthy()
-    const { data: created } = await createRes.json()
+    const { data: created } = await expectOk(createRes, 'Testkontakt anlegen')
 
     const runId = process.env.PLAYWRIGHT_RUN_ID
     const tagName = `TestTag-${runId}`
@@ -35,12 +34,12 @@ test.describe('Kontakte: Tags', () => {
       await page.goto('/kontakte')
       await page.getByRole('button', { name: /Tags/ }).click()
       await page.getByText(tagName, { exact: true }).click()
-      await expect(page.getByText(fullName)).toBeVisible()
+      await expect(page.getByTestId('kontakte-tabelle').getByText(fullName)).toBeVisible()
 
       // Umbenennen propagiert überall (contact_tag_map referenziert per tag_id)
       const renamedName = `${tagName}-renamed`
       const renameRes = await request.patch(`/api/kontakt-tags/${tagId}`, { data: { name: renamedName } })
-      expect(renameRes.ok()).toBeTruthy()
+      await expectOk(renameRes, 'Tag umbenennen')
 
       await page.goto(`/kontakte/${created.id}`)
       await expect(page.getByText(renamedName, { exact: true })).toBeVisible()
