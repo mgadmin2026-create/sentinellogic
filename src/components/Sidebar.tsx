@@ -2,7 +2,7 @@
 // Sidebar-Navigation — Desktop: statisch links. Mobile: Drawer mit Hamburger.
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { logout } from '@/app/login/actions'
 import type { CurrentUser } from '@/lib/auth'
 
@@ -133,6 +133,8 @@ interface SidebarProps {
 export default function Sidebar({ currentUser }: SidebarProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
 
   const isActive = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
@@ -140,7 +142,20 @@ export default function Sidebar({ currentUser }: SidebarProps) {
   // Drawer bei Navigation schließen
   useEffect(() => {
     setOpen(false)
+    setProfileMenuOpen(false)
   }, [pathname])
+
+  // Profil-Menü bei Klick außerhalb schließen
+  useEffect(() => {
+    if (!profileMenuOpen) return
+    function handleClickOutside(e: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [profileMenuOpen])
 
   // Auf der Login-Seite gibt es keine Navigation — Seite füllt den ganzen Viewport
   if (pathname === '/login') return null
@@ -236,24 +251,48 @@ export default function Sidebar({ currentUser }: SidebarProps) {
       {/* Footer */}
       <div className="px-5 py-4 border-t border-white/10 space-y-3">
         {currentUser && (
-          <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/10">
-            <div className="min-w-0">
-              <p className="text-white/80 text-xs font-semibold truncate">{currentUser.name}</p>
-              <p className="text-white/30 text-[11px] truncate">{currentUser.email}</p>
-            </div>
-            <form action={logout}>
-              <button
-                type="submit"
-                title="Abmelden"
-                className="text-white/40 hover:text-[#FFC300] transition-colors p-1.5 rounded hover:bg-white/5 flex-shrink-0"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-              </button>
-            </form>
+          <div ref={profileMenuRef} className="relative pb-3 border-b border-white/10">
+            <button
+              onClick={() => setProfileMenuOpen((v) => !v)}
+              className="w-full flex items-center justify-between gap-2 text-left"
+            >
+              <div className="min-w-0">
+                <p className="text-white/80 text-xs font-semibold truncate">{currentUser.name}</p>
+                <p className="text-white/30 text-[11px] truncate">{currentUser.email}</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 flex-shrink-0">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {profileMenuOpen && (
+              <div className="mt-2 bg-[#242424] border border-white/10 rounded-lg overflow-hidden">
+                <Link
+                  href="/profil"
+                  className="flex items-center gap-2 px-3 py-2.5 text-xs text-white/75 hover:bg-white/5 transition-colors"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  Mein Profil
+                </Link>
+                <div className="h-px bg-white/10" />
+                <form action={logout}>
+                  <button
+                    type="submit"
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-white/75 hover:bg-white/5 transition-colors"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Abmelden
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         )}
         <div>

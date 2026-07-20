@@ -214,4 +214,20 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: ['legt eine Aufgabe direkt in der Kontaktdetailseite an'],
   },
+  {
+    id: 'E2E-013',
+    name: 'Eigenes Profil bearbeiten und Passwort ändern',
+    description: 'Prüft die Selbstverwaltung des eigenen Profils: Namensänderung, Ablehnung eines falschen aktuellen Passworts und erfolgreiche Passwortänderung.',
+    steps: [
+      'Die Seite /profil öffnen.',
+      'Den eigenen Namen ändern, speichern und über die API prüfen, danach zurücksetzen.',
+      'Eine Passwortänderung mit falschem aktuellen Passwort versuchen und die Fehlermeldung prüfen.',
+      'Das Passwort erfolgreich ändern und anschließend wieder auf das Ausgangspasswort zurücksetzen.',
+    ],
+    area: 'Benutzerkonten',
+    priority: 'Hoch',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: ['ändert den eigenen Namen, lehnt ein falsches aktuelles Passwort ab und ändert das Passwort erfolgreich'],
+  },
 ]
