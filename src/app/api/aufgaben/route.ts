@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
       .from('tasks')
       .select(`
         *,
-        contact:contact_id(first_name, last_name)
+        contact:contact_id(first_name, last_name),
+        assigned_user:assigned_user_id(name)
       `)
       .order('fällig', { ascending: true })
 
@@ -65,22 +66,22 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient()
     const body = await request.json()
 
+    // UUID-Validierung (einfaches Muster)
+    const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+
     // Pflichtfelder
-    if (!body.titel || !body.fällig) {
+    if (!body.titel || !body.fällig || !body.assigned_user_id || !isValidUUID(body.assigned_user_id)) {
       return Response.json(
-        { success: false, error: 'Felder erforderlich: titel, fällig' },
+        { success: false, error: 'Felder erforderlich: titel, fällig, assigned_user_id' },
         { status: 400 }
       )
     }
-
-    // UUID-Validierung (einfaches Muster)
-    const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
 
     // Neue Aufgabe anlegen
     const aufgabenData = {
       contact_id: body.contact_id,
       opportunity_id: body.opportunity_id ?? null,
-      assigned_user_id: body.assigned_user_id && isValidUUID(body.assigned_user_id) ? body.assigned_user_id : null,
+      assigned_user_id: body.assigned_user_id,
       created_by_user_id: body.created_by_user_id && isValidUUID(body.created_by_user_id) ? body.created_by_user_id : null,
       titel: String(body.titel).trim(),
       beschreibung: body.beschreibung ? String(body.beschreibung).trim() : null,

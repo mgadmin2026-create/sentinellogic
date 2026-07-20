@@ -26,7 +26,6 @@ interface Kontakt {
   status: 'new' | 'contacted' | 'qualified' | 'customer'
   qualität?: string
   assigned_user_id?: string
-  assigned_user?: string
   pipeline_stage?: string
   facebook_id?: string
   facebook_phase?: string
@@ -343,12 +342,27 @@ export default function KontaktePage() {
   const [showQuickNote, setShowQuickNote] = useState<string | null>(null)
   const [quickNoteText, setQuickNoteText] = useState('')
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
+  const [teamMembersById, setTeamMembersById] = useState<Record<string, string>>({})
 
   // Alle Tags für den Filter laden
   useEffect(() => {
     fetch('/api/kontakt-tags')
       .then((r) => r.json())
       .then((res) => { if (res.success) setAllTags(res.data) })
+      .catch(() => {})
+  }, [])
+
+  // Team-Mitglieder für die Verantwortlicher-Spalte laden
+  useEffect(() => {
+    fetch('/api/users')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success) {
+          const map: Record<string, string> = {}
+          for (const m of res.data) map[m.id] = m.name
+          setTeamMembersById(map)
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -1198,6 +1212,13 @@ export default function KontaktePage() {
                               {String(value).substring(0, 25)}
                               {String(value).length > 25 ? '…' : ''}
                             </span>
+                          ) : (
+                            '—'
+                          )
+                        } else if (key === 'assigned_user') {
+                          const name = teamMembersById[kontakt.assigned_user_id || '']
+                          displayContent = name ? (
+                            <span className="text-xs text-gray-700">{name}</span>
                           ) : (
                             '—'
                           )

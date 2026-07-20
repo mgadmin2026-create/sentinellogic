@@ -5,6 +5,7 @@
 import { NextRequest } from 'next/server'
 import { logContactUpdated, logContactArchived, logPipelineStageChanged, logStatusChanged } from '@/lib/activities-logger'
 import { createServerClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
 
 const ALLOWED_UPDATE_FIELDS = new Set([
   'first_name', 'last_name', 'email', 'phone_mobile', 'phone_office',
@@ -13,7 +14,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'source', 'status', 'notes',
   'assigned_user_id', 'qualität', 'bestandskunde',
   'pipeline_stage', 'pipeline_steps',
-  'qualität', 'bestandskunde', 'jahresumsatz', 'mitarbeitanzahl', 'versicherungstyp', 'assigned_user_name',
+  'qualität', 'bestandskunde', 'jahresumsatz', 'mitarbeitanzahl', 'versicherungstyp',
   'klicktipp_id', 'klicktipp_tags', 'klicktipp_tag_ids', 'klicktipp_last_sync',
   'dialfire_id', 'dialfire_updated_at',
   'automation_disabled', 'dialfire_campaign_auto', 'dialfire_campaign_id', 'dialfire_task_auto', 'dialfire_task_name_field', 'klicktipp_tags_auto', 'klicktipp_tags_field',
@@ -78,14 +79,14 @@ export async function GET(
     // Aktivitäten laden
     const { data: activities } = await supabase
       .from('activities')
-      .select('*')
+      .select('*, user:user_id(name)')
       .eq('lead_id', id)
       .order('created_at', { ascending: false })
 
     // Aufgaben laden
     const { data: tasks } = await supabase
       .from('tasks')
-      .select('*')
+      .select('*, assigned_user:assigned_user_id(name)')
       .eq('contact_id', id)
       .order('created_at', { ascending: false })
 
@@ -187,6 +188,8 @@ export async function PATCH(
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }
 
+    const currentUser = await getCurrentUser()
+
     // Aktivität loggen (optional)
     try {
       if (raw.pipeline_stage) {
@@ -195,12 +198,14 @@ export async function PATCH(
           lead_id: id,
           type: 'pipeline_change',
           description: `Prozessschritt: ${stage?.label || String(raw.pipeline_stage)}`,
+          user_id: currentUser?.id ?? null,
         })
       } else if (raw.status) {
         await supabase.from('activities').insert({
           lead_id: id,
           type: 'status_change',
           description: `Status geändert zu: ${raw.status}`,
+          user_id: currentUser?.id ?? null,
         })
       }
     } catch (e) {
@@ -210,12 +215,12 @@ export async function PATCH(
     // Log activity — wichtigste Änderungen tracken
     if (data) {
       const kontaktName = `${data.first_name} ${data.last_name}`
-      
+
       // Pipeline-Stage-Wechsel loggen
       if (raw.pipeline_stage && body.pipeline_stage !== undefined) {
         const stage = PIPELINE_STEPS_DEF.find((s: any) => s.key === raw.pipeline_stage)
         if (stage) {
-          await logPipelineStageChanged(id, kontaktName, "", String(raw.pipeline_stage), stage.label)
+          await logPipelineStageChanged(id, kontaktName, "", String(raw.pipeline_stage), stage.label, currentUser?.id)
         }
       }
     }
@@ -285,7 +290,8 @@ export async function DELETE(
       }
     }
 
-    await logContactArchived(id, `${kontakt.first_name} ${kontakt.last_name}`, archiveTasks === true)
+    const currentUser = await getCurrentUser()
+    await logContactArchived(id, `${kontakt.first_name} ${kontakt.last_name}`, archiveTasks === true, currentUser?.id)
 
     return Response.json({ success: true, data: { archived: true, tasksArchived: archiveTasks === true } })
   } catch (err) {

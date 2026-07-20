@@ -5,6 +5,7 @@ import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { executeAutomation } from '@/lib/automation-engine'
 import { logActivity, logContactCreated } from '@/lib/activities-logger'
+import { getCurrentUser } from '@/lib/auth'
 import { syncContactToKlickTipp } from '@/lib/klicktipp-client'
 import { detectTestContact } from '@/lib/test-data'
 
@@ -298,7 +299,8 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     if (data?.id) {
-      await logContactCreated(data.id, `${data.first_name} ${data.last_name}`)
+      const currentUser = await getCurrentUser()
+      await logContactCreated(data.id, `${data.first_name} ${data.last_name}`, currentUser?.id)
     }
 
     // Execute automation rules (if not disabled)

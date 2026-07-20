@@ -3,6 +3,7 @@
 import { NextRequest } from 'next/server'
 import { logContactRestored } from '@/lib/activities-logger'
 import { createServerClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function POST(
   request: NextRequest,
@@ -45,7 +46,8 @@ export async function POST(
       }
     }
 
-    await logContactRestored(id, `${kontakt.first_name} ${kontakt.last_name}`)
+    const currentUser = await getCurrentUser()
+    await logContactRestored(id, `${kontakt.first_name} ${kontakt.last_name}`, currentUser?.id)
 
     return Response.json({ success: true, data: { restored: true, tasksRestored: restoreTasks === true } })
   } catch (err) {

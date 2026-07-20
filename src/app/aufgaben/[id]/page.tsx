@@ -12,9 +12,15 @@ interface Aufgabe {
   status: 'offen' | 'in_bearbeitung' | 'erledigt'
   priorität: 'niedrig' | 'mittel' | 'hoch'
   fällig: string
+  assigned_user_id?: string
   assigned_user?: { name: string }
   created_at: string
   updated_at: string
+}
+
+interface TeamMember {
+  id: string
+  name: string
 }
 
 const STATUS_COLORS = {
@@ -52,10 +58,12 @@ export default function AufgabeDetailPage() {
   const [form, setForm] = useState<Partial<Aufgabe>>({})
   const [saving, setSaving] = useState(false)
   const [kontakte, setKontakte] = useState<any[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
 
   useEffect(() => {
     loadAufgabe()
     loadKontakte()
+    loadTeamMembers()
   }, [aufgabeId])
 
   async function loadAufgabe() {
@@ -81,6 +89,16 @@ export default function AufgabeDetailPage() {
       if (json.success) setKontakte(json.data)
     } catch (err) {
       console.error('Fehler beim Laden der Kontakte:', err)
+    }
+  }
+
+  async function loadTeamMembers() {
+    try {
+      const res = await fetch('/api/users')
+      const json = await res.json()
+      if (json.success) setTeamMembers(json.data)
+    } catch (err) {
+      console.error('Fehler beim Laden der Team-Mitglieder:', err)
     }
   }
 
@@ -245,6 +263,21 @@ export default function AufgabeDetailPage() {
               </select>
             </div>
 
+            {/* Verantwortlicher */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Verantwortlicher</label>
+              <select
+                value={form.assigned_user_id || ''}
+                onChange={(e) => setForm({ ...form, assigned_user_id: e.target.value || undefined })}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              >
+                <option value="">-- Wählen --</option>
+                {teamMembers.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Buttons */}
             <div className="flex gap-3 pt-4 border-t border-gray-100">
               <button
@@ -301,6 +334,10 @@ export default function AufgabeDetailPage() {
                   </Link>
                 </div>
               )}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Verantwortlicher</h3>
+                <p className="text-gray-900">{aufgabe.assigned_user?.name || '—'}</p>
+              </div>
             </div>
           </div>
         )}

@@ -232,19 +232,20 @@ export default function AufgabenPage() {
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Priorität</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Status</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Fällig</th>
+                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Verantwortlicher</th>
                 <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Aktionen</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-gray-400 py-16 text-sm">
+                  <td colSpan={7} className="text-center text-gray-400 py-16 text-sm">
                     Aufgaben werden geladen…
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16">
+                  <td colSpan={7} className="text-center py-16">
                     <p className="text-gray-400 text-sm">
                       {aufgaben.length === 0 ? 'Noch keine Aufgaben vorhanden.' : 'Keine Aufgaben gefunden.'}
                     </p>
@@ -293,6 +294,7 @@ export default function AufgabenPage() {
                         </span>
                       )}
                     </td>
+                    <td className="px-5 py-3.5 text-gray-600 text-xs">{aufgabe.assigned_user_name}</td>
                     <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setDeleteConfirm(aufgabe.id)}

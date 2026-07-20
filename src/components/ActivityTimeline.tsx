@@ -6,6 +6,7 @@ interface Activity {
   description: string
   data?: Record<string, any>
   created_at: string
+  user?: { name: string } | null
 }
 
 interface ActivityTimelineProps {
@@ -64,6 +65,7 @@ export function ActivityTimeline({ activities }: ActivityTimelineProps) {
               <p className="text-xs text-gray-400">
                 {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
               </p>
+              <span className="text-xs text-gray-400">· {akt.user?.name || 'System'}</span>
               {akt.type && (
                 <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getActivityColor(akt.type)}`}>
                   {akt.type.replace('_', ' ')}

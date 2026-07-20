@@ -39,7 +39,8 @@ export async function logActivity(
   contactId: string | null,
   type: ActivityType,
   description: string,
-  data?: ActivityData
+  data?: ActivityData,
+  userId?: string | null
 ) {
   try {
     const supabase = createServerClient()
@@ -57,6 +58,7 @@ export async function logActivity(
         type,
         description,
         data: data || {},
+        user_id: userId ?? null,
         created_at: new Date().toISOString(),
       },
     ])
@@ -69,13 +71,14 @@ export async function logActivity(
 /**
  * Kontakt erstellt
  */
-export async function logContactCreated(contactId: string, contactName: string) {
+export async function logContactCreated(contactId: string, contactName: string, userId?: string | null) {
   await logActivity(
     null,
     contactId,
     'contact_created',
     `Kontakt erstellt: ${contactName}`,
-    { name: contactName }
+    { name: contactName },
+    userId
   )
 }
 
@@ -85,7 +88,8 @@ export async function logContactCreated(contactId: string, contactName: string) 
 export async function logContactUpdated(
   contactId: string,
   contactName: string,
-  changes: Record<string, { old: any; new: any }>
+  changes: Record<string, { old: any; new: any }>,
+  userId?: string | null
 ) {
   const changeDescriptions = Object.entries(changes)
     .map(([field, { old: oldVal, new: newVal }]) => `${field}: ${oldVal} → ${newVal}`)
@@ -96,20 +100,22 @@ export async function logContactUpdated(
     contactId,
     'contact_updated',
     `Kontakt aktualisiert: ${contactName}. Änderungen: ${changeDescriptions}`,
-    { changes }
+    { changes },
+    userId
   )
 }
 
 /**
  * Kontakt gelöscht
  */
-export async function logContactDeleted(contactId: string, contactName: string) {
+export async function logContactDeleted(contactId: string, contactName: string, userId?: string | null) {
   await logActivity(
     null,
     contactId,
     'contact_deleted',
     `Kontakt gelöscht: ${contactName}`,
-    { name: contactName }
+    { name: contactName },
+    userId
   )
 }
 
@@ -119,27 +125,30 @@ export async function logContactDeleted(contactId: string, contactName: string) 
 export async function logContactArchived(
   contactId: string,
   contactName: string,
-  tasksArchived: boolean
+  tasksArchived: boolean,
+  userId?: string | null
 ) {
   await logActivity(
     null,
     contactId,
     'contact_archived',
     `Kontakt archiviert: ${contactName}${tasksArchived ? ' (inkl. Aufgaben)' : ''}`,
-    { name: contactName, tasksArchived }
+    { name: contactName, tasksArchived },
+    userId
   )
 }
 
 /**
  * Kontakt aus dem Archiv wiederhergestellt
  */
-export async function logContactRestored(contactId: string, contactName: string) {
+export async function logContactRestored(contactId: string, contactName: string, userId?: string | null) {
   await logActivity(
     null,
     contactId,
     'contact_restored',
     `Kontakt wiederhergestellt: ${contactName}`,
-    { name: contactName }
+    { name: contactName },
+    userId
   )
 }
 
@@ -151,14 +160,16 @@ export async function logPipelineStageChanged(
   contactName: string,
   oldStage: string,
   newStage: string,
-  stageLabel: string
+  stageLabel: string,
+  userId?: string | null
 ) {
   await logActivity(
     null,
     contactId,
     'pipeline_stage_changed',
     `Prozessschritt geändert: ${contactName} → ${stageLabel}`,
-    { oldStage, newStage, stageLabel }
+    { oldStage, newStage, stageLabel },
+    userId
   )
 }
 
@@ -169,14 +180,16 @@ export async function logPipelineStepCompleted(
   contactId: string,
   contactName: string,
   stepLabel: string,
-  completedAt: string
+  completedAt: string,
+  userId?: string | null
 ) {
   await logActivity(
     null,
     contactId,
     'pipeline_step_completed',
     `Schritt erledigt: ${contactName} — ${stepLabel}`,
-    { stepLabel, completedAt }
+    { stepLabel, completedAt },
+    userId
   )
 }
 
@@ -186,14 +199,16 @@ export async function logPipelineStepCompleted(
 export async function logTaskCreated(
   contactId: string,
   contactName: string,
-  taskTitle: string
+  taskTitle: string,
+  userId?: string | null
 ) {
   await logActivity(
     null,
     contactId,
     'task_created',
     `Aufgabe erstellt für ${contactName}: ${taskTitle}`,
-    { taskTitle }
+    { taskTitle },
+    userId
   )
 }
 
@@ -204,14 +219,16 @@ export async function logFileUploaded(
   contactId: string,
   contactName: string,
   fileName: string,
-  category?: string
+  category?: string,
+  userId?: string | null
 ) {
   await logActivity(
     null,
     contactId,
     'file_uploaded',
     `Datei abgelegt für ${contactName}: ${fileName}${category ? ` (${category})` : ''}`,
-    { fileName, category }
+    { fileName, category },
+    userId
   )
 }
 
@@ -220,14 +237,16 @@ export async function logFileUploaded(
  */
 export async function logNoteUpdated(
   contactId: string,
-  contactName: string
+  contactName: string,
+  userId?: string | null
 ) {
   await logActivity(
     null,
     contactId,
     'note_updated',
     `Notiz aktualisiert für ${contactName}`,
-    {}
+    {},
+    userId
   )
 }
 
@@ -238,13 +257,15 @@ export async function logStatusChanged(
   contactId: string,
   contactName: string,
   oldStatus: string,
-  newStatus: string
+  newStatus: string,
+  userId?: string | null
 ) {
   await logActivity(
     null,
     contactId,
     'status_changed',
     `Status geändert für ${contactName}: ${oldStatus} → ${newStatus}`,
-    { oldStatus, newStatus }
+    { oldStatus, newStatus },
+    userId
   )
 }

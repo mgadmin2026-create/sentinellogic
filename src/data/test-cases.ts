@@ -230,4 +230,20 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: ['ändert den eigenen Namen, lehnt ein falsches aktuelles Passwort ab und ändert das Passwort erfolgreich'],
   },
+  {
+    id: 'E2E-014',
+    name: 'Verantwortlicher bei Kontakten und Aufgaben',
+    description: 'Prüft die Team-Zuweisung: Kontakte lassen sich einem Team-Mitglied zuordnen, Aufgaben verlangen zwingend einen Verantwortlichen.',
+    steps: [
+      'Aktive Team-Mitglieder über die API laden.',
+      'Einen Testkontakt anlegen und einem Team-Mitglied zuweisen, Zuweisung über die API prüfen.',
+      'Eine Aufgabe ohne Verantwortlichen anlegen — muss abgelehnt werden (HTTP 400).',
+      'Eine Aufgabe mit Verantwortlichem anlegen — muss erfolgreich sein und den Namen des Verantwortlichen mitliefern.',
+    ],
+    area: 'Kontaktverwaltung',
+    priority: 'Hoch',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: ['weist einen Kontakt einem Team-Mitglied zu und erzwingt einen Verantwortlichen bei Aufgaben'],
+  },
 ]

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { uploadDocumentToGoogleDrive, getOrdnerstruktur, renameFileInGoogleDrive, deleteFileFromGoogleDrive, type OrdnerstrukturNode } from '@/lib/google-drive-oauth'
 import { logFileUploaded } from '@/lib/activities-logger'
+import { getCurrentUser } from '@/lib/auth'
 import { analysiereVersicherungsdokument } from '@/lib/ki-upload'
 
 function flatten(nodes: OrdnerstrukturNode[]): string[] {
@@ -258,11 +259,13 @@ export async function POST(
 
     // Aktivität loggen
     try {
+      const currentUser = await getCurrentUser()
       await logFileUploaded(
         kontaktId,
         kontaktName,
         file.name,
-        `${uploadResult.compressionRatio}% komprimiert`
+        `${uploadResult.compressionRatio}% komprimiert`,
+        currentUser?.id
       )
     } catch (logErr) {
       console.warn('[Dokumente] Activity-Log fehlgeschlagen:', logErr)

@@ -18,6 +18,11 @@ interface Kontakt {
   last_name: string
 }
 
+interface TeamMember {
+  id: string
+  name: string
+}
+
 interface Props {
   kontaktId?: string
   isOpen: boolean
@@ -36,12 +41,14 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
     assigned_user_id: undefined,
   })
   const [kontakte, setKontakte] = useState<Kontakt[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (isOpen) {
       loadKontakte()
+      loadTeamMembers()
     }
   }, [isOpen])
 
@@ -52,6 +59,16 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
       if (json.success) setKontakte(json.data)
     } catch (err) {
       console.error('Fehler beim Laden der Kontakte:', err)
+    }
+  }
+
+  async function loadTeamMembers() {
+    try {
+      const res = await fetch('/api/users')
+      const json = await res.json()
+      if (json.success) setTeamMembers(json.data)
+    } catch (err) {
+      console.error('Fehler beim Laden der Team-Mitglieder:', err)
     }
   }
 
@@ -157,6 +174,21 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
             </select>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Verantwortlicher *</label>
+            <select
+              data-testid="task-assigned-user"
+              required
+              value={form.assigned_user_id || ''}
+              onChange={(e) => setForm({ ...form, assigned_user_id: e.target.value || undefined })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+            >
+              <option value="">-- Wählen --</option>
+              {teamMembers.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </div>
 
           <div className="flex gap-3 pt-4 border-t border-gray-100">
             <button

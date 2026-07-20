@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, memo } from 'react'
+import { useState, useCallback, useEffect, memo } from 'react'
 
 interface Kontakt {
   id: string
@@ -22,7 +22,7 @@ interface Kontakt {
   website?: string
   source?: string
   status: string
-  assigned_user_name?: string
+  assigned_user_id?: string
   qualität?: string
   bestandskunde?: boolean
   jahresumsatz?: string
@@ -107,18 +107,28 @@ interface FieldProps {
   label: string
   field: string
   type?: string
-  options?: string[]
+  options?: string[] | { value: string; label: string }[]
   value: any
   onChange: (field: string, value: any) => void
   isEditing: boolean
 }
 
+function normalizeOptions(options?: FieldProps['options']): { value: string; label: string }[] {
+  if (!options) return []
+  return options.map((opt) => (typeof opt === 'string' ? { value: opt, label: opt } : opt))
+}
+
 const Field = memo(({ label, field, type = 'text', options, value, onChange, isEditing }: FieldProps) => {
+  const normalizedOptions = normalizeOptions(options)
+
   if (!isEditing) {
+    const displayValue = type === 'select'
+      ? normalizedOptions.find((opt) => opt.value === value)?.label || value
+      : value
     return (
       <div data-testid={`contact-field-${field}`}>
         <p className="text-xs text-gray-500 font-medium">{label}</p>
-        <p className="text-sm text-gray-900 mt-1">{value || '—'}</p>
+        <p className="text-sm text-gray-900 mt-1">{displayValue || '—'}</p>
       </div>
     )
   }
@@ -133,7 +143,7 @@ const Field = memo(({ label, field, type = 'text', options, value, onChange, isE
           className="w-full px-2 py-1 mt-1 text-sm border-2 border-yellow-300 rounded bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
         >
           <option value="">—</option>
-          {options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          {normalizedOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
         </select>
       </div>
     )
@@ -214,6 +224,14 @@ interface Props {
 export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChange }: Props) {
   const [editData, setEditData] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/users')
+      .then((res) => res.json())
+      .then((json) => { if (json.success) setTeamMembers(json.data) })
+      .catch((err) => console.error('Fehler beim Laden der Team-Mitglieder:', err))
+  }, [])
 
   // Accordion state — Datensektionen standardmäßig offen, nur Technisches (Integrations) zu
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -293,7 +311,15 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           </div>
 
           {/* Verantwortlicher */}
-          <Field label="Verantwortlicher" field="assigned_user_name" value={getValue('assigned_user_name')} onChange={handleChange} isEditing={isEditing} />
+          <Field
+            label="Verantwortlicher"
+            field="assigned_user_id"
+            type="select"
+            options={teamMembers.map((m) => ({ value: m.id, label: m.name }))}
+            value={getValue('assigned_user_id')}
+            onChange={handleChange}
+            isEditing={isEditing}
+          />
         </div>
       </div>
 

@@ -27,8 +27,15 @@ TABELLE contacts  — Kontakte/Leads (Haupttabelle, jeder Kunde/Interessent)
   mitarbeitanzahl int, jahresumsatz numeric, jahreseinkommen numeric
   dialfire_id text, dialfire_campaign_id text
   dialfire_last_call_at timestamptz, dialfire_last_call_status text, dialfire_disposition text
+  assigned_user_id uuid  -- Verantwortlicher Mitarbeiter (Join: contacts.assigned_user_id = users.id)
   archived_at timestamptz    -- NULL = aktiv, sonst Zeitpunkt der Archivierung (Soft-Delete)
   created_at timestamptz, updated_at timestamptz
+
+TABELLE users  — Team-Mitglieder (Agentur-Accounts)
+  id uuid, email text, name text
+  role text       -- 'admin' | 'mitarbeiter' (freies Textfeld, weitere Rollen möglich)
+  active boolean
+  created_at timestamptz
 
 TABELLE tags  — Interne, frei vergebbare Kontakt-Tags (kein Bezug zu KlickTipp-Tags)
   id uuid, name text
@@ -44,6 +51,7 @@ TABELLE activities  — Aktivitäts-/Audit-Log pro Kontakt
   type text             -- z.B. 'contact_created','status_changed','dialfire_synced','email_sent', ...
   description text
   data jsonb
+  user_id uuid           -- Wer die Aktion ausgeführt hat; NULL = automatisiert/System (Join: activities.user_id = users.id)
   created_at timestamptz
 
 TABELLE tasks  — Aufgaben
@@ -52,7 +60,7 @@ TABELLE tasks  — Aufgaben
   status text            -- 'offen','in_bearbeitung','erledigt'
   "priorität" text       -- 'niedrig','mittel','hoch'
   "fällig" date          -- Fälligkeitsdatum
-  assigned_user_name text
+  assigned_user_id uuid  -- Verantwortlicher Mitarbeiter, Pflichtfeld (Join: tasks.assigned_user_id = users.id)
   archived_at timestamptz    -- NULL = aktiv, sonst mit dem Kontakt mitarchiviert
   created_at timestamptz, updated_at timestamptz
 
@@ -82,7 +90,10 @@ TABELLE dialfire_sync_log  — Dialfire-Sync-Protokoll
 
 Beziehungen:
   activities.lead_id       -> contacts.id
+  activities.user_id       -> users.id
   tasks.contact_id         -> contacts.id
+  tasks.assigned_user_id   -> users.id
+  contacts.assigned_user_id -> users.id
   opportunities.contact_id -> contacts.id
   contracts.contact_id     -> contacts.id
   dialfire_sync_log.contact_id -> contacts.id
