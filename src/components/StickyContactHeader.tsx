@@ -205,6 +205,7 @@ export function StickyContactHeader({
 
             {/* Bearbeiten Button */}
             <button
+              data-testid="contact-edit-toggle"
               onClick={() => onEditChange(!isEditing)}
               className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all ${
                 isEditing

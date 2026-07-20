@@ -12,7 +12,7 @@ test.describe('Kontaktdetail: Stammdaten bearbeiten', () => {
     const changedLastName = `${contact.last_name}-Geaendert`
 
     await page.goto(`/kontakte/${created.id}`)
-    await page.getByRole('button', { name: '✏️ Bearbeiten' }).click()
+    await page.getByTestId('contact-edit-toggle').click()
     await page.getByTestId('contact-field-last_name').locator('input').fill(changedLastName)
     await page.getByTestId('contact-field-status').locator('select').selectOption('qualified')
     await page.getByRole('button', { name: 'Speichern', exact: true }).click()
@@ -38,9 +38,9 @@ test.describe('Kontaktverwaltung: Detailnavigation', () => {
 
     await page.goto('/kontakte')
     await page.getByPlaceholder('Nach Name, E-Mail oder Firma suchen…').fill(contact.email)
-    const contactLink = page.locator(`a[href="/kontakte/${created.id}"]`).filter({ visible: true })
-    await expect(contactLink).toBeVisible()
-    await contactLink.click()
+    const contactRow = page.getByTestId('kontakte-tabelle').getByTestId(`kontakt-row-${created.id}`)
+    await expect(contactRow).toBeVisible()
+    await contactRow.click()
 
     await expect(page).toHaveURL(`/kontakte/${created.id}`)
     await expect(page.getByRole('heading', { name: `${contact.first_name} ${contact.last_name}` })).toBeVisible()

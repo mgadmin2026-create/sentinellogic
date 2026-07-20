@@ -1097,6 +1097,7 @@ export default function KontaktePage() {
                 filtered.map((kontakt) => (
                   <tr
                     key={kontakt.id}
+                    data-testid={`kontakt-row-${kontakt.id}`}
                     onClick={() => router.push(`/kontakte/${kontakt.id}`)}
                     onMouseEnter={() => setHoveredRowId(kontakt.id)}
                     onMouseLeave={() => setHoveredRowId(null)}
@@ -1138,7 +1139,7 @@ export default function KontaktePage() {
                           )
                         } else if (key === 'status') {
                           displayContent = kontakt.archived_at ? (
-                            <span className="inline-flex text-xs font-medium px-2 py-1 rounded-full bg-gray-200 text-gray-600">
+                            <span data-testid="contact-archive-status" className="inline-flex text-xs font-medium px-2 py-1 rounded-full bg-gray-200 text-gray-600">
                               Archiviert
                             </span>
                           ) : (

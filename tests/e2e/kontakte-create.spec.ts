@@ -13,10 +13,10 @@ test.describe('Kontakte: Neuanlage', () => {
     await page.getByRole('button', { name: 'Neu', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Neuer Kontakt' })).toBeVisible()
 
-    await page.getByPlaceholder('Max').fill(contact.first_name)
-    await page.getByPlaceholder('Mustermann').fill(contact.last_name)
-    await page.getByPlaceholder('max@example.com').fill(contact.email)
-    await page.getByPlaceholder('Beispiel GmbH').fill(contact.company_name)
+    await page.getByPlaceholder('Max', { exact: true }).fill(contact.first_name)
+    await page.getByPlaceholder('Mustermann', { exact: true }).fill(contact.last_name)
+    await page.getByPlaceholder('max@example.com', { exact: true }).fill(contact.email)
+    await page.getByPlaceholder('Beispiel GmbH', { exact: true }).fill(contact.company_name)
     await page.getByRole('button', { name: 'Kontakt erstellen' }).click()
 
     await expect(page.getByRole('heading', { name: 'Neuer Kontakt' })).not.toBeVisible()

@@ -134,9 +134,10 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Migration `0042_test_case_control.sql` auf Live-Supabase angewendet
 - [x] E2E-002 und E2E-003 für Kontaktanlage sowie Stammdaten-/Statusänderung automatisiert und aktiviert
 - [x] Kontaktverwaltung und Kontaktdetailseite mit E2E-011 (Detailnavigation) und E2E-012 (Aufgabenanlage) erweitert
+- [x] Playwright-Selektoren für Kontaktanlage, Detailnavigation, Bearbeitung, Archivstatus und Tag-Chips stabilisiert
 
 **Nächste Aufgabe:**
-→ Vollständigen Regressionstest ausführen, neue Kontakt-Szenarien auswerten und die zwei bekannten Selektorfehler für Archivstatus und Tag-Chip stabilisieren
+→ Vollständigen Regressionstest erneut ausführen und verbleibende fachliche Fehler beschreiben
 
 -----
 

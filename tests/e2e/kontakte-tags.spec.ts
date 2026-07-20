@@ -22,7 +22,7 @@ test.describe('Kontakte: Tags', () => {
       const tagInput = page.getByPlaceholder('Tag hinzufügen…')
       await tagInput.fill(tagName)
       await tagInput.press('Enter')
-      await expect(page.getByText(tagName, { exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: `Tag ${tagName} entfernen` })).toBeVisible()
 
       const tagsRes = await request.get(`/api/kontakt-tags?search=${encodeURIComponent(tagName)}`)
       const tagsJson = await tagsRes.json()
@@ -31,7 +31,7 @@ test.describe('Kontakte: Tags', () => {
 
       // Persistenz nach Reload (Beweis für den PUT-/GET-Roundtrip)
       await page.reload()
-      await expect(page.getByText(tagName, { exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: `Tag ${tagName} entfernen` })).toBeVisible()
 
       // Filter in der Kontaktliste
       await page.goto('/kontakte')
@@ -45,7 +45,7 @@ test.describe('Kontakte: Tags', () => {
       await expectOk(renameRes, 'Tag umbenennen')
 
       await page.goto(`/kontakte/${created.id}`)
-      await expect(page.getByText(renamedName, { exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: `Tag ${renamedName} entfernen` })).toBeVisible()
     } finally {
       if (tagId) {
         await request.delete(`/api/kontakt-tags/${tagId}`)

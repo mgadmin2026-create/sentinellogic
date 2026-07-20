@@ -33,7 +33,7 @@ test.describe('Kontakte: Archivieren', () => {
     // "Archivierte anzeigen" -> Kontakt erscheint wieder, mit Badge
     await page.getByText('Archivierte anzeigen').click()
     await expect(tabelle.getByText(fullName)).toBeVisible()
-    await expect(tabelle.getByText('Archiviert', { exact: true })).toBeVisible()
+    await expect(tabelle.getByTestId('contact-archive-status')).toBeVisible()
 
     // Verknüpfte Aufgabe wurde mitarchiviert
     const detailRes = await request.get(`/api/kontakte/${created.id}`)
