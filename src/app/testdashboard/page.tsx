@@ -1,21 +1,10 @@
 'use client'
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import type { TestRunRecord, TestRunsResponse, TestRunStatus } from '@/types/test-dashboard'
+import { TEST_CASES, type TestCaseDefinition, type TestPriority } from '@/data/test-cases'
+import type { TestResultRecord, TestRunRecord, TestRunsResponse, TestRunStatus } from '@/types/test-dashboard'
 
 type DashboardTab = 'testfaelle' | 'durchfuehrungen' | 'umgebung'
-type TestPriority = 'Kritisch' | 'Hoch' | 'Mittel'
-type TestState = 'Geplant' | 'Bereit'
-
-interface TestCase {
-  id: string
-  name: string
-  area: string
-  priority: TestPriority
-  state: TestState
-  kind: string
-}
-
 interface TestEnvironmentStatus {
   configured: boolean
   ready: boolean
@@ -24,19 +13,6 @@ interface TestEnvironmentStatus {
   lastRunId?: string | null
   message: string
 }
-
-const TEST_CASES: TestCase[] = [
-  { id: 'E2E-001', name: 'Testdashboard und Testbetrieb anzeigen', area: 'Qualitätssicherung', priority: 'Kritisch', state: 'Bereit', kind: 'E2E' },
-  { id: 'E2E-002', name: 'Lead anlegen und wiederfinden', area: 'Kontakte', priority: 'Kritisch', state: 'Geplant', kind: 'E2E' },
-  { id: 'E2E-003', name: 'Lead bearbeiten und Status ändern', area: 'Kontakte', priority: 'Kritisch', state: 'Geplant', kind: 'E2E' },
-  { id: 'E2E-004', name: 'Geschützte Seite ohne Anmeldung blockieren', area: 'Berechtigungen', priority: 'Hoch', state: 'Geplant', kind: 'E2E' },
-  { id: 'E2E-005', name: 'Fehlerfall einer Integration behandeln', area: 'Integrationen', priority: 'Hoch', state: 'Geplant', kind: 'E2E' },
-  { id: 'E2E-006', name: 'Kontakt archivieren, Aufgabe mitarchivieren, wiederherstellen', area: 'Kontakte', priority: 'Kritisch', state: 'Bereit', kind: 'E2E' },
-  { id: 'E2E-007', name: 'Kopieren-Button bleibt entfernt (Regression)', area: 'Kontakte', priority: 'Mittel', state: 'Bereit', kind: 'E2E' },
-  { id: 'E2E-008', name: 'CSV-Import mit erweiterten Feldern über /kontakte', area: 'Kontakte', priority: 'Hoch', state: 'Bereit', kind: 'E2E' },
-  { id: 'E2E-009', name: 'Export als CSV/Excel/PDF', area: 'Kontakte', priority: 'Hoch', state: 'Bereit', kind: 'E2E' },
-  { id: 'E2E-010', name: 'Tag anlegen, zuweisen, filtern, umbenennen', area: 'Kontakte', priority: 'Mittel', state: 'Bereit', kind: 'E2E' },
-]
 
 const PRIORITY_STYLES: Record<TestPriority, string> = {
   Kritisch: 'bg-red-50 text-red-700 ring-red-600/10',
@@ -99,6 +75,28 @@ function formatDate(value: string): string {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
+}
+
+interface TestCaseExecution {
+  run: TestRunRecord
+  status: TestRunStatus
+}
+
+function combineResultStatus(results: TestResultRecord[]): TestRunStatus {
+  if (results.some((result) => result.status === 'failed')) return 'failed'
+  if (results.some((result) => result.status === 'interrupted')) return 'interrupted'
+  if (results.every((result) => result.status === 'passed')) return 'passed'
+  return 'skipped'
+}
+
+function getTestCaseExecutions(testCase: TestCaseDefinition, runs: TestRunRecord[]): TestCaseExecution[] {
+  if (testCase.resultTitles.length === 0) return []
+
+  return runs.flatMap((run) => {
+    const matchingResults = run.results.filter((result) => testCase.resultTitles.includes(result.title))
+    if (matchingResults.length === 0) return []
+    return [{ run, status: combineResultStatus(matchingResults) }]
+  })
 }
 
 function RunsView({ runs, loading, error }: { runs: TestRunRecord[]; loading: boolean; error: string | null }) {
@@ -264,6 +262,7 @@ export default function TestdashboardPage() {
   })
   const [runsLoading, setRunsLoading] = useState(true)
   const [runsError, setRunsError] = useState<string | null>(null)
+  const [expandedCaseIds, setExpandedCaseIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     let active = true
@@ -309,11 +308,25 @@ export default function TestdashboardPage() {
   const filteredCases = useMemo(() => {
     const query = search.trim().toLowerCase()
     return TEST_CASES.filter((testCase) => {
-      const matchesSearch = !query || `${testCase.id} ${testCase.name} ${testCase.area}`.toLowerCase().includes(query)
+      const searchableText = `${testCase.id} ${testCase.name} ${testCase.description} ${testCase.steps.join(' ')} ${testCase.area}`
+      const matchesSearch = !query || searchableText.toLowerCase().includes(query)
       const matchesPriority = priority === 'Alle' || testCase.priority === priority
       return matchesSearch && matchesPriority
     })
   }, [priority, search])
+
+  const executionsByCase = useMemo(() => new Map(
+    TEST_CASES.map((testCase) => [testCase.id, getTestCaseExecutions(testCase, testRuns.runs)])
+  ), [testRuns.runs])
+
+  function toggleTestCase(testCaseId: string) {
+    setExpandedCaseIds((current) => {
+      const next = new Set(current)
+      if (next.has(testCaseId)) next.delete(testCaseId)
+      else next.add(testCaseId)
+      return next
+    })
+  }
 
   const tabs: Array<{ id: DashboardTab; label: string; count?: number }> = [
     { id: 'testfaelle', label: 'Testfälle', count: TEST_CASES.length },
@@ -437,30 +450,118 @@ export default function TestdashboardPage() {
               </div>
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
+                <table className="w-full min-w-[1120px] text-left text-sm">
                   <thead className="bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-6 py-3">ID</th>
                       <th className="px-6 py-3">Testfall</th>
                       <th className="px-6 py-3">Bereich</th>
-                      <th className="px-6 py-3">Typ</th>
                       <th className="px-6 py-3">Priorität</th>
-                      <th className="px-6 py-3">Status</th>
+                      <th className="px-6 py-3">Automatisierung</th>
+                      <th className="px-6 py-3">Durchführungen</th>
+                      <th className="px-6 py-3 text-right">Testschritte</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {filteredCases.map((testCase) => (
-                      <tr key={testCase.id} className="transition-colors hover:bg-gray-50/70">
-                        <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-gray-500">{testCase.id}</td>
-                        <td className="px-6 py-4 font-semibold text-gray-900">{testCase.name}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-gray-600">{testCase.area}</td>
-                        <td className="px-6 py-4"><span className="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] font-semibold text-gray-600">{testCase.kind}</span></td>
-                        <td className="px-6 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${PRIORITY_STYLES[testCase.priority]}`}>{testCase.priority}</span></td>
-                        <td className="px-6 py-4"><span className={`inline-flex items-center gap-1.5 text-xs font-medium ${testCase.state === 'Bereit' ? 'text-emerald-700' : 'text-gray-500'}`}><span className={`h-1.5 w-1.5 rounded-full ${testCase.state === 'Bereit' ? 'bg-emerald-500' : 'bg-gray-300'}`} />{testCase.state}</span></td>
-                      </tr>
-                    ))}
+                    {filteredCases.map((testCase) => {
+                      const isExpanded = expandedCaseIds.has(testCase.id)
+                      const executions = executionsByCase.get(testCase.id) ?? []
+                      const latestExecution = executions[0]
+                      const detailsId = `test-case-details-${testCase.id}`
+
+                      return (
+                        <Fragment key={testCase.id}>
+                          <tr data-testid={`testcase-${testCase.id}-row`} className="align-top transition-colors hover:bg-gray-50/70">
+                            <td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-gray-500">{testCase.id}</td>
+                            <td className="max-w-md px-6 py-4">
+                              <p className="font-semibold text-gray-900">{testCase.name}</p>
+                              <p className="mt-1 text-xs leading-5 text-gray-500">{testCase.description}</p>
+                            </td>
+                            <td className="whitespace-nowrap px-6 py-4 text-gray-600">{testCase.area}</td>
+                            <td className="px-6 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${PRIORITY_STYLES[testCase.priority]}`}>{testCase.priority}</span></td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${testCase.state === 'Bereit' ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${testCase.state === 'Bereit' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                {testCase.state} · {testCase.kind}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {latestExecution ? (
+                                <div className="min-w-[150px]">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-900">{executions.length} {executions.length === 1 ? 'Lauf' : 'Läufe'}</span>
+                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${RUN_STATUS_STYLES[latestExecution.status]}`}>
+                                      {RUN_STATUS_LABELS[latestExecution.status]}
+                                    </span>
+                                  </div>
+                                  <p className="mt-1 text-[11px] text-gray-500">Zuletzt {formatDate(latestExecution.run.completedAt)}</p>
+                                </div>
+                              ) : (
+                                <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">Noch nie durchgeführt</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button
+                                type="button"
+                                data-testid={`testcase-${testCase.id}-toggle`}
+                                aria-expanded={isExpanded}
+                                aria-controls={detailsId}
+                                onClick={() => toggleTestCase(testCase.id)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
+                              >
+                                {isExpanded ? 'Schließen' : `${testCase.steps.length} Schritte`}
+                                <svg className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                  <path d="m6 9 6 6 6-6" />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr>
+                              <td colSpan={7} className="bg-gray-50/80 px-6 py-5">
+                                <div id={detailsId} className="grid gap-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:grid-cols-[1fr_360px]">
+                                  <div>
+                                    <h3 className="text-sm font-semibold text-gray-900">Testschritte</h3>
+                                    <ol className="mt-4 space-y-3">
+                                      {testCase.steps.map((step, index) => (
+                                        <li key={step} className="flex gap-3 text-sm leading-6 text-gray-600">
+                                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFC300]/20 text-xs font-bold text-[#705600]">{index + 1}</span>
+                                          <span>{step}</span>
+                                        </li>
+                                      ))}
+                                    </ol>
+                                  </div>
+                                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                    <h3 className="text-sm font-semibold text-gray-900">Bisherige Durchführungen</h3>
+                                    {executions.length > 0 ? (
+                                      <ul data-testid="testcase-execution-history" className="mt-3 space-y-2">
+                                        {executions.slice(0, 5).map((execution) => (
+                                          <li key={execution.run.id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs">
+                                            <div className="min-w-0">
+                                              {execution.run.sourceUrl ? (
+                                                <a href={execution.run.sourceUrl} target="_blank" rel="noreferrer" className="font-mono font-semibold text-blue-700 hover:underline">{execution.run.runId}</a>
+                                              ) : <span className="font-mono font-semibold text-gray-700">{execution.run.runId}</span>}
+                                              <p className="mt-0.5 text-[11px] text-gray-400">{formatDate(execution.run.completedAt)}</p>
+                                            </div>
+                                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${RUN_STATUS_STYLES[execution.status]}`}>
+                                              {RUN_STATUS_LABELS[execution.status]}
+                                            </span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="mt-3 text-xs leading-5 text-gray-500">Für diesen Testfall wurde noch keine automatische Durchführung gespeichert.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
                     {filteredCases.length === 0 && (
-                      <tr><td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">Keine passenden Testfälle gefunden.</td></tr>
+                      <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">Keine passenden Testfälle gefunden.</td></tr>
                     )}
                   </tbody>
                 </table>

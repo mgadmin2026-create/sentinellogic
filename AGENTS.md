@@ -128,10 +128,11 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Erster Playwright-Live-Lauf erfolgreich durchgeführt
 - [x] GitHub Actions und Vercel über geschütztes Cleanup-Token verbunden
 - [x] Dauerhafte Testlauf-Historie, KPIs und Aktivitäten im Testdashboard implementiert
+- [x] Testfallbeschreibungen, aufklappbare Testschritte und testfallbezogene Durchführungshistorie im Testdashboard ergänzt
 - [x] Einzeltestergebnisse je Testlauf mit Grün-/Rot-Status im Testdashboard sichtbar gemacht
 
 **Nächste Aufgabe:**
-→ Pro neuem Feature passende Regressionstests festlegen und den Testkatalog schrittweise erweitern
+→ Zwei verbleibende Playwright-Selektoren für Archivstatus und Tag-Chip stabilisieren, danach vollständigen Regressionstest erneut ausführen
 
 -----
 

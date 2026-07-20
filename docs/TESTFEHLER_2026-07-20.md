@@ -1,4 +1,87 @@
-# Fehleranalyse Regressionstestlauf vom 20.07.2026
+# Fehleranalyse Regressionstests vom 20.07.2026
+
+## Folgeanalyse: Lauf 29740732250
+
+- Getesteter Commit: `9f33c11`
+- Ergebnis: 7 Tests, 5 erfolgreich, 2 fehlgeschlagen
+- Erfolgreich waren Testdashboard, Kopieren-Regression, CSV-Export, XLSX/PDF-Export und CSV-Import.
+- Die früheren Blocker durch kollidierende Test-E-Mails und die fehlende Speicherung von `sparte` sind in diesem Lauf nicht mehr aufgetreten.
+
+### TF-003: Archiv-Test findet zwei sichtbare Statusanzeigen
+
+**Art:** Fehler im automatisierten Test
+
+**Priorität:** Hoch, weil der vollständige Wiederherstellungsnachweis blockiert wird
+
+**Betroffener Test:** `archiviert einen Kontakt inkl. Aufgabe und stellt ihn wieder her`
+
+#### Reproduktion
+
+1. Einen markierten Testkontakt und eine verknüpfte Aufgabe anlegen.
+2. Den Kontakt über die Kontaktliste archivieren und das Mitarchivieren der Aufgabe bestätigen.
+3. Die Ansicht **Archivierte anzeigen** öffnen.
+4. Innerhalb der gesamten Kontakttabelle mit exaktem Text nach `Archiviert` suchen.
+5. Playwright findet zwei sichtbare Statusanzeigen und beendet den Test mit einer `strict mode violation`.
+
+#### Erwartetes Ergebnis
+
+Der Test prüft den Archivstatus genau am zuvor angelegten Testkontakt und fährt anschließend mit Aufgabenprüfung und Wiederherstellung fort.
+
+#### Tatsächliches Ergebnis
+
+Der Kontakt wurde archiviert, verschwand aus der Standardansicht und erschien wieder in der Archivansicht. Der Test stoppt erst in `tests/e2e/kontakte-archive.spec.ts:33`, weil sowohl ein Archiv-Badge am Kontakt als auch die Statusspalte den Text `Archiviert` anzeigen.
+
+#### Nachgewiesene Ursache
+
+Der Selektor ist nur auf die gesamte Tabelle begrenzt, nicht auf die konkrete Kontaktzeile oder eine bestimmte Statusanzeige. Die fachliche Archivierung ist bis zu dieser Stelle erfolgreich ausgeführt worden. Der Lauf weist daher keinen Anwendungsfehler der Archivierung nach.
+
+#### Empfohlene Korrektur
+
+Zuerst die Tabellenzeile des Testkontakts eindeutig über den vollständigen Namen bestimmen und anschließend innerhalb dieser Zeile ein gezieltes Statusmerkmal prüfen. Falls beide Anzeigen bewusst bestehen bleiben, sollte eine davon ein stabiles `data-testid` erhalten.
+
+#### Abnahmekriterium
+
+Der Test erreicht nach der Statusprüfung auch Aufgabenprüfung und Wiederherstellung; Kontakt und Aufgabe besitzen danach wieder `archived_at = null`.
+
+### TF-004: Tag-Chip enthält zusätzlich einen Entfernen-Button
+
+**Art:** Fehler im automatisierten Test
+
+**Priorität:** Hoch, weil der Tag-Lebenszyklus nach der Anlage nicht weiter geprüft wird
+
+**Betroffener Test:** `Tag anlegen, zuweisen, filtern und umbenennen`
+
+#### Reproduktion
+
+1. Einen markierten Testkontakt öffnen.
+2. In **Tag hinzufügen…** einen eindeutigen Namen eingeben und Enter drücken.
+3. Der Tag wird serverseitig angelegt und dem Kontakt zugeordnet.
+4. Der Test sucht mit `getByText(tagName, { exact: true })` nach einem Element, dessen gesamter Text exakt dem Tag-Namen entspricht.
+5. Das sichtbare Tag-Element enthält zusätzlich den Entfernen-Button `×`; deshalb findet der exakte Textselektor kein Element und läuft nach acht Sekunden in den Timeout.
+
+#### Erwartetes Ergebnis
+
+Der Test erkennt den zugeordneten Tag und prüft anschließend Persistenz nach Reload, Listenfilter und Umbenennung.
+
+#### Tatsächliches Ergebnis
+
+Die Live-API bestätigt sowohl die Tag-Anlage als auch die Zuordnung zum Testkontakt. Nur die UI-Assertion in `tests/e2e/kontakte-tags.spec.ts:22` schlägt fehl, bevor die weiteren Testschritte ausgeführt werden.
+
+#### Nachgewiesene Ursache
+
+Der Selektor bildet die tatsächliche Struktur des Tag-Chips nicht ab. Der Chip besteht aus Tag-Text und einem untergeordneten Button mit dem zugänglichen Namen `Tag <Name> entfernen`. Dadurch ist der gesamte sichtbare Inhalt nicht exakt gleich dem reinen Tag-Namen.
+
+#### Empfohlene Korrektur
+
+Die erfolgreiche Zuordnung über den eindeutig benannten Entfernen-Button oder über ein stabiles Tag-Chip-Testmerkmal prüfen. Die API-Antwort des PUT-Aufrufs sollte zusätzlich auf Erfolg kontrolliert werden.
+
+#### Abnahmekriterium
+
+Der Test erkennt den Tag direkt nach der Anlage sowie nach einem Reload, filtert den Kontakt über diesen Tag, prüft die Umbenennung und entfernt den Test-Tag abschließend.
+
+### Bewertung des aktuellen Laufs
+
+Die beiden roten Ergebnisse sind nachweislich Selektorprobleme der Tests. Für die geprüften Archiv- und Tag-Schritte liegen derzeit keine Hinweise auf einen Anwendungsfehler vor. Nach Korrektur der beiden Selektoren muss ein neuer Lauf bestätigen, ob die bislang nicht erreichten Folgeschritte ebenfalls funktionieren.
 
 ## Referenz
 
