@@ -10,6 +10,9 @@ test.describe('Testdashboard', () => {
 
     await page.getByTestId('testdashboard-tab-durchfuehrungen').click()
     await expect(page.getByTestId('testdashboard-tab-durchfuehrungen')).toHaveAttribute('aria-selected', 'true')
+    const latestRunDetails = page.getByTestId('latest-test-run-details')
+    await expect(latestRunDetails.getByRole('heading', { name: 'Einzeltests' })).toBeVisible()
+    await expect(latestRunDetails.locator('[data-test-result-status]')).not.toHaveCount(0)
 
     await page.getByTestId('testdashboard-tab-umgebung').click()
 
