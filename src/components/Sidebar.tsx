@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { logout } from '@/app/login/actions'
+import type { CurrentUser } from '@/lib/auth'
 
 const NAV_ITEMS = [
   {
@@ -124,7 +126,11 @@ const NAV_ITEMS = [
   },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  currentUser: CurrentUser | null
+}
+
+export default function Sidebar({ currentUser }: SidebarProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
@@ -135,6 +141,9 @@ export default function Sidebar() {
   useEffect(() => {
     setOpen(false)
   }, [pathname])
+
+  // Auf der Login-Seite gibt es keine Navigation — Seite füllt den ganzen Viewport
+  if (pathname === '/login') return null
 
   return (
     <>
@@ -226,6 +235,27 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-white/10 space-y-3">
+        {currentUser && (
+          <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/10">
+            <div className="min-w-0">
+              <p className="text-white/80 text-xs font-semibold truncate">{currentUser.name}</p>
+              <p className="text-white/30 text-[11px] truncate">{currentUser.email}</p>
+            </div>
+            <form action={logout}>
+              <button
+                type="submit"
+                title="Abmelden"
+                className="text-white/40 hover:text-[#FFC300] transition-colors p-1.5 rounded hover:bg-white/5 flex-shrink-0"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
+            </form>
+          </div>
+        )}
         <div>
           <p className="text-white/30 text-xs font-medium">Sentimental Logic</p>
           <div className="flex items-center gap-2 mt-1.5">

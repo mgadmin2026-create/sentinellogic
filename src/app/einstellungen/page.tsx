@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { isAdmin } from '@/lib/roles'
 
 const settingsSections = [
   {
@@ -32,6 +33,22 @@ const settingsSections = [
 ]
 
 export default function SettingsPage() {
+  const [userIsAdmin, setUserIsAdmin] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => r.json())
+      .then((res) => { if (res.success) setUserIsAdmin(isAdmin(res.data.role)) })
+      .catch(() => {})
+  }, [])
+
+  const sections = userIsAdmin
+    ? [
+        ...settingsSections,
+        { title: 'Team', description: 'Mitarbeiter-Konten anlegen, Rollen verwalten', href: '/einstellungen/team', icon: '👥' },
+      ]
+    : settingsSections
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
@@ -39,7 +56,7 @@ export default function SettingsPage() {
         <p className="text-gray-600 mb-8">Passe dein CRM an deine Bedürfnisse an</p>
 
         <div className="grid gap-6">
-          {settingsSections.map((section) => (
+          {sections.map((section) => (
             <div
               key={section.href}
               className={`rounded-lg border-2 transition ${
