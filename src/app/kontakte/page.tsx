@@ -317,6 +317,8 @@ export default function KontaktePage() {
   const [tagFilter, setTagFilter] = useState<string[]>([])
   const [allTags, setAllTags] = useState<{ id: string; name: string }[]>([])
   const [tagFilterOpen, setTagFilterOpen] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const [exporting, setExporting] = useState<'csv' | 'xlsx' | 'pdf' | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
@@ -622,6 +624,45 @@ export default function KontaktePage() {
     }
   }
 
+  async function handleExport(format: 'csv' | 'xlsx' | 'pdf') {
+    setExportMenuOpen(false)
+    setExporting(format)
+    try {
+      const params = new URLSearchParams()
+      params.set('format', format)
+      if (activeFilter !== 'all') params.set('status', activeFilter)
+      if (search) params.set('search', search)
+      if (sourceFilter !== 'all') params.set('source', sourceFilter)
+      if (typFilter !== 'all') params.set('kontakt_typ', typFilter)
+      if (stageFilter !== 'all') params.set('pipeline_stage', stageFilter)
+      if (sparteFilter !== 'all') params.set('sparte', sparteFilter)
+      if (pruefungFilter !== 'all') params.set('pruefung_grund', pruefungFilter)
+      if (tagFilter.length > 0) params.set('tags', tagFilter.join(','))
+      if (showArchived) params.set('includeArchived', 'true')
+
+      const res = await fetch(`/api/kontakte/export?${params.toString()}`)
+      if (!res.ok) throw new Error('Export fehlgeschlagen')
+
+      const blob = await res.blob()
+      const disposition = res.headers.get('Content-Disposition') || ''
+      const match = disposition.match(/filename="([^"]+)"/)
+      const filename = match?.[1] || `kontakte_export.${format}`
+
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Fehler beim Export:', err)
+    } finally {
+      setExporting(null)
+    }
+  }
+
   async function handleStatusChange(kontaktId: string, newStatus: string) {
     try {
       const res = await fetch(`/api/kontakte/${kontaktId}`, {
@@ -796,6 +837,29 @@ export default function KontaktePage() {
           >
             ⚙️ Spalten
           </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setExportMenuOpen((v) => !v)}
+              disabled={exporting !== null}
+              className="px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap disabled:opacity-50"
+            >
+              {exporting ? `⏳ ${exporting.toUpperCase()}…` : '⬇ Exportieren'}
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 z-20 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                {(['csv', 'xlsx', 'pdf'] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    onClick={() => handleExport(fmt)}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-yellow-50 transition-colors"
+                  >
+                    Als {fmt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Status + weitere Filter */}
