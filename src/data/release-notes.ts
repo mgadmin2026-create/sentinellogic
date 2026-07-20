@@ -21,6 +21,68 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.6.0',
+    date: '2026-07-20',
+    title: 'Kontakte: Archivieren, Tags, Export & erweiterter Import',
+    summary:
+      'Kontakte werden jetzt archiviert statt gelöscht, bekommen interne Tags, lassen sich als CSV/Excel/PDF exportieren und der Import bietet fast alle Kontaktfelder zum Mappen an',
+    features: [
+      {
+        title: 'Kontakte archivieren statt löschen',
+        description:
+          'Der Löschen-Button archiviert Kontakte jetzt reversibel statt sie endgültig zu entfernen — inkl. Option, verknüpfte Aufgaben mitzuarchivieren. Archivierte Kontakte werden aus der Liste ausgeblendet (Toggle „Archivierte anzeigen") und lassen sich jederzeit wiederherstellen. Status zeigt überall „Archiviert" statt des zuletzt gültigen Business-Status. Echtes, endgültiges Löschen ist nur noch über direkten Datenbankzugriff möglich.',
+        category: 'feature',
+        icon: '🗄️',
+      },
+      {
+        title: 'Interne Tags',
+        description:
+          'Kontakte lassen sich mit frei definierbaren Tags versehen (Freitext-Eingabe mit Autocomplete) und in der Liste nach mehreren Tags gleichzeitig filtern. Tags sind auch über das NL→SQL-Reporting-Tool abfragbar.',
+        category: 'feature',
+        icon: '🏷️',
+      },
+      {
+        title: 'Export als CSV, Excel oder PDF',
+        description:
+          'Neuer Export-Button in der Kontaktliste: CSV mit allen Feldern, Excel mit formatierter Kopfzeile, PDF im Querformat mit Filter-Zusammenfassung. Der Export berücksichtigt alle aktiven Filter (Status, Quelle, Sparte, Tags, ...).',
+        category: 'feature',
+        icon: '⬇️',
+      },
+      {
+        title: 'CSV-Import erweitert',
+        description:
+          'Der Import-Button ist jetzt auch direkt in der Kontaktübersicht verfügbar, nicht mehr nur im Dashboard. Beim Spalten-Mapping stehen fast alle Kontaktfelder zur Auswahl (vorher nur 16 von rund 65).',
+        category: 'improvement',
+        icon: '📥',
+      },
+      {
+        title: 'Kontakte kopieren entfernt',
+        description:
+          'Die unfertige Kopieren-Funktion (kein eigener Endpoint, unklares Verhalten bei Duplikaten) wurde entfernt.',
+        category: 'improvement',
+        icon: '🧹',
+      },
+      {
+        title: 'Fehlende Felder beim Anlegen behoben',
+        description:
+          'Sparte, Qualität, Bestandskunde, Rechtsform, Anrede, Bemerkung und mehrere Versicherungs-/Gewerbefelder wurden beim Neuanlegen eines Kontakts (Maske wie CSV-Import) bisher stillschweigend verworfen — jetzt werden sie korrekt gespeichert.',
+        category: 'fix',
+        icon: '🛠️',
+      },
+      {
+        title: 'Regressionstests im Testdashboard',
+        description:
+          'Fünf neue Playwright-Tests decken Archivieren, Import, Export und Tags ab und laufen automatisch nach jedem Deploy gegen die Produktions-App.',
+        category: 'improvement',
+        icon: '✅',
+      },
+    ],
+    breaking_changes: ['Kontakte kopieren ist nicht mehr verfügbar.'],
+    known_issues: [
+      'Das Feld „Verantwortlicher" (assigned_user_name) im Kontakt-Bearbeiten-Formular verweist auf eine nicht existierende Datenbankspalte und schlägt beim Speichern fehl — vorbestehender Bug, noch nicht behoben.',
+    ],
+  },
+  {
     version: '0.5.0',
     date: '2026-07-07',
     title: 'KI Upload & Intelligente Dokumentenablage',
@@ -88,6 +150,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     known_issues: [
       'E-Mail ist jetzt optional bei Kontakten — KlickTipp-Sync läuft nur bei vorhandener E-Mail',
     ],
+    next_release_date: '2026-07-20',
   },
   {
     version: '0.4.0',

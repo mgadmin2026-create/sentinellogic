@@ -261,6 +261,23 @@ export async function POST(request: NextRequest) {
       prüfung_grund: body.prüfung_grund ? String(body.prüfung_grund).trim() : null,
       krankenversicherung_status: body.krankenversicherung_status ? String(body.krankenversicherung_status).trim() : null,
       situation: body.situation ? String(body.situation).trim() : null,
+      // Klassifikation / Gewerbe-Felder (bisher beim Anlegen fälschlich nicht übernommen)
+      sparte: body.sparte ? String(body.sparte).trim() : null,
+      qualität: body.qualität ? String(body.qualität).trim() : null,
+      bestandskunde: body.bestandskunde === true || body.bestandskunde === 'true',
+      versicherungstyp: body.versicherungstyp ? String(body.versicherungstyp).trim() : null,
+      rechtsform: body.rechtsform ? String(body.rechtsform).trim() : null,
+      anrede: body.anrede ? String(body.anrede).trim() : null,
+      bemerkung: body.bemerkung ? String(body.bemerkung).trim() : null,
+      versicherungsgesellschaft: body.versicherungsgesellschaft ? String(body.versicherungsgesellschaft).trim() : null,
+      zahlweise: body.zahlweise ? String(body.zahlweise).trim() : null,
+      kontoinhaber: body.kontoinhaber ? String(body.kontoinhaber).trim() : null,
+      iban: body.iban ? String(body.iban).trim() : null,
+      inhaltssumme: body.inhaltssumme ? String(body.inhaltssumme).trim() : null,
+      beitrag_vorsorge: body.beitrag_vorsorge ? parseFloat(String(body.beitrag_vorsorge)) : null,
+      geburtstag_gf_inhaber: body.geburtstag_gf_inhaber ? String(body.geburtstag_gf_inhaber).trim() : null,
+      geschaeftsfuehrer_anzahl: body.geschaeftsfuehrer_anzahl ? parseInt(String(body.geschaeftsfuehrer_anzahl), 10) : null,
+      seit_wann_gewerbe: body.seit_wann_gewerbe ? String(body.seit_wann_gewerbe).trim() : null,
       // Marker-Spalten erst bei Testdaten mitsenden: Reguläre Kontakte bleiben
       // auch während des kontrollierten Migration-Rollouts uneingeschränkt nutzbar.
       ...(testContact.isTestData

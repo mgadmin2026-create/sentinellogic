@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.5.0 — KI Upload & Dokumentenablage | Aktiv in Entwicklung |
+| **Version** | 0.6.0 — Kontakte: Archivieren, Tags, Export & erweiterter Import | Aktiv in Entwicklung |
 
 ---
 
@@ -36,14 +36,16 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 | Table | Purpose | Key Columns |
 |-------|---------|------------|
-| `contacts` | Kontakt-Stammdaten | id, first_name, last_name, email, source, status, pipeline_stage, dialfire_campaign_id, dialfire_task_name_field, dialfire_id, klicktipp_id, automation_disabled |
+| `contacts` | Kontakt-Stammdaten | id, first_name, last_name, email, source, status, pipeline_stage, archived_at, dialfire_campaign_id, dialfire_task_name_field, dialfire_id, klicktipp_id, automation_disabled |
 | `activities` | Aktivitäts-Audit-Trail | id, contact_id, type, description, data, created_at |
-| `tasks` | Aufgaben pro Kontakt | id, contact_id, title, status, priority, due_date |
+| `tasks` | Aufgaben pro Kontakt | id, contact_id, title, status, priority, due_date, archived_at |
 | `rules` | Automation Rules | id, name, active, condition_source, actions (JSON), runs |
 | `users` | Teambenutzer | id, email, name, active |
 | `dokumente_metadata` | Google Drive Dokumente-Index | id, contact_id, file_name, file_size, compressed_size, compression_ratio, google_drive_file_id, uploaded_at |
 | `google_drive_system_token` | OAuth System-Token (Single-Row) | id, access_token, refresh_token, expires_at, connected_email, root_folder_id |
 | `drive_ordner_map` | Drive-IDs der Kategorie-Unterordner pro Kontakt (für Rename-Propagation) | kontakt_id, pfad, drive_folder_id |
+| `tags` | Interne, frei vergebbare Kontakt-Tags (v0.6.0) | id, name, created_at, updated_at |
+| `contact_tag_map` | Zuordnung Kontakt ↔ Tag, n:m (v0.6.0) | id, contact_id, tag_id, created_at |
 
 ### Supporting Tables
 
@@ -55,13 +57,18 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 ---
 
-## Feature-Status (v0.5.0)
+## Feature-Status (v0.6.0)
 
-### ✅ Implemented (v0.5.0)
+### ✅ Implemented (v0.6.0)
 
 | Feature | Status | Notes |
 |---------|--------|-------|
 | **Kontakt-Verwaltung** | ✅ Done | CRUD, Duplikat-Prüfung, Automation-Integration |
+| **Kontakte archivieren** | ✅ Done | Ersetzt Hard-Delete; Bestätigung inkl. Option „Aufgaben mitarchivieren"; Wiederherstellen-Funktion; Liste blendet Archivierte standardmäßig aus (Toggle „Archivierte anzeigen"); echtes Löschen nur noch via direktem Supabase-Zugriff (Tests/Admin) |
+| **Interne Tags** | ✅ Done | Eigene `tags`/`contact_tag_map`-Tabellen; Freitext-Input mit Autocomplete; Mehrfach-Filter (UND-Verknüpfung) in der Liste; über NL→SQL-Reporting abfragbar |
+| **Kontakte exportieren** | ✅ Done | CSV (alle Spalten), Excel (exceljs) und PDF (Querformat, `@react-pdf/renderer`) — respektiert alle aktiven Listen-Filter |
+| **Kontakte importieren (erweitert)** | ✅ Done | Import-Button auch auf `/kontakte` (nicht nur Dashboard); gemeinsame `KontaktImportModal`-Komponente; ~65 statt 16 mappbare Felder |
+| **Testdashboard & Regressionstests** | ✅ Done | `/testdashboard`; Playwright E2E gegen Produktion nach jedem Deploy (GitHub Actions); sichere, technisch markierte Testdaten mit automatischer Bereinigung |
 | **12-Schritt-Pipeline** | ✅ Done | Stepper, Auto-Status, Fälligkeitsdaten |
 | **Activity Logging** | ✅ Done | Alle Kontakt-Änderungen protokolliert + Automation-Events |
 | **Aufgaben-Management** | ✅ Done | Tasks mit Status, Priorität, Fälligkeitsdatum |
@@ -89,9 +96,10 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Dialfire Campaign Flexibilität** | v0.5 | Nicht hartcodiert; konfigurierbar via system_config (aktuell nur 2 IDs in Edge-Function) |
 | **Reporting & Analytics** | v0.5+ | Dashboards, KPI-Tracking, Regeln-Statistik |
 
-### ❌ Removed (v0.3.0)
+### ❌ Removed
 
-- Opportunities (aus UI entfernt)
+- Opportunities (aus UI entfernt, v0.3.0)
+- Kontakte kopieren (unfertige Krücke ohne eigenen Endpoint, v0.6.0)
 
 ---
 
@@ -101,11 +109,16 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 | Route | Method | Purpose |
 |-------|--------|---------|
-| `/api/kontakte` | GET | Liste aller Kontakte |
+| `/api/kontakte` | GET | Liste aller Kontakte (`includeArchived=true` um Archivierte einzuschließen, sonst standardmäßig ausgeblendet); liefert `tags` pro Kontakt |
 | `/api/kontakte` | POST | Neuen Kontakt erstellen + Activity Log |
-| `/api/kontakte/[id]` | GET | Kontakt mit Activities, Tasks laden |
+| `/api/kontakte/[id]` | GET | Kontakt mit Activities, Tasks, Tags laden |
 | `/api/kontakte/[id]` | PATCH | Kontakt aktualisieren, Pipeline-Fortschritt + Activity Log |
-| `/api/kontakte/[id]` | DELETE | Kontakt löschen |
+| `/api/kontakte/[id]` | DELETE | **Archiviert** den Kontakt (Soft-Delete, `archived_at`); Body `{ archiveTasks?: boolean }`; echtes Löschen nur via direktem Supabase-Zugriff |
+| `/api/kontakte/[id]/restore` | POST | Archivierten Kontakt wiederherstellen; Body `{ restoreTasks?: boolean }` |
+| `/api/kontakte/[id]/tags` | PUT | Kompletten Tag-Satz eines Kontakts ersetzen; Body `{ tagIds: string[] }` |
+| `/api/kontakte/export` | GET | Export als `?format=csv\|xlsx\|pdf`, respektiert dieselben Filter wie die Liste |
+| `/api/kontakt-tags` | GET, POST | Tags auflisten (optional `?search=`) / anlegen (Create-or-Get, case-insensitiv) |
+| `/api/kontakt-tags/[id]` | PATCH, DELETE | Tag umbenennen (propagiert überall) / löschen |
 
 ### Activities (Auto-Logged)
 
@@ -115,7 +128,8 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | Pipeline-Schritt geändert | ✅ Yes | old/new stage, label |
 | Status geändert | ✅ Yes | old/new status |
 | Kontakt bearbeitet | ⏳ Ready | Fields changed |
-| Kontakt gelöscht | ⏳ Ready | Contact name |
+| Kontakt archiviert | ✅ Yes | Contact name, tasksArchived |
+| Kontakt wiederhergestellt | ✅ Yes | Contact name |
 | Task erstellt | ⏳ Ready | Task title |
 | Datei hochgeladen | ⏳ Ready | File name, category |
 
@@ -127,18 +141,20 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 | Page | Path | Purpose |
 |------|------|---------|
-| Dashboard | `/` | KPI-Übersicht, neueste Kontakte |
-| Kontakte | `/kontakte` | Kontakt-Liste mit Prozess-Fortschritt |
-| Kontakt-Detail | `/kontakte/[id]` | 5-Tab Interface |
+| Dashboard | `/` | KPI-Übersicht, neueste Kontakte, CSV-Import |
+| Kontakte | `/kontakte` | Kontakt-Liste mit Prozess-Fortschritt, Import/Export, Tag-Filter, Archiv-Toggle |
+| Kontakt-Detail | `/kontakte/[id]` | Tab-Interface (Übersicht, Prozess, Aktivitäten, Aufgaben, Dialfire, Dokumente, Verträge, Automation) + Tags-Leiste |
+| Testdashboard | `/testdashboard` | Regressionstest-Übersicht, Testläufe, Umgebungsstatus (v0.6.0) |
 | Release Notes | `/release-notes` | In-App Feature-History |
 
-### Tabs im Kontakt-Detail (v0.3.0)
+### Tabs im Kontakt-Detail
 
-1. **Übersicht** — Kontaktdaten, Status, Quelle, Qualität
+1. **Übersicht** — Kontaktdaten, Status (Archiviert-Badge statt Dropdown wenn archiviert), Quelle, Qualität
 2. **Prozess** — 12-Schritt-Stepper mit Checkboxes & Fälligkeitsdaten
-3. **Aktivitäten** — Audit-Trail aller Änderungen (✅ NEW)
-4. **Aufgaben** — Task-Liste mit Status & Priorität (✅ NEW)
-5. **Notizen** — Freitextfeld mit Auto-Save
+3. **Aktivitäten** — Audit-Trail aller Änderungen
+4. **Aufgaben** — Task-Liste mit Status & Priorität
+5. **Dialfire, Dokumente, Verträge, Automation** — siehe jeweilige Abschnitte
+6. **Tags** (v0.6.0) — Persistente Leiste oberhalb der Tabs, Freitext-Input mit Autocomplete, Speichern bei jeder Änderung
 
 ---
 
@@ -199,6 +215,42 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.6.0 (2026-07-20) — Kontakte: Archivieren, Tags, Export & erweiterter Import
+
+**Archivieren statt Löschen:**
+- ✅ Migration 0041: `contacts.archived_at`, `tasks.archived_at`
+- ✅ `DELETE /api/kontakte/[id]` archiviert jetzt (Soft-Delete) statt zu löschen; optional inkl. verknüpfter Aufgaben (`archiveTasks`-Flag im Body)
+- ✅ Neuer `POST /api/kontakte/[id]/restore` Endpoint (optional `restoreTasks`)
+- ✅ Bestätigungs-Popups (Liste + Detail) mit Checkbox „Zugehörige Aufgaben ebenfalls archivieren"
+- ✅ Kontakte-Liste blendet Archivierte standardmäßig aus; Toggle „Archivierte anzeigen"
+- ✅ Status-Spalte/-Feld zeigt bei archivierten Kontakten überall „Archiviert" statt des (weiterhin intern gespeicherten) Business-Status — Liste (Desktop+Mobile), Detail-Header, Kontakt-Übersicht
+- ✅ Echtes Löschen nur noch über direkten Supabase-Zugriff (Tests/Admin); bestehende Test-Bereinigung (`prepare_test_run`) läuft unverändert per SQL weiter
+
+**Kopieren entfernt:**
+- ✅ `handleCopyKontakt` + zugehörige Buttons vollständig zurückgebaut
+
+**Import erweitert:**
+- ✅ CSV-Import-Modal aus `dashboard/page.tsx` in eigene Komponente `KontaktImportModal.tsx` extrahiert, jetzt auch auf `/kontakte` nutzbar (Button neben „Neu")
+- ✅ Mappbare Felder von 16 auf ~65 erweitert (gruppiert: Kontakt, Firma, Adresse, Klassifikation, Notizen, PKV, Gewerbe, Versicherung 1–5, Konfiguration)
+- ✅ `public/leads-beispiel.csv` neu mit Feldern aus mehreren Gruppen (Adresse, Kontakt-Typ, Sparte, Notizen)
+- ✅ Bugfix: `POST /api/kontakte` übernahm `sparte`, `qualität`, `bestandskunde`, `versicherungstyp`, `rechtsform`, `anrede`, `bemerkung`, `versicherungsgesellschaft`, `zahlweise`, `kontoinhaber`, `iban`, `inhaltssumme`, `beitrag_vorsorge`, `geburtstag_gf_inhaber`, `geschaeftsfuehrer_anzahl`, `seit_wann_gewerbe` bisher gar nicht beim Anlegen (wirkungslos sowohl über die Maske als auch beim Import) — jetzt ergänzt
+
+**Export neu implementiert:**
+- ✅ `GET /api/kontakte/export?format=csv|xlsx|pdf` — ein Endpoint für alle drei Formate, respektiert alle aktiven Listen-Filter (Status, Suche, Quelle, Typ, Pipeline-Stufe, Sparte, Prüfgrund, Tags, Archiviert-Sichtbarkeit)
+- ✅ CSV: alle Spalten inkl. Tags. Excel (`exceljs`): kuratiertes Spaltenset, formatierte Kopfzeile. PDF (`@react-pdf/renderer`): A4 Querformat, dunkle Kopfzeile, Filter-Zusammenfassung
+- ⚠️ `xlsx` (SheetJS) bewusst nicht verwendet — ungepatchte High-Severity-CVEs (Prototype Pollution, ReDoS) ohne Fix auf npm
+
+**Interne Tags:**
+- ✅ Neue Tabellen `tags`/`contact_tag_map` (Migration 0041); `/api/kontakt-tags` (GET/POST, Create-or-Get case-insensitiv), `/api/kontakt-tags/[id]` (PATCH/DELETE)
+- ✅ `TagInput`-Komponente (Pills + Freitext + Autocomplete) in `KontaktEditModal` und Kontakt-Detailseite
+- ✅ Mehrfach-Tag-Filter (UND-Verknüpfung) in der Kontakte-Liste
+- ✅ `report-schema.ts` um `tags`/`contact_tag_map` + `archived_at` ergänzt, damit das NL→SQL-Reporting-Tool Tag-Fragen beantworten kann
+
+**Testdashboard & Regressionstests:**
+- ✅ `/testdashboard`, `tests/e2e/` (Playwright), `.github/workflows/regression-tests.yml` — läuft automatisch nach jedem erfolgreichen Deploy gegen Produktion
+- ✅ Test-Kontakte technisch markiert (`[TEST]`/`[TESTDATEN]`/`pw+<run-id>@example.invalid`), automatische Bereinigung vor jedem Lauf
+- ✅ 5 neue Specs: Archivieren+Wiederherstellen, Kopieren-Regression, Import mit erweitertem Feld, Export (CSV-Inhalt + Excel/PDF-Smoke-Test), Tags (anlegen/zuweisen/filtern/umbenennen)
 
 ### v0.5.0 (2026-07-07) — KI Upload & Intelligente Dokumentenablage
 
@@ -282,12 +334,12 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ### Medium Priority (v0.5+)
 
-- [ ] DELETE-Logging (kontakt löschen loggen)
 - [ ] Task-API Routes (vollständiges CRUD)
 - [ ] User Authentication & Sessions
 - [ ] Team Permissions & Rollen
 - [ ] Advanced Search & Filtering
 - [ ] Regression-Tests für Automation-Engine
+- [ ] **`assigned_user_name` kaputt:** Feld in `ALLOWED_UPDATE_FIELDS` und im „Verantwortlicher"-Input von `KontaktEditModal` referenziert, Spalte existiert aber nicht in `contacts` — jedes Speichern mit gesetztem Wert schlägt mit 500 fehl (gefunden v0.6.0, noch nicht behoben)
 
 ---
 
@@ -315,7 +367,14 @@ git push origin main # Deploy zu Vercel
 | `src/app/einstellungen/dokumente/page.tsx` | OAuth-Connection UI |
 | `src/app/dokumente/page.tsx` | Global Document Overview + Stats |
 | `supabase/migrations/0022_google_drive_system_token.sql` | Google Drive System-Token Single-Row-Tabelle |
+| `supabase/migrations/0041_kontakte_archive_and_tags.sql` | `contacts.archived_at`, `tasks.archived_at`, `tags`, `contact_tag_map` (v0.6.0) |
+| `src/app/api/kontakte/export/route.ts` | Export-Endpoint (CSV/Excel/PDF) |
+| `src/lib/kontakte-export-pdf.tsx` | PDF-Layout (`@react-pdf/renderer`) |
+| `src/lib/kontakte-filters.ts` | Gemeinsame Filter-Prädikate für Liste + Export |
+| `src/components/KontaktImportModal.tsx` | Gemeinsames Import-Modal (Dashboard + Kontakte) |
+| `src/components/TagInput.tsx` | Freitext-Tag-Eingabe mit Autocomplete |
+| `tests/e2e/` | Playwright-Regressionstests, Muster in `testdashboard.spec.ts` |
 
 ---
 
-*Last Updated: 2026-07-07 — v0.5.0 KI Upload (Claude-Dokumentanalyse), konfigurierbare Ordnerstruktur je Kontakt-Typ, Security-Cleanup*
+*Last Updated: 2026-07-20 — v0.6.0 Kontakte: Archivieren statt Löschen, interne Tags, CSV/Excel/PDF-Export, erweiterter Import, Playwright-Regressionstests*

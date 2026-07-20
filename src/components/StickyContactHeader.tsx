@@ -16,6 +16,7 @@ interface StickyContactHeaderProps {
   isEditing: boolean
   onEditChange: (editing: boolean) => void
   onDelete: () => void
+  isArchived?: boolean
   viewMode?: 'overview' | 'analysis'
   setViewMode?: (mode: 'overview' | 'analysis') => void
   amisStatusLabel?: string
@@ -49,6 +50,7 @@ export function StickyContactHeader({
   isEditing,
   onEditChange,
   onDelete,
+  isArchived,
   viewMode = 'overview',
   setViewMode,
   amisStatusLabel,
@@ -74,6 +76,11 @@ export function StickyContactHeader({
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
                 {firstName} {lastName}
               </h1>
+              {isArchived && (
+                <span className="inline-flex rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-gray-600">
+                  Archiviert
+                </span>
+              )}
               {companyName && (
                 <>
                   <span className="text-gray-400">•</span>

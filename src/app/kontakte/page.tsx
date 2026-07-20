@@ -1137,7 +1137,11 @@ export default function KontaktePage() {
                             </div>
                           )
                         } else if (key === 'status') {
-                          displayContent = (
+                          displayContent = kontakt.archived_at ? (
+                            <span className="inline-flex text-xs font-medium px-2 py-1 rounded-full bg-gray-200 text-gray-600">
+                              Archiviert
+                            </span>
+                          ) : (
                             <select
                               value={kontakt.status}
                               onChange={(e) => handleStatusChange(kontakt.id, e.target.value)}
@@ -1358,15 +1362,21 @@ export default function KontaktePage() {
                   )}
                   <p className="text-xs text-gray-400 truncate mt-0.5">{kontakt.email || kontakt.id}</p>
                 </Link>
-                <select
-                  value={kontakt.status}
-                  onChange={(e) => handleStatusChange(kontakt.id, e.target.value)}
-                  className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 flex-shrink-0"
-                >
-                  {Object.entries(STATUS_LABELS).map(([optKey, label]) => (
-                    <option key={optKey} value={optKey}>{label}</option>
-                  ))}
-                </select>
+                {kontakt.archived_at ? (
+                  <span className="text-xs font-medium px-2 py-1.5 rounded-lg bg-gray-200 text-gray-600 flex-shrink-0">
+                    Archiviert
+                  </span>
+                ) : (
+                  <select
+                    value={kontakt.status}
+                    onChange={(e) => handleStatusChange(kontakt.id, e.target.value)}
+                    className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 flex-shrink-0"
+                  >
+                    {Object.entries(STATUS_LABELS).map(([optKey, label]) => (
+                      <option key={optKey} value={optKey}>{label}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="flex items-center gap-2 mt-3 flex-wrap">

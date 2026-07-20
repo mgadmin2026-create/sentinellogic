@@ -512,6 +512,7 @@ export default function KontaktDetailPage() {
         isEditing={isEditingOverview}
         onEditChange={setIsEditingOverview}
         onDelete={() => setDeleteConfirm(true)}
+        isArchived={!!kontakt.archived_at}
         viewMode={viewMode}
         setViewMode={setViewMode}
         amisStatusLabel={amisStatusLabel}

@@ -1,9 +1,10 @@
-Vorname,Nachname,Firma,Telefon,E-Mail,Branche,Quelle
-Thomas,Müller,Elektro Müller GmbH,+49 176 4421 8800,thomas.mueller@elektro-mueller.de,Elektrotechnik / Handwerk,Facebook
-Sabine,Hoffmann,Allgemeinarztpraxis Hoffmann,+49 151 2234 7766,sabine.hoffmann@praxis-hoffmann.de,Gesundheitswesen,Calendly
-Klaus,Weber,Bäckerei Weber,+49 172 9988 4411,k.weber@baeckerei-weber.de,Lebensmittel / Bäckerei,CSV
-Maria,Schmidt,Maria Schmidt Textagentur,+49 160 7733 2255,maria@texterin-schmidt.de,Kreativwirtschaft,E-Mail
-Andreas,Braun,Braun Bau GmbH,+49 175 6644 1122,a.braun@braun-bau.de,Baugewerbe,Facebook
-Jana,Köhler,Restaurant Köhler,+49 152 1122 3344,jana@restaurant-koehler.de,Gastronomie,Calendly
-Michael,Schneider,MS IT-Consulting GmbH,+49 170 5566 7788,ms@ms-it-consulting.de,IT-Dienstleistungen,CSV
-Christine,Fischer,Zahnarztpraxis Dr. Fischer,+49 178 4433 5566,dr.fischer@zahnarztpraxis-fischer.de,Gesundheitswesen,Facebook
+Vorname,Nachname,E-Mail,Telefon Mobil,Firma,Branche,Straße,PLZ,Ort,Quelle,Kontakt-Typ,Sparte,Notizen
+Thomas,Müller,thomas.mueller@elektro-mueller.de,+49 176 4421 8800,Elektro Müller GmbH,Elektrotechnik / Handwerk,Hauptstraße 12,10115,Berlin,facebook,gewerbe,Unternehmerschutz,Interessiert an Betriebshaftpflicht
+Sabine,Hoffmann,sabine.hoffmann@praxis-hoffmann.de,+49 151 2234 7766,Allgemeinarztpraxis Hoffmann,Gesundheitswesen,Bahnhofstraße 5,80331,München,manuell,gewerbe,Unternehmerschutz,
+Klaus,Weber,k.weber@baeckerei-weber.de,+49 172 9988 4411,Bäckerei Weber,Lebensmittel / Bäckerei,Marktplatz 3,50667,Köln,csv,gewerbe,Unternehmerschutz,
+Maria,Schmidt,maria@texterin-schmidt.de,+49 160 7733 2255,,Kreativwirtschaft,Gartenweg 9,20095,Hamburg,email,privat,PKV,Selbstständig seit 2022
+Andreas,Braun,a.braun@braun-bau.de,+49 175 6644 1122,Braun Bau GmbH,Baugewerbe,Industriestraße 20,70173,Stuttgart,facebook,gewerbe,Unternehmerschutz,
+Jana,Köhler,jana@restaurant-koehler.de,+49 152 1122 3344,Restaurant Köhler,Gastronomie,Rathausplatz 1,04109,Leipzig,manuell,gewerbe,Unternehmerschutz,
+Michael,Schneider,ms@ms-it-consulting.de,+49 170 5566 7788,MS IT-Consulting GmbH,IT-Dienstleistungen,Technopark 7,60306,Frankfurt am Main,csv,gewerbe,D&O,
+Christine,Fischer,dr.fischer@zahnarztpraxis-fischer.de,+49 178 4433 5566,Zahnarztpraxis Dr. Fischer,Gesundheitswesen,Kirchweg 14,90402,Nürnberg,facebook,gewerbe,Unternehmerschutz,
+Nina,Vogel,nina.vogel@gmx.de,+49 162 8811 4433,,Privatperson,Lindenallee 22,04317,Leipzig,manuell,privat,PKV,Wechsel aus GKV geplant

@@ -41,7 +41,6 @@ const SYSTEM_FIELDS: { value: string; label: string; group: string }[] = [
   { value: 'qualität', label: 'Qualität', group: 'Klassifikation' },
   { value: 'bestandskunde', label: 'Bestandskunde', group: 'Klassifikation' },
   { value: 'prüfung_grund', label: 'Prüfungsgrund', group: 'Klassifikation' },
-  { value: 'assigned_user_name', label: 'Zugewiesen an', group: 'Klassifikation' },
 
   // Notizen
   { value: 'notes', label: 'Notizen', group: 'Notizen' },

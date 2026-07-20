@@ -86,6 +86,7 @@ interface Kontakt {
   kontoinhaber_5?: string
   iban_5?: string
   notizen_2?: string
+  archived_at?: string | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -258,8 +259,17 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* STATUS & QUALITÄT — SINGLE ROW (TOP) */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-4">
-          {/* Status (Editable Select) */}
-          <Field label="Status" field="status" type="select" options={['new', 'contacted', 'qualified', 'customer']} value={getValue('status')} onChange={handleChange} isEditing={isEditing} />
+          {/* Status (Editable Select) — bei archivierten Kontakten nur Anzeige */}
+          {kontakt.archived_at ? (
+            <div>
+              <p className="text-xs text-gray-500 font-semibold mb-2">Status</p>
+              <span className="inline-flex text-xs font-medium px-2.5 py-1 rounded-full bg-gray-200 text-gray-600">
+                Archiviert
+              </span>
+            </div>
+          ) : (
+            <Field label="Status" field="status" type="select" options={['new', 'contacted', 'qualified', 'customer']} value={getValue('status')} onChange={handleChange} isEditing={isEditing} />
+          )}
 
           {/* Qualität (Dropdown) */}
           <Field label="Qualität" field="qualität" type="select" options={['kalt', 'warm', 'heiss', 'sehr-heiss']} value={getValue('qualität')} onChange={handleChange} isEditing={isEditing} />
