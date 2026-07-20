@@ -40,6 +40,7 @@
 |HiDrive        |Dokumentenablage                   |⏳ Zugang ab Aug/Sep  |
 |Calendly       |Terminbuchung                      |⏳ Zugang ausstehend  |
 |Facebook/TikTok|Lead Ads Webhook                   |⏳ In Einrichtung     |
+|Placetel       |Click-to-Call, Anrufereignisse     |📝 API geprüft, Konzept vorhanden|
 
 -----
 
@@ -113,6 +114,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [ ] Lead-Synchronisation (Klicktipp + Dialfire + Sentimental Logic)
 - [ ] Infrastruktur Setup (Supabase, Vercel)
 - [ ] Regressionstest-Katalog nach jedem neuen Feature erweitern
+- [ ] Placetel-MVP im Feature-Branch: Migration/Client/API/UI implementiert, echter Callback-Pilot und Live-Konfiguration ausstehend
 
 **Abgeschlossen:**
 
@@ -135,6 +137,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] E2E-002 und E2E-003 für Kontaktanlage sowie Stammdaten-/Statusänderung automatisiert und aktiviert
 - [x] Kontaktverwaltung und Kontaktdetailseite mit E2E-011 (Detailnavigation) und E2E-012 (Aufgabenanlage) erweitert
 - [x] Playwright-Selektoren für Kontaktanlage, Detailnavigation, Bearbeitung, Archivstatus und Tag-Chips stabilisiert
+- [x] Placetel-Swagger geprüft und technisches Integrationskonzept vervollständigt
 
 **Nächste Aufgabe:**
 → Vollständigen Regressionstest erneut ausführen und verbleibende fachliche Fehler beschreiben

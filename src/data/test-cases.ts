@@ -246,4 +246,21 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: ['weist einen Kontakt einem Team-Mitglied zu und erzwingt einen Verantwortlichen bei Aufgaben'],
   },
+  {
+    id: 'E2E-015',
+    name: 'Placetel-Anruf starten und Ergebnis erfassen',
+    description: 'Prüft den kontrollierten Click-to-Call-Ablauf, die Anrufhistorie und die dauerhafte Erfassung eines Gesprächsergebnisses.',
+    steps: [
+      'Einen technisch markierten Testkontakt mit freigegebener Testnummer anlegen.',
+      'In der Kontaktdetailseite Mobil- oder Büronummer für Placetel auswählen.',
+      'Den Callback-Anruf starten und den Eintrag in der Placetel-Historie prüfen.',
+      'Den angenommenen und beendeten Status über echte redigierte Placetel-Callbacks prüfen.',
+      'Ein Gesprächsergebnis mit Testnotiz speichern und nach erneutem Laden kontrollieren.',
+    ],
+    area: 'Integrationen',
+    priority: 'Kritisch',
+    state: 'Geplant',
+    kind: 'E2E',
+    resultTitles: [],
+  },
 ]

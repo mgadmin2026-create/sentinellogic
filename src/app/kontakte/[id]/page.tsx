@@ -16,6 +16,7 @@ import { KontaktDokumenteTab } from '@/components/KontaktDokumenteTab'
 import { KontaktVertraegeTab } from '@/components/KontaktVertraegeTab'
 import { ContactEmailModal } from '@/components/ContactEmailModal'
 import { TagInput, type Tag } from '@/components/TagInput'
+import { PlacetelCallHistory } from '@/components/PlacetelCallHistory'
 
 interface Kontakt {
   id: string
@@ -499,6 +500,7 @@ export default function KontaktDetailPage() {
     <div>
       {/* Sticky Header */}
       <StickyContactHeader
+        contactId={kontaktId}
         firstName={kontakt.first_name}
         lastName={kontakt.last_name}
         companyName={kontakt.company_name}
@@ -947,6 +949,13 @@ export default function KontaktDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Anruf-Notizen (Historie)</h2>
               <NotesHistory contactId={kontakt.id} />
             </div>
+          </div>
+        )}
+
+        {/* TAB: Placetel */}
+        {activeTab === 'placetel' && (
+          <div className="rounded-xl border border-gray-200 bg-white p-6">
+            <PlacetelCallHistory contactId={kontaktId} />
           </div>
         )}
 

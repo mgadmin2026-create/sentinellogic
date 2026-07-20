@@ -37,3 +37,52 @@ export function toWhatsAppNumber(raw?: string | null): string {
   // Kein Präfix erkennbar -> als deutsche Nummer behandeln
   return '49' + digits
 }
+
+/**
+ * Normalisiert eine Rufnummer für Placetel und den Datenbankabgleich nach E.164.
+ * Gibt null zurück, wenn die Eingabe keine plausible internationale Rufnummer ist.
+ */
+export function normalizePhoneNumber(
+  raw?: string | null,
+  defaultCountryCallingCode = '49'
+): string | null {
+  if (!raw) return null
+
+  // Übliche Durchwahl-Markierungen am Ende nicht als Teil der Rufnummer werten.
+  const withoutExtension = raw.trim().replace(/(?:durchwahl|dw|ext\.?|x)\s*\d+$/i, '')
+  const startsInternational = withoutExtension.startsWith('+')
+  let digits = withoutExtension.replace(/\D/g, '')
+
+  if (!digits) return null
+
+  if (startsInternational) {
+    // Schreibweisen wie +49 (0) 170 ... enthalten eine nationale Null.
+    if (digits.startsWith(`${defaultCountryCallingCode}0`)) {
+      digits = defaultCountryCallingCode + digits.slice(defaultCountryCallingCode.length + 1)
+    }
+  } else if (digits.startsWith('00')) {
+    digits = digits.slice(2)
+  } else if (digits.startsWith('0')) {
+    digits = defaultCountryCallingCode + digits.slice(1)
+  } else if (!digits.startsWith(defaultCountryCallingCode)) {
+    digits = defaultCountryCallingCode + digits
+  }
+
+  // E.164 erlaubt höchstens 15 Ziffern. Acht Ziffern vermeiden offensichtliche
+  // Durchwahlen oder interne Kurzwahlen als kostenpflichtiges externes Ziel.
+  if (digits.length < 8 || digits.length > 15 || digits.startsWith('0')) return null
+
+  return `+${digits}`
+}
+
+/** Prüft, ob eine E.164-Nummer in ein freigegebenes Zielland fällt. */
+export function isAllowedPhoneDestination(
+  normalizedPhone: string,
+  allowedCountryCodes: string[]
+): boolean {
+  return allowedCountryCodes.some((code) => {
+    const normalizedCode = code.trim().replace(/\s/g, '')
+    if (!/^\+\d{1,4}$/.test(normalizedCode)) return false
+    return normalizedPhone.startsWith(normalizedCode)
+  })
+}

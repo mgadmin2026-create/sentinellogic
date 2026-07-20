@@ -1,8 +1,10 @@
 'use client'
 
 import { toWhatsAppNumber } from '@/lib/phone'
+import { PlacetelCallButton } from '@/components/PlacetelCallButton'
 
 interface StickyContactHeaderProps {
+  contactId: string
   firstName?: string
   lastName?: string
   companyName?: string
@@ -31,12 +33,14 @@ const tabs = [
   { id: 'activities', label: '📝 Aktivitäten' },
   { id: 'tasks', label: '✓ Aufgaben' },
   { id: 'dialfire', label: '📞 Dialfire' },
+  { id: 'placetel', label: '☎️ Placetel' },
   { id: 'documents', label: '📎 Dokumente' },
   { id: 'contracts', label: '📋 Verträge' },
   { id: 'automation', label: '⚡ Automation' },
 ]
 
 export function StickyContactHeader({
+  contactId,
   firstName,
   lastName,
   companyName,
@@ -116,6 +120,14 @@ export function StickyContactHeader({
                   >
                     📞 Anrufen
                   </a>
+                )}
+                {callNumber && (
+                  <PlacetelCallButton
+                    contactId={contactId}
+                    phoneMobile={phoneMobile}
+                    phoneOffice={phoneOffice}
+                    disabled={isArchived}
+                  />
                 )}
                 {waNumber && (
                   <a

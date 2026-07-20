@@ -223,6 +223,31 @@ Nachdem Tests abgeschlossen:
 
 ---
 
+## 7. PLACETEL TELEFONIE (nach Pilot-Konfiguration)
+
+### 7.1 Click-to-Call
+- [ ] Technisch markierten Testkontakt mit freigegebener Placetel-Testnummer öffnen
+- [ ] Prüfen, dass Mobil- und Büronummer bewusst ausgewählt werden können
+- [ ] Anruf über den Placetel-Button starten
+- [ ] Prüfen, dass keine Zugangsdaten im Browser, Netzwerk-Response oder Log erscheinen
+- [ ] Prüfen, dass Doppelklicks und mehr als fünf Versuche pro Minute blockiert werden
+
+### 7.2 Callback und Anrufhistorie
+- [ ] Je einen redigierten Callback für eingehend, ausgehend, angenommen und aufgelegt senden
+- [ ] Denselben Callback erneut senden und prüfen, dass kein doppelter Anruf entsteht
+- [ ] Falsches Callback-Secret, unbekanntes Event und zu großen Body kontrolliert ablehnen
+- [ ] Eindeutige Rufnummer automatisch dem Testkontakt zuordnen
+- [ ] Doppelte Rufnummer als mehrdeutig markieren und nicht automatisch zuordnen
+- [ ] Status, Richtung, Zeitpunkt und Dauer im Placetel-Tab prüfen
+
+### 7.3 Gesprächsergebnis
+- [ ] Ergebnis „Termin vereinbart“ mit synthetischer Notiz speichern
+- [ ] Seite neu laden und dauerhafte Speicherung prüfen
+- [ ] Ergebnis bearbeiten und Aktivitätseintrag prüfen
+- [ ] Nach Implementierung der Ergebnisregeln die erzeugte Aufgabe bzw. den KlickTipp-Tag prüfen
+
+---
+
 ## KONTAKT BEI FRAGEN
 
 Falls während des Tests Fragen entstehen:
@@ -233,4 +258,4 @@ Falls während des Tests Fragen entstehen:
 ---
 
 **Testplan erstellt:** 2026-06-25  
-**Version:** 1.0
+**Version:** 1.1
