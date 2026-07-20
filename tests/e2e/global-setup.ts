@@ -1,5 +1,7 @@
 import { randomUUID } from 'crypto'
-import type { FullConfig } from '@playwright/test'
+import { chromium, type FullConfig } from '@playwright/test'
+
+export const ADMIN_STORAGE_STATE = 'tests/e2e/.auth/admin-state.json'
 
 function getBaseUrl(config: FullConfig): string {
   const configuredUrl = config.projects[0]?.use?.baseURL
@@ -42,4 +44,39 @@ export default async function globalSetup(config: FullConfig) {
   }
 
   process.env.PLAYWRIGHT_RUN_ID = runId
+
+  await loginAsTestAdmin(baseUrl)
+}
+
+/**
+ * Die App verlangt seit der Benutzerkonten-Einführung eine Session für so
+ * gut wie jede Seite/API. Statt jeden Test einen eigenen Login-Flow
+ * durchspielen zu lassen, meldet sich global-setup einmalig über den echten
+ * Login-Formular-Flow an und speichert die Session (Cookies) als
+ * storageState — playwright.config.ts lädt diese Datei für alle Tests.
+ */
+async function loginAsTestAdmin(baseUrl: string) {
+  const email = process.env.PLAYWRIGHT_TEST_EMAIL
+  const password = process.env.PLAYWRIGHT_TEST_PASSWORD
+
+  if (!email || !password) {
+    throw new Error('PLAYWRIGHT_TEST_EMAIL / PLAYWRIGHT_TEST_PASSWORD fehlen — für Logins in der Testsuite erforderlich.')
+  }
+
+  const browser = await chromium.launch()
+  try {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+
+    await page.goto(`${baseUrl}/login`)
+    await page.locator('input[name="email"]').fill(email)
+    await page.locator('input[name="password"]').fill(password)
+    await page.getByRole('button', { name: 'Anmelden' }).click()
+
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15_000 })
+
+    await context.storageState({ path: ADMIN_STORAGE_STATE })
+  } finally {
+    await browser.close()
+  }
 }

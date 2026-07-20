@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { ADMIN_STORAGE_STATE } from './tests/e2e/global-setup'
 
 const baseUrl = process.env.PLAYWRIGHT_BASE_URL
 
@@ -27,6 +28,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 10_000,
+    storageState: ADMIN_STORAGE_STATE,
   },
   projects: [
     {
