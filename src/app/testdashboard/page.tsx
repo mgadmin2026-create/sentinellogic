@@ -31,6 +31,11 @@ const TEST_CASES: TestCase[] = [
   { id: 'E2E-003', name: 'Lead bearbeiten und Status ändern', area: 'Kontakte', priority: 'Kritisch', state: 'Geplant', kind: 'E2E' },
   { id: 'E2E-004', name: 'Geschützte Seite ohne Anmeldung blockieren', area: 'Berechtigungen', priority: 'Hoch', state: 'Geplant', kind: 'E2E' },
   { id: 'E2E-005', name: 'Fehlerfall einer Integration behandeln', area: 'Integrationen', priority: 'Hoch', state: 'Geplant', kind: 'E2E' },
+  { id: 'E2E-006', name: 'Kontakt archivieren, Aufgabe mitarchivieren, wiederherstellen', area: 'Kontakte', priority: 'Kritisch', state: 'Bereit', kind: 'E2E' },
+  { id: 'E2E-007', name: 'Kopieren-Button bleibt entfernt (Regression)', area: 'Kontakte', priority: 'Mittel', state: 'Bereit', kind: 'E2E' },
+  { id: 'E2E-008', name: 'CSV-Import mit erweiterten Feldern über /kontakte', area: 'Kontakte', priority: 'Hoch', state: 'Bereit', kind: 'E2E' },
+  { id: 'E2E-009', name: 'Export als CSV/Excel/PDF', area: 'Kontakte', priority: 'Hoch', state: 'Bereit', kind: 'E2E' },
+  { id: 'E2E-010', name: 'Tag anlegen, zuweisen, filtern, umbenennen', area: 'Kontakte', priority: 'Mittel', state: 'Bereit', kind: 'E2E' },
 ]
 
 const PRIORITY_STYLES: Record<TestPriority, string> = {
