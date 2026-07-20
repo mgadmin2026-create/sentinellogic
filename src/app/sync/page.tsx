@@ -400,6 +400,19 @@ export default function SyncPage() {
                       <tr className="bg-gray-50/60 border-b border-gray-100">
                         <td colSpan={7} className="px-5 py-4">
                           <div className="space-y-3">
+                            {/* Imported Names */}
+                            {entry.lead_names && entry.lead_names.length > 0 && (
+                              <div>
+                                <p className="text-xs font-semibold text-emerald-700 mb-2">✅ Importierte Kontakte ({entry.lead_names.length})</p>
+                                <div className="flex flex-wrap gap-1.5 pl-4">
+                                  {entry.lead_names.map((name, i) => (
+                                    <span key={i} className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                      {name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             {/* Duplicate Details */}
                             {entry.duplicate_details && entry.duplicate_details.length > 0 && (
                               <div>
