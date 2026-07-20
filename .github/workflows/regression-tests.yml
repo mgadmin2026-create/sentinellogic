@@ -35,6 +35,11 @@ jobs:
       - name: Chromium installieren
         run: npx playwright install --with-deps chromium
 
+      - name: Aktivierte Testfälle laden
+        run: node --experimental-strip-types scripts/load-test-case-control.ts
+        env:
+          PLAYWRIGHT_BASE_URL: https://sentinellogic.vercel.app
+
       - name: Regressionstests ausführen
         id: regression
         continue-on-error: true

@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { createPlaywrightTestContact } from './support/test-data'
+import { applyTestCaseControl } from './support/test-control'
 
 test.describe('Kontakte: Import erweitert', () => {
+  applyTestCaseControl('E2E-008')
+
   test('Import-Button ist auf /kontakte sichtbar und übernimmt erweiterte Felder', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('ImportTest')
     const csv = [

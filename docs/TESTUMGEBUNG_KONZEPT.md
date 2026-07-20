@@ -48,16 +48,26 @@ Weitere Integrationen müssen vor Aufnahme in einen Testfall ebenfalls auf Testd
 
 ## Ablauf je Testlauf
 
-1. Playwright erzeugt eine eindeutige Lauf-ID.
-2. `globalSetup` ruft den geschützten Bereinigungsendpunkt auf.
-3. API und Datenbank prüfen Projekt, Token und Guard-ID.
-4. Die Datenbank löscht ausschließlich Kontakte mit `is_test_data = true` und gesetzter `test_run_id`.
-5. Abhängige Aufgaben, Opportunities, Verträge, Notizen und Audit-Einträge werden über Foreign-Key-Cascades entfernt.
-6. Playwright legt neue, sichtbar gekennzeichnete Testkontakte an.
-7. Nach dem Lauf findet keine Bereinigung statt.
-8. Der Datenstand bleibt bis zum nächsten Testlauf analysierbar.
-9. Nach der Durchführung überträgt GitHub Actions ausschließlich nicht-personenbezogene Ergebnisdaten an `/api/test-runs`.
-10. Das Testdashboard aktualisiert Durchführungen, Erfolgsquote und letzte Aktivität aus Supabase.
+1. GitHub Actions lädt die im Testdashboard aktivierten und deaktivierten Testfall-IDs.
+2. Playwright erzeugt eine eindeutige Lauf-ID.
+3. `globalSetup` ruft den geschützten Bereinigungsendpunkt auf.
+4. API und Datenbank prüfen Projekt, Token und Guard-ID.
+5. Die Datenbank löscht ausschließlich Kontakte mit `is_test_data = true` und gesetzter `test_run_id`.
+6. Abhängige Aufgaben, Opportunities, Verträge, Notizen und Audit-Einträge werden über Foreign-Key-Cascades entfernt.
+7. Playwright führt aktive Testfälle aus und protokolliert deaktivierte Testfälle als übersprungen.
+8. Playwright legt ausschließlich für tatsächlich ausgeführte Szenarien neue, sichtbar gekennzeichnete Testkontakte an.
+9. Nach dem Lauf findet keine Bereinigung statt.
+10. Der Datenstand bleibt bis zum nächsten Testlauf analysierbar.
+11. Nach der Durchführung überträgt GitHub Actions ausschließlich nicht-personenbezogene Ergebnisdaten an `/api/test-runs`.
+12. Das Testdashboard aktualisiert Durchführungen, Erfolgsquote und letzte Aktivität aus Supabase.
+
+## Testfälle aktivieren und deaktivieren
+
+Nur Testfälle mit vorhandenem Playwright-Szenario können geschaltet werden. Geplante, noch nicht automatisierte Testfälle bleiben sichtbar, sind aber als **Noch nicht automatisiert** gekennzeichnet.
+
+Die Steuerung wird im Dashboard mit dem serverseitigen `TEST_DATA_CLEANUP_TOKEN` entsperrt. Das Token wird bewusst eingegeben, nicht aus einer öffentlichen Umgebungsvariable geladen und nur im Arbeitsspeicher der aktuellen Browseransicht gehalten. Der Schreibendpunkt vergleicht es zeitkonstant und speichert ausschließlich die deaktivierten Testfall-IDs.
+
+Vor jedem GitHub-Actions-Lauf lädt `scripts/load-test-case-control.ts` diese IDs. Ist die Steuerung nicht erreichbar oder die Migration nicht eingerichtet, startet der Testlauf nicht mit einem unbekannten Schaltzustand.
 
 ## Gespeicherte Ergebnisdaten
 

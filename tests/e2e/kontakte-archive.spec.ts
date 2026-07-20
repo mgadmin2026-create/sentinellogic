@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { createPlaywrightTestContact, expectOk } from './support/test-data'
+import { applyTestCaseControl } from './support/test-control'
 
 test.describe('Kontakte: Archivieren', () => {
+  applyTestCaseControl('E2E-006')
+
   test('archiviert einen Kontakt inkl. Aufgabe und stellt ihn wieder her', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('ArchivTest')
     const fullName = `${contact.first_name} ${contact.last_name}`

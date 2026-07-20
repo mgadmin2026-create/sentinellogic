@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { createPlaywrightTestContact, expectOk } from './support/test-data'
+import { applyTestCaseControl } from './support/test-control'
 
 test.describe('Kontakte: Tags', () => {
+  applyTestCaseControl('E2E-010')
+
   test('Tag anlegen, zuweisen, filtern und umbenennen', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('TagTest')
     const fullName = `${contact.first_name} ${contact.last_name}`

@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { applyTestCaseControl } from './support/test-control'
 
 test.describe('Testdashboard', () => {
+  applyTestCaseControl('E2E-001')
+
   test('zeigt Testfälle und den Live-sicheren Testbetrieb', async ({ page }) => {
     await page.goto('/testdashboard')
 
@@ -8,6 +11,8 @@ test.describe('Testdashboard', () => {
     await expect(page.getByRole('region', { name: 'Test-Kennzahlen' })).toBeVisible()
     await expect(page.getByText('Testdashboard und Testbetrieb anzeigen')).toBeVisible()
     await expect(page.getByTestId('testcase-E2E-002-row').getByText('Noch nie durchgeführt')).toBeVisible()
+    await expect(page.getByTestId('testcase-E2E-001-enabled')).toHaveAttribute('role', 'switch')
+    await expect(page.getByTestId('testcase-E2E-002-row').getByText('Noch nicht automatisiert')).toBeVisible()
 
     await page.getByTestId('testcase-E2E-001-toggle').click()
     await expect(page.getByRole('heading', { name: 'Testschritte' })).toBeVisible()

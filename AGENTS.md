@@ -130,6 +130,8 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Dauerhafte Testlauf-Historie, KPIs und Aktivitäten im Testdashboard implementiert
 - [x] Testfallbeschreibungen, aufklappbare Testschritte und testfallbezogene Durchführungshistorie im Testdashboard ergänzt
 - [x] Einzeltestergebnisse je Testlauf mit Grün-/Rot-Status im Testdashboard sichtbar gemacht
+- [x] Geschützte Aktivierung/Deaktivierung automatisierter Testfälle mit echter Überspringen-Steuerung in GitHub Actions implementiert
+- [x] Migration `0042_test_case_control.sql` auf Live-Supabase angewendet
 
 **Nächste Aufgabe:**
 → Zwei verbleibende Playwright-Selektoren für Archivstatus und Tag-Chip stabilisieren, danach vollständigen Regressionstest erneut ausführen

@@ -14,6 +14,18 @@ interface TestEnvironmentStatus {
   message: string
 }
 
+interface TestCaseControlItem {
+  id: string
+  executable: boolean
+  enabled: boolean
+}
+
+interface TestCaseControlResponse {
+  configured: boolean
+  cases: TestCaseControlItem[]
+  message: string
+}
+
 const PRIORITY_STYLES: Record<TestPriority, string> = {
   Kritisch: 'bg-red-50 text-red-700 ring-red-600/10',
   Hoch: 'bg-orange-50 text-orange-700 ring-orange-600/10',
@@ -263,6 +275,13 @@ export default function TestdashboardPage() {
   const [runsLoading, setRunsLoading] = useState(true)
   const [runsError, setRunsError] = useState<string | null>(null)
   const [expandedCaseIds, setExpandedCaseIds] = useState<Set<string>>(new Set())
+  const [testCaseControl, setTestCaseControl] = useState<TestCaseControlResponse>({ configured: false, cases: [], message: 'Testfallsteuerung wird geladen …' })
+  const [controlLoading, setControlLoading] = useState(true)
+  const [controlToken, setControlToken] = useState('')
+  const [controlUnlocked, setControlUnlocked] = useState(false)
+  const [showControlLogin, setShowControlLogin] = useState(false)
+  const [controlError, setControlError] = useState<string | null>(null)
+  const [controlSavingId, setControlSavingId] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -300,8 +319,25 @@ export default function TestdashboardPage() {
       }
     }
 
+    async function loadTestCaseControl() {
+      try {
+        const response = await fetch('/api/test-cases', { cache: 'no-store' })
+        if (!response.ok) throw new Error('Testfallsteuerung konnte nicht geladen werden.')
+        const data = await response.json() as TestCaseControlResponse
+        if (active) {
+          setTestCaseControl(data)
+          setControlError(null)
+        }
+      } catch {
+        if (active) setControlError('Testfallsteuerung konnte derzeit nicht geladen werden.')
+      } finally {
+        if (active) setControlLoading(false)
+      }
+    }
+
     loadEnvironmentStatus()
     loadTestRuns()
+    loadTestCaseControl()
     return () => { active = false }
   }, [])
 
@@ -318,6 +354,59 @@ export default function TestdashboardPage() {
   const executionsByCase = useMemo(() => new Map(
     TEST_CASES.map((testCase) => [testCase.id, getTestCaseExecutions(testCase, testRuns.runs)])
   ), [testRuns.runs])
+
+  const controlByCase = useMemo(() => new Map(
+    testCaseControl.cases.map((testCase) => [testCase.id, testCase])
+  ), [testCaseControl.cases])
+
+  const executableCaseCount = testCaseControl.cases.filter((testCase) => testCase.executable).length
+  const enabledCaseCount = testCaseControl.cases.filter((testCase) => testCase.executable && testCase.enabled).length
+
+  async function unlockTestCaseControl(event: React.FormEvent) {
+    event.preventDefault()
+    setControlError(null)
+
+    try {
+      const response = await fetch('/api/test-cases', {
+        method: 'POST',
+        headers: { 'x-test-control-token': controlToken },
+      })
+      const data = await response.json() as { success?: boolean; error?: string }
+      if (!response.ok || !data.success) throw new Error(data.error || 'Steuerung konnte nicht entsperrt werden.')
+
+      setControlUnlocked(true)
+      setShowControlLogin(false)
+      setControlError(null)
+    } catch (error) {
+      setControlUnlocked(false)
+      setControlError(error instanceof Error ? error.message : 'Steuerung konnte nicht entsperrt werden.')
+    }
+  }
+
+  async function setTestCaseEnabled(caseId: string, enabled: boolean) {
+    if (!controlUnlocked || !testCaseControl.configured || controlSavingId) return
+    setControlSavingId(caseId)
+    setControlError(null)
+
+    try {
+      const response = await fetch('/api/test-cases', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-test-control-token': controlToken,
+        },
+        body: JSON.stringify({ caseId, enabled }),
+      })
+      const data = await response.json() as { success?: boolean; cases?: TestCaseControlItem[]; error?: string }
+      if (!response.ok || !data.success || !data.cases) throw new Error(data.error || 'Testfall konnte nicht geändert werden.')
+
+      setTestCaseControl((current) => ({ ...current, cases: data.cases ?? current.cases }))
+    } catch (error) {
+      setControlError(error instanceof Error ? error.message : 'Testfall konnte nicht geändert werden.')
+    } finally {
+      setControlSavingId(null)
+    }
+  }
 
   function toggleTestCase(testCaseId: string) {
     setExpandedCaseIds((current) => {
@@ -449,8 +538,59 @@ export default function TestdashboardPage() {
                 </select>
               </div>
 
+              <div className={`border-b px-4 py-4 sm:px-6 ${testCaseControl.configured ? 'border-gray-100 bg-gray-50/60' : 'border-amber-200 bg-amber-50'}`}>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-sm font-semibold text-gray-900">Ausführung steuern</h2>
+                      {!controlLoading && testCaseControl.configured && (
+                        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-600 ring-1 ring-inset ring-gray-200">
+                          {enabledCaseCount} von {executableCaseCount} aktiv
+                        </span>
+                      )}
+                      {controlUnlocked && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200">Entsperrt</span>}
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-gray-500">
+                      Deaktivierte automatisierte Testfälle werden im nächsten GitHub-Actions-Lauf als übersprungen protokolliert.
+                    </p>
+                  </div>
+
+                  {testCaseControl.configured && !controlUnlocked && !showControlLogin && (
+                    <button
+                      type="button"
+                      data-testid="test-control-unlock"
+                      onClick={() => setShowControlLogin(true)}
+                      className="self-start rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 lg:self-auto"
+                    >
+                      Steuerung entsperren
+                    </button>
+                  )}
+
+                  {testCaseControl.configured && !controlUnlocked && showControlLogin && (
+                    <form onSubmit={unlockTestCaseControl} className="flex w-full max-w-md flex-col gap-2 sm:flex-row">
+                      <label className="sr-only" htmlFor="test-control-token">Teststeuerungs-Token</label>
+                      <input
+                        id="test-control-token"
+                        type="password"
+                        autoComplete="off"
+                        value={controlToken}
+                        onChange={(event) => setControlToken(event.target.value)}
+                        placeholder="Teststeuerungs-Token"
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#FFC300] focus:ring-2 focus:ring-[#FFC300]/20"
+                      />
+                      <button type="submit" className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800">Entsperren</button>
+                    </form>
+                  )}
+                </div>
+
+                {!controlLoading && !testCaseControl.configured && (
+                  <p className="mt-2 text-xs font-medium text-amber-800">{testCaseControl.message}</p>
+                )}
+                {controlError && <p role="alert" className="mt-2 text-xs font-medium text-red-700">{controlError}</p>}
+              </div>
+
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1120px] text-left text-sm">
+                <table className="w-full min-w-[1280px] text-left text-sm">
                   <thead className="bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-6 py-3">ID</th>
@@ -458,6 +598,7 @@ export default function TestdashboardPage() {
                       <th className="px-6 py-3">Bereich</th>
                       <th className="px-6 py-3">Priorität</th>
                       <th className="px-6 py-3">Automatisierung</th>
+                      <th className="px-6 py-3">Ausführung</th>
                       <th className="px-6 py-3">Durchführungen</th>
                       <th className="px-6 py-3 text-right">Testschritte</th>
                     </tr>
@@ -468,6 +609,7 @@ export default function TestdashboardPage() {
                       const executions = executionsByCase.get(testCase.id) ?? []
                       const latestExecution = executions[0]
                       const detailsId = `test-case-details-${testCase.id}`
+                      const control = controlByCase.get(testCase.id)
 
                       return (
                         <Fragment key={testCase.id}>
@@ -484,6 +626,31 @@ export default function TestdashboardPage() {
                                 <span className={`h-1.5 w-1.5 rounded-full ${testCase.state === 'Bereit' ? 'bg-emerald-500' : 'bg-gray-300'}`} />
                                 {testCase.state} · {testCase.kind}
                               </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              {controlLoading || !control ? (
+                                <span className="text-xs text-gray-400">Wird geladen …</span>
+                              ) : control.executable ? (
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  data-testid={`testcase-${testCase.id}-enabled`}
+                                  aria-checked={control.enabled}
+                                  aria-label={`${testCase.id} für Testläufe ${control.enabled ? 'deaktivieren' : 'aktivieren'}`}
+                                  disabled={!testCaseControl.configured || !controlUnlocked || controlSavingId !== null}
+                                  onClick={() => setTestCaseEnabled(testCase.id, !control.enabled)}
+                                  className="group inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${control.enabled ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${control.enabled ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                                  </span>
+                                  <span className={`text-xs font-semibold ${control.enabled ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                    {controlSavingId === testCase.id ? 'Speichert …' : control.enabled ? 'Aktiv' : 'Deaktiviert'}
+                                  </span>
+                                </button>
+                              ) : (
+                                <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">Noch nicht automatisiert</span>
+                              )}
                             </td>
                             <td className="px-6 py-4">
                               {latestExecution ? (
@@ -518,7 +685,7 @@ export default function TestdashboardPage() {
                           </tr>
                           {isExpanded && (
                             <tr>
-                              <td colSpan={7} className="bg-gray-50/80 px-6 py-5">
+                              <td colSpan={8} className="bg-gray-50/80 px-6 py-5">
                                 <div id={detailsId} className="grid gap-5 rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:grid-cols-[1fr_360px]">
                                   <div>
                                     <h3 className="text-sm font-semibold text-gray-900">Testschritte</h3>
@@ -561,7 +728,7 @@ export default function TestdashboardPage() {
                       )
                     })}
                     {filteredCases.length === 0 && (
-                      <tr><td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">Keine passenden Testfälle gefunden.</td></tr>
+                      <tr><td colSpan={8} className="px-6 py-12 text-center text-sm text-gray-500">Keine passenden Testfälle gefunden.</td></tr>
                     )}
                   </tbody>
                 </table>

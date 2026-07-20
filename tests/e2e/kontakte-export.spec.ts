@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { createPlaywrightTestContact, expectOk } from './support/test-data'
+import { applyTestCaseControl } from './support/test-control'
 
 test.describe('Kontakte: Export', () => {
+  applyTestCaseControl('E2E-009')
+
   test('CSV-Export enthält die gefilterten Kontaktdaten', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('ExportTest')
     const createRes = await request.post('/api/kontakte', { data: contact })
