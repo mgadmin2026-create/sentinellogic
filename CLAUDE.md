@@ -87,16 +87,112 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Dokumenten-Ordnerstruktur** | ✅ Done | Konfigurierbar je Kontakt-Typ (privat/gewerbe) in `/einstellungen/dokumente`; max. 2 Ebenen; Rename propagiert auf bestehende Drive-Ordner (drive_ordner_map); Kategorie-Dropdown + Filter beim Upload |
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
 
-### ⏳ Planned (v0.5+)
+## Konsolidierte Feature-Roadmap (Stand 2026-07-21)
 
-| Feature | Target | Notes |
-|---------|--------|-------|
-| **Granulare Rechtevergabe pro User** | v0.8+ | Über admin/mitarbeiter hinaus; Architektur (freies `role`-Textfeld, zentrale `isAdmin()`-Prüfung) ist dafür vorbereitet |
-| **Auto/Manuell Toggles** | v0.5 | Pro Feld deaktivierbar; UI mit Dropdown/Label |
-| **Automation Settings UI** | v0.5 | `/einstellungen` Sektion: Dialfire Kampagnen, Tasks, KlickTipp Tags (texarea → system_config) |
-| **Advanced Filtering** | v0.5 | Search, Filter, Sort auf allen Listen |
-| **Dialfire Campaign Flexibilität** | v0.5 | Nicht hartcodiert; konfigurierbar via system_config (aktuell nur 2 IDs in Edge-Function) |
-| **Reporting & Analytics** | v0.5+ | Dashboards, KPI-Tracking, Regeln-Statistik |
+Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert alle aktuell bekannten Produktanforderungen. Bereits implementierte Grundlagen bleiben im Abschnitt `Feature-Status` dokumentiert.
+
+**Prioritäten:** `Hoch` = als Nächstes bzw. phasenbestimmend, `Mittel` = nach den Kernabhängigkeiten, `Niedrig` = bewusst zurückgestellt.
+
+### Phase A — Stabiler CRM-Kern, einheitliche Automatisierung und Telefonie
+
+**Ziel:** Den bestehenden CRM-Kern produktiv stabilisieren, Placetel vollständig abnehmen und Automation/Synchronisation zu einem einheitlich steuerbaren System zusammenführen.
+
+| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
+|---------|-----------|-------|-----------------------------|
+| **Vollständiger Regressionstest** | Hoch | 🟡 Testsystem und E2E-Katalog vorhanden | Gesamtlauf ausführen, fachliche Restfehler dokumentieren und kritische Fehler schließen |
+| **Placetel Click-to-Call** | Hoch | 🧪 MVP implementiert | Echten Pilotanruf mit Gesprächsdauer, Auflegegrund und Abschlussstatus erfolgreich abnehmen |
+| **Placetel Notify-/Ergebnisverarbeitung** | Hoch | 🧪 HMAC, offizielle Statuswerte, Dauer und Gesprächsergebnis vorbereitet | Reale Provider-Callbacks prüfen, Fehlerfälle absichern und Automationsfolgen testen |
+| **Automation + Synchronisation vereinheitlichen** | Hoch | 🟡 Mehrere getrennte Engines, Routen, Edge Functions und Logs vorhanden | Gemeinsame Ausführungsarchitektur für Events, manuelle Läufe und zeitgesteuerte Jobs schaffen |
+| **Einheitliche Cron-/Scheduler-Logik** | Hoch | 🔴 Fehlt als gemeinsamer Baustein | Zentrale Jobdefinition, Sperren gegen Doppelläufe, Wiederholungen, Zeitfenster und Laufhistorie implementieren |
+| **Einheitliches Log-Handling** | Hoch | 🟡 Activities, `sync_log` und anbieterspezifische Logs vorhanden | Einheitliches Lauf-/Eventmodell mit Korrelation zwischen Kontakt, Regel, Job und Integration schaffen |
+| **Einheitliches Fehler- und Retry-Handling** | Hoch | 🟡 Fehlerbehandlung pro Integration vorhanden | Standardisierte Fehlerklassen, Retry-Strategie, Dead-Letter-Status und manuelle Wiederholung einführen |
+| **Automation-/Sync-Control-Center UI** | Hoch | 🟡 Regeln- und Integrationsseiten teilweise vorhanden | Jobs, letzte Läufe, Fehler, Wiederholungen, Pausieren/Aktivieren und Health-Status zentral anzeigen |
+| **Mitarbeiterdashboard** | Hoch | 🟡 Verantwortliche und `Meine Aufgaben` vorhanden | `Meine Kontakte`, überfällige Vorgänge, heutige Aufgaben und letzte Aktivitäten auf einer Startseite bündeln |
+| **Facebook Lead-Import produktiv abnehmen** | Mittel | 🟢 Webhook und manueller Sync implementiert | Echten Lead-End-to-End-Lauf inklusive Dubletten, Automation und Downstream-Sync durchführen |
+| **KlickTipp-Synchronisation vervollständigen** | Mittel | 🟢 Kontakt-/Tag-Sync vorhanden | Statusänderung → Tag-Rücksynchronisation und Fehlerwiederholung vereinheitlichen |
+| **Gewerbedaten-Recherche** | Mittel | 🔴 Nur Datenmodell/Mock-Bausteine vorhanden | Zulässige Datenquellen und einen realistischen Recherche-MVP festlegen |
+| **KI-Gesprächsvorbereitung** | Mittel | 🔴 Bisher nur statischer Alt-Platzhalter | Echten KI-Endpunkt, strukturierte Ausgabe und manuelle Prüfung implementieren |
+| **Dialfire-Synchronisation** | Niedrig | 🟢 Create-/Pull-Pfade vorhanden | Nur stabil halten; kein größerer Ausbau, wenn Placetel den operativen Bedarf ersetzt |
+| **Dialfire-Kampagnenflexibilität** | Niedrig | 🟡 Teilweise konfigurierbar | Nur noch notwendige Hardcodierungen entfernen; keine neue Fachlogik priorisieren |
+| **Granulare Rechte pro Benutzer** | Niedrig | 🟡 Rollenarchitektur vorbereitet | Erst nach Stabilisierung der Kernprozesse eine Berechtigungsmatrix definieren |
+| **TikTok Lead-Import** | Niedrig | 🔴 Nur als Kontaktquelle vorhanden | Erst nach Facebook-Abnahme und konkretem Kampagnenbedarf anbinden |
+| **Google-/YouTube-Lead-Import** | Niedrig | 🔴 Nicht implementiert | Konkrete Google-Leadquelle und Zugriff vor einer Umsetzung klären |
+
+### Phase B — AmisNow, Angebote und minimale Kundenkommunikation
+
+**Ziel:** Den operativen Verkaufsprozess mit AmisNow verbinden, das Angebotshandling fachlich entscheiden und eine kleine eigene Kommunikationslösung für die wichtigsten Abläufe bereitstellen.
+
+| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
+|---------|-----------|-------|-----------------------------|
+| **AmisNow-Personenanlage** | Hoch | 🧪 Browser-MVP vorhanden | Stabilen End-to-End-Pilot mit freigegebenen Testdaten, Jobstatus und Fehlerbehandlung abschließen |
+| **AmisNow-Angebotsberechnung** | Hoch | 🧪 Agent-Job vorbereitet | Reale Berechnung abnehmen und Angebotsnummer, Beitrag und Fehlerstatus verlässlich zurückschreiben |
+| **AmisNow-Jobsteuerung** | Hoch | 🟡 Job-/Result-Grundlagen vorhanden | Warteschlange, Wiederholung, Timeout, manuelle Freigabe und Monitoring produktionsfest machen |
+| **Entscheidung Angebotshandling** | Hoch | ⚪ Offen | Fachlich entscheiden, wie Opportunity, Angebot, Angebotsversion, Dokument und Vertrag zusammenhängen |
+| **Angebotsverwaltung/-Tracking** | Mittel | 🟡 Opportunities und Dokumente als Grundlagen vorhanden | Erst nach Produktentscheidung ein eindeutiges Datenmodell und Statussystem implementieren |
+| **Angebotsupload und Versionen** | Mittel | 🔴 Kein strukturiertes Angebot vorhanden | Dokumentreferenz, Versicherer, Tarif, Version, Gültigkeit und Nachfassdatum modellieren |
+| **Angebotsversand** | Mittel | 🔴 Kein durchgängiger Angebotsworkflow | Versand zunächst per E-Mail mit Vorlage, Protokoll und manueller Freigabe umsetzen |
+| **Automatische Angebots-Follow-ups** | Mittel | 🔴 Aufgabenbasis vorhanden | Nach Scheduler-Grundlage automatisch Aufgabe/Erinnerung aus Angebotsstatus und Frist erzeugen |
+| **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot kontrolliert in einen Vertrag überführen |
+| **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
+| **E-Mail-Vorlagen** | Hoch | 🔴 Freier E-Mail-Editor vorhanden, Vorlagen fehlen | Vorlagenverwaltung mit Platzhaltern, Vorschau und manueller Freigabe bauen |
+| **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🔴 Fehlen | Fachtexte und erlaubte Kontakt-/Vertragsplatzhalter definieren und integrieren |
+| **Eigene minimale Kommunikationslösung** | Hoch | 🔴 Nur ausgehende E-Mail und WhatsApp-Link vorhanden | Schlanken Nachrichten-/Aktivitätsfluss für die wichtigsten Kontaktfälle bauen; keine vollständige Omnichannel-Inbox voraussetzen |
+| **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
+| **Externe Kalenderintegration** | Niedrig | 🟡 Interner Aufgabenkalender vorhanden | Nur bei belegtem Bedarf Google-/Outlook-Sync planen |
+| **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
+| **SuperChat-Datenmigration** | Niedrig | 🔴 Nicht umgesetzt | Erst nach strategischer SuperChat-Entscheidung betrachten |
+| **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🔴 Nicht umgesetzt | Als separates Ausbauprojekt behandeln |
+| **Kundenportal** | Niedrig | 🔴 Nicht umgesetzt | Nach der minimalen Kommunikation als eigenständiges MVP neu definieren |
+
+### Phase C — Dokumente, Gemini-Umbau, zeitgesteuerte Prozesse und Reporting
+
+**Ziel:** Die Dokumenten- und KI-Verarbeitung auf Gemini umstellen, wiederkehrende Prozesse auf der gemeinsamen Scheduler-Architektur aufbauen und echte Kennzahlen bereitstellen.
+
+| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
+|---------|-----------|-------|-----------------------------|
+| **KI-Upload: Claude → Gemini API** | Hoch | 🟢 Bestehender Flow nutzt Claude | Providerabstraktion einführen, Gemini-Analyse mit gleichwertigem strukturiertem Schema implementieren und per Regression vergleichen |
+| **Gemini-Migration sicher abnehmen** | Hoch | 🔴 Noch nicht begonnen | PDF, Foto, Scan, Vermittler-Falle, Dublette, Vertragsdaten und Fehlerfälle gegen bestehenden Testkatalog prüfen |
+| **Claude-Laufzeit nach Migration entfernen** | Mittel | 🟡 Aktuell produktiver Provider | Erst nach erfolgreicher Gemini-Abnahme Runtime-Aufrufe und nicht mehr benötigte Konfiguration entfernen |
+| **KI-Upload → Folgeaufgabe** | Hoch | 🔴 Kontakt, Dokument und Vertrag vorhanden; Aufgabe fehlt | Dokumenttypabhängige, konfigurierbare Folgeaufgabe erzeugen |
+| **Dokumentenablage** | — | 🟢 Google Drive, Kategorien und Kompression umgesetzt | Stabil halten und in neue Workflows einbinden |
+| **HiDrive vs. Google Drive** | Mittel | ⚪ Google Drive umgesetzt, Zielentscheidung offen | Google Drive als dauerhafte Lösung bestätigen oder Migration separat planen |
+| **KI-Dokumentensuche** | Mittel | 🔴 Embeddings/pgvector-Pipeline fehlt | Extraktion, Chunking, Berechtigungen, Embeddings und Suche implementieren |
+| **Zeitbasierte Workflows** | Hoch | 🔴 Fachlogik fehlt | Auf der Phase-A-Scheduler-Logik wiederkehrende fachliche Jobs definieren |
+| **Geburtstagsautomation** | Mittel | 🔴 Nicht implementiert | Empfänger, Vorlage, Freigabe, Opt-out und Doppelversandschutz definieren |
+| **Jubiläumsautomation** | Mittel | 🔴 Nicht implementiert | Fachliches Jubiläumsdatum und Versandregeln klären |
+| **Jährlicher Versicherungscheck** | Hoch | 🔴 Nicht implementiert | Vertragsbezogenen Prüftermin, Aufgabe und Kommunikationsvorlage umsetzen |
+| **Vertragsablauf-/Nachfass-Erinnerungen** | Hoch | 🟡 Vertragsdaten und Aufgaben vorhanden | Vorlaufzeiten, Eskalation, Laufhistorie und Wiederholungsregeln ergänzen |
+| **After-Sales-Prozess** | Mittel | 🟡 Pipeline-Schritt `Nachbereitung` vorhanden | Echten vertragsbezogenen statt rein linearen Kontaktprozess modellieren |
+| **Echte Dashboard-KPIs** | Hoch | 🟡 Mehrere Werte teilweise statisch | Leads, Aufgaben, Angebote, Abschlüsse und Conversion aus echten Daten berechnen |
+| **Reporting & Analytics** | Mittel | 🟡 NL→SQL und Grundansichten vorhanden | Berechtigungen, Angebots-/Vertrags-KPIs, Zeiträume und Exporte erweitern |
+| **Erweiterte Filter auf allen Listen** | Mittel | 🟢 Kontakte/Aufgaben weit fortgeschritten | Verbleibende Listen funktional angleichen |
+
+### Phase D — Erweiterter KI-Kern, Produktreife und langfristiger Ausbau
+
+**Ziel:** Erst nach stabilen Kernprozessen erweiterte KI-Funktionen und optionale Produkt-/SaaS-Fähigkeiten umsetzen.
+
+| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
+|---------|-----------|-------|-----------------------------|
+| **Police ↔ AmisNow-Datenabgleich** | Hoch | 🔴 Nicht implementiert | Nach stabiler AmisNow-Anbindung Felder, Toleranzen und Prüfbericht definieren |
+| **Abweichungs-/Deckungslückenerkennung** | Mittel | 🔴 Nicht implementiert | Fachregeln und nachvollziehbare Begründungen mit manueller Prüfung entwickeln |
+| **Automatische Verkaufsargumente** | Mittel | 🔴 Nicht implementiert | Als Assistenzvorschlag mit Quellenbezug und Freigabe umsetzen |
+| **Kündigungsschreiben vorbereiten** | Mittel | 🔴 Nicht implementiert | Beitragserhöhung/Ablauf erkennen und nur einen manuell freizugebenden Entwurf erzeugen |
+| **Weitere KI-Agenten** | Niedrig | 🟡 AmisNow-Agent als erster MVP | Einsatzfelder einzeln priorisieren und jeweils mit eigener Abnahme planen |
+| **SaaS-/Mandantenfähigkeit** | Niedrig | 🟡 Auth/Rollen vorhanden, Mandantenmodell fehlt | Organisationen, Datenisolation und mandantenbezogene Konfiguration als separates Ausbauprojekt planen |
+| **Kundenportal-Ausbau** | Niedrig | 🔴 Nicht implementiert | Nur nach eigener Minimallösung und konkretem Portal-MVP priorisieren |
+| **DSGVO-Auskunfts- und Löschprozess** | Niedrig / zuletzt | 🟡 Archivierung vorhanden, vollständiger Prozess fehlt | Ganz am Ende von Phase D Aufbewahrung, Export, Freigabe und endgültige Löschung definieren |
+
+### Phasenübergreifend — iterativ einplanen
+
+Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase gemeinsam mit den jeweiligen Features geplant und abgeschlossen.
+
+| Thema | Verbindliche Arbeitsweise |
+|-------|--------------------------|
+| **Systemdokumentation** | Architektur, Konfiguration, Datenmodell, Integrationen und Betriebsabläufe nach jeder wesentlichen Änderung aktualisieren |
+| **Tests & QA** | Für jedes Feature Abnahmekriterien und passende API-/E2E-Regressionstests ergänzen; vollständigen Katalog regelmäßig ausführen |
+| **Benutzerschulung** | Neue oder geänderte Arbeitsabläufe phasenweise demonstrieren, kurz dokumentieren und mit den betroffenen Benutzern testen |
+| **Release Notes** | Jede produktive Funktionsänderung in den In-App Release Notes festhalten |
+| **Monitoring und Datenschutz** | Logging, Datenminimierung, Berechtigungen und externe Datenweitergabe bei jedem Integrationsfeature mitprüfen |
 
 ### ❌ Removed
 
