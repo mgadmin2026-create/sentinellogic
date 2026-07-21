@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, memo } from 'react'
+import { Field } from '@/components/kontakt/Field'
 
 interface Kontakt {
   id: string
@@ -103,68 +104,6 @@ const STATUS_LABELS: Record<string, string> = {
   customer: 'Kunde',
 }
 
-interface FieldProps {
-  label: string
-  field: string
-  type?: string
-  options?: string[] | { value: string; label: string }[]
-  value: any
-  onChange: (field: string, value: any) => void
-  isEditing: boolean
-}
-
-function normalizeOptions(options?: FieldProps['options']): { value: string; label: string }[] {
-  if (!options) return []
-  return options.map((opt) => (typeof opt === 'string' ? { value: opt, label: opt } : opt))
-}
-
-const Field = memo(({ label, field, type = 'text', options, value, onChange, isEditing }: FieldProps) => {
-  const normalizedOptions = normalizeOptions(options)
-
-  if (!isEditing) {
-    const displayValue = type === 'select'
-      ? normalizedOptions.find((opt) => opt.value === value)?.label || value
-      : value
-    return (
-      <div data-testid={`contact-field-${field}`}>
-        <p className="text-xs text-gray-500 font-medium">{label}</p>
-        <p className="text-sm text-gray-900 mt-1">{displayValue || '—'}</p>
-      </div>
-    )
-  }
-
-  if (type === 'select') {
-    return (
-      <div data-testid={`contact-field-${field}`}>
-        <p className="text-xs text-gray-500 font-medium">{label}</p>
-        <select
-          value={value || ''}
-          onChange={(e) => onChange(field, e.target.value)}
-          className="w-full px-2 py-1 mt-1 text-sm border-2 border-yellow-300 rounded bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-        >
-          <option value="">—</option>
-          {normalizedOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-      </div>
-    )
-  }
-
-  return (
-    <div data-testid={`contact-field-${field}`}>
-      <p className="text-xs text-gray-500 font-medium">{label}</p>
-      <input
-        type={type}
-        value={value || ''}
-        onChange={(e) => onChange(field, type === 'number' ? (e.target.value ? parseInt(e.target.value) : null) : e.target.value)}
-        className="w-full px-2 py-1 mt-1 text-sm border-2 border-yellow-300 rounded bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-        placeholder="—"
-      />
-    </div>
-  )
-})
-
-Field.displayName = 'Field'
-
 // Accordion Section Component
 const AccordionSection = memo(({
   title,
@@ -172,7 +111,8 @@ const AccordionSection = memo(({
   children,
   isOpen,
   onToggle,
-  isPrimary = false
+  isPrimary = false,
+  sectionId,
 }: {
   title: string
   icon: string
@@ -180,9 +120,10 @@ const AccordionSection = memo(({
   isOpen: boolean
   onToggle: () => void
   isPrimary?: boolean
+  sectionId?: string
 }) => {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div id={sectionId ? `contact-section-${sectionId}` : undefined} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <button
         onClick={onToggle}
         className={`w-full flex items-center justify-between p-4 sm:p-6 hover:bg-gray-50 transition ${
@@ -219,9 +160,11 @@ interface Props {
   onSave: (changes: Record<string, any>) => Promise<void>
   isEditing?: boolean
   onEditChange?: (editing: boolean) => void
+  /** Öffnet und scrollt zur angegebenen Sektion (z.B. 'unternehmen') */
+  initialSection?: string
 }
 
-export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChange }: Props) {
+export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChange, initialSection }: Props) {
   const [editData, setEditData] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([])
@@ -239,6 +182,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
     beruf: true,
     unternehmen: true,
     versicherung: true,
+    versicherung_allgemein: true,
     pkv_versicherungen: true,
     adresse: false,
     integrations: false,
@@ -247,6 +191,16 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
   const toggleSection = useCallback((section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
   }, [])
+
+  // Ziel-Sektion (aus einer Kachel heraus) öffnen und in Sicht scrollen
+  useEffect(() => {
+    if (!initialSection) return
+    setOpenSections(prev => ({ ...prev, [initialSection]: true }))
+    const timeout = setTimeout(() => {
+      document.getElementById(`contact-section-${initialSection}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+    }, 50)
+    return () => clearTimeout(timeout)
+  }, [initialSection])
 
   const handleChange = useCallback((field: string, value: any) => {
     setEditData(prev => ({ ...prev, [field]: value }))
@@ -324,7 +278,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       </div>
 
       {/* GRUNDDATEN: Kontaktdaten + Adresse + Persönliche Daten */}
-      <AccordionSection title="Grunddaten" icon="👤" isOpen={openSections.grunddaten} onToggle={() => toggleSection('grunddaten')} isPrimary={false}>
+      <AccordionSection title="Grunddaten" icon="👤" sectionId="grunddaten" isOpen={openSections.grunddaten} onToggle={() => toggleSection('grunddaten')} isPrimary={false}>
         <div className="space-y-6">
           {/* Subsection: Kontaktdaten */}
           <div>
@@ -381,7 +335,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       </AccordionSection>
 
       {/* BERUFLICHE SITUATION */}
-      <AccordionSection title="Berufliche Situation" icon="💼" isOpen={openSections.beruf} onToggle={() => toggleSection('beruf')}>
+      <AccordionSection title="Berufliche Situation" icon="💼" sectionId="beruf" isOpen={openSections.beruf} onToggle={() => toggleSection('beruf')}>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-4">
           <Field label="Dienstverhältnis" field="dienstverhaltnis" value={getValue('dienstverhaltnis')} onChange={handleChange} isEditing={isEditing} />
           <Field label="Seit wann selbstständig" field="seit_wann_selbststaendig" type="date" value={getValue('seit_wann_selbststaendig')} onChange={handleChange} isEditing={isEditing} />
@@ -392,6 +346,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* UNTERNEHMEN & BRANCHE */}
       <AccordionSection
         title="Unternehmen & Branche"
+        sectionId="unternehmen"
         icon="🏢"
         isOpen={openSections.unternehmen}
         onToggle={() => toggleSection('unternehmen')}
@@ -426,6 +381,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* VORVERSICHERUNGSDATEN */}
       <AccordionSection
         title="Vorversicherungsdaten"
+        sectionId="versicherung"
         icon="🛡️"
         isOpen={openSections.versicherung}
         onToggle={() => toggleSection('versicherung')}
@@ -444,9 +400,10 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* ALLGEMEINE VERSICHERUNGSDATEN */}
       <AccordionSection
         title="Allgemeine Versicherungsdaten"
+        sectionId="versicherung_allgemein"
         icon="📋"
-        isOpen={openSections.versicherung}
-        onToggle={() => toggleSection('versicherung')}
+        isOpen={openSections.versicherung_allgemein}
+        onToggle={() => toggleSection('versicherung_allgemein')}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
           <Field label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
@@ -461,6 +418,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* PKV VERSICHERUNG (Always Visible) */}
       <AccordionSection
         title="PKV Versicherung"
+        sectionId="pkv_versicherungen"
         icon="💼"
         isOpen={openSections.pkv_versicherungen}
         onToggle={() => toggleSection('pkv_versicherungen')}
@@ -553,6 +511,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* ADRESSE — AMIS Verifikation (Collapsible) */}
       <AccordionSection
         title="Adresse & Verifikation"
+        sectionId="adresse"
         icon="📍"
         isOpen={openSections.adresse}
         onToggle={() => toggleSection('adresse')}
@@ -581,6 +540,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
       {/* SECONDARY SECTION: Integrations (Collapsible) */}
       <AccordionSection
         title="Integrations"
+        sectionId="integrations"
         icon="🔗"
         isOpen={openSections.integrations}
         onToggle={() => toggleSection('integrations')}

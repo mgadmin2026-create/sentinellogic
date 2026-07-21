@@ -65,10 +65,10 @@ export async function GET(
     const supabase = createServerClient()
     const { id } = params
 
-    // Kontakt laden
+    // Kontakt laden (inkl. Name des Verantwortlichen für die Kopfzeile)
     const { data: contact, error: contactError } = await supabase
       .from('contacts')
-      .select('*')
+      .select('*, assigned_user:assigned_user_id(name)')
       .eq('id', id)
       .single()
 

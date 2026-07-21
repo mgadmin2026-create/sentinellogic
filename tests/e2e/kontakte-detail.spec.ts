@@ -12,6 +12,7 @@ test.describe('Kontaktdetail: Stammdaten bearbeiten', () => {
     const changedLastName = `${contact.last_name}-Geaendert`
 
     await page.goto(`/kontakte/${created.id}`)
+    // "Bearbeiten" öffnet den Drawer mit allen Feldern
     await page.getByTestId('contact-edit-toggle').click()
     await page.getByTestId('contact-field-last_name').locator('input').fill(changedLastName)
     await page.getByTestId('contact-field-status').locator('select').selectOption('qualified')
@@ -20,7 +21,10 @@ test.describe('Kontaktdetail: Stammdaten bearbeiten', () => {
     await expect(page.getByRole('heading', { name: `${contact.first_name} ${changedLastName}` })).toBeVisible()
     await page.reload()
     await expect(page.getByRole('heading', { name: `${contact.first_name} ${changedLastName}` })).toBeVisible()
-    await expect(page.getByTestId('contact-field-status')).toContainText('qualified')
+    // Status-Badge in der Kopfzeile + persistierter Wert im Edit-Drawer
+    await expect(page.getByText('Qualifiziert', { exact: true })).toBeVisible()
+    await page.getByTestId('contact-edit-toggle').click()
+    await expect(page.getByTestId('contact-field-status').locator('select')).toHaveValue('qualified')
 
     const detailRes = await request.get(`/api/kontakte/${created.id}`)
     const detailJson = await expectOk(detailRes, 'Geänderten Testkontakt laden')
@@ -44,11 +48,13 @@ test.describe('Kontaktverwaltung: Detailnavigation', () => {
 
     await expect(page).toHaveURL(`/kontakte/${created.id}`)
     await expect(page.getByRole('heading', { name: `${contact.first_name} ${contact.last_name}` })).toBeVisible()
-    await expect(page.getByTestId('contact-field-company_name')).toContainText(contact.company_name)
+    // Firma erscheint in der Kopfzeilen-Meta
+    await expect(page.getByText(contact.company_name).first()).toBeVisible()
     await expect(page.getByTitle(`E-Mail an ${contact.email}`)).toBeVisible()
-    await expect(page.getByRole('button', { name: '👤 Übersicht' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '✓ Aufgaben' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '📝 Aktivitäten' })).toBeVisible()
+    // Zentrale Kacheln sichtbar
+    await expect(page.getByText('✓ Nächste Aufgabe')).toBeVisible()
+    await expect(page.getByText('📝 Aktivitäten')).toBeVisible()
+    await expect(page.getByText('🛡️ Versicherung & Verträge')).toBeVisible()
   })
 })
 
@@ -62,16 +68,21 @@ test.describe('Kontaktdetail: Aufgaben', () => {
     const taskTitle = `[TEST] Rückruf ${process.env.PLAYWRIGHT_RUN_ID}`
 
     await page.goto(`/kontakte/${created.id}`)
-    await page.getByRole('button', { name: '✓ Aufgaben' }).click()
     await page.getByRole('button', { name: '+ Neue Aufgabe' }).click()
     await page.getByTestId('task-title').fill(taskTitle)
     await page.getByTestId('task-description').fill('Automatisch erzeugte Testaufgabe für die Kontaktdetailseite.')
     await page.getByTestId('task-due-date').fill('2026-12-31')
     await page.getByTestId('task-priority').selectOption('hoch')
+    await page.getByTestId('task-assigned-user').selectOption({ index: 1 })
     await page.getByRole('button', { name: 'Aufgabe erstellen' }).click()
 
+    // Neue Aufgabe erscheint in der "Nächste Aufgabe"-Kachel
     await expect(page.getByText(taskTitle, { exact: true })).toBeVisible()
-    await expect(page.getByText('Hoch', { exact: true })).toBeVisible()
+
+    // Komplette Historie im Aufgaben-Drawer inkl. Priorität
+    await page.getByRole('button', { name: /Historie \(/ }).click()
+    await expect(page.getByRole('dialog').getByText(taskTitle)).toBeVisible()
+    await expect(page.getByRole('dialog').getByText('Hoch')).toBeVisible()
 
     const detailRes = await request.get(`/api/kontakte/${created.id}`)
     const detailJson = await expectOk(detailRes, 'Kontakt mit Aufgabe laden')

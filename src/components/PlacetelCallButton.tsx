@@ -7,6 +7,11 @@ interface PlacetelCallButtonProps {
   phoneMobile?: string
   phoneOffice?: string
   disabled?: boolean
+  /** 'primary' = großer gelber Kopfzeilen-Button */
+  variant?: 'default' | 'primary'
+  /** Eigenes Button-Label, z.B. die Telefonnummer */
+  label?: string
+  menuAlign?: 'left' | 'right'
 }
 interface PhoneOption {
   field: 'phone_mobile' | 'phone_office'
@@ -19,6 +24,9 @@ export function PlacetelCallButton({
   phoneMobile,
   phoneOffice,
   disabled = false,
+  variant = 'default',
+  label,
+  menuAlign = 'left',
 }: PlacetelCallButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [loadingField, setLoadingField] = useState<PhoneOption['field'] | null>(null)
@@ -66,10 +74,14 @@ export function PlacetelCallButton({
         data-testid="placetel-call-button"
         onClick={() => phoneOptions.length === 1 ? initiateCall(phoneOptions[0]) : setMenuOpen((open) => !open)}
         disabled={disabled || loadingField !== null}
-        className="inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
+        className={
+          variant === 'primary'
+            ? 'inline-flex items-center gap-1.5 rounded-lg bg-yellow-400 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-gray-900 transition-colors hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap'
+            : 'inline-flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50'
+        }
         title="Anruf über Placetel starten"
       >
-        {loadingField ? '⏳ Verbindet…' : '☎️ Placetel'}
+        {loadingField ? '⏳ Verbindet…' : label ?? '☎️ Placetel'}
       </button>
 
       {message && (
@@ -82,7 +94,7 @@ export function PlacetelCallButton({
       )}
 
       {menuOpen && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className={`absolute ${menuAlign === 'right' ? 'right-0' : 'left-0'} top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg`}>
           {phoneOptions.map((option) => (
             <button
               type="button"

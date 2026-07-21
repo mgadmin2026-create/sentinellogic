@@ -1,9 +1,11 @@
 'use client'
-// Kontakt-Detail-Seite mit 6 Tabs: Übersicht, Aktivitäten, Aufgaben, Opportunities, Notizen, Dokumente
+// Kontakt-Detail-Seite als Kachel-Workspace: fixierte Kopfzeile (Identität +
+// Tags/Notizen), Prozess-Stepper, Daten-Kacheln links, Arbeits-Spalte rechts.
+// Jede Kachel zeigt den Überblick — Drawer tragen die vollständigen Felder
+// bzw. die komplette Historie (kein Feld geht verloren).
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
 import { ContactOverview } from '@/components/ContactOverview'
@@ -14,8 +16,12 @@ import { DialfireResponseTable } from '@/components/DialfireResponseTable'
 import { KontaktDokumenteTab } from '@/components/KontaktDokumenteTab'
 import { KontaktVertraegeTab } from '@/components/KontaktVertraegeTab'
 import { ContactEmailModal } from '@/components/ContactEmailModal'
-import { TagInput, type Tag } from '@/components/TagInput'
+import { type Tag } from '@/components/TagInput'
 import { PlacetelCallHistory } from '@/components/PlacetelCallHistory'
+import { Drawer } from '@/components/kontakt/Drawer'
+import { ProzessPanel, PIPELINE_STEPS } from '@/components/kontakt/ProzessPanel'
+import { AktivitaetenPanel, type Aktivität } from '@/components/kontakt/AktivitaetenPanel'
+import { AufgabenPanel, type KontaktAufgabe } from '@/components/kontakt/AufgabenPanel'
 
 interface Kontakt {
   id: string
@@ -44,6 +50,7 @@ interface Kontakt {
     due_date?: string
   }>
   assigned_user_id?: string
+  assigned_user?: { name: string } | null
   qualität?: string
   bestandskunde?: boolean
   notes?: string
@@ -67,41 +74,38 @@ interface Kontakt {
   prüfung_grund?: string
   krankenversicherung_status?: string
   situation?: string
+  rechtsform?: string
+  sparte?: string
+  versicherungsgesellschaft?: string
   dialfire_updated_at?: string
   dialfire_sync_error?: string
-  // PKV Insurance Fields
   geburtstag?: string
+  geschlecht?: string
   jahreseinkommen?: string
   groesse?: number
   gewicht?: number
   gesundheitszustand?: string
   seit_wann_selbststaendig?: string
   dienstverhaltnis?: string
-  // Insurance Records (1-5)
   versicherungsgesellschaft_1?: string
   leistungen_1?: string
   aktueller_beitrag_1?: string
-  kontoinhaber_1?: string
   iban_1?: string
   versicherungsgesellschaft_2?: string
   leistungen_2?: string
   aktueller_beitrag_2?: string
-  kontoinhaber_2?: string
   iban_2?: string
   versicherungsgesellschaft_3?: string
   leistungen_3?: string
   aktueller_beitrag_3?: string
-  kontoinhaber_3?: string
   iban_3?: string
   versicherungsgesellschaft_4?: string
   leistungen_4?: string
   aktueller_beitrag_4?: string
-  kontoinhaber_4?: string
   iban_4?: string
   versicherungsgesellschaft_5?: string
   leistungen_5?: string
   aktueller_beitrag_5?: string
-  kontoinhaber_5?: string
   iban_5?: string
   notizen_2?: string
   created_at: string
@@ -109,87 +113,38 @@ interface Kontakt {
   tags?: { id: string; name: string }[]
 }
 
-interface Aktivität {
-  id: string
-  type: string
-  description: string
-  data?: Record<string, any>
-  created_at: string
-  user?: { name: string } | null
-}
-
-interface Aufgabe {
-  id: string
-  created_at?: string
-  titel: string
-  status: 'offen' | 'in_bearbeitung' | 'erledigt'
-  priorität: 'niedrig' | 'mittel' | 'hoch'
-  fällig: string
-  assigned_user?: { name: string }
+type Aufgabe = KontaktAufgabe & {
   triggered_by_process_step?: string
   amis_task_type?: 'person_create' | 'person_create_quote'
   amis_status?: 'person_created' | 'quoted' | 'error' | null
   amis_quote_number?: string | null
   amis_premium?: string | null
-  amis_screenshot_path?: string | null
-  amis_error?: string | null
   amis_processed_at?: string | null
+  fällig: string
 }
 
-
-const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  contacted: 'bg-yellow-100 text-yellow-800',
-  qualified: 'bg-emerald-100 text-emerald-800',
-  customer: 'bg-purple-100 text-purple-800',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  new: 'Neu',
-  contacted: 'Kontaktiert',
-  qualified: 'Qualifiziert',
-  customer: 'Kunde',
-}
-
-const TABS = [
-  { id: 'overview', label: 'Übersicht', icon: '👤' },
-  { id: 'process', label: 'Prozess', icon: '🎯' },
-  { id: 'activities', label: 'Aktivitäten', icon: '📝' },
-  { id: 'tasks', label: 'Aufgaben', icon: '✓' },
-  { id: 'dialfire', label: 'Dialfire', icon: '📞' },
-  { id: 'documents', label: 'Dokumente', icon: '📄' },
-  { id: 'contracts', label: 'Verträge', icon: '📋' },
-  { id: 'automation', label: 'Automation', icon: '⚙️' },
-]
-
-const PIPELINE_STEPS = [
-  { key: 'lead_in', label: 'Lead kommt rein' },
-  { key: 'contacted', label: 'Lead wird kontaktiert' },
-  { key: 'data_gathering', label: 'Daten werden eingeholt' },
-  { key: 'wait_policies', label: 'Warten auf Policen' },
-  { key: 'calc_offers', label: 'Angebote berechnen' },
-  { key: 'download_offers', label: 'Angebote herunterladen & ablegen' },
-  { key: 'contract_overview', label: 'Vertragsübersicht erstellen' },
-  { key: 'send_offers', label: 'Angebote senden' },
-  { key: 'offer_meeting', label: 'Angebotsbesprechung (Termin)' },
-  { key: 'sales_talk', label: 'Verkaufsgespräch' },
-  { key: 'contracts_store', label: 'Verträge ablegen' },
-  { key: 'aftercare', label: 'Nachbereitung' },
-]
+type DrawerId =
+  | 'edit'
+  | 'prozess'
+  | 'aktivitaeten'
+  | 'aufgaben'
+  | 'dokumente'
+  | 'vertraege'
+  | 'placetel'
+  | 'dialfire'
+  | 'automation'
 
 export default function KontaktDetailPage() {
   const params = useParams()
   const router = useRouter()
   const kontaktId = params.id as string
 
-  const [activeTab, setActiveTab] = useState('overview')
   const [kontakt, setKontakt] = useState<Kontakt | null>(null)
   const [loading, setLoading] = useState(true)
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [newTaskModalOpen, setNewTaskModalOpen] = useState(false)
-  const [newOppModalOpen, setNewOppModalOpen] = useState(false)
-  const [notesEditMode, setNotesEditMode] = useState(false)
-  const [notesExpanded, setNotesExpanded] = useState(false)
+  const [openDrawer, setOpenDrawer] = useState<DrawerId | null>(null)
+  const [editSection, setEditSection] = useState<string | undefined>(undefined)
+  const [taskModalOpen, setTaskModalOpen] = useState(false)
+  const [editingAufgabe, setEditingAufgabe] = useState<Aufgabe | null>(null)
   const [notes, setNotes] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
   const [aktivitäten, setAktivitäten] = useState<Aktivität[]>([])
@@ -197,8 +152,6 @@ export default function KontaktDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [archiveTasksToo, setArchiveTasksToo] = useState(false)
   const [emailModalOpen, setEmailModalOpen] = useState(false)
-  const [isEditingOverview, setIsEditingOverview] = useState(false)
-  const [overviewSaving, setOverviewSaving] = useState(false)
   const [pipelineSaving, setPipelineSaving] = useState(false)
   const [dialfireResponse, setDialfireResponse] = useState<Record<string, any> | null>(null)
   const [dialfireSnapshot, setDialfireSnapshot] = useState<any>(null)
@@ -244,31 +197,15 @@ export default function KontaktDetailPage() {
     }
   }
 
-  async function handleSaveKontakt(formData: any) {
-    try {
-      const res = await fetch(`/api/kontakte/${kontaktId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      })
-      if (!res.ok) throw new Error('Fehler beim Speichern')
-      setEditModalOpen(false)
-      await loadKontakt()
-    } catch (err: any) {
-      throw err
-    }
-  }
-
-  async function handleSaveNotes() {
+  async function handleSaveNotes(newNotes: string) {
     try {
       setNotesSaving(true)
       const res = await fetch(`/api/kontakte/${kontaktId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes: newNotes }),
       })
       if (!res.ok) throw new Error('Fehler beim Speichern')
-      setNotesEditMode(false)
       await loadKontakt()
     } catch (err) {
       console.error('Fehler:', err)
@@ -308,7 +245,6 @@ export default function KontaktDetailPage() {
     if (!kontakt) return
     try {
       setPipelineSaving(true)
-      // Update the step in pipeline_steps array
       const updatedSteps = (kontakt.pipeline_steps || []).map((step: any) =>
         step.key === stepKey
           ? {
@@ -340,7 +276,6 @@ export default function KontaktDetailPage() {
       const currentIndex = PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage)
       if (currentIndex < PIPELINE_STEPS.length - 1) {
         const nextStep = PIPELINE_STEPS[currentIndex + 1]
-        // Mark current step as done and move to next
         const updatedSteps = (kontakt.pipeline_steps || []).map((step: any) =>
           step.key === kontakt.pipeline_stage
             ? { ...step, done: true, completed_at: new Date().toISOString().split('T')[0] }
@@ -364,38 +299,41 @@ export default function KontaktDetailPage() {
     }
   }
 
-  async function handleCreateAufgabe(form: any) {
+  async function handleSaveAufgabe(form: any) {
     try {
-      const res = await fetch('/api/aufgaben', {
-        method: 'POST',
+      const url = editingAufgabe ? `/api/aufgaben/${editingAufgabe.id}` : '/api/aufgaben'
+      const method = editingAufgabe ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      if (!res.ok) throw new Error('Fehler beim Erstellen')
-      setNewTaskModalOpen(false)
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        throw new Error(json?.error || 'Fehler beim Speichern')
+      }
+      setTaskModalOpen(false)
+      setEditingAufgabe(null)
       await loadKontakt()
     } catch (err: any) {
       throw err
     }
   }
 
-  async function handleCreateOpp(form: any) {
+  async function handleTaskStatusChange(id: string, status: string) {
     try {
-      const res = await fetch('/api/opportunities', {
-        method: 'POST',
+      await fetch(`/api/aufgaben/${id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ status }),
       })
-      if (!res.ok) throw new Error('Fehler beim Erstellen')
-      setNewOppModalOpen(false)
       await loadKontakt()
-    } catch (err: any) {
-      throw err
+    } catch (err) {
+      console.error('Fehler:', err)
     }
   }
 
   async function handleSaveOverview(changes: Record<string, any>) {
-    setOverviewSaving(true)
     try {
       const res = await fetch(`/api/kontakte/${kontaktId}`, {
         method: 'PATCH',
@@ -407,23 +345,6 @@ export default function KontaktDetailPage() {
       }
     } catch (err) {
       console.error('Fehler beim Speichern:', err)
-    } finally {
-      setOverviewSaving(false)
-    }
-  }
-
-  async function handleStatusChange(newStatus: string) {
-    try {
-      const res = await fetch(`/api/kontakte/${kontaktId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      if (res.ok) {
-        await loadKontakt()
-      }
-    } catch (err) {
-      console.error('Fehler:', err)
     }
   }
 
@@ -449,6 +370,20 @@ export default function KontaktDetailPage() {
     }
   }
 
+  function openEditDrawer(section?: string) {
+    setEditSection(section)
+    setOpenDrawer('edit')
+  }
+
+  function openNewTask() {
+    setEditingAufgabe(null)
+    setTaskModalOpen(true)
+  }
+
+  function openEditTask(aufgabe: KontaktAufgabe) {
+    setEditingAufgabe(aufgabe as Aufgabe)
+    setTaskModalOpen(true)
+  }
 
   if (loading) {
     return (
@@ -486,33 +421,56 @@ export default function KontaktDetailPage() {
             : latestAmisTask
               ? 'Erledigt'
               : 'Keine AMIS-Aufgabe'
-  const amisStatusClass = latestAmisTask?.amis_status === 'error'
-    ? 'bg-red-100 text-red-800 border-red-200'
-    : latestAmisTask?.status === 'in_bearbeitung'
-      ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      : latestAmisTask?.amis_status === 'quoted' || latestAmisTask?.amis_status === 'person_created'
-        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-        : 'bg-gray-100 text-gray-700 border-gray-200'
+
+  const offeneAufgaben = aufgaben
+    .filter((a) => a.status !== 'erledigt')
+    .sort((a, b) => String(a.fällig || '').localeCompare(String(b.fällig || '')))
+  const nextTask = offeneAufgaben[0]
+  const nextTaskOverdue = nextTask && new Date(nextTask.fällig) < new Date()
+
+  const pkvContracts = [1, 2, 3, 4, 5]
+    .map((i) => ({
+      nr: i,
+      gesellschaft: (kontakt as any)[`versicherungsgesellschaft_${i}`],
+      leistungen: (kontakt as any)[`leistungen_${i}`],
+      beitrag: (kontakt as any)[`aktueller_beitrag_${i}`],
+    }))
+    .filter((c) => c.gesellschaft || c.leistungen || c.beitrag)
+
+  const adresseZeile = [
+    [kontakt.street, kontakt.hausnummer].filter(Boolean).join(' '),
+    [kontakt.postal_code, kontakt.city].filter(Boolean).join(' '),
+  ]
+    .filter(Boolean)
+    .join(', ')
+
+  const currentStepIndex = Math.max(0, PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage))
+  const doneStepCount = (kontakt.pipeline_steps || []).filter((s: any) => s.done).length
+  const isLastStep = currentStepIndex === PIPELINE_STEPS.length - 1
 
   return (
     <div>
-      {/* Sticky Header */}
       <StickyContactHeader
         contactId={kontaktId}
         firstName={kontakt.first_name}
         lastName={kontakt.last_name}
         companyName={kontakt.company_name}
-        phone={kontakt.phone_mobile}
         email={kontakt.email}
         phoneMobile={kontakt.phone_mobile}
         phoneOffice={kontakt.phone_office}
+        status={kontakt.status}
+        qualität={kontakt.qualität}
+        geburtstag={kontakt.geburtstag}
+        assignedUserName={kontakt.assigned_user?.name}
         onEmailClick={() => setEmailModalOpen(true)}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isEditing={isEditingOverview}
-        onEditChange={setIsEditingOverview}
+        onEditClick={() => openEditDrawer()}
         onDelete={() => setDeleteConfirm(true)}
         isArchived={!!kontakt.archived_at}
+        tags={kontaktTags}
+        onTagsChange={handleTagsChange}
+        notes={notes}
+        notesSaving={notesSaving}
+        onSaveNotes={handleSaveNotes}
         amisStatusLabel={amisStatusLabel}
         latestAmisTask={latestAmisTask}
         handleCreateAmisTask={handleCreateAmisTask}
@@ -528,463 +486,457 @@ export default function KontaktDetailPage() {
         onSent={() => loadKontakt()}
       />
 
-      {/* Tab Content */}
-      <div className="p-8">
-
-        {/* Notizen — immer sichtbar, kompakt */}
-        <div className="bg-amber-50/60 border border-amber-200 rounded-xl mb-6 overflow-hidden">
-          {notesEditMode ? (
-            <div className="p-4 space-y-2">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Notizen zum Kontakt…"
-                autoFocus
-                className="w-full h-28 p-3 border border-amber-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 resize-y"
-              />
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={() => {
-                    setNotesEditMode(false)
-                    setNotes(kontakt.notes || '')
-                  }}
-                  className="text-xs text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5"
-                >
-                  Abbrechen
-                </button>
-                <button
-                  onClick={handleSaveNotes}
-                  disabled={notesSaving}
-                  className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-4 py-1.5 rounded-lg transition-colors"
-                >
-                  {notesSaving ? 'Speichert…' : 'Speichern'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-start gap-3 px-4 py-3">
-              <button
-                onClick={() => setNotesExpanded((v) => !v)}
-                className="flex-1 min-w-0 text-left group"
-                title={notesExpanded ? 'Einklappen' : 'Ausklappen'}
-              >
-                <span className="text-xs font-semibold text-amber-800 mr-2">📋 Notizen</span>
-                {notes ? (
-                  <span
-                    className={`text-sm text-gray-700 whitespace-pre-wrap ${
-                      notesExpanded ? 'block mt-1.5' : 'inline align-middle'
-                    }`}
-                  >
-                    {notesExpanded ? notes : `${notes.split('\n')[0].slice(0, 120)}${notes.length > 120 || notes.includes('\n') ? '…' : ''}`}
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-400 italic">Keine Notizen</span>
-                )}
-              </button>
-              <button
-                onClick={() => setNotesEditMode(true)}
-                className="flex-shrink-0 text-xs text-amber-700 hover:text-amber-900 font-medium"
-              >
-                ✏️ Bearbeiten
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Tags */}
-        <div className="mb-6 bg-white rounded-xl border border-gray-200 px-4 py-3">
-          <span className="text-xs font-semibold text-gray-700 block mb-2">🏷️ Tags</span>
-          <TagInput value={kontaktTags} onChange={handleTagsChange} placeholder="Tag hinzufügen…" />
-        </div>
-
-        {/* AMIS.NOW Message Display */}
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+        {/* AMIS.NOW Message */}
         {amisMessage && (
-          <div className="mb-6 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+          <div className={`mb-4 p-4 rounded-lg border ${amisMessage.type === 'ok' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
             <p className={`text-sm font-medium ${amisMessage.type === 'ok' ? 'text-emerald-700' : 'text-red-700'}`}>
               {amisMessage.text}
             </p>
           </div>
         )}
 
-        {/* TAB: Übersicht */}
-        {activeTab === 'overview' && (
-          <>
-            {/* Kompakter Prozess-Stepper */}
-            {(() => {
-                  const currentIndex = Math.max(0, PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage))
-                  const doneCount = (kontakt.pipeline_steps || []).filter((s: any) => s.done).length
-                  const isLast = currentIndex === PIPELINE_STEPS.length - 1
-                  return (
-                    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 mb-6">
-                      <div className="flex items-center justify-between gap-4 mb-3">
-                        <p className="text-sm text-gray-600 min-w-0 truncate">
-                          <span className="font-semibold text-gray-900">
-                            Schritt {currentIndex + 1}/{PIPELINE_STEPS.length}:
-                          </span>{' '}
-                          {PIPELINE_STEPS[currentIndex]?.label}
-                        </p>
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <button
-                            onClick={() => setActiveTab('process')}
-                            className="text-xs text-gray-500 hover:text-gray-900 font-medium"
-                          >
-                            Alle Schritte →
-                          </button>
-                          {!isLast && (
-                            <button
-                              onClick={handleNextStep}
-                              disabled={pipelineSaving}
-                              className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
-                            >
-                              {pipelineSaving ? '…' : '→ Nächster Schritt'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        {PIPELINE_STEPS.map((step, i) => {
-                          const stepData = (kontakt.pipeline_steps || []).find((s: any) => s.key === step.key)
-                          const done = stepData?.done || false
-                          const current = i === currentIndex
-                          return (
-                            <button
-                              key={step.key}
-                              onClick={() => setActiveTab('process')}
-                              title={`${i + 1}. ${step.label}${done ? ' ✓' : current ? ' (aktuell)' : ''}`}
-                              className={`h-1.5 flex-1 rounded-full transition-colors ${
-                                done ? 'bg-emerald-500' : current ? 'bg-yellow-400' : 'bg-gray-200'
-                              } ${current ? 'ring-2 ring-yellow-200' : ''} hover:opacity-75`}
-                            />
-                          )
-                        })}
-                      </div>
-                      {isLast && doneCount === PIPELINE_STEPS.length && (
-                        <p className="text-xs text-emerald-600 font-medium mt-2">🎉 Alle Schritte abgeschlossen</p>
-                      )}
-                    </div>
-                  )
-                })()}
-            <ContactOverview
-              kontakt={kontakt}
-              onSave={handleSaveOverview}
-              isEditing={isEditingOverview}
-              onEditChange={setIsEditingOverview}
-            />
-          </>
-        )}
-        {activeTab === 'process' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Vertriebsprozess</h2>
-              {kontakt?.pipeline_stage && (
+        {/* Prozess-Stepper (volle Breite) */}
+        <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 mb-4">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <p className="text-sm text-gray-600 min-w-0 truncate">
+              <span className="font-semibold text-gray-900">
+                Schritt {currentStepIndex + 1}/{PIPELINE_STEPS.length}:
+              </span>{' '}
+              {PIPELINE_STEPS[currentStepIndex]?.label}
+            </p>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <button
+                onClick={() => setOpenDrawer('prozess')}
+                className="text-xs text-gray-500 hover:text-gray-900 font-medium"
+              >
+                Alle Schritte →
+              </button>
+              {!isLastStep && (
                 <button
                   onClick={handleNextStep}
-                  disabled={
-                    pipelineSaving ||
-                    PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage) === PIPELINE_STEPS.length - 1
-                  }
-                  className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 font-semibold text-sm px-4 py-2 rounded-lg transition-colors"
+                  disabled={pipelineSaving}
+                  className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  {pipelineSaving ? '…' : '→'} Nächster Schritt
+                  {pipelineSaving ? '…' : '→ Nächster Schritt'}
                 </button>
               )}
             </div>
+          </div>
+          <div className="flex gap-1">
+            {PIPELINE_STEPS.map((step, i) => {
+              const stepData = (kontakt.pipeline_steps || []).find((s: any) => s.key === step.key)
+              const done = stepData?.done || false
+              const current = i === currentStepIndex
+              return (
+                <button
+                  key={step.key}
+                  onClick={() => setOpenDrawer('prozess')}
+                  title={`${i + 1}. ${step.label}${done ? ' ✓' : current ? ' (aktuell)' : ''}`}
+                  className={`h-1.5 flex-1 rounded-full transition-colors ${
+                    done ? 'bg-emerald-500' : current ? 'bg-yellow-400' : 'bg-gray-200'
+                  } ${current ? 'ring-2 ring-yellow-200' : ''} hover:opacity-75`}
+                />
+              )
+            })}
+          </div>
+          {isLastStep && doneStepCount === PIPELINE_STEPS.length && (
+            <p className="text-xs text-emerald-600 font-medium mt-2">🎉 Alle Schritte abgeschlossen</p>
+          )}
+        </div>
 
-            <div className="space-y-3 max-w-2xl">
-              {PIPELINE_STEPS.map((step, index) => {
-                const stepData = (kontakt?.pipeline_steps || []).find((s: any) => s.key === step.key)
-                const isCompleted = stepData?.done || false
-                const isDueDate = stepData?.due_date
-                const isCurrent = kontakt?.pipeline_stage === step.key
-                const isNext = !isCompleted && (PIPELINE_STEPS.findIndex(s => s.key === kontakt?.pipeline_stage) || 0) === index - 1
+        {/* Kachelraster */}
+        <div className="grid lg:grid-cols-[1.55fr_1fr] gap-4 items-start">
+          {/* Linke Spalte: Daten-Kacheln */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            {/* Kontakt */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">👤 Kontakt</h3>
+                <button
+                  onClick={() => openEditDrawer('grunddaten')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Bearbeiten
+                </button>
+              </div>
+              <dl className="text-sm space-y-1.5">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Mobil</dt>
+                  <dd className="text-gray-900 truncate">{kontakt.phone_mobile || '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Büro</dt>
+                  <dd className="text-gray-900 truncate">{kontakt.phone_office || '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Adresse</dt>
+                  <dd className="text-gray-900 truncate text-right">{adresseZeile || '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Typ</dt>
+                  <dd className="text-gray-900">{(kontakt as any).kontakt_typ === 'privat' ? '👤 Privat' : '🏢 Gewerbe'}</dd>
+                </div>
+              </dl>
+            </div>
 
-                return (
-                  <div
-                    key={step.key}
-                    className={`flex gap-4 p-4 rounded-lg border-2 transition-all ${
-                      isCurrent
-                        ? 'border-yellow-400 bg-yellow-50'
-                        : isCompleted
-                          ? 'border-emerald-200 bg-emerald-50'
-                          : 'border-gray-200 bg-gray-50'
-                    }`}
+            {/* Unternehmen */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">🏢 Unternehmen</h3>
+                <button
+                  onClick={() => openEditDrawer('unternehmen')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Bearbeiten
+                </button>
+              </div>
+              <dl className="text-sm space-y-1.5">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Branche</dt>
+                  <dd className="text-gray-900 truncate">{kontakt.industry || '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Rechtsform</dt>
+                  <dd className="text-gray-900">{kontakt.rechtsform || '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Mitarbeiter</dt>
+                  <dd className="text-gray-900">{kontakt.mitarbeitanzahl ?? '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-gray-400">Jahresumsatz</dt>
+                  <dd className="text-gray-900 truncate">{kontakt.jahresumsatz || '—'}</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Versicherung & Verträge */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">🛡️ Versicherung & Verträge</h3>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setOpenDrawer('vertraege')}
+                    className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
                   >
-                    {/* Icon */}
-                    <div className="flex-shrink-0">
-                      {isCompleted ? (
-                        <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold">
-                          ✓
-                        </div>
-                      ) : isCurrent ? (
-                        <div className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-gray-900 font-bold">
-                          {index + 1}
-                        </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400 text-sm font-medium">
-                          {index + 1}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className={`font-semibold ${isCompleted ? 'text-emerald-900' : isCurrent ? 'text-yellow-900' : 'text-gray-700'}`}>
-                          {step.label}
-                        </p>
-                        {isCompleted && stepData?.completed_at && (
-                          <span className="text-xs text-emerald-600 font-medium">
-                            ✓ {new Date(stepData.completed_at).toLocaleDateString('de-DE')}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex gap-3 items-center">
-                        <input
-                          type="checkbox"
-                          checked={isCompleted}
-                          onChange={(e) => handleUpdatePipelineStep(step.key, e.target.checked, isDueDate)}
-                          disabled={pipelineSaving}
-                          className="w-4 h-4 rounded border-gray-300 cursor-pointer"
-                          title="Als erledigt markieren"
-                        />
-                        <input
-                          type="date"
-                          value={isDueDate || ''}
-                          onChange={(e) => handleUpdatePipelineStep(step.key, isCompleted, e.target.value)}
-                          disabled={pipelineSaving}
-                          className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
-                          title="Fälligkeitsdatum"
-                        />
-                        {isDueDate && (
-                          <span className="text-xs text-gray-500">
-                            Fällig: {new Date(isDueDate).toLocaleDateString('de-DE')}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {kontakt?.pipeline_stage === PIPELINE_STEPS[PIPELINE_STEPS.length - 1].key && (
-              <div className="mt-6 p-4 bg-emerald-50 border-2 border-emerald-200 rounded-lg">
-                <p className="text-sm font-semibold text-emerald-900">
-                  🎉 Kontakt hat alle Prozessschritte abgeschlossen!
-                </p>
+                    Verträge →
+                  </button>
+                  <button
+                    onClick={() => openEditDrawer('versicherung')}
+                    className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                  >
+                    Bearbeiten
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB: Aktivitäten */}
-        {activeTab === 'activities' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Aktivitätshistorie</h2>
-            {aktivitäten.length === 0 ? (
-              <p className="text-gray-400 text-sm">Keine Aktivitäten vorhanden.</p>
-            ) : (
-              <div className="space-y-4">
-                {aktivitäten.map((akt, i) => {
-                  // Icon basierend auf Activity-Type
-                  const getActivityIcon = (type: string) => {
-                    if (type.includes('klicktipp')) return '🔗'
-                    if (type.includes('dialfire')) return '📞'
-                    if (type.includes('task')) return '✓'
-                    return '📝'
-                  }
-                  
-                  const getActivityColor = (type: string) => {
-                    if (type.includes('klicktipp')) return 'bg-blue-100 text-blue-600'
-                    if (type.includes('dialfire')) return 'bg-purple-100 text-purple-600'
-                    if (type.includes('task')) return 'bg-emerald-100 text-emerald-600'
-                    return 'bg-yellow-100 text-yellow-600'
-                  }
-                  
-                  return (
-                    <div key={akt.id} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${getActivityColor(akt.type)}`}>
-                          {getActivityIcon(akt.type)}
-                        </div>
-                        {i < aktivitäten.length - 1 && <div className="w-0.5 h-8 bg-gray-200 mt-2" />}
-                      </div>
-                      <div className="flex-1 pt-1">
-                        <p className="text-sm font-medium text-gray-900">{akt.description}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-xs text-gray-400">
-                            {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                          <span className="text-xs text-gray-400">· {akt.user?.name || 'System'}</span>
-                          {akt.type && (
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getActivityColor(akt.type)}`}>
-                              {akt.type.replace('_', ' ')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="grid sm:grid-cols-3 gap-x-6 gap-y-1.5 text-sm mb-1">
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-400">Sparte</span>
+                  <span className="text-gray-900 truncate">{kontakt.sparte || '—'}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-400">Prüfgrund</span>
+                  <span className="text-gray-900 truncate">{kontakt.prüfung_grund || '—'}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-400">Vorversicherung</span>
+                  <span className="text-gray-900 truncate">{kontakt.versicherungsgesellschaft || '—'}</span>
+                </div>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB: Aufgaben */}
-        {activeTab === 'tasks' && (
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Aufgaben für diesen Kontakt</h2>
-              <button
-                onClick={() => setNewTaskModalOpen(true)}
-                className="text-yellow-600 hover:text-yellow-700 text-sm font-medium"
-              >
-                + Neue Aufgabe
-              </button>
-            </div>
-            {aufgaben.length === 0 ? (
-              <div className="p-6 text-center text-gray-400">
-                <p>Keine Aufgaben für diesen Kontakt.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              {pkvContracts.length > 0 && (
+                <table className="w-full text-xs mt-3 border-t border-gray-100 pt-2">
                   <thead>
-                    <tr className="border-b border-gray-100 bg-gray-50">
-                      {['Titel', 'Status', 'Priorität', 'Fällig', 'Verantwortlicher'].map((h) => (
-                        <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-6 py-3">
-                          {h}
-                        </th>
-                      ))}
+                    <tr className="text-left text-gray-400">
+                      <th className="font-medium py-1">#</th>
+                      <th className="font-medium py-1">Gesellschaft</th>
+                      <th className="font-medium py-1">Leistungen</th>
+                      <th className="font-medium py-1">Beitrag €/M</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {aufgaben.map((aufgabe) => (
-                      <tr
-                        key={aufgabe.id}
-                        className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => router.push(`/aufgaben/${aufgabe.id}`)}
-                      >
-                        <td className="px-6 py-3.5 text-yellow-600 font-medium hover:underline">{aufgabe.titel}</td>
-                        <td className="px-6 py-3.5" onClick={(e) => e.stopPropagation()}>
-                          <select
-                            value={aufgabe.status}
-                            onChange={(e) => {
-                              fetch(`/api/aufgaben/${aufgabe.id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ status: e.target.value }),
-                              }).then(() => loadKontakt())
-                            }}
-                            className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer ${
-                              aufgabe.status === 'offen'
-                                ? 'bg-red-100 text-red-800'
-                                : aufgabe.status === 'in_bearbeitung'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-emerald-100 text-emerald-800'
-                            }`}
-                          >
-                            <option value="offen">Offen</option>
-                            <option value="in_bearbeitung">In Bearbeitung</option>
-                            <option value="erledigt">Erledigt</option>
-                          </select>
-                        </td>
-                        <td className="px-6 py-3.5">
-                          <span
-                            className={`text-xs font-bold ${
-                              aufgabe.priorität === 'hoch' ? 'text-red-600' : aufgabe.priorität === 'mittel' ? 'text-orange-600' : 'text-gray-600'
-                            }`}
-                          >
-                            {aufgabe.priorität.charAt(0).toUpperCase() + aufgabe.priorität.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-3.5 text-gray-600">{new Date(aufgabe.fällig).toLocaleDateString('de-DE')}</td>
-                        <td className="px-6 py-3.5 text-gray-600">{aufgabe.assigned_user?.name || '—'}</td>
+                    {pkvContracts.map((c) => (
+                      <tr key={c.nr} className="text-gray-700 border-t border-gray-50">
+                        <td className="py-1">{c.nr}</td>
+                        <td className="py-1">{c.gesellschaft || '—'}</td>
+                        <td className="py-1">{c.leistungen || '—'}</td>
+                        <td className="py-1">{c.beitrag || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              )}
+            </div>
+
+            {/* Dokumente */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">📎 Dokumente</h3>
+                <button
+                  onClick={() => setOpenDrawer('dokumente')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Öffnen →
+                </button>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB: Dialfire */}
-        {activeTab === 'dialfire' && (
-          <div className="space-y-8">
-            {/* Response Tabelle - Call-focused */}
-            <DialfireResponseTable
-              flatView={dialfireResponse}
-              lastCallInfo={dialfireSnapshot?.changes ? undefined : undefined}
-              changedFields={dialfireSnapshot?.changed_fields || []}
-            />
-
-            {/* Sync Panel */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Sync-Zusammenfassung</h2>
-              <DialfireSyncPanel kontakt={kontakt} />
+              <p className="text-xs text-gray-400 mt-2">Upload, Kategorien & Google-Drive-Ablage</p>
             </div>
 
-            {/* Notizen-Historie (Dialfire-Anrufnotizen) */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Anruf-Notizen (Historie)</h2>
-              <NotesHistory contactId={kontakt.id} />
+            {/* Telefonie & Sync */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2.5">☎️ Telefonie & Sync</h3>
+              <div className="text-sm space-y-1.5">
+                <button
+                  onClick={() => setOpenDrawer('placetel')}
+                  className="flex justify-between w-full text-left hover:text-yellow-700 group"
+                >
+                  <span className="text-gray-700 group-hover:text-yellow-700">Placetel-Anrufe</span>
+                  <span className="text-yellow-600 text-xs font-semibold">→</span>
+                </button>
+                <button
+                  onClick={() => setOpenDrawer('dialfire')}
+                  className="flex justify-between w-full text-left hover:text-yellow-700 group"
+                >
+                  <span className="text-gray-700 group-hover:text-yellow-700">
+                    Dialfire {kontakt.dialfire_id ? '· verknüpft' : ''}
+                  </span>
+                  <span className="text-yellow-600 text-xs font-semibold">→</span>
+                </button>
+                <button
+                  onClick={() => setOpenDrawer('automation')}
+                  className="flex justify-between w-full text-left hover:text-yellow-700 group"
+                >
+                  <span className="text-gray-700 group-hover:text-yellow-700">
+                    Automation {kontakt.automation_disabled ? '· pausiert' : '· aktiv'}
+                  </span>
+                  <span className="text-yellow-600 text-xs font-semibold">→</span>
+                </button>
+                <button
+                  onClick={() => openEditDrawer('integrations')}
+                  className="flex justify-between w-full text-left hover:text-yellow-700 group"
+                >
+                  <span className="text-gray-700 group-hover:text-yellow-700">KlickTipp & Integrations</span>
+                  <span className="text-yellow-600 text-xs font-semibold">→</span>
+                </button>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* TAB: Placetel */}
-        {activeTab === 'placetel' && (
-          <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <PlacetelCallHistory contactId={kontaktId} />
-          </div>
-        )}
+          {/* Rechte Spalte: Arbeit */}
+          <div className="flex flex-col gap-4">
+            {/* Nächste Aufgabe */}
+            <div className="bg-white rounded-xl border-2 border-yellow-400 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-900">✓ Nächste Aufgabe</h3>
+                {nextTask && nextTaskOverdue && (
+                  <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Überfällig
+                  </span>
+                )}
+              </div>
+              {nextTask ? (
+                <>
+                  <button
+                    onClick={() => openEditTask(nextTask)}
+                    className="text-sm font-semibold text-gray-900 hover:text-yellow-700 text-left"
+                  >
+                    {nextTask.titel}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Fällig {new Date(nextTask.fällig).toLocaleDateString('de-DE')}
+                    {nextTask.assigned_user?.name ? ` · ${nextTask.assigned_user.name}` : ''}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400">Keine offenen Aufgaben.</p>
+              )}
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {nextTask && (
+                  <button
+                    onClick={() => handleTaskStatusChange(nextTask.id, 'erledigt')}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    ✓ Erledigt
+                  </button>
+                )}
+                <button
+                  onClick={openNewTask}
+                  className="text-yellow-600 hover:text-yellow-700 text-xs font-semibold"
+                >
+                  + Neue Aufgabe
+                </button>
+                <button
+                  onClick={() => setOpenDrawer('aufgaben')}
+                  className="ml-auto text-gray-500 hover:text-gray-900 text-xs font-medium"
+                >
+                  Historie ({aufgaben.length}) →
+                </button>
+              </div>
+            </div>
 
-        {/* TAB: Dokumente */}
-        {activeTab === 'documents' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <KontaktDokumenteTab kontaktId={kontaktId} />
+            {/* Aktivitäten */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">📝 Aktivitäten</h3>
+                <button
+                  onClick={() => setOpenDrawer('aktivitaeten')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Alle ({aktivitäten.length}) →
+                </button>
+              </div>
+              {aktivitäten.length === 0 ? (
+                <p className="text-sm text-gray-400">Keine Aktivitäten vorhanden.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {aktivitäten.slice(0, 4).map((akt) => (
+                    <div key={akt.id} className="text-xs">
+                      <p className="text-gray-900 line-clamp-2">{akt.description}</p>
+                      <p className="text-gray-400 mt-0.5">
+                        {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                        {' · '}
+                        {akt.user?.name || 'System'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'contracts' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <KontaktVertraegeTab kontaktId={kontaktId} />
-          </div>
-        )}
+        {/* Footer */}
+        <div className="mt-8 text-center">
+          <Link href="/kontakte" className="text-gray-500 hover:text-gray-900 text-sm font-medium">
+            ← Zurück zur Übersicht
+          </Link>
+        </div>
       </div>
 
-        {activeTab === 'automation' && (
-          <AutomationControls
-            contactId={kontakt.id}
-            initialData={{
-              automation_disabled: kontakt.automation_disabled ?? false,
-              dialfire_campaign_auto: kontakt.dialfire_campaign_auto ?? true,
-              dialfire_campaign_id: kontakt.dialfire_campaign_id,
-              dialfire_task_auto: kontakt.dialfire_task_auto ?? true,
-              dialfire_task_name_field: kontakt.dialfire_task_name_field,
-              klicktipp_tags_auto: kontakt.klicktipp_tags_auto ?? true,
-              klicktipp_tags_field: kontakt.klicktipp_tags_field,
-            }}
+      {/* ===================== Drawer ===================== */}
+
+      <Drawer
+        isOpen={openDrawer === 'edit'}
+        title="✏️ Kontakt bearbeiten — alle Felder"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-3xl"
+      >
+        <ContactOverview
+          kontakt={kontakt}
+          onSave={handleSaveOverview}
+          isEditing
+          onEditChange={(editing) => {
+            if (!editing) setOpenDrawer(null)
+          }}
+          initialSection={editSection}
+        />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'prozess'}
+        title="🎯 Vertriebsprozess"
+        onClose={() => setOpenDrawer(null)}
+      >
+        <ProzessPanel
+          pipelineStage={kontakt.pipeline_stage}
+          pipelineSteps={kontakt.pipeline_steps}
+          saving={pipelineSaving}
+          onNextStep={handleNextStep}
+          onUpdateStep={handleUpdatePipelineStep}
+        />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'aktivitaeten'}
+        title="📝 Aktivitätshistorie"
+        onClose={() => setOpenDrawer(null)}
+      >
+        <AktivitaetenPanel aktivitäten={aktivitäten} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'aufgaben'}
+        title="✓ Aufgaben für diesen Kontakt"
+        onClose={() => setOpenDrawer(null)}
+      >
+        <AufgabenPanel
+          aufgaben={aufgaben}
+          onStatusChange={handleTaskStatusChange}
+          onEditTask={openEditTask}
+          onNewTask={openNewTask}
+        />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'dokumente'}
+        title="📎 Dokumente"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-3xl"
+      >
+        <KontaktDokumenteTab kontaktId={kontaktId} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'vertraege'}
+        title="📋 Verträge"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-3xl"
+      >
+        <KontaktVertraegeTab kontaktId={kontaktId} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'placetel'}
+        title="☎️ Placetel-Anrufe"
+        onClose={() => setOpenDrawer(null)}
+      >
+        <PlacetelCallHistory contactId={kontaktId} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'dialfire'}
+        title="📞 Dialfire"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-3xl"
+      >
+        <div className="space-y-8">
+          <DialfireResponseTable
+            flatView={dialfireResponse}
+            lastCallInfo={undefined}
+            changedFields={dialfireSnapshot?.changed_fields || []}
           />
-        )}
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Sync-Zusammenfassung</h3>
+            <DialfireSyncPanel kontakt={kontakt} />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Anruf-Notizen (Historie)</h3>
+            <NotesHistory contactId={kontakt.id} />
+          </div>
+        </div>
+      </Drawer>
 
-      {/* Footer */}
-      <div className="mt-8 text-center">
-        <Link href="/kontakte" className="text-gray-500 hover:text-gray-900 text-sm font-medium">
-          ← Zurück zur Übersicht
-        </Link>
-      </div>
+      <Drawer
+        isOpen={openDrawer === 'automation'}
+        title="⚡ Automation"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-3xl"
+      >
+        <AutomationControls
+          contactId={kontakt.id}
+          initialData={{
+            automation_disabled: kontakt.automation_disabled ?? false,
+            dialfire_campaign_auto: kontakt.dialfire_campaign_auto ?? true,
+            dialfire_campaign_id: kontakt.dialfire_campaign_id,
+            dialfire_task_auto: kontakt.dialfire_task_auto ?? true,
+            dialfire_task_name_field: kontakt.dialfire_task_name_field,
+            klicktipp_tags_auto: kontakt.klicktipp_tags_auto ?? true,
+            klicktipp_tags_field: kontakt.klicktipp_tags_field,
+          }}
+        />
+      </Drawer>
 
-      {/* Edit Modal */}
-      <KontaktEditModal
-        kontakt={kontakt}
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        onSave={handleSaveKontakt}
-      />
+      {/* ===================== Modals ===================== */}
 
       {/* Archivieren-Bestätigung */}
       {deleteConfirm && (
@@ -1019,15 +971,17 @@ export default function KontaktDetailPage() {
         </div>
       )}
 
-      {/* Neue Aufgabe Modal */}
+      {/* Aufgabe anlegen/bearbeiten */}
       <AufgabenEditModal
         kontaktId={kontaktId}
-        isOpen={newTaskModalOpen}
-        onClose={() => setNewTaskModalOpen(false)}
-        onSave={handleCreateAufgabe}
+        aufgabe={editingAufgabe}
+        isOpen={taskModalOpen}
+        onClose={() => {
+          setTaskModalOpen(false)
+          setEditingAufgabe(null)
+        }}
+        onSave={handleSaveAufgabe}
       />
-
-      {/* Neue Opportunity Modal */}
     </div>
   )
 }

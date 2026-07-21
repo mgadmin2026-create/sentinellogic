@@ -12,8 +12,12 @@ test.describe('Kontakte: Archivieren', () => {
     const createRes = await request.post('/api/kontakte', { data: contact })
     const { data: created } = await expectOk(createRes, 'Testkontakt anlegen')
 
+    // Aufgaben verlangen inzwischen einen Verantwortlichen
+    const usersRes = await request.get('/api/users')
+    const { data: teamMembers } = await expectOk(usersRes, 'Team-Mitglieder laden')
+
     const taskRes = await request.post('/api/aufgaben', {
-      data: { contact_id: created.id, titel: '[TEST] Aufgabe', 'fällig': '2026-12-31' },
+      data: { contact_id: created.id, titel: '[TEST] Aufgabe', 'fällig': '2026-12-31', assigned_user_id: teamMembers[0].id },
     })
     await expectOk(taskRes, 'Testaufgabe anlegen')
 
