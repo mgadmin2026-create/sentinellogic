@@ -19,8 +19,6 @@ interface StickyContactHeaderProps {
   onEditChange: (editing: boolean) => void
   onDelete: () => void
   isArchived?: boolean
-  viewMode?: 'overview' | 'analysis'
-  setViewMode?: (mode: 'overview' | 'analysis') => void
   amisStatusLabel?: string
   latestAmisTask?: any
   handleCreateAmisTask?: (taskType: 'person_create' | 'person_create_quote') => Promise<void>
@@ -55,8 +53,6 @@ export function StickyContactHeader({
   onEditChange,
   onDelete,
   isArchived,
-  viewMode = 'overview',
-  setViewMode,
   amisStatusLabel,
   latestAmisTask,
   handleCreateAmisTask,
@@ -202,17 +198,6 @@ export function StickyContactHeader({
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* Ansicht Wechseln Button */}
-            {setViewMode && (
-              <button
-                onClick={() => setViewMode(viewMode === 'overview' ? 'analysis' : 'overview')}
-                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
-                title="Ansicht wechseln"
-              >
-                {viewMode === 'overview' ? '📊 Analyse' : '📋 Übersicht'}
-              </button>
             )}
 
             {/* Bearbeiten Button */}

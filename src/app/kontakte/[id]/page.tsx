@@ -7,7 +7,6 @@ import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
 import { ContactOverview } from '@/components/ContactOverview'
-import { ContactDetailAnalysisView } from '@/components/ContactDetailAnalysisView'
 import { StickyContactHeader } from '@/components/StickyContactHeader'
 import { NotesHistory } from '@/components/NotesHistory'
 import { DialfireSyncPanel } from '@/components/DialfireSyncPanel'
@@ -184,7 +183,6 @@ export default function KontaktDetailPage() {
   const kontaktId = params.id as string
 
   const [activeTab, setActiveTab] = useState('overview')
-  const [viewMode, setViewMode] = useState<'overview' | 'analysis'>('overview')
   const [kontakt, setKontakt] = useState<Kontakt | null>(null)
   const [loading, setLoading] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -515,8 +513,6 @@ export default function KontaktDetailPage() {
         onEditChange={setIsEditingOverview}
         onDelete={() => setDeleteConfirm(true)}
         isArchived={!!kontakt.archived_at}
-        viewMode={viewMode}
-        setViewMode={setViewMode}
         amisStatusLabel={amisStatusLabel}
         latestAmisTask={latestAmisTask}
         handleCreateAmisTask={handleCreateAmisTask}
@@ -534,15 +530,6 @@ export default function KontaktDetailPage() {
 
       {/* Tab Content */}
       <div className="p-8">
-        {/* Analysis View - shown when viewMode === 'analysis' AND in overview tab */}
-        {viewMode === 'analysis' && activeTab === 'overview' && (
-          <ContactDetailAnalysisView
-            kontakt={kontakt}
-            onSave={handleSaveOverview}
-            isEditing={isEditingOverview}
-            onEditChange={setIsEditingOverview}
-          />
-        )}
 
         {/* Notizen — immer sichtbar, kompakt */}
         <div className="bg-amber-50/60 border border-amber-200 rounded-xl mb-6 overflow-hidden">
@@ -622,11 +609,8 @@ export default function KontaktDetailPage() {
         {/* TAB: Übersicht */}
         {activeTab === 'overview' && (
           <>
-            {/* View Mode Toggle */}
-            {viewMode === 'overview' && (
-              <>
-                {/* Kompakter Prozess-Stepper */}
-                {(() => {
+            {/* Kompakter Prozess-Stepper */}
+            {(() => {
                   const currentIndex = Math.max(0, PIPELINE_STEPS.findIndex(s => s.key === kontakt.pipeline_stage))
                   const doneCount = (kontakt.pipeline_steps || []).filter((s: any) => s.done).length
                   const isLast = currentIndex === PIPELINE_STEPS.length - 1
@@ -680,15 +664,12 @@ export default function KontaktDetailPage() {
                     </div>
                   )
                 })()}
-                <ContactOverview
-                  kontakt={kontakt}
-                  onSave={handleSaveOverview}
-                  isEditing={isEditingOverview}
-                  onEditChange={setIsEditingOverview}
-                />
-              </>
-            )}
-
+            <ContactOverview
+              kontakt={kontakt}
+              onSave={handleSaveOverview}
+              isEditing={isEditingOverview}
+              onEditChange={setIsEditingOverview}
+            />
           </>
         )}
         {activeTab === 'process' && (
