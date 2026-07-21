@@ -17,6 +17,11 @@ interface Aufgabe {
   created_at: string
 }
 
+interface TeamMember {
+  id: string
+  name: string
+}
+
 const STATUS_LABELS = { offen: 'Offen', in_bearbeitung: 'In Bearbeitung', erledigt: 'Erledigt' }
 const STATUS_COLORS = {
   offen: 'bg-red-100 text-red-800',
@@ -39,30 +44,61 @@ const PRIORITÄT_FILTER = [
   { label: 'Niedrig', value: 'niedrig' },
 ]
 
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+}
+
 export default function AufgabenPage() {
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [prioritätFilter, setPrioritätFilter] = useState('all')
+  const [assignedUserFilter, setAssignedUserFilter] = useState('all')
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [contactSelectOpen, setContactSelectOpen] = useState(false)
-  const [selectedContactId, setSelectedContactId] = useState('')
-  const [kontakte, setKontakte] = useState<any[]>([])
+  const [editingAufgabe, setEditingAufgabe] = useState<Aufgabe | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+
+  // Sucheingabe entprellen — vermeidet einen Refetch bei jedem Tastenanschlag
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(searchInput), 300)
+    return () => clearTimeout(timeout)
+  }, [searchInput])
 
   useEffect(() => {
     loadAufgaben()
-    loadKontakte()
-  }, [statusFilter, prioritätFilter, search])
+  }, [statusFilter, prioritätFilter, assignedUserFilter, search])
 
-  async function loadKontakte() {
+  useEffect(() => {
+    loadTeamMembers()
+    loadCurrentUser()
+  }, [])
+
+  async function loadTeamMembers() {
     try {
-      const res = await fetch('/api/kontakte?limit=1000')
+      const res = await fetch('/api/users')
       const json = await res.json()
-      if (json.success) setKontakte(json.data)
+      if (json.success) setTeamMembers(json.data)
     } catch (err) {
-      console.error('Fehler beim Laden der Kontakte:', err)
+      console.error('Fehler beim Laden der Team-Mitglieder:', err)
+    }
+  }
+
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch('/api/me')
+      const json = await res.json()
+      if (json.success) setCurrentUserId(json.data.id)
+    } catch (err) {
+      console.error('Fehler beim Laden des aktuellen Users:', err)
     }
   }
 
@@ -73,6 +109,7 @@ export default function AufgabenPage() {
       params.set('limit', '500')
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (prioritätFilter !== 'all') params.set('priorität', prioritätFilter)
+      if (assignedUserFilter !== 'all') params.set('assigned_user_id', assignedUserFilter)
       if (search) params.set('search', search)
 
       const res = await fetch(`/api/aufgaben?${params.toString()}`)
@@ -93,18 +130,31 @@ export default function AufgabenPage() {
     }
   }
 
-  async function handleCreateAufgabe(form: any) {
+  function openCreateModal() {
+    setEditingAufgabe(null)
+    setModalOpen(true)
+  }
+
+  function openEditModal(aufgabe: Aufgabe) {
+    setEditingAufgabe(aufgabe)
+    setModalOpen(true)
+  }
+
+  async function handleSaveAufgabe(form: any) {
     try {
-      const res = await fetch('/api/aufgaben', {
-        method: 'POST',
+      const url = editingAufgabe ? `/api/aufgaben/${editingAufgabe.id}` : '/api/aufgaben'
+      const method = editingAufgabe ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
       const json = await res.json()
       if (!res.ok) {
-        throw new Error(json.error || 'Fehler beim Erstellen')
+        throw new Error(json.error || 'Fehler beim Speichern')
       }
       setModalOpen(false)
+      setEditingAufgabe(null)
       await loadAufgaben()
     } catch (err: any) {
       throw err
@@ -136,11 +186,12 @@ export default function AufgabenPage() {
     }
   }
 
-  const isOverdue = (dueDate: string) => new Date(dueDate) < new Date() && dueDate
+  const isOverdue = (dueDate: string, status: string) => status !== 'erledigt' && new Date(dueDate) < new Date() && !!dueDate
 
   const filtered = aufgaben.filter((a) => {
     if (statusFilter !== 'all' && a.status !== statusFilter) return false
     if (prioritätFilter !== 'all' && a.priorität !== prioritätFilter) return false
+    if (assignedUserFilter !== 'all' && a.assigned_user_id !== assignedUserFilter) return false
     const q = search.toLowerCase()
     if (q && !(a.titel.toLowerCase().includes(q) || (a.contact_name ?? '').toLowerCase().includes(q))) return false
     return true
@@ -156,10 +207,7 @@ export default function AufgabenPage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            setSelectedContactId(undefined as any)
-            setModalOpen(true)
-          }}
+          onClick={openCreateModal}
           className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -174,12 +222,29 @@ export default function AufgabenPage() {
         <input
           type="text"
           placeholder="Nach Titel oder Kontakt suchen…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
         />
 
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {currentUserId && (
+            <button
+              onClick={() => setAssignedUserFilter(assignedUserFilter === currentUserId ? 'all' : currentUserId)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all whitespace-nowrap ${
+                assignedUserFilter === currentUserId
+                  ? 'bg-yellow-400 border-yellow-400 text-gray-900'
+                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Meine Aufgaben
+            </button>
+          )}
+
           <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1 w-fit">
             {AUFGABEN_FILTER.map((f) => {
               const count =
@@ -219,6 +284,17 @@ export default function AufgabenPage() {
               )
             })}
           </div>
+
+          <select
+            value={assignedUserFilter}
+            onChange={(e) => setAssignedUserFilter(e.target.value)}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+          >
+            <option value="all">Verantwortlicher: Alle</option>
+            {teamMembers.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -246,9 +322,17 @@ export default function AufgabenPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-16">
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-gray-400 text-sm mb-3">
                       {aufgaben.length === 0 ? 'Noch keine Aufgaben vorhanden.' : 'Keine Aufgaben gefunden.'}
                     </p>
+                    {aufgaben.length === 0 && (
+                      <button
+                        onClick={openCreateModal}
+                        className="text-yellow-600 hover:text-yellow-700 text-sm font-medium"
+                      >
+                        + Erste Aufgabe anlegen
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -256,7 +340,7 @@ export default function AufgabenPage() {
                   <tr
                     key={aufgabe.id}
                     className={`border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}
-                    onClick={() => window.location.href = `/aufgaben/${aufgabe.id}`}
+                    onClick={() => openEditModal(aufgabe)}
                   >
                     <td className="px-5 py-3.5 font-semibold text-yellow-600 hover:underline">{aufgabe.titel}</td>
                     <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
@@ -286,11 +370,11 @@ export default function AufgabenPage() {
                         ))}
                       </select>
                     </td>
-                    <td className={`px-5 py-3.5 text-xs ${isOverdue(aufgabe.fällig) ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                    <td className={`px-5 py-3.5 text-xs ${isOverdue(aufgabe.fällig, aufgabe.status) ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
                       {new Date(aufgabe.fällig).toLocaleDateString('de-DE')}
-                      {isOverdue(aufgabe.fällig) && aufgabe.status !== 'erledigt' && (
-                        <span className="ml-2 inline-flex px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold">
-                          ⏰
+                      {isOverdue(aufgabe.fällig, aufgabe.status) && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold">
+                          <ClockIcon />
                         </span>
                       )}
                     </td>
@@ -298,6 +382,7 @@ export default function AufgabenPage() {
                     <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setDeleteConfirm(aufgabe.id)}
+                        aria-label="Löschen"
                         className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -319,33 +404,53 @@ export default function AufgabenPage() {
         {loading ? (
           <p className="text-center text-gray-400 py-12 text-sm">Aufgaben werden geladen…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-center text-gray-400 py-12 text-sm">
-            {aufgaben.length === 0 ? 'Noch keine Aufgaben vorhanden.' : 'Keine Aufgaben gefunden.'}
-          </p>
+          <div className="text-center py-12">
+            <p className="text-gray-400 text-sm mb-3">
+              {aufgaben.length === 0 ? 'Noch keine Aufgaben vorhanden.' : 'Keine Aufgaben gefunden.'}
+            </p>
+            {aufgaben.length === 0 && (
+              <button
+                onClick={openCreateModal}
+                className="text-yellow-600 hover:text-yellow-700 text-sm font-medium"
+              >
+                + Erste Aufgabe anlegen
+              </button>
+            )}
+          </div>
         ) : (
           filtered.map((aufgabe) => (
-            <div key={aufgabe.id} className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}>
+            <div
+              key={aufgabe.id}
+              onClick={() => openEditModal(aufgabe)}
+              className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 cursor-pointer ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}
+            >
               <div className="flex items-start justify-between gap-3">
-                <Link href={`/aufgaben/${aufgabe.id}`} className="font-semibold text-yellow-600 hover:underline min-w-0">
-                  {aufgabe.titel}
-                </Link>
+                <p className="font-semibold text-yellow-600 min-w-0">{aufgabe.titel}</p>
                 <span className={`text-xs font-bold flex-shrink-0 ${PRIORITÄT_COLORS[aufgabe.priorität]}`}>
                   {PRIORITÄT_LABELS[aufgabe.priorität]}
                 </span>
               </div>
 
               {aufgabe.contact_name && aufgabe.contact_id && (
-                <Link href={`/kontakte/${aufgabe.contact_id}`} className="inline-block text-sm text-gray-600 hover:text-yellow-600 hover:underline mt-1">
+                <Link
+                  href={`/kontakte/${aufgabe.contact_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-block text-sm text-gray-600 hover:text-yellow-600 hover:underline mt-1"
+                >
                   {aufgabe.contact_name}
                 </Link>
               )}
 
+              {aufgabe.assigned_user_name && aufgabe.assigned_user_name !== '—' && (
+                <p className="text-xs text-gray-500 mt-1">{aufgabe.assigned_user_name}</p>
+              )}
+
               <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100">
-                <span className={`text-xs ${isOverdue(aufgabe.fällig) && aufgabe.status !== 'erledigt' ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                <span className={`flex items-center gap-1 text-xs ${isOverdue(aufgabe.fällig, aufgabe.status) ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
                   {new Date(aufgabe.fällig).toLocaleDateString('de-DE')}
-                  {isOverdue(aufgabe.fällig) && aufgabe.status !== 'erledigt' && ' ⏰'}
+                  {isOverdue(aufgabe.fällig, aufgabe.status) && <ClockIcon />}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <select
                     value={aufgabe.status}
                     onChange={(e) => handleStatusChange(aufgabe.id, e.target.value)}
@@ -372,40 +477,15 @@ export default function AufgabenPage() {
         )}
       </div>
 
-      <AufgabenEditModal kontaktId={selectedContactId} isOpen={modalOpen} onClose={() => setModalOpen(false)} onSave={handleCreateAufgabe} />
-
-      {/* Kontakt-Selektor */}
-      {contactSelectOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 sticky top-0 bg-white">
-              <h2 className="text-lg font-bold text-gray-900">Kontakt wählen</h2>
-              <button onClick={() => setContactSelectOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-4 space-y-2">
-              {kontakte.map((k) => (
-                <button
-                  key={k.id}
-                  onClick={() => {
-                    setSelectedContactId(k.id)
-                    setContactSelectOpen(false)
-                    setModalOpen(true)
-                  }}
-                  className="w-full text-left px-4 py-3 border border-gray-200 rounded-lg hover:bg-yellow-50 hover:border-yellow-400 transition-all"
-                >
-                  <p className="font-medium text-gray-900">{k.first_name} {k.last_name}</p>
-                  <p className="text-xs text-gray-500">{k.company_name || k.email}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <AufgabenEditModal
+        aufgabe={editingAufgabe}
+        isOpen={modalOpen}
+        onClose={() => {
+          setModalOpen(false)
+          setEditingAufgabe(null)
+        }}
+        onSave={handleSaveAufgabe}
+      />
 
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">

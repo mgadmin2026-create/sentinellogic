@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 
 interface Aufgabe {
+  id?: string
   contact_id?: string
   opportunity_id?: string
   assigned_user_id?: string
@@ -25,13 +26,14 @@ interface TeamMember {
 
 interface Props {
   kontaktId?: string
+  aufgabe?: Aufgabe | null
   isOpen: boolean
   onClose: () => void
   onSave: (aufgabe: Aufgabe) => Promise<void>
 }
 
-export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props) {
-  const [form, setForm] = useState<Aufgabe>({
+function emptyForm(kontaktId?: string): Aufgabe {
+  return {
     contact_id: kontaktId || undefined,
     titel: '',
     beschreibung: '',
@@ -39,18 +41,27 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
     priorität: 'mittel',
     status: 'offen',
     assigned_user_id: undefined,
-  })
+  }
+}
+
+export function AufgabenEditModal({ kontaktId, aufgabe, isOpen, onClose, onSave }: Props) {
+  const [form, setForm] = useState<Aufgabe>(aufgabe || emptyForm(kontaktId))
   const [kontakte, setKontakte] = useState<Kontakt[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  const isEdit = !!aufgabe?.id
+
   useEffect(() => {
     if (isOpen) {
+      setForm(aufgabe || emptyForm(kontaktId))
+      setError('')
       loadKontakte()
       loadTeamMembers()
     }
-  }, [isOpen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, aufgabe])
 
   async function loadKontakte() {
     try {
@@ -93,7 +104,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 sticky top-0 bg-white">
-          <h2 className="text-lg font-bold text-gray-900">Neue Aufgabe</h2>
+          <h2 className="text-lg font-bold text-gray-900">{isEdit ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}</h2>
           <button onClick={onClose} disabled={loading} className="text-gray-400 hover:text-gray-600 disabled:opacity-50">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -131,7 +142,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">Fällig *</label>
               <input
@@ -156,6 +167,21 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
                 <option value="hoch">Hoch</option>
               </select>
             </div>
+            {isEdit && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Status</label>
+                <select
+                  data-testid="task-status"
+                  value={form.status || 'offen'}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+                >
+                  <option value="offen">Offen</option>
+                  <option value="in_bearbeitung">In Bearbeitung</option>
+                  <option value="erledigt">Erledigt</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <div>
@@ -204,7 +230,7 @@ export function AufgabenEditModal({ kontaktId, isOpen, onClose, onSave }: Props)
               disabled={loading}
               className="flex-1 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
             >
-              {loading ? 'Erstellt…' : 'Aufgabe erstellen'}
+              {loading ? 'Speichert…' : isEdit ? 'Änderungen speichern' : 'Aufgabe erstellen'}
             </button>
           </div>
         </form>
