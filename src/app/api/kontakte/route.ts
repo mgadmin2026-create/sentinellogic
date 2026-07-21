@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
     const status = url.searchParams.get('status')
     const search = url.searchParams.get('search')
     const includeArchived = url.searchParams.get('includeArchived') === 'true'
+    const assignedUserId = url.searchParams.get('assigned_user_id')
 
     let query = supabase.from('contacts').select('*').order('created_at', { ascending: false })
 
@@ -70,6 +71,10 @@ export async function GET(request: NextRequest) {
 
     if (status && VALID_STATUSES.includes(status)) {
       query = query.eq('status', status)
+    }
+
+    if (assignedUserId) {
+      query = query.eq('assigned_user_id', assignedUserId)
     }
 
     if (search) {

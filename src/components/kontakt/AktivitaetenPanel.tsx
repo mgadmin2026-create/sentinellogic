@@ -11,14 +11,14 @@ export interface Aktivität {
   user?: { name: string } | null
 }
 
-function getActivityIcon(type: string) {
+export function getActivityIcon(type: string) {
   if (type.includes('klicktipp')) return '🔗'
   if (type.includes('dialfire')) return '📞'
   if (type.includes('task')) return '✓'
   return '📝'
 }
 
-function getActivityColor(type: string) {
+export function getActivityColor(type: string) {
   if (type.includes('klicktipp')) return 'bg-blue-100 text-blue-600'
   if (type.includes('dialfire')) return 'bg-purple-100 text-purple-600'
   if (type.includes('task')) return 'bg-emerald-100 text-emerald-600'
