@@ -107,7 +107,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Einheitliches Log-Handling** | Hoch | 🟡 Activities, `sync_log` und anbieterspezifische Logs vorhanden | Einheitliches Lauf-/Eventmodell mit Korrelation zwischen Kontakt, Regel, Job und Integration schaffen |
 | **Einheitliches Fehler- und Retry-Handling** | Hoch | 🟡 Fehlerbehandlung pro Integration vorhanden | Standardisierte Fehlerklassen, Retry-Strategie, Dead-Letter-Status und manuelle Wiederholung einführen |
 | **Automation-/Sync-Control-Center UI** | Hoch | 🟡 Regeln- und Integrationsseiten teilweise vorhanden | Jobs, letzte Läufe, Fehler, Wiederholungen, Pausieren/Aktivieren und Health-Status zentral anzeigen |
-| **Mitarbeiterdashboard** | Hoch | 🟡 Verantwortliche und `Meine Aufgaben` vorhanden | `Meine Kontakte`, überfällige Vorgänge, heutige Aufgaben und letzte Aktivitäten auf einer Startseite bündeln |
+| **Mitarbeiterdashboard** | Hoch | 🟢 `/dashboard` personalisiert: Heute im Fokus, Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter für Admins | Stabil halten; ggf. „Abschlussquote" um echten 30-Tage-Zeitverlauf ergänzen sobald historische Snapshots existieren |
 | **Facebook Lead-Import produktiv abnehmen** | Mittel | 🟢 Webhook und manueller Sync implementiert | Echten Lead-End-to-End-Lauf inklusive Dubletten, Automation und Downstream-Sync durchführen |
 | **KlickTipp-Synchronisation vervollständigen** | Mittel | 🟢 Kontakt-/Tag-Sync vorhanden | Statusänderung → Tag-Rücksynchronisation und Fehlerwiederholung vereinheitlichen |
 | **Gewerbedaten-Recherche** | Mittel | 🔴 Nur Datenmodell/Mock-Bausteine vorhanden | Zulässige Datenquellen und einen realistischen Recherche-MVP festlegen |
@@ -239,7 +239,7 @@ Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase
 
 | Page | Path | Purpose |
 |------|------|---------|
-| Dashboard | `/` | KPI-Übersicht, neueste Kontakte, CSV-Import |
+| Dashboard | `/` | Mitarbeiterdashboard: personalisierte KPIs, Heute im Fokus (überfällig/heute), Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter (Admin), CSV-Import |
 | Kontakte | `/kontakte` | Kontakt-Liste mit Prozess-Fortschritt, Import/Export, Tag-Filter, Archiv-Toggle |
 | Kontakt-Detail | `/kontakte/[id]` | Tab-Interface (Übersicht, Prozess, Aktivitäten, Aufgaben, Dialfire, Dokumente, Verträge, Automation) + Tags-Leiste |
 | Testdashboard | `/testdashboard` | Regressionstest-Übersicht, Testläufe, Umgebungsstatus (v0.6.0) |
