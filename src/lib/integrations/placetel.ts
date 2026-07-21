@@ -37,18 +37,6 @@ interface PlacetelSipUser {
   [key: string]: unknown
 }
 
-interface PlacetelSubscription {
-  id?: string
-  url?: string
-  incoming?: boolean
-  outgoing?: boolean
-  hungup?: boolean
-  accepted?: boolean
-  phone?: boolean
-  numbers?: string[]
-  [key: string]: unknown
-}
-
 export class PlacetelApiError extends Error {
   readonly status: number | null
   readonly retryAfterSeconds: number | null
@@ -155,10 +143,6 @@ export async function getPlacetelAccount(): Promise<PlacetelMe> {
 
 export async function listPlacetelSipUsers(): Promise<PlacetelSipUser[]> {
   return placetelRequest<PlacetelSipUser[]>('/sip_users?per_page=100')
-}
-
-export async function listPlacetelSubscriptions(): Promise<PlacetelSubscription[]> {
-  return placetelRequest<PlacetelSubscription[]>('/subscriptions')
 }
 
 /** Reduziert Provider-Antworten auf die für den technischen Abgleich nötigen Felder. */

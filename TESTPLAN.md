@@ -239,6 +239,8 @@ Nachdem Tests abgeschlossen:
 - [ ] Eindeutige Rufnummer automatisch dem Testkontakt zuordnen
 - [ ] Doppelte Rufnummer als mehrdeutig markieren und nicht automatisch zuordnen
 - [ ] Status, Richtung, Zeitpunkt und Dauer im Placetel-Tab prüfen
+- [ ] Notify-Callback ohne gültige `X-PLACETEL-SIGNATURE` wird mit HTTP 401 abgewiesen
+- [ ] `HungUp` übernimmt Dauer und Auflegegrund (`accepted`, `missed`, `busy`, `canceled`, `unavailable`, `congestion`)
 
 ### 7.3 Gesprächsergebnis
 - [ ] Ergebnis „Termin vereinbart“ mit synthetischer Notiz speichern

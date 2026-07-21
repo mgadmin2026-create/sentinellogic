@@ -14,6 +14,10 @@ const STATUS_LABELS: Record<string, string> = {
   missed: 'Verpasst',
   blocked: 'Blockiert',
   voicemail: 'Mailbox',
+  busy: 'Besetzt',
+  canceled: 'Abgebrochen',
+  unavailable: 'Nicht erreichbar',
+  congestion: 'Netzfehler',
   failed: 'Fehlgeschlagen',
 }
 
@@ -128,7 +132,7 @@ export function PlacetelCallHistory({ contactId }: PlacetelCallHistoryProps) {
                     </p>
                   </div>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                    call.status === 'failed' || call.status === 'missed'
+                    ['failed', 'missed', 'blocked', 'busy', 'canceled', 'unavailable', 'congestion'].includes(call.status)
                       ? 'bg-red-100 text-red-700'
                       : call.status === 'completed' || call.status === 'accepted'
                         ? 'bg-emerald-100 text-emerald-700'

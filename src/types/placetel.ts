@@ -8,6 +8,10 @@ export type PlacetelCallStatus =
   | 'missed'
   | 'blocked'
   | 'voicemail'
+  | 'busy'
+  | 'canceled'
+  | 'unavailable'
+  | 'congestion'
   | 'failed'
 
 export type PlacetelCallResult =

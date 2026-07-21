@@ -15,7 +15,8 @@
 - [x] TypeScript-Prüfung und Produktions-Build erfolgreich
 - [ ] Migration auf Supabase anwenden
 - [ ] Rotierten API-Token, SIPUID und Callback-Secret in Vercel hinterlegen
-- [ ] Callback-Payload und `service`-Wert durch echten Placetel-Pilot bestätigen
+- [x] Notify-Payload und HMAC-Signatur anhand der offiziellen Call-Control-/Notify-Dokumentation bestätigt
+- [ ] Notify-Endpunkt im Placetel-Webportal aktivieren und echten Callback-Pilot durchführen
 - [ ] Subscription registrieren und CDR-Reconciliation implementieren
 - [ ] Ergebnis-Automationen und vollständige E2E-Regression ergänzen
 
@@ -25,7 +26,7 @@ Die Integration ist mit der bereitgestellten Placetel-API grundsätzlich umsetzb
 
 - Die aktuelle Anwendung arbeitet mit `contacts`, nicht mit `leads`. Neue Telefoniedaten werden deshalb über `contact_id` verknüpft.
 - Click-to-Call erfolgt laut Swagger über `POST https://api.placetel.de/v2/calls` mit `sipuid` und `target`.
-- Placetel-Callbacks werden laut Swagger über `PUT /v2/subscriptions` registriert. Unterstützte Kategorien sind `incoming`, `outgoing`, `accepted`, `hungup` und optional `phone`.
+- Die für das CRM relevante Call-Control-/Notify-API wird im Placetel-Webportal unter **Einstellungen → Externe APIs** eingerichtet. Sie ist von der REST-Ressource `/v2/subscriptions` zu unterscheiden.
 - Die Swagger-Datei dokumentiert weder das Callback-Payload noch eine HMAC-Signatur. Die im ersten Entwurf angenommene Signaturprüfung mit `x-placetel-signature` ist daher nicht belegt und darf nicht ungeprüft implementiert werden.
 - Das automatische Öffnen eines Ergebnisdialogs benötigt im Browser zusätzlich Supabase Realtime oder Polling. Ein serverseitig empfangener Webhook allein kann keinen bereits geöffneten Browserdialog anzeigen.
 - Die bestehende Automation reagiert derzeit auf neu angelegte Kontakte und die Merkmale Quelle/Sparte. Gesprächsergebnisse sind noch kein vorhandener Regel-Trigger und müssen ergänzt werden.
@@ -67,28 +68,26 @@ Nicht Bestandteil des ersten Ausbaus sind Gesprächsaufzeichnung, Transkription,
 
 Pflichtfelder sind `sipuid` und `target`. Laut Swagger antwortet Placetel bei Erfolg mit HTTP 201 und einem `Call`-Objekt. Der dokumentierte `Call`-Typ enthält unter anderem `id`, `type`, `from_number`, `to_number`, `duration` und `received_at`. Da dieser Typ zugleich für eingehende Anrufe verwendet wird, muss die echte Antwort eines initiierten Testanrufs vor Festlegung des finalen Mappings aufgezeichnet werden — ohne personenbezogene Daten oder Token zu loggen.
 
-### 3.3 Callbacks/Subscriptions
+### 3.3 Call-Control-/Notify-API
 
-`PUT /subscriptions`
+Die offizielle Notify-API sendet `POST`-Requests mit
+`application/x-www-form-urlencoded` an den unter **Einstellungen → Externe APIs**
+hinterlegten Endpunkt. Relevante Ereignisse sind `IncomingCall`, `OutgoingCall`,
+`CallAccepted` und `HungUp`. Jeder Anruf besitzt eine SHA256-basierte `call_id`.
 
-```json
-{
-  "service": "<im Pilot zu bestätigender Placetel-Servicewert>",
-  "url": "https://sentinellogic.vercel.app/api/webhooks/placetel?token=<secret>",
-  "incoming": true,
-  "outgoing": true,
-  "accepted": true,
-  "hungup": true,
-  "phone": false,
-  "numbers": ["+49..."]
-}
-```
+Placetel signiert den unveränderten Request-Body mit HMAC-SHA256. Die Signatur
+steht im Header `X-PLACETEL-SIGNATURE`; das gemeinsame Secret wird im
+Placetel-Webportal und serverseitig als `PLACETEL_WEBHOOK_TOKEN` hinterlegt.
+Query-Parameter mit Secrets sind nicht erforderlich.
 
-`service` und `url` sind Pflichtfelder. Der zulässige Wert für `service` ist im Swagger nicht beschrieben. Auch Format, Content-Type, Eventnamen, Wiederholungslogik und Signatur des Callback-Payloads fehlen. Diese Punkte müssen mit einem kontrollierten Test-Callback oder ergänzender Placetel-Dokumentation bestätigt werden.
+Bei `HungUp` werden `duration` sowie einer der Gründe `accepted`, `voicemail`,
+`missed`, `blocked`, `busy`, `canceled`, `unavailable` oder `congestion`
+übermittelt. Ausgehende Anrufe werden nur gemeldet, wenn der SIP-Benutzer eine
+Caller-ID besitzt und die verwendete Rufnummer für Benachrichtigungen aktiviert ist.
 
-Bis eine native Placetel-Signatur nachgewiesen ist, wird der Endpoint mindestens durch ein langes zufälliges Callback-Token geschützt. Da Query-Parameter in Infrastruktur-Logs auftauchen können, ist eine von Placetel gesetzte Signatur oder ein konfigurierbarer Authentifizierungsheader klar vorzuziehen. Wenn Placetel beides nicht unterstützt, müssen Log-Redaktion, Tokenrotation, Payload-Validierung, Rate-Limiting und eine enge Nummern-Allowlist zusammen eingesetzt werden.
-
-Subscriptions können über `GET /subscriptions` kontrolliert und über `DELETE /subscriptions/{id}` entfernt werden.
+Der erweiterte Call-Control-Modus für eingehende Anrufe erwartet synchrone
+XML-Routingantworten. Er wird nicht auf dem Notify-Endpunkt aktiviert, bevor eine
+separate, zeitkritische Routingroute implementiert und getestet wurde.
 
 ### 3.4 Abgleich und Reparatur
 
@@ -105,8 +104,8 @@ Kontaktseite
   -> Placetel POST /v2/calls
   -> call_logs: initiated
 
-Placetel Subscription
-  -> POST /api/webhooks/placetel (öffentlich, separat abgesichert)
+Placetel Notify API
+  -> POST /api/webhooks/placetel (HMAC-signiert)
   -> Ereignis validieren und idempotent speichern
   -> Kontakt über normalisierte Gegenstelle zuordnen
   -> call_logs / activities aktualisieren
@@ -296,13 +295,12 @@ Die Speicherung des Gesprächsergebnisses muss unabhängig vom Erfolg externer F
 PLACETEL_API_BASE_URL=https://api.placetel.de/v2
 PLACETEL_API_TOKEN=
 PLACETEL_DEFAULT_SIPUID=
-PLACETEL_SUBSCRIPTION_SERVICE=
 PLACETEL_WEBHOOK_TOKEN=
 PLACETEL_ALLOWED_COUNTRY_CODES=+49
 PLACETEL_RECONCILIATION_TOKEN=
 ```
 
-`PLACETEL_SUBSCRIPTION_SERVICE` bleibt bis zum Pilot leer. Falls Placetel eine native Signatur oder einen Auth-Header unterstützt, wird `PLACETEL_WEBHOOK_TOKEN` durch die entsprechend dokumentierte Konfiguration ersetzt.
+`PLACETEL_WEBHOOK_TOKEN` ist das mindestens 32 Zeichen lange gemeinsame HMAC-Secret aus den Placetel-Einstellungen für externe APIs. Es ist nicht der REST-API-Token.
 
 ## 12. Test- und Abnahmeplan
 
@@ -310,7 +308,7 @@ PLACETEL_RECONCILIATION_TOKEN=
 
 - Token mit einem rein lesenden Endpoint validieren, ohne Antwortdaten zu protokollieren.
 - verfügbare SIP-Benutzer ermitteln und die korrekte SIPUID bestätigen,
-- Subscription anlegen, über `GET /subscriptions` verifizieren und anschließend kontrolliert löschen,
+- Notify-URL und HMAC-Secret unter **Einstellungen → Externe APIs** hinterlegen,
 - je einen redigierten Beispiel-Callback für eingehend, ausgehend, angenommen und aufgelegt erfassen,
 - erfolgreichen Click-to-Call sowie 400, 401/403 und 429 prüfen.
 

@@ -3,21 +3,10 @@ import { isAdmin } from '@/lib/roles'
 import {
   getPlacetelAccount,
   listPlacetelSipUsers,
-  listPlacetelSubscriptions,
   PlacetelApiError,
 } from '@/lib/integrations/placetel'
 
 export const dynamic = 'force-dynamic'
-
-function redactSubscriptionUrl(rawUrl: unknown): string | null {
-  if (typeof rawUrl !== 'string') return null
-  try {
-    const url = new URL(rawUrl)
-    return `${url.origin}${url.pathname}`
-  } catch {
-    return null
-  }
-}
 
 function safeError(error: unknown): { status: number | null; message: string } {
   if (error instanceof PlacetelApiError) {
@@ -36,8 +25,7 @@ export async function GET() {
     apiBaseUrl: Boolean(process.env.PLACETEL_API_BASE_URL?.trim()),
     apiToken: Boolean(process.env.PLACETEL_API_TOKEN?.trim()),
     defaultSipuid: Boolean(process.env.PLACETEL_DEFAULT_SIPUID?.trim()),
-    subscriptionService: Boolean(process.env.PLACETEL_SUBSCRIPTION_SERVICE?.trim()),
-    webhookToken: Boolean(process.env.PLACETEL_WEBHOOK_TOKEN?.trim()),
+    notifyHmacSecret: Boolean(process.env.PLACETEL_WEBHOOK_TOKEN?.trim()),
     allowedCountryCodes: (process.env.PLACETEL_ALLOWED_COUNTRY_CODES || '+49')
       .split(',')
       .map((value) => value.trim())
@@ -51,17 +39,19 @@ export async function GET() {
       connection: { valid: false, error: 'PLACETEL_API_TOKEN fehlt' },
       account: null,
       sipUsers: [],
-      subscriptions: [],
+      notify: {
+        setup: 'Placetel Webportal: Einstellungen -> Externe APIs',
+        automaticallyVerifiable: false,
+      },
     })
   }
 
-  const [accountResult, sipUsersResult, subscriptionsResult] = await Promise.allSettled([
+  const [accountResult, sipUsersResult] = await Promise.allSettled([
     getPlacetelAccount(),
     listPlacetelSipUsers(),
-    listPlacetelSubscriptions(),
   ])
 
-  const errors = [accountResult, sipUsersResult, subscriptionsResult]
+  const errors = [accountResult, sipUsersResult]
     .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
     .map((result) => safeError(result.reason))
 
@@ -88,19 +78,6 @@ export async function GET() {
       }))
     : []
 
-  const subscriptions = subscriptionsResult.status === 'fulfilled'
-    ? subscriptionsResult.value.map((subscription) => ({
-        id: subscription.id ?? null,
-        url: redactSubscriptionUrl(subscription.url),
-        incoming: Boolean(subscription.incoming),
-        outgoing: Boolean(subscription.outgoing),
-        accepted: Boolean(subscription.accepted),
-        hungup: Boolean(subscription.hungup),
-        phone: Boolean(subscription.phone),
-        numbers: Array.isArray(subscription.numbers) ? subscription.numbers : [],
-      }))
-    : []
-
   return Response.json({
     success: errors.length === 0,
     configured,
@@ -110,6 +87,11 @@ export async function GET() {
     },
     account,
     sipUsers,
-    subscriptions,
+    notify: {
+      setup: 'Placetel Webportal: Einstellungen -> Externe APIs',
+      endpoint: '/api/webhooks/placetel',
+      authentication: 'HMAC-SHA256 via X-PLACETEL-SIGNATURE',
+      automaticallyVerifiable: false,
+    },
   }, { status: accountResult.status === 'fulfilled' ? 200 : 502 })
 }

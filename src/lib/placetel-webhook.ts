@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, timingSafeEqual } from 'crypto'
 import { normalizePhoneNumber } from '@/lib/phone'
 import type { PlacetelCallDirection, PlacetelCallStatus } from '@/types/placetel'
 
@@ -14,6 +14,7 @@ export interface ParsedPlacetelWebhook {
   remoteNumber: string | null
   occurredAt: string
   durationSeconds: number | null
+  sipuid: string | null
   redactedPayload: Record<string, unknown>
 }
 function stringValue(payload: Record<string, unknown>, keys: string[]): string | null {
@@ -38,8 +39,21 @@ function deriveDirection(eventName: string, rawDirection: string | null): Placet
   return null
 }
 
-function deriveStatus(eventName: string): PlacetelCallStatus | null {
-  if (eventName.includes('hungup') || eventName.includes('hangup') || eventName.includes('completed')) return 'completed'
+function deriveStatus(eventName: string, hangupType: string | null): PlacetelCallStatus | null {
+  if (eventName.includes('hungup') || eventName.includes('hangup') || eventName.includes('completed')) {
+    const normalizedType = hangupType ? normalizeEventName(hangupType) : ''
+    const terminalStatuses: Record<string, PlacetelCallStatus> = {
+      accepted: 'completed',
+      voicemail: 'voicemail',
+      missed: 'missed',
+      blocked: 'blocked',
+      busy: 'busy',
+      canceled: 'canceled',
+      unavailable: 'unavailable',
+      congestion: 'congestion',
+    }
+    return terminalStatuses[normalizedType] || 'completed'
+  }
   if (eventName.includes('accepted') || eventName.includes('answered')) return 'accepted'
   if (eventName.includes('voicemail')) return 'voicemail'
   if (eventName.includes('missed')) return 'missed'
@@ -60,13 +74,16 @@ function parseDuration(value: string | null): number | null {
   return Number.isFinite(duration) && duration >= 0 ? duration : null
 }
 
-export function verifyPlacetelWebhookToken(providedToken: string | null): boolean {
-  const expectedToken = process.env.PLACETEL_WEBHOOK_TOKEN?.trim()
-  if (!expectedToken || expectedToken.length < 32 || !providedToken) return false
+/** Prüft die von Placetel dokumentierte HMAC-SHA256-Signatur über den unveränderten Body. */
+export function verifyPlacetelWebhookSignature(rawBody: string, providedSignature: string | null): boolean {
+  const sharedSecret = process.env.PLACETEL_WEBHOOK_TOKEN?.trim()
+  if (!sharedSecret || sharedSecret.length < 32 || !providedSignature) return false
+  if (!/^[a-f0-9]{64}$/i.test(providedSignature)) return false
 
-  const expectedHash = createHash('sha256').update(expectedToken).digest()
-  const providedHash = createHash('sha256').update(providedToken).digest()
-  return timingSafeEqual(expectedHash, providedHash)
+  const expectedSignature = createHmac('sha256', sharedSecret).update(rawBody).digest()
+  const receivedSignature = Buffer.from(providedSignature, 'hex')
+  return receivedSignature.length === expectedSignature.length
+    && timingSafeEqual(expectedSignature, receivedSignature)
 }
 
 export function parsePlacetelWebhook(rawBody: string, contentType: string): ParsedPlacetelWebhook {
@@ -89,13 +106,14 @@ export function parsePlacetelWebhook(rawBody: string, contentType: string): Pars
 
   const eventType = normalizeEventName(rawEvent)
   const direction = deriveDirection(eventType, stringValue(payload, ['direction', 'call_direction']))
-  const status = deriveStatus(eventType)
+  const status = deriveStatus(eventType, stringValue(payload, ['type']))
   const fromNumber = normalizePhoneNumber(stringValue(payload, ['from', 'from_number', 'fromNumber', 'caller']))
   const toNumber = normalizePhoneNumber(stringValue(payload, ['to', 'to_number', 'toNumber', 'callee', 'target']))
   const remoteNumber = direction === 'incoming' ? fromNumber : direction === 'outgoing' ? toNumber : fromNumber || toNumber
   const placetelCallId = stringValue(payload, ['call_id', 'callId', 'id'])
   const occurredAt = parseOccurredAt(stringValue(payload, ['occurred_at', 'timestamp', 'received_at', 'created_at']))
   const durationSeconds = parseDuration(stringValue(payload, ['duration', 'duration_seconds', 'length']))
+  const sipuid = stringValue(payload, ['peer'])
 
   return {
     eventType,
@@ -107,11 +125,13 @@ export function parsePlacetelWebhook(rawBody: string, contentType: string): Pars
     remoteNumber,
     occurredAt,
     durationSeconds,
+    sipuid,
     redactedPayload: {
       event_type: eventType,
       placetel_call_id: placetelCallId,
       direction,
       status,
+      has_sip_peer: Boolean(sipuid),
       payload_fields: Object.keys(payload).sort(),
     },
   }

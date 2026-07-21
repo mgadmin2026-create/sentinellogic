@@ -40,7 +40,7 @@
 |HiDrive        |Dokumentenablage                   |⏳ Zugang ab Aug/Sep  |
 |Calendly       |Terminbuchung                      |⏳ Zugang ausstehend  |
 |Facebook/TikTok|Lead Ads Webhook                   |⏳ In Einrichtung     |
-|Placetel       |Click-to-Call, Anrufereignisse     |📝 API geprüft, Konzept vorhanden|
+|Placetel       |Click-to-Call, Anrufereignisse     |🧪 MVP + offizielle Notify-API vorbereitet|
 
 -----
 
@@ -114,7 +114,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [ ] Lead-Synchronisation (Klicktipp + Dialfire + Sentimental Logic)
 - [ ] Infrastruktur Setup (Supabase, Vercel)
 - [ ] Regressionstest-Katalog nach jedem neuen Feature erweitern
-- [ ] Placetel-MVP im Feature-Branch: Migration/Client/API/UI implementiert, echter Callback-Pilot und Live-Konfiguration ausstehend
+- [ ] Placetel-MVP: Echten Callback-Pilot mit Gesprächsdauer und Abschlussstatus durchführen
 
 **Abgeschlossen:**
 
@@ -138,6 +138,8 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Kontaktverwaltung und Kontaktdetailseite mit E2E-011 (Detailnavigation) und E2E-012 (Aufgabenanlage) erweitert
 - [x] Playwright-Selektoren für Kontaktanlage, Detailnavigation, Bearbeitung, Archivstatus und Tag-Chips stabilisiert
 - [x] Placetel-Swagger geprüft und technisches Integrationskonzept vervollständigt
+- [x] Placetel Call-Control-/Notify-Dokumentation geprüft und Webhook auf HMAC, Dauer sowie offizielle Auflegegründe umgestellt
+- [x] Migration `0047_placetel_notify_statuses.sql` angewendet und Placetel Notify API konfiguriert
 
 **Nächste Aufgabe:**
 → Vollständigen Regressionstest erneut ausführen und verbleibende fachliche Fehler beschreiben

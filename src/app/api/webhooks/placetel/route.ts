@@ -6,8 +6,13 @@ import {
   MAX_PLACETEL_WEBHOOK_BYTES,
   parsePlacetelWebhook,
   type ParsedPlacetelWebhook,
-  verifyPlacetelWebhookToken,
+  verifyPlacetelWebhookSignature,
 } from '@/lib/placetel-webhook'
+
+const TERMINAL_STATUSES = new Set([
+  'completed', 'missed', 'blocked', 'voicemail',
+  'busy', 'canceled', 'unavailable', 'congestion',
+])
 
 interface ContactPhoneRow {
   id: string
@@ -79,8 +84,9 @@ async function processWebhook(event: ParsedPlacetelWebhook): Promise<'processed'
       provider_payload: { event_type: event.eventType },
     }
     if (event.placetelCallId) updates.placetel_call_id = event.placetelCallId
+    if (event.sipuid) updates.sipuid = event.sipuid
     if (event.status === 'accepted') updates.accepted_at = event.occurredAt
-    if (['completed', 'missed', 'blocked', 'voicemail'].includes(event.status)) {
+    if (TERMINAL_STATUSES.has(event.status)) {
       updates.ended_at = event.occurredAt
     }
     if (event.durationSeconds !== null) updates.duration_seconds = event.durationSeconds
@@ -88,7 +94,7 @@ async function processWebhook(event: ParsedPlacetelWebhook): Promise<'processed'
     const { error } = await supabase.from('call_logs').update(updates).eq('id', existingCall.id)
     if (error) throw new Error(`Anrufaktualisierung fehlgeschlagen: ${error.message}`)
 
-    if (event.status === 'completed' && existingCall.contact_id) {
+    if (TERMINAL_STATUSES.has(event.status) && existingCall.contact_id) {
       await supabase.from('activities').insert({
         lead_id: existingCall.contact_id,
         type: 'placetel_call_completed',
@@ -102,7 +108,7 @@ async function processWebhook(event: ParsedPlacetelWebhook): Promise<'processed'
   if (!effectiveDirection || !event.remoteNumber) return 'ignored'
 
   const contactMatch = await findContactIdByPhone(event.remoteNumber)
-  const terminalStatus = ['completed', 'missed', 'blocked', 'voicemail'].includes(event.status)
+  const terminalStatus = TERMINAL_STATUSES.has(event.status)
   const { error } = await supabase.from('call_logs').insert({
     contact_id: contactMatch.contactId,
     placetel_call_id: event.placetelCallId,
@@ -115,6 +121,7 @@ async function processWebhook(event: ParsedPlacetelWebhook): Promise<'processed'
     accepted_at: event.status === 'accepted' ? event.occurredAt : null,
     ended_at: terminalStatus ? event.occurredAt : null,
     duration_seconds: event.durationSeconds,
+    sipuid: event.sipuid,
     provider_payload: { event_type: event.eventType },
     reconciliation_state: contactMatch.ambiguous ? 'ambiguous' : contactMatch.contactId ? 'matched' : 'pending',
   })
@@ -124,10 +131,6 @@ async function processWebhook(event: ParsedPlacetelWebhook): Promise<'processed'
 }
 
 export async function POST(request: NextRequest) {
-  if (!verifyPlacetelWebhookToken(request.nextUrl.searchParams.get('token'))) {
-    return new Response('Unauthorized', { status: 401 })
-  }
-
   const declaredLength = Number.parseInt(request.headers.get('content-length') || '0', 10)
   if (Number.isFinite(declaredLength) && declaredLength > MAX_PLACETEL_WEBHOOK_BYTES) {
     return new Response('Payload too large', { status: 413 })
@@ -138,6 +141,10 @@ export async function POST(request: NextRequest) {
     rawBody = await request.text()
     if (new TextEncoder().encode(rawBody).byteLength > MAX_PLACETEL_WEBHOOK_BYTES) {
       return new Response('Payload too large', { status: 413 })
+    }
+
+    if (!verifyPlacetelWebhookSignature(rawBody, request.headers.get('x-placetel-signature'))) {
+      return new Response('Unauthorized', { status: 401 })
     }
 
     const event = parsePlacetelWebhook(rawBody, request.headers.get('content-type') || '')
