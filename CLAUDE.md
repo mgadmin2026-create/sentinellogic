@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.7.0 — Benutzerkonten: Login, Rollen, Team-Verwaltung & Self-Service-Profil | Aktiv in Entwicklung |
+| **Version** | 0.8.0 — Mitarbeiterdashboard, eigene E-Mail-Domain, Cc/Bcc & Anhänge | Aktiv in Entwicklung |
 
 ---
 
@@ -135,7 +135,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Automatische Angebots-Follow-ups** | Mittel | 🔴 Aufgabenbasis vorhanden | Nach Scheduler-Grundlage automatisch Aufgabe/Erinnerung aus Angebotsstatus und Frist erzeugen |
 | **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot kontrolliert in einen Vertrag überführen |
 | **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
-| **E-Mail-Vorlagen** | Hoch | 🔴 Freier E-Mail-Editor vorhanden, Vorlagen fehlen | Vorlagenverwaltung mit Platzhaltern, Vorschau und manueller Freigabe bauen |
+| **E-Mail-Vorlagen** | Hoch | 🟡 Freier E-Mail-Editor inkl. Cc/Bcc + Anhänge vorhanden, Vorlagen fehlen | Vorlagenverwaltung mit Platzhaltern, Vorschau und manueller Freigabe bauen |
 | **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🔴 Fehlen | Fachtexte und erlaubte Kontakt-/Vertragsplatzhalter definieren und integrieren |
 | **Eigene minimale Kommunikationslösung** | Hoch | 🔴 Nur ausgehende E-Mail und WhatsApp-Link vorhanden | Schlanken Nachrichten-/Aktivitätsfluss für die wichtigsten Kontaktfälle bauen; keine vollständige Omnichannel-Inbox voraussetzen |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
@@ -316,6 +316,25 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.8.0 (2026-07-22) — Mitarbeiterdashboard, eigene E-Mail-Domain, Cc/Bcc & Anhänge
+
+**Mitarbeiterdashboard (Roadmap Phase A):**
+- ✅ `/dashboard` komplett personalisiert statt globaler KPIs mit Platzhalterwerten
+- ✅ „Heute im Fokus": überfällige + heute fällige eigene Aufgaben gebündelt, Direkt-Erledigen per Checkbox
+- ✅ „Meine Kontakte": nur zugewiesene Kontakte, nach Pipeline-Fortschritt sortiert (statt globaler „letzte 10")
+- ✅ „Letzte Aktivitäten" und „Meine Pipeline" auf eigene Kontakte gescoped
+- ✅ Team/Ich-Umschalter für Admins (gleiche Widgets ohne Verantwortlicher-Filter)
+- ✅ Neue API: `assigned_user_id`-Filter für `GET /api/kontakte`, neue Route `GET /api/aktivitaeten`
+
+**E-Mail-Infrastruktur:**
+- ✅ Absenderdomain von geliehener `onlinefirst.eu` auf eigene, verifizierte `guen-versicherung.de` umgestellt (alle drei Versandpfade)
+- ✅ Admin-Alarm bei fehlgeschlagenem Google-Drive-Token-Refresh (`src/lib/drive-token-alert.ts`, Cooldown 6h) — Mitarbeiter merken von einer kaputten Drive-Verbindung nichts mehr, Admins werden gezielt per Mail informiert
+
+**Kontakt-E-Mail — Cc/Bcc & Anhänge:**
+- ✅ `ContactEmailModal` + `POST /api/kontakte/[id]/email`: optionale Cc/Bcc-Empfänger (mehrere Adressen, Komma-getrennt), Datei-Anhänge (Resend-Limit 35MB)
+- ✅ Anhänge werden zusätzlich automatisch als Dokument beim Kontakt abgelegt (Kategorie „Sonstiges", `created_by=email`); Ablage-Fehler blockieren den Versand nicht
+- 🐛 Zwei Bugfixes am Anhang-Datei-Input, beide nur in der Produktions-Build reproduzierbar (nicht im Dev-Server): (1) `e.target.value = ''`-Reset direkt nach dem Auslesen der FileList verhinderte zuverlässig, dass die Datei in den State kam; (2) `<input>` war innerhalb des `<label>` verschachtelt statt als Geschwister-Element über `id`/`htmlFor` verbunden (Muster von `KontaktDokumenteTab` übernommen, das nachweislich funktioniert)
+
 ### v0.6.0 (2026-07-20) — Kontakte: Archivieren, Tags, Export & erweiterter Import
 
 **Archivieren statt Löschen:**
@@ -477,4 +496,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-20 — v0.6.0 Kontakte: Archivieren statt Löschen, interne Tags, CSV/Excel/PDF-Export, erweiterter Import, Playwright-Regressionstests*
+*Last Updated: 2026-07-22 — v0.8.0 Mitarbeiterdashboard, eigene E-Mail-Domain (guen-versicherung.de), Cc/Bcc & Anhänge im Kontakt-E-Mail-Versand, Google-Drive-Token-Admin-Alarm*
