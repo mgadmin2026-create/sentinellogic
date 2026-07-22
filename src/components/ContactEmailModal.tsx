@@ -205,14 +205,18 @@ export function ContactEmailModal({
 
           <div>
             <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Anhänge</label>
-            <label className="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer transition-colors">
+            <input
+              type="file"
+              id="email-attachment-input"
+              multiple
+              className="hidden"
+              onChange={handleFileInputChange}
+            />
+            <label
+              htmlFor="email-attachment-input"
+              className="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-lg py-3 text-sm text-gray-500 hover:bg-gray-50 cursor-pointer transition-colors"
+            >
               <span>📎 Dateien auswählen…</span>
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                onChange={handleFileInputChange}
-              />
             </label>
             {files.length > 0 && (
               <ul className="mt-2 space-y-1.5">
