@@ -1,12 +1,21 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { fillTemplatePlaceholders, type PlaceholderContact } from '@/lib/mail-template-placeholders'
+
+interface MailTemplate {
+  id: string
+  name: string
+  subject: string
+  body: string
+}
 
 interface ContactEmailModalProps {
   open: boolean
   contactId: string
   defaultTo?: string
   contactName?: string
+  contact?: PlaceholderContact
   onClose: () => void
   onSent?: () => void
 }
@@ -24,6 +33,7 @@ export function ContactEmailModal({
   contactId,
   defaultTo,
   contactName,
+  contact,
   onClose,
   onSent,
 }: ContactEmailModalProps) {
@@ -37,6 +47,8 @@ export function ContactEmailModal({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<MailTemplate[]>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
 
   // Felder zurücksetzen, wenn das Modal frisch geöffnet wird
   useEffect(() => {
@@ -51,10 +63,24 @@ export function ContactEmailModal({
       setError(null)
       setNotice(null)
       setSending(false)
+      setSelectedTemplateId('')
+
+      fetch('/api/mail-templates')
+        .then((r) => r.json())
+        .then((res) => { if (res.success) setTemplates(res.data) })
+        .catch(() => {})
     }
   }, [open, defaultTo])
 
   if (!open) return null
+
+  function handleTemplateSelect(templateId: string) {
+    setSelectedTemplateId(templateId)
+    const template = templates.find((t) => t.id === templateId)
+    if (!template) return
+    setSubject(fillTemplatePlaceholders(template.subject, contact || {}))
+    setBody(fillTemplatePlaceholders(template.body, contact || {}))
+  }
 
   const totalAttachmentSize = files.reduce((sum, f) => sum + f.size, 0)
   const attachmentsTooLarge = totalAttachmentSize > MAX_TOTAL_ATTACHMENT_BYTES
@@ -175,6 +201,22 @@ export function ContactEmailModal({
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
                 />
               </div>
+            </div>
+          )}
+
+          {templates.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Vorlage</label>
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => handleTemplateSelect(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              >
+                <option value="">— Vorlage wählen (optional) —</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
             </div>
           )}
 

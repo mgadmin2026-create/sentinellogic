@@ -83,7 +83,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Dialfire Sync** | ✅ Done | Create-Pfad + Batch-Pfad; Edge Function mit per-Rule Task-Name; Payload: Alle Felder (Adresse, Industrie, Mitarbeiterzahl, etc.) |
 | **Google Drive Dokumentenablage** | ✅ Done | Zentrale System-Ablage (nicht per-User); OAuth mit Auto-Refresh; Kompression (sharp für Bilder/75%, gzip Docs); Statistik-Tracking; Globales `/dokumente` + Kontakt-Tabs; bei Refresh-Token-Fehlern automatischer Admin-Alarm per Mail (Cooldown 6h, `src/lib/drive-token-alert.ts`) statt stillem Fehlschlag beim nächsten Mitarbeiter-Upload |
 | **E-Mail-Benachrichtigungen** | ✅ Done | Resend API; Auto-Pfad (pro Kontakt) + Manuell-Pfad (Summary pro Lauf); Versendet wenn send_notification=true in Regel |
-| **Kontakt-E-Mail (manuell)** | ✅ Done | `ContactEmailModal` + `POST /api/kontakte/[id]/email`: freier Compose mit optionalem Cc/Bcc (mehrere Adressen, Komma-getrennt) und Datei-Anhängen (Resend-Limit 35MB); Anhänge werden zusätzlich automatisch als Dokument (Kategorie „Sonstiges", `created_by=email`) beim Kontakt abgelegt — Ablage-Fehler blockieren den Versand nicht |
+| **Kontakt-E-Mail (manuell)** | ✅ Done | `ContactEmailModal` + `POST /api/kontakte/[id]/email`: freier Compose mit optionalem Cc/Bcc (mehrere Adressen, Komma-getrennt), Datei-Anhängen (Resend-Limit 35MB) und Vorlagen-Dropdown (Platzhalter-Ersetzung, bleibt frei editierbar); Anhänge werden zusätzlich automatisch als Dokument (Kategorie „Sonstiges", `created_by=email`) beim Kontakt abgelegt — Ablage-Fehler blockieren den Versand nicht |
 | **Regeln-Management** | ✅ Done | `/regeln` Page: Anlegen, Bearbeiten, Löschen, Manuelle Ausführung, Counter (runs), Benachrichtigungen |
 | **Dokumenten-Ordnerstruktur** | ✅ Done | Konfigurierbar je Kontakt-Typ (privat/gewerbe) in `/einstellungen/dokumente`; max. 2 Ebenen; Rename propagiert auf bestehende Drive-Ordner (drive_ordner_map); Kategorie-Dropdown + Filter beim Upload |
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
@@ -135,8 +135,8 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Automatische Angebots-Follow-ups** | Mittel | 🔴 Aufgabenbasis vorhanden | Nach Scheduler-Grundlage automatisch Aufgabe/Erinnerung aus Angebotsstatus und Frist erzeugen |
 | **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot kontrolliert in einen Vertrag überführen |
 | **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
-| **E-Mail-Vorlagen** | Hoch | 🟡 Freier E-Mail-Editor inkl. Cc/Bcc + Anhänge vorhanden, Vorlagen fehlen | Vorlagenverwaltung mit Platzhaltern, Vorschau und manueller Freigabe bauen |
-| **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🔴 Fehlen | Fachtexte und erlaubte Kontakt-/Vertragsplatzhalter definieren und integrieren |
+| **E-Mail-Vorlagen** | Hoch | 🟢 `/einstellungen/mail-vorlagen` (CRUD) + Vorlage-Dropdown in `ContactEmailModal` mit Platzhalter-Ersetzung, manuelle Freigabe (Vorlage befüllt nur, sendet nicht automatisch) | Stabil halten; ggf. weitere Platzhalter ergänzen wenn Bedarf entsteht |
+| **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🟢 Alle drei als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
 | **Eigene minimale Kommunikationslösung** | Hoch | 🔴 Nur ausgehende E-Mail und WhatsApp-Link vorhanden | Schlanken Nachrichten-/Aktivitätsfluss für die wichtigsten Kontaktfälle bauen; keine vollständige Omnichannel-Inbox voraussetzen |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
 | **Externe Kalenderintegration** | Niedrig | 🟡 Interner Aufgabenkalender vorhanden | Nur bei belegtem Bedarf Google-/Outlook-Sync planen |
@@ -219,6 +219,8 @@ Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase
 | `/api/kontakte/export` | GET | Export als `?format=csv\|xlsx\|pdf`, respektiert dieselben Filter wie die Liste |
 | `/api/kontakt-tags` | GET, POST | Tags auflisten (optional `?search=`) / anlegen (Create-or-Get, case-insensitiv) |
 | `/api/kontakt-tags/[id]` | PATCH, DELETE | Tag umbenennen (propagiert überall) / löschen |
+| `/api/mail-templates` | GET, POST | E-Mail-Vorlagen auflisten / anlegen |
+| `/api/mail-templates/[id]` | PATCH, DELETE | Vorlage bearbeiten / löschen |
 
 ### Activities (Auto-Logged)
 
@@ -334,6 +336,12 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 - ✅ `ContactEmailModal` + `POST /api/kontakte/[id]/email`: optionale Cc/Bcc-Empfänger (mehrere Adressen, Komma-getrennt), Datei-Anhänge (Resend-Limit 35MB)
 - ✅ Anhänge werden zusätzlich automatisch als Dokument beim Kontakt abgelegt (Kategorie „Sonstiges", `created_by=email`); Ablage-Fehler blockieren den Versand nicht
 - 🐛 Zwei Bugfixes am Anhang-Datei-Input, beide nur in der Produktions-Build reproduzierbar (nicht im Dev-Server): (1) `e.target.value = ''`-Reset direkt nach dem Auslesen der FileList verhinderte zuverlässig, dass die Datei in den State kam; (2) `<input>` war innerhalb des `<label>` verschachtelt statt als Geschwister-Element über `id`/`htmlFor` verbunden (Muster von `KontaktDokumenteTab` übernommen, das nachweislich funktioniert)
+
+**E-Mail-Vorlagen (Roadmap Phase B):**
+- ✅ Migration 0049: neue Tabelle `mail_templates` (name, subject, body) inkl. drei Start-Vorlagen (Datenanfrage, Kündigung, Termin)
+- ✅ `/einstellungen/mail-vorlagen`: Vorlagen anlegen/bearbeiten/löschen, jederzeit erweiterbar
+- ✅ `src/lib/mail-template-placeholders.ts`: Platzhalter `{{vorname}}`, `{{nachname}}`, `{{name}}`, `{{firma}}`, `{{email}}`, `{{telefon}}`, `{{versicherungsgesellschaft}}`, `{{sparte}}`
+- ✅ Vorlage-Dropdown in `ContactEmailModal` befüllt Betreff/Nachricht mit ersetzten Platzhaltern, bleibt vor dem Senden frei editierbar (keine Automatik/Blindversand)
 
 ### v0.6.0 (2026-07-20) — Kontakte: Archivieren, Tags, Export & erweiterter Import
 
@@ -496,4 +504,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-22 — v0.8.0 Mitarbeiterdashboard, eigene E-Mail-Domain (guen-versicherung.de), Cc/Bcc & Anhänge im Kontakt-E-Mail-Versand, Google-Drive-Token-Admin-Alarm*
+*Last Updated: 2026-07-22 — v0.8.0 Mitarbeiterdashboard, eigene E-Mail-Domain (guen-versicherung.de), Cc/Bcc & Anhänge im Kontakt-E-Mail-Versand, Google-Drive-Token-Admin-Alarm, E-Mail-Vorlagenverwaltung*

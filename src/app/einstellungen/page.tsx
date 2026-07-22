@@ -24,6 +24,12 @@ const settingsSections = [
     icon: '📄'
   },
   {
+    title: 'E-Mail-Vorlagen',
+    description: 'Vorlagen für den Kontakt-E-Mail-Versand verwalten',
+    href: '/einstellungen/mail-vorlagen',
+    icon: '✉️'
+  },
+  {
     title: 'Allgemein',
     description: 'Allgemeine Einstellungen (kommt bald)',
     href: '#',

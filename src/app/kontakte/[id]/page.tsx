@@ -482,6 +482,16 @@ export default function KontaktDetailPage() {
         contactId={kontaktId}
         defaultTo={kontakt.email}
         contactName={fullName}
+        contact={{
+          first_name: kontakt.first_name,
+          last_name: kontakt.last_name,
+          company_name: kontakt.company_name,
+          email: kontakt.email,
+          phone_mobile: kontakt.phone_mobile,
+          phone_office: kontakt.phone_office,
+          versicherungsgesellschaft: kontakt.versicherungsgesellschaft,
+          sparte: kontakt.sparte,
+        }}
         onClose={() => setEmailModalOpen(false)}
         onSent={() => loadKontakt()}
       />
