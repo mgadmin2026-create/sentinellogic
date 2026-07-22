@@ -16,6 +16,7 @@ import * as zlib from 'zlib'
 import { promisify } from 'util'
 import { refreshAccessToken } from './google-oauth'
 import { createServerClient } from './supabase/server'
+import { notifyAdminsOfDriveTokenFailure } from './drive-token-alert'
 
 const gzip = promisify(zlib.gzip)
 
@@ -124,11 +125,17 @@ export async function getSystemDriveClient(): Promise<{
           access_token: refreshed.accessToken,
           expires_at: refreshed.expiresAt,
           updated_at: new Date().toISOString(),
+          last_failure_notified_at: null,
         })
         .eq('id', 1)
       console.log('[Google Drive] Token erfolgreich erneuert')
     } catch (refreshErr) {
       console.error('[Google Drive] Token-Refresh fehlgeschlagen:', refreshErr)
+      const message = refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
+      // Admins per Mail alarmieren statt dass ein Mitarbeiter das zufällig beim
+      // nächsten Upload/E-Mail-Versand entdeckt. Cooldown-gesteuert; bewusst awaited,
+      // damit der Alarm auf Vercel nicht durch Function-Termination verloren geht.
+      await notifyAdminsOfDriveTokenFailure(message)
       throw new Error(
         'Google Drive Token-Refresh fehlgeschlagen. Bitte Google Drive in Einstellungen → Dokumente erneut verbinden.'
       )
