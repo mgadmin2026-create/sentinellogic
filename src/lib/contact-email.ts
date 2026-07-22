@@ -38,14 +38,23 @@ export interface SendContactEmailResult {
   error?: string
 }
 
+export interface ContactEmailAttachment {
+  filename: string
+  content: Buffer
+  contentType?: string
+}
+
 /**
  * Sendet eine E-Mail an einen Kontakt über Resend.
  * Absender: "Allianz Generalvertretung Gün" <noreply@guen-versicherung.de>, Signatur mit Allianz-URL.
  */
 export async function sendContactEmail(params: {
   to: string
+  cc?: string[]
+  bcc?: string[]
   subject: string
   body: string
+  attachments?: ContactEmailAttachment[]
 }): Promise<SendContactEmailResult> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('[Contact-Email] RESEND_API_KEY nicht gesetzt — E-Mail nicht gesendet')
@@ -58,9 +67,16 @@ export async function sendContactEmail(params: {
     const { error } = await resend.emails.send({
       from: FROM,
       to: params.to,
+      cc: params.cc && params.cc.length > 0 ? params.cc : undefined,
+      bcc: params.bcc && params.bcc.length > 0 ? params.bcc : undefined,
       subject: params.subject,
       html: buildHtml(params.body),
       text: buildText(params.body),
+      attachments: params.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     })
 
     if (error) {

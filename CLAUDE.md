@@ -83,6 +83,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Dialfire Sync** | ✅ Done | Create-Pfad + Batch-Pfad; Edge Function mit per-Rule Task-Name; Payload: Alle Felder (Adresse, Industrie, Mitarbeiterzahl, etc.) |
 | **Google Drive Dokumentenablage** | ✅ Done | Zentrale System-Ablage (nicht per-User); OAuth mit Auto-Refresh; Kompression (sharp für Bilder/75%, gzip Docs); Statistik-Tracking; Globales `/dokumente` + Kontakt-Tabs |
 | **E-Mail-Benachrichtigungen** | ✅ Done | Resend API; Auto-Pfad (pro Kontakt) + Manuell-Pfad (Summary pro Lauf); Versendet wenn send_notification=true in Regel |
+| **Kontakt-E-Mail (manuell)** | ✅ Done | `ContactEmailModal` + `POST /api/kontakte/[id]/email`: freier Compose mit optionalem Cc/Bcc (mehrere Adressen, Komma-getrennt) und Datei-Anhängen (Resend-Limit 35MB); Anhänge werden zusätzlich automatisch als Dokument (Kategorie „Sonstiges", `created_by=email`) beim Kontakt abgelegt — Ablage-Fehler blockieren den Versand nicht |
 | **Regeln-Management** | ✅ Done | `/regeln` Page: Anlegen, Bearbeiten, Löschen, Manuelle Ausführung, Counter (runs), Benachrichtigungen |
 | **Dokumenten-Ordnerstruktur** | ✅ Done | Konfigurierbar je Kontakt-Typ (privat/gewerbe) in `/einstellungen/dokumente`; max. 2 Ebenen; Rename propagiert auf bestehende Drive-Ordner (drive_ordner_map); Kategorie-Dropdown + Filter beim Upload |
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
@@ -214,6 +215,7 @@ Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase
 | `/api/kontakte/[id]` | DELETE | **Archiviert** den Kontakt (Soft-Delete, `archived_at`); Body `{ archiveTasks?: boolean }`; echtes Löschen nur via direktem Supabase-Zugriff |
 | `/api/kontakte/[id]/restore` | POST | Archivierten Kontakt wiederherstellen; Body `{ restoreTasks?: boolean }` |
 | `/api/kontakte/[id]/tags` | PUT | Kompletten Tag-Satz eines Kontakts ersetzen; Body `{ tagIds: string[] }` |
+| `/api/kontakte/[id]/email` | POST | E-Mail an Kontakt (Resend); FormData `to, cc?, bcc?, subject, body, attachments?[]`; Anhänge zusätzlich automatisch in Dokumente abgelegt |
 | `/api/kontakte/export` | GET | Export als `?format=csv\|xlsx\|pdf`, respektiert dieselben Filter wie die Liste |
 | `/api/kontakt-tags` | GET, POST | Tags auflisten (optional `?search=`) / anlegen (Create-or-Get, case-insensitiv) |
 | `/api/kontakt-tags/[id]` | PATCH, DELETE | Tag umbenennen (propagiert überall) / löschen |
