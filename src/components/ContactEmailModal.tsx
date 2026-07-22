@@ -59,7 +59,8 @@ export function ContactEmailModal({
   const totalAttachmentSize = files.reduce((sum, f) => sum + f.size, 0)
   const attachmentsTooLarge = totalAttachmentSize > MAX_TOTAL_ATTACHMENT_BYTES
 
-  function handleFilesSelected(selected: FileList | null) {
+  function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files
     if (!selected || selected.length === 0) return
     setFiles((prev) => [...prev, ...Array.from(selected)])
   }
@@ -210,7 +211,7 @@ export function ContactEmailModal({
                 type="file"
                 multiple
                 className="hidden"
-                onChange={(e) => { handleFilesSelected(e.target.files); e.target.value = '' }}
+                onChange={handleFileInputChange}
               />
             </label>
             {files.length > 0 && (
