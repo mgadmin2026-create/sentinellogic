@@ -1,7 +1,7 @@
 // E-Mail-Benachrichtigungen fuer Automatisierungsregeln (Resend)
 import { Resend } from 'resend'
 
-const FROM = 'Sentimental Logic <noreply@onlinefirst.eu>'
+const FROM = 'Sentimental Logic <noreply@guen-versicherung.de>'
 
 export interface RuleNotificationActions {
   klicktipp_tag?: string

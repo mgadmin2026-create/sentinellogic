@@ -21,7 +21,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Database** | Supabase PostgreSQL | pgvector-ready, RLS-capable |
 | **Auth** | Supabase Auth (`@supabase/ssr`) | Session-based Login, Middleware-Zugriffsschutz, Rollen admin/mitarbeiter |
 | **Hosting** | Vercel | Auto-deploy on `git push main` |
-| **Email** | Resend API | Transaktional (Domain: onlinefirst.eu) |
+| **Email** | Resend API | Transaktional (Domain: guen-versicherung.de, verifiziert) |
 | **Document Storage** | Google Drive OAuth | Zentrale System-Ablage + Kompression |
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |

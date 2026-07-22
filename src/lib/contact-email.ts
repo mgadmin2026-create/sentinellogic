@@ -2,9 +2,9 @@
 import { Resend } from 'resend'
 
 // Absender-Anzeigename "Allianz Generalvertretung Gün".
-// Die E-Mail-Adresse bleibt auf der in Resend verifizierten Domain onlinefirst.eu
+// E-Mail-Adresse auf der eigenen, in Resend verifizierten Domain guen-versicherung.de
 // (@allianz.de ist technisch nicht möglich – Domain gehört Allianz, nicht verifizierbar).
-const FROM = 'Allianz Generalvertretung Gün <noreply@onlinefirst.eu>'
+const FROM = 'Allianz Generalvertretung Gün <noreply@guen-versicherung.de>'
 const ALLIANZ_URL = 'https://vertretung.allianz.de/melih.guen/'
 
 function escapeHtml(s: string): string {
@@ -40,7 +40,7 @@ export interface SendContactEmailResult {
 
 /**
  * Sendet eine E-Mail an einen Kontakt über Resend.
- * Absender: "Allianz Generalvertretung Gün" <noreply@onlinefirst.eu>, Signatur mit Allianz-URL.
+ * Absender: "Allianz Generalvertretung Gün" <noreply@guen-versicherung.de>, Signatur mit Allianz-URL.
  */
 export async function sendContactEmail(params: {
   to: string

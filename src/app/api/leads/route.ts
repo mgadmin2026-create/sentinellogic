@@ -53,7 +53,7 @@ async function sendNotificationEmail(
     ].filter(Boolean).join('\n')
 
     await resend.emails.send({
-      from: 'Sentimental Logic <noreply@onlinefirst.eu>',
+      from: 'Sentimental Logic <noreply@guen-versicherung.de>',
       to,
       subject: `🔔 Neuer Lead: ${leadName}`,
       html: `
