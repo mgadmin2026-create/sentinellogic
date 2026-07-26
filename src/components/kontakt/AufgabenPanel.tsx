@@ -88,7 +88,7 @@ export function AufgabenPanel({ aufgaben, onStatusChange, onEditTask, onNewTask 
                           : 'text-gray-500'
                     }
                   >
-                    {aufgabe.priorität.charAt(0).toUpperCase() + aufgabe.priorität.slice(1)}
+                    {aufgabe.priorität ? aufgabe.priorität.charAt(0).toUpperCase() + aufgabe.priorität.slice(1) : 'Mittel'}
                   </span>
                   {aufgabe.assigned_user?.name ? ` · ${aufgabe.assigned_user.name}` : ''}
                 </p>

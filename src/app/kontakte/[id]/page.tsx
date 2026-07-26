@@ -22,6 +22,7 @@ import { Drawer } from '@/components/kontakt/Drawer'
 import { ProzessPanel, PIPELINE_STEPS } from '@/components/kontakt/ProzessPanel'
 import { AktivitaetenPanel, type Aktivität } from '@/components/kontakt/AktivitaetenPanel'
 import { AufgabenPanel, type KontaktAufgabe } from '@/components/kontakt/AufgabenPanel'
+import { CommentThread } from '@/components/kontakt/CommentThread'
 
 interface Kontakt {
   id: string
@@ -811,6 +812,12 @@ export default function KontaktDetailPage() {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Kommentare */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">💬 Kommentare</h3>
+              <CommentThread entityType="contact" entityId={kontaktId} />
             </div>
           </div>
         </div>

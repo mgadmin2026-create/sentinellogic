@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
       created_by_user_id: body.created_by_user_id && isValidUUID(body.created_by_user_id) ? body.created_by_user_id : null,
       titel: String(body.titel).trim(),
       beschreibung: body.beschreibung ? String(body.beschreibung).trim() : null,
-      status: VALID_STATUSES.includes(String(body.status ?? 'offen')) ? body.status : 'offen',
-      priorität: VALID_PRIORITIES.includes(String(body.priorität ?? 'mittel')) ? body.priorität : 'mittel',
+      status: VALID_STATUSES.includes(String(body.status)) ? body.status : 'offen',
+      priorität: VALID_PRIORITIES.includes(String(body.priorität)) ? body.priorität : 'mittel',
       fällig: body.fällig, // Date string
       triggered_by_rule: body.triggered_by_rule ?? null,
       triggered_by_process_step: body.triggered_by_process_step ?? null,

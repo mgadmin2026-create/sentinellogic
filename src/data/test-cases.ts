@@ -263,4 +263,24 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: [],
   },
+  {
+    id: 'E2E-016',
+    name: 'Kommentare & Erwähnungen an Kontakten und Aufgaben',
+    description: 'Prüft Kommentare mit @-Erwähnung und Datei-Anhang an Kontakten, die Kontakt-Pflicht für Anhänge sowie den Kommentarverlauf in der Aufgaben-Bearbeitung.',
+    steps: [
+      'Einen Testkontakt anlegen und in der Kontaktdetailseite einen Kommentar mit Einzel-Erwähnung und Datei-Anhang posten.',
+      'Erwähnung und Anhangs-Ablage (inkl. Google-Drive-Datei-ID) über die API prüfen.',
+      'Eine kontaktlose Testaufgabe anlegen und einen Datei-Anhang an einem Kommentar dazu versuchen — muss mit HTTP 400 abgelehnt werden.',
+      'Eine Aufgabe mit Kontaktbezug anlegen, im Bearbeiten-Modal einen Kommentar posten und den Verlauf prüfen.',
+    ],
+    area: 'Kontaktverwaltung',
+    priority: 'Hoch',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: [
+      'postet einen Kommentar mit Einzel-Erwähnung und Datei-Anhang an einem Kontakt',
+      'lehnt Datei-Anhänge an Kommentaren ohne Kontakt-Bezug ab',
+      'zeigt den Kommentarverlauf in der Aufgaben-Bearbeiten-Ansicht',
+    ],
+  },
 ]

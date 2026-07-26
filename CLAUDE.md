@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.8.0 — Mitarbeiterdashboard, eigene E-Mail-Domain, Cc/Bcc & Anhänge | Aktiv in Entwicklung |
+| **Version** | 0.9.0 — Kommentare & @-Erwähnungen an Kontakten und Aufgaben | Aktiv in Entwicklung |
 
 ---
 
@@ -46,6 +46,10 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | `drive_ordner_map` | Drive-IDs der Kategorie-Unterordner pro Kontakt (für Rename-Propagation) | kontakt_id, pfad, drive_folder_id |
 | `tags` | Interne, frei vergebbare Kontakt-Tags (v0.6.0) | id, name, created_at, updated_at |
 | `contact_tag_map` | Zuordnung Kontakt ↔ Tag, n:m (v0.6.0) | id, contact_id, tag_id, created_at |
+| `mail_templates` | E-Mail-Vorlagen (v0.8.0) | id, name, subject, body |
+| `comments` | Kommentare, polymorph über `entity_type`/`entity_id` (v0.9.0) | id, entity_type (`task`\|`contact`), entity_id, author_user_id, body, created_at |
+| `comment_mentions` | @-Erwähnungen pro Kommentar; „Alle" wird beim Anlegen zu Einzel-Erwähnungen pro aktivem User aufgelöst (v0.9.0) | id, comment_id, mentioned_user_id, read_at |
+| `comment_attachments` | Datei-Anhänge an Kommentaren, referenziert `dokumente_metadata` (v0.9.0) | id, comment_id, dokument_id, file_name, file_size |
 
 ### Supporting Tables
 
@@ -87,6 +91,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Regeln-Management** | ✅ Done | `/regeln` Page: Anlegen, Bearbeiten, Löschen, Manuelle Ausführung, Counter (runs), Benachrichtigungen |
 | **Dokumenten-Ordnerstruktur** | ✅ Done | Konfigurierbar je Kontakt-Typ (privat/gewerbe) in `/einstellungen/dokumente`; max. 2 Ebenen; Rename propagiert auf bestehende Drive-Ordner (drive_ordner_map); Kategorie-Dropdown + Filter beim Upload |
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
+| **Kommentare & @-Erwähnungen** | ✅ Done | Wiederverwendbare `CommentThread`-Komponente in Kontaktdetail-Kachel und Aufgaben-Bearbeiten-Modal; Einzel- und Gruppen-Erwähnung (`@Alle` → Einzel-Erwähnung pro aktivem User bei Erstellung), Datei-Anhang (nur wenn Kontakt auflösbar, sonst HTTP 400), E-Mail-Benachrichtigung pro Erwähnung, `/erwaehnungen`-Seite + Sidebar-Badge mit Ungelesen-Zähler |
 
 ## Konsolidierte Feature-Roadmap (Stand 2026-07-21)
 
@@ -137,7 +142,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
 | **E-Mail-Vorlagen** | Hoch | 🟢 `/einstellungen/mail-vorlagen` (CRUD) + Vorlage-Dropdown in `ContactEmailModal` mit Platzhalter-Ersetzung, manuelle Freigabe (Vorlage befüllt nur, sendet nicht automatisch) | Stabil halten; ggf. weitere Platzhalter ergänzen wenn Bedarf entsteht |
 | **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🟢 Alle drei als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
-| **Eigene minimale Kommunikationslösung** | Hoch | 🔴 Nur ausgehende E-Mail und WhatsApp-Link vorhanden | Schlanken Nachrichten-/Aktivitätsfluss für die wichtigsten Kontaktfälle bauen; keine vollständige Omnichannel-Inbox voraussetzen |
+| **Eigene minimale Kommunikationslösung** | Hoch | 🟢 Kommentare mit @-Erwähnung (Einzel + „Alle") an Kontakten und Aufgaben, Datei-Anhang, E-Mail-Benachrichtigung, `/erwaehnungen`-Übersicht + Sidebar-Badge | Stabil halten; bei Bedarf Kontakt-Kommentare auf weitere Entitäten ausweiten |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
 | **Externe Kalenderintegration** | Niedrig | 🟡 Interner Aufgabenkalender vorhanden | Nur bei belegtem Bedarf Google-/Outlook-Sync planen |
 | **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
@@ -221,6 +226,9 @@ Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase
 | `/api/kontakt-tags/[id]` | PATCH, DELETE | Tag umbenennen (propagiert überall) / löschen |
 | `/api/mail-templates` | GET, POST | E-Mail-Vorlagen auflisten / anlegen |
 | `/api/mail-templates/[id]` | PATCH, DELETE | Vorlage bearbeiten / löschen |
+| `/api/comments` | GET, POST | Kommentare zu `entity_type=task\|contact` + `entity_id` laden / anlegen (FormData: `body`, `mentioned_user_ids`, `mention_all`, `attachments?[]`); Anhänge nur wenn sich ein Kontakt auflösen lässt |
+| `/api/mentions` | GET | Eigene @-Erwähnungen, neueste zuerst (`?unread=true` filtert); liefert `unreadCount` |
+| `/api/mentions/[id]` | PATCH | Eigene Erwähnung als gelesen markieren |
 
 ### Activities (Auto-Logged)
 
@@ -317,6 +325,20 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.9.0 (2026-07-26) — Kommentare & @-Erwähnungen an Kontakten und Aufgaben
+
+**Kommentare (Roadmap Phase B, „Eigene minimale Kommunikationslösung"):**
+- ✅ Migration 0050: neue Tabellen `comments` (polymorph über `entity_type`/`entity_id`), `comment_mentions`, `comment_attachments`
+- ✅ `POST /api/comments`: legt Kommentar an, löst Einzel-Erwähnungen auf, expandiert `@Alle` zu Einzel-Erwähnungen pro aktivem User (außer Autor), lädt Anhänge nach Google Drive hoch (Muster wie E-Mail-Anhänge, `created_by=comment`) und verschickt eine Benachrichtigungs-Mail pro Erwähnung
+- ✅ Datei-Anhänge nur möglich, wenn sich für die Entität ein Kontakt auflösen lässt (Kontakt direkt, oder Aufgabe mit `contact_id`) — sonst HTTP 400 mit klarer Fehlermeldung
+- ✅ `GET/PATCH /api/mentions[/[id]]`: eigene Erwähnungen laden (inkl. `unreadCount`) und einzeln als gelesen markieren
+- ✅ `CommentThread`-Komponente (wiederverwendbar): Textarea mit cursorbasierter `@`-Autovervollständigung (Team-Mitglieder + „Alle"), Mention-Chips als Quelle der Wahrheit für den Submit, Datei-Anhang-Picker, vollständige Kommentarhistorie mit Erwähnungen und Anhang-Links
+- ✅ Integration in Kontaktdetail (neue „Kommentare"-Kachel) und `AufgabenEditModal` (nur im Bearbeiten-Modus, da ein bestehendes Aufgaben-ID benötigt wird)
+- ✅ Neue Seite `/erwaehnungen` (Alle/Ungelesen-Filter, Klick markiert gelesen + springt zur Entität) + Sidebar-Badge mit Ungelesen-Zähler (60s-Polling)
+- 🐛 Nebenbei gefunden und behoben: `POST /api/aufgaben` setzte bei fehlendem `status`/`priorität` im Request-Body fälschlich `undefined` statt des vorgesehenen Defaults (`offen`/`mittel`) in die DB — die Ternary prüfte zwar den Default-Fall, gab im Erfolgsfall aber den ursprünglichen (undefined) Wert zurück. Das ließ `AufgabenPanel.tsx` beim Rendern mit `null`-Priorität abstürzen (`Cannot read properties of null (reading 'charAt')`). Beides gefixt: korrekter Fallback in der API-Route + defensive Anzeige in `AufgabenPanel.tsx`
+- ⚠️ Bewusst nicht automatisiert getestet: `@Alle` fächert eine E-Mail an ALLE aktiven User auf (inkl. echter Mitarbeiter, nicht nur Test-Accounts) — da Playwright laut `docs/TESTUMGEBUNG_KONZEPT.md` regelmäßig gegen Produktion läuft, würde ein automatisierter Test bei jedem Deploy echte Kolleg:innen anschreiben. Einmalig manuell verifiziert (korrekte Erwähnungs-Anzahl = aktive User − Autor)
+- 🧪 Neuer Playwright-Testfall `E2E-016` (`tests/e2e/kommentare.spec.ts`): Kommentar mit Einzel-Erwähnung + Anhang an Kontakt, Anhang-Ablehnung ohne Kontaktbezug, Kommentarverlauf im Aufgaben-Bearbeiten-Modal
 
 ### v0.8.0 (2026-07-22) — Mitarbeiterdashboard, eigene E-Mail-Domain, Cc/Bcc & Anhänge
 
@@ -452,6 +474,10 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Known Issues & Open Tasks
 
+### Kritisch — sofort handeln
+
+- [ ] **Google Drive Verbindung unterbrochen:** Token-Refresh schlägt seit 2026-07-22 fehl (`refresh_token` abgelaufen/widerrufen); blockiert aktuell alle Drive-Uploads (Dokumente, E-Mail-Anhänge, Kommentar-Anhänge) mit stillem Fallback-Fehler pro Upload. Admin-Alarm-Mail wurde ausgelöst. **Fix:** unter `Einstellungen → Dokumente` neu verbinden.
+
 ### High Priority (v0.4+)
 
 - [ ] **Dialfire Kampagnen-Flexibilität:** Nur 2 IDs hartcodiert in Edge-Function (GENS85UE5SU4SSC7, SFU6DSEG4RU2Z6HX); sollte via system_config konfigurierbar sein
@@ -501,7 +527,11 @@ git push origin main # Deploy zu Vercel
 | `src/components/KontaktImportModal.tsx` | Gemeinsames Import-Modal (Dashboard + Kontakte) |
 | `src/components/TagInput.tsx` | Freitext-Tag-Eingabe mit Autocomplete |
 | `tests/e2e/` | Playwright-Regressionstests, Muster in `testdashboard.spec.ts` |
+| `supabase/migrations/0050_comments_mentions.sql` | `comments`, `comment_mentions`, `comment_attachments` (v0.9.0) |
+| `src/app/api/comments/route.ts` | Kommentar-CRUD, @Alle-Expansion, Drive-Anhang-Ablage, Erwähnungs-Mails |
+| `src/lib/mention-notify.ts` | E-Mail-Benachrichtigung pro Erwähnung (kein Cooldown, anders als `drive-token-alert.ts`) |
+| `src/components/kontakt/CommentThread.tsx` | Wiederverwendbare Kommentar-Komponente (Kontaktdetail + Aufgaben-Modal) |
 
 ---
 
-*Last Updated: 2026-07-22 — v0.8.0 Mitarbeiterdashboard, eigene E-Mail-Domain (guen-versicherung.de), Cc/Bcc & Anhänge im Kontakt-E-Mail-Versand, Google-Drive-Token-Admin-Alarm, E-Mail-Vorlagenverwaltung*
+*Last Updated: 2026-07-26 — v0.9.0 Kommentare & @-Erwähnungen an Kontakten und Aufgaben, `/erwaehnungen`-Übersicht + Sidebar-Badge, Aufgaben-Default-Bugfix (status/priorität)*
