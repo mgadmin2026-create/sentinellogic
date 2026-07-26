@@ -21,6 +21,117 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.10.0',
+    date: '2026-07-26',
+    title: 'Eingebaute Hilfe & Kundendokumentation',
+    summary:
+      'Ein durchsuchbares Handbuch direkt in der App, plus kontextsensitive Hilfe per Klick oder Tastendruck für jede Kachel',
+    features: [
+      {
+        title: 'Kachel-genaue Hilfe',
+        description:
+          'Ein ❓-Symbol neben jeder Kachel und jedem Abschnitt öffnet ein kurzes Erklärungsfenster genau zu diesem Bereich — kein Suchen in einem allgemeinen Handbuch nötig.',
+        category: 'feature',
+        icon: '❓',
+      },
+      {
+        title: 'Taste „?" für Seiten-Hilfe',
+        description:
+          'Auf jeder Seite die Taste „?" drücken (außer beim Tippen in ein Textfeld) öffnet eine kurze Übersicht zur aktuellen Seite.',
+        category: 'feature',
+        icon: '⌨️',
+      },
+      {
+        title: 'Durchsuchbares Handbuch',
+        description:
+          'Unter „Hilfe" in der Seitenleiste (oder über /hilfe) gibt es jetzt ein vollständiges, durchsuchbares Handbuch mit allen Themen an einem Ort, gruppiert nach Bereich.',
+        category: 'feature',
+        icon: '📖',
+      },
+    ],
+  },
+  {
+    version: '0.9.0',
+    date: '2026-07-26',
+    title: 'Kommentare & @-Erwähnungen an Kontakten und Aufgaben',
+    summary:
+      'Interne Team-Kommunikation direkt im CRM: Kommentare mit @-Erwähnung, Datei-Anhang und E-Mail-Benachrichtigung an Kontakten und Aufgaben',
+    features: [
+      {
+        title: 'Kommentare an Kontakten und Aufgaben',
+        description:
+          'Sowohl an Kontakten als auch an Aufgaben lassen sich jetzt interne Kommentare hinterlassen — sichtbar für das gesamte Team, nicht nur für dich selbst.',
+        category: 'feature',
+        icon: '💬',
+      },
+      {
+        title: '@-Erwähnungen',
+        description:
+          'Mit @Name lässt sich gezielt ein Teammitglied erwähnen und per E-Mail benachrichtigen — z.B. wenn eine Aufgabe an die falsche Person zugewiesen wurde oder Unterstützung gebraucht wird. Mit @Alle erreichst du das gesamte Team auf einmal.',
+        category: 'feature',
+        icon: '📣',
+      },
+      {
+        title: 'Datei-Anhänge in Kommentaren',
+        description:
+          'Kommentare an Kontakten (bzw. an Aufgaben mit Kontaktbezug) können direkt einen Datei-Anhang enthalten — er wird automatisch in den Dokumenten des Kontakts abgelegt.',
+        category: 'feature',
+        icon: '📎',
+      },
+      {
+        title: 'Erwähnungen-Übersicht',
+        description:
+          'Die neue Seite „Erwähnungen" zeigt alle Kommentare, in denen du erwähnt wurdest, mit einem Ungelesen-Zähler direkt in der Seitenleiste.',
+        category: 'feature',
+        icon: '🔔',
+      },
+    ],
+  },
+  {
+    version: '0.8.0',
+    date: '2026-07-22',
+    title: 'Mitarbeiterdashboard, eigene E-Mail-Domain, Cc/Bcc & Anhänge',
+    summary:
+      'Das Dashboard zeigt jetzt deine persönlichen Zahlen, E-Mails kommen von der eigenen Domain, und der Kontakt-E-Mail-Versand unterstützt Cc/Bcc, Anhänge und Vorlagen',
+    features: [
+      {
+        title: 'Persönliches Dashboard',
+        description:
+          'Das Dashboard zeigt jetzt deine eigenen Kennzahlen statt globaler Platzhalterwerte: „Heute im Fokus" bündelt deine überfälligen und heute fälligen Aufgaben, „Meine Kontakte" zeigt nur deine zugewiesenen Kontakte nach Fortschritt sortiert. Admins können über „Team"/„Meine Ansicht" zur Gesamt-Sicht umschalten.',
+        category: 'feature',
+        icon: '📊',
+      },
+      {
+        title: 'Eigene E-Mail-Domain',
+        description:
+          'Alle System-E-Mails werden jetzt über die eigene, verifizierte Domain versendet statt über eine geliehene Domain.',
+        category: 'improvement',
+        icon: '✉️',
+      },
+      {
+        title: 'Admin-Alarm bei Google-Drive-Problemen',
+        description:
+          'Schlägt die Google-Drive-Verbindung fehl (z.B. abgelaufene Anmeldung), werden Admins jetzt automatisch per E-Mail benachrichtigt — Mitarbeiter merken von einer unterbrochenen Verbindung nichts mehr.',
+        category: 'improvement',
+        icon: '🚨',
+      },
+      {
+        title: 'Cc/Bcc & Datei-Anhänge im Kontakt-E-Mail-Versand',
+        description:
+          'Beim E-Mail-Versand an einen Kontakt lassen sich jetzt Cc/Bcc-Empfänger und Datei-Anhänge hinzufügen. Anhänge werden zusätzlich automatisch beim Kontakt als Dokument abgelegt.',
+        category: 'feature',
+        icon: '📎',
+      },
+      {
+        title: 'E-Mail-Vorlagen',
+        description:
+          'Unter Einstellungen → E-Mail-Vorlagen lassen sich wiederverwendbare Vorlagen mit Platzhaltern (Name, Firma, E-Mail, ...) anlegen, bearbeiten und löschen — beim Versand befüllen sie Betreff und Text automatisch, bleiben aber vor dem Senden frei editierbar.',
+        category: 'feature',
+        icon: '📝',
+      },
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-07-20',
     title: 'Benutzerkonten: Login, Rollen & Team-Verwaltung',
