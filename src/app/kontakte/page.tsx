@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { KontaktImportModal } from '@/components/KontaktImportModal'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface Kontakt {
   id: string
@@ -797,7 +798,10 @@ export default function KontaktePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap sm:flex-nowrap">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Kontakte</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-3xl font-bold text-gray-900">Kontakte</h1>
+            <HelpButton articleId="kontakte-liste.overview" />
+          </div>
           <p className="text-gray-500 text-sm mt-0.5">{loading ? 'Lädt…' : `${kontakte.length} Kontakte gesamt`}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -844,6 +848,8 @@ export default function KontaktePage() {
               className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 focus:border-yellow-400"
             />
           </div>
+          <HelpButton articleId="kontakte-liste.suche-filter" className="text-gray-300 hover:text-yellow-600 transition-colors flex-shrink-0 self-center" />
+
           <button
             onClick={() => setShowColumnModal(true)}
             className="px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
@@ -851,6 +857,7 @@ export default function KontaktePage() {
           >
             ⚙️ Spalten
           </button>
+          <HelpButton articleId="kontakte-liste.spalten-anpassen" className="text-gray-300 hover:text-yellow-600 transition-colors flex-shrink-0 self-center" />
 
           <div className="relative">
             <button
@@ -1009,6 +1016,7 @@ export default function KontaktePage() {
             />
             Archivierte anzeigen
           </label>
+          <HelpButton articleId="kontakte-liste.archivieren" className="text-gray-300 hover:text-yellow-600 transition-colors flex-shrink-0 self-center" />
 
           {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || tagFilter.length > 0 || search) && (
             <button

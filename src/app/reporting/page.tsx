@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface ReportResult {
   sql?: string
@@ -83,7 +84,10 @@ export default function ReportingPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
+      <div className="flex items-center gap-1.5">
+        <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
+        <HelpButton articleId="reporting.overview" />
+      </div>
       <p className="text-sm text-gray-500 mb-6">
         Frag in eigenen Worten – die Auswertung wird live aus der Datenbank erstellt.
       </p>

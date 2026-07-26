@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.9.0 — Kommentare & @-Erwähnungen an Kontakten und Aufgaben | Aktiv in Entwicklung |
+| **Version** | 0.10.0 — Eingebaute Hilfe & Kundendokumentation | Aktiv in Entwicklung |
 
 ---
 
@@ -92,6 +92,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Dokumenten-Ordnerstruktur** | ✅ Done | Konfigurierbar je Kontakt-Typ (privat/gewerbe) in `/einstellungen/dokumente`; max. 2 Ebenen; Rename propagiert auf bestehende Drive-Ordner (drive_ordner_map); Kategorie-Dropdown + Filter beim Upload |
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
 | **Kommentare & @-Erwähnungen** | ✅ Done | Wiederverwendbare `CommentThread`-Komponente in Kontaktdetail-Kachel und Aufgaben-Bearbeiten-Modal; Einzel- und Gruppen-Erwähnung (`@Alle` → Einzel-Erwähnung pro aktivem User bei Erstellung), Datei-Anhang (nur wenn Kontakt auflösbar, sonst HTTP 400), E-Mail-Benachrichtigung pro Erwähnung, `/erwaehnungen`-Seite + Sidebar-Badge mit Ungelesen-Zähler |
+| **Eingebaute Hilfe & Kundendokumentation** | ✅ Done | Rein statisches, im Code gepflegtes Hilfe-System (kein DB-Table, keine API-Route) — `~62` Artikel über `src/data/help/*.ts`. Kachel-genaue Hilfe per ❓-Symbol (`<HelpButton articleId="...">`, ~39 Einfügestellen) öffnet den passenden Artikel im globalen Drawer (`HelpProvider`); Taste `?` öffnet die Seiten-Standardhilfe (Prefix-Match für `/kontakte/[id]`, sonst Exact-Match), unterdrückt in Eingabefeldern und bei bereits offenem anderen Drawer/Modal; vollständiges durchsuchbares Handbuch unter `/hilfe` mit Bereichs-Gruppierung, Volltextsuche und Deep-Linking (`#<articleId>`, Scroll + Highlight) |
 
 ## Konsolidierte Feature-Roadmap (Stand 2026-07-21)
 
@@ -256,6 +257,8 @@ Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase
 | Kontakt-Detail | `/kontakte/[id]` | Tab-Interface (Übersicht, Prozess, Aktivitäten, Aufgaben, Dialfire, Dokumente, Verträge, Automation) + Tags-Leiste |
 | Testdashboard | `/testdashboard` | Regressionstest-Übersicht, Testläufe, Umgebungsstatus (v0.6.0) |
 | Release Notes | `/release-notes` | In-App Feature-History |
+| Erwähnungen | `/erwaehnungen` | Eigene @-Erwähnungen aus Kommentaren, Alle/Ungelesen-Filter |
+| Hilfe | `/hilfe` | Durchsuchbares Hilfe-Handbuch (v0.10.0), siehe eigener Abschnitt unten |
 
 ### Tabs im Kontakt-Detail
 
@@ -325,6 +328,19 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.10.0 (2026-07-26) — Eingebaute Hilfe & Kundendokumentation
+
+**„?"-Hilfe (Kundendokumentation + kontextsensitive Hilfe):**
+- ✅ Rein statisches Hilfe-System, analog zum `RELEASE_NOTES`-Muster, aber ohne API-Route (Provider und `/hilfe`-Seite importieren `src/data/help/` direkt) — kein DB-Table, keine Business-seitige Bearbeitung vorgesehen (Inhalte werden im Code gepflegt)
+- ✅ `src/types/help.ts` (`HelpArticle`, `HelpArea`) + `src/data/help/*.ts` (ein File pro Bereich, ~62 Artikel), aggregiert in `src/data/help/index.ts` (`HELP_ARTICLES_BY_ID`, `HELP_ARTICLES_BY_AREA`, `resolvePageDefaultArticle()` mit Exact-vor-Prefix-Auflösung für die einzige echte dynamische Route `/kontakte/[id]`)
+- ✅ `HelpProvider` (`src/components/help/`, erster React-Context der App, in `layout.tsx` um Sidebar+Main gelegt): globaler `<Drawer>`-Instanz (bestehende Komponente wiederverwendet) + Taste `?` als Shortcut — mit Guard gegen Eingabefelder (`activeElement`-Prüfung) und bewusster Unterdrückung, wenn bereits ein anderer Drawer/Modal offen ist (`document.body.style.overflow === 'hidden'`), statt zwei Overlays zu stapeln
+- ✅ `<HelpButton articleId="...">`: Kachel-genaues ❓-Symbol, an ~39 Stellen über alle Hauptseiten eingefügt (öffnet den spezifischen Artikel statt der Seiten-Standardhilfe)
+- ✅ `/hilfe`: vollständiges durchsuchbares Handbuch, nach Bereich gruppiert (Sidebar-Reihenfolge), Client-seitige Volltextsuche, Deep-Linking via `#<articleId>` (Scroll + 2s Highlight)
+- ✅ Sidebar: neuer Nav-Eintrag „Hilfe" + persistentes Hilfe-Icon im Footer (ruft dieselbe Seiten-Standardhilfe wie `?` auf)
+- 🐛 Nebenbei entdeckt beim Testen des Kontaktdetail-Seiten-Kontexts: eine über Rohdaten (nicht über das UI-Formular) angelegte Aufgabe ohne `priorität` ließ `AufgabenPanel.tsx` abstürzen — bereits in v0.9.0 behoben, hier nur zur Kenntnisnahme falls im Zusammenhang mit dieser Session gesucht wird
+- ⚠️ Bewusste Scope-Entscheidung: `?` löst die **Seiten**-Standardhilfe auf, nicht kachel-genau (das leistet ausschließlich `<HelpButton>`) — echte Tile-Erkennung unter dem Cursor bräuchte ein Hover-/Fokus-Tracking-System, das nicht angefragt war
+- 🧪 Neuer Playwright-Testfall `E2E-017` (`tests/e2e/hilfe.spec.ts`) — rein lesend, keine Testdaten-Bereinigung nötig
 
 ### v0.9.0 (2026-07-26) — Kommentare & @-Erwähnungen an Kontakten und Aufgaben
 
@@ -531,7 +547,12 @@ git push origin main # Deploy zu Vercel
 | `src/app/api/comments/route.ts` | Kommentar-CRUD, @Alle-Expansion, Drive-Anhang-Ablage, Erwähnungs-Mails |
 | `src/lib/mention-notify.ts` | E-Mail-Benachrichtigung pro Erwähnung (kein Cooldown, anders als `drive-token-alert.ts`) |
 | `src/components/kontakt/CommentThread.tsx` | Wiederverwendbare Kommentar-Komponente (Kontaktdetail + Aufgaben-Modal) |
+| `src/types/help.ts` | `HelpArticle`/`HelpArea`-Typen + Bereichs-Reihenfolge/Labels (v0.10.0) |
+| `src/data/help/index.ts` | Aggregiert alle Bereichs-Artikel, `resolvePageDefaultArticle()` (Exact-vor-Prefix) |
+| `src/components/help/HelpProvider.tsx` | Globaler Hilfe-Kontext, `?`-Shortcut, gemeinsamer Drawer |
+| `src/components/help/HelpButton.tsx` | Kachel-genaues ❓-Symbol, öffnet spezifischen Artikel |
+| `src/app/hilfe/page.tsx` | Durchsuchbares Handbuch, Bereichs-Gruppierung, Deep-Linking |
 
 ---
 
-*Last Updated: 2026-07-26 — v0.9.0 Kommentare & @-Erwähnungen an Kontakten und Aufgaben, `/erwaehnungen`-Übersicht + Sidebar-Badge, Aufgaben-Default-Bugfix (status/priorität)*
+*Last Updated: 2026-07-26 — v0.10.0 Eingebaute Hilfe & Kundendokumentation (`/hilfe`, Kachel-genaue ❓-Symbole, Taste „?" für Seiten-Standardhilfe)*

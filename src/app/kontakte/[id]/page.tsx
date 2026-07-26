@@ -23,6 +23,7 @@ import { ProzessPanel, PIPELINE_STEPS } from '@/components/kontakt/ProzessPanel'
 import { AktivitaetenPanel, type Aktivität } from '@/components/kontakt/AktivitaetenPanel'
 import { AufgabenPanel, type KontaktAufgabe } from '@/components/kontakt/AufgabenPanel'
 import { CommentThread } from '@/components/kontakt/CommentThread'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface Kontakt {
   id: string
@@ -517,6 +518,7 @@ export default function KontaktDetailPage() {
               {PIPELINE_STEPS[currentStepIndex]?.label}
             </p>
             <div className="flex items-center gap-3 flex-shrink-0">
+              <HelpButton articleId="kontakt-detail.prozess-stepper" />
               <button
                 onClick={() => setOpenDrawer('prozess')}
                 className="text-xs text-gray-500 hover:text-gray-900 font-medium"
@@ -563,7 +565,10 @@ export default function KontaktDetailPage() {
             {/* Kontakt */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">👤 Kontakt</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">👤 Kontakt</h3>
+                  <HelpButton articleId="kontakt-detail.kontakt-kachel" />
+                </div>
                 <button
                   onClick={() => openEditDrawer('grunddaten')}
                   className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
@@ -594,7 +599,10 @@ export default function KontaktDetailPage() {
             {/* Unternehmen */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">🏢 Unternehmen</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">🏢 Unternehmen</h3>
+                  <HelpButton articleId="kontakt-detail.unternehmen-kachel" />
+                </div>
                 <button
                   onClick={() => openEditDrawer('unternehmen')}
                   className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
@@ -625,7 +633,10 @@ export default function KontaktDetailPage() {
             {/* Versicherung & Verträge */}
             <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">🛡️ Versicherung & Verträge</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">🛡️ Versicherung & Verträge</h3>
+                  <HelpButton articleId="kontakt-detail.versicherung-vertraege" />
+                </div>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setOpenDrawer('vertraege')}
@@ -682,7 +693,10 @@ export default function KontaktDetailPage() {
             {/* Dokumente */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900">📎 Dokumente</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">📎 Dokumente</h3>
+                  <HelpButton articleId="kontakt-detail.dokumente" />
+                </div>
                 <button
                   onClick={() => setOpenDrawer('dokumente')}
                   className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
@@ -695,7 +709,10 @@ export default function KontaktDetailPage() {
 
             {/* Telefonie & Sync */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2.5">☎️ Telefonie & Sync</h3>
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <h3 className="text-sm font-semibold text-gray-900">☎️ Telefonie & Sync</h3>
+                <HelpButton articleId="kontakt-detail.telefonie-sync" />
+              </div>
               <div className="text-sm space-y-1.5">
                 <button
                   onClick={() => setOpenDrawer('placetel')}
@@ -738,7 +755,10 @@ export default function KontaktDetailPage() {
             {/* Nächste Aufgabe */}
             <div className="bg-white rounded-xl border-2 border-yellow-400 p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-900">✓ Nächste Aufgabe</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">✓ Nächste Aufgabe</h3>
+                  <HelpButton articleId="kontakt-detail.naechste-aufgabe" />
+                </div>
                 {nextTask && nextTaskOverdue && (
                   <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                     Überfällig
@@ -788,7 +808,10 @@ export default function KontaktDetailPage() {
             {/* Aktivitäten */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">📝 Aktivitäten</h3>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">📝 Aktivitäten</h3>
+                  <HelpButton articleId="kontakt-detail.aktivitaeten" />
+                </div>
                 <button
                   onClick={() => setOpenDrawer('aktivitaeten')}
                   className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
@@ -816,7 +839,10 @@ export default function KontaktDetailPage() {
 
             {/* Kommentare */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">💬 Kommentare</h3>
+              <div className="flex items-center gap-1.5 mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">💬 Kommentare</h3>
+                <HelpButton articleId="kontakt-detail.kommentare" />
+              </div>
               <CommentThread entityType="contact" entityId={kontaktId} />
             </div>
           </div>

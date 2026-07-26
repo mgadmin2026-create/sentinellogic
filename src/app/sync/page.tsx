@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { HelpButton } from '@/components/help/HelpButton'
 
 type SyncStatus = 'connected' | 'warning' | 'inactive'
 type IntervalType = '15min' | '30min' | '60min' | 'daily' | 'weekly'
@@ -182,7 +183,10 @@ export default function SyncPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">Synchronisation</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold text-[#1A1A1A]">Synchronisation</h1>
+            <HelpButton articleId="sync.overview" />
+          </div>
           <p className="text-gray-500 text-sm mt-0.5">
             {syncLog.length > 0
               ? `Letzter Eintrag: ${new Date(syncLog[0].created_at).toLocaleDateString('de-DE')}, ${new Date(syncLog[0].created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
@@ -326,7 +330,10 @@ export default function SyncPage() {
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="font-semibold text-[#1A1A1A]">Sync-Protokoll</h2>
+            <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-1.5">
+              Sync-Protokoll
+              <HelpButton articleId="sync.protokoll" />
+            </h2>
             <p className="text-xs text-gray-400 mt-0.5">Jeder Eintrag zeigt Details zu Importen, Duplikaten und Fehlern</p>
           </div>
           <button onClick={loadSyncLog} className="text-xs text-gray-400 hover:text-[#1A1A1A] flex items-center gap-1 transition-colors">

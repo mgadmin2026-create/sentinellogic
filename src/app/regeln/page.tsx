@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { SOURCE_LABELS, type LeadStatus, type LeadSource } from '@/data/mock'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface Rule {
   id: string; created_at: string; name: string
@@ -194,7 +195,10 @@ export default function RegelnPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">Automatisierungsregeln</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-bold text-[#1A1A1A]">Automatisierungsregeln</h1>
+            <HelpButton articleId="regeln.overview" />
+          </div>
           <p className="text-gray-500 text-sm mt-0.5">
             {loading ? 'Lädt…' : `${rules.filter((r) => r.active).length} aktive Regeln — werden bei jedem neuen Lead ausgeführt`}
           </p>

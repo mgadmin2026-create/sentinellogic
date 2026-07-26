@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { HelpButton } from '@/components/help/HelpButton'
 
 const ChevronLeft = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -120,10 +121,14 @@ export default function KalenderPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Kalender</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-3xl font-bold text-gray-900">Kalender</h1>
+            <HelpButton articleId="kalender.overview" />
+          </div>
           <p className="text-gray-500 text-sm mt-1">Fällige Aufgaben</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <HelpButton articleId="kalender.ansicht" />
           <button
             onClick={() => setView('month')}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
@@ -266,7 +271,10 @@ export default function KalenderPage() {
         <div className="space-y-4">
           {/* Status Filter */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 font-semibold uppercase mb-3">Status Filter</p>
+            <p className="text-xs text-gray-500 font-semibold uppercase mb-3 flex items-center gap-1.5">
+              Status Filter
+              <HelpButton articleId="kalender.status-filter" />
+            </p>
             <div className="space-y-2">
               <button
                 onClick={() => setStatusFilter('nicht-erledigt')}
@@ -291,8 +299,9 @@ export default function KalenderPage() {
 
           {/* Ausgewählter Tag */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 font-semibold uppercase mb-3">
+            <p className="text-xs text-gray-500 font-semibold uppercase mb-3 flex items-center gap-1.5">
               {selectedDate.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
+              <HelpButton articleId="kalender.ausgewaehlter-tag" />
             </p>
 
             {loading ? (

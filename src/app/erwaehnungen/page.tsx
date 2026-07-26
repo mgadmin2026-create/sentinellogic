@@ -3,6 +3,7 @@
 // Erwähnung markiert sie als gelesen und springt zur Aufgabe/zum Kontakt.
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface Mention {
   id: string
@@ -58,20 +59,26 @@ export default function ErwaehnungenPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Erwähnungen</h1>
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Alle ({mentions.length})
-            </button>
-            <button
-              onClick={() => setFilter('unread')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === 'unread' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-            >
-              Ungelesen ({unreadCount})
-            </button>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-3xl font-bold text-gray-900">Erwähnungen</h1>
+            <HelpButton articleId="erwaehnungen.overview" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Alle ({mentions.length})
+              </button>
+              <button
+                onClick={() => setFilter('unread')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filter === 'unread' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Ungelesen ({unreadCount})
+              </button>
+            </div>
+            <HelpButton articleId="erwaehnungen.filter" />
           </div>
         </div>
 

@@ -283,4 +283,24 @@ export const TEST_CASES: TestCaseDefinition[] = [
       'zeigt den Kommentarverlauf in der Aufgaben-Bearbeiten-Ansicht',
     ],
   },
+  {
+    id: 'E2E-017',
+    name: 'Kontextsensitive Hilfe ("?"-Hilfe)',
+    description: 'Prüft das eingebaute Hilfe-System: Kachel-genaue Hilfe per Symbol, Seiten-Standardhilfe per Taste "?", Eingabefeld-Schutz, Unterdrückung bei offenem Drawer und die durchsuchbare /hilfe-Seite. Rein lesend, keine Testdaten nötig.',
+    steps: [
+      'Auf einer Seite mit Hilfe-Symbol neben einer Kachel klicken und den kachel-spezifischen Artikel im Drawer prüfen.',
+      'Die Taste "?" auf derselben Seite drücken und prüfen, dass ein anderer (Seiten-Standard-) Artikel erscheint.',
+      'In ein Textfeld klicken, "?" eintippen und prüfen, dass kein Hilfe-Drawer geöffnet wird.',
+      '/hilfe aufrufen, einen Suchbegriff eingeben und prüfen, dass die sichtbaren Artikel entsprechend gefiltert werden.',
+    ],
+    area: 'Hilfe',
+    priority: 'Mittel',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: [
+      'öffnet die kachel-spezifische Hilfe per Symbol und die Seiten-Standardhilfe per Taste "?"',
+      'öffnet keine Hilfe, wenn "?" in einem Textfeld getippt wird',
+      'durchsucht die Hilfe-Seite und filtert Artikel',
+    ],
+  },
 ]

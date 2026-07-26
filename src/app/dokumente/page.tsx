@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { formatBytes, formatDate } from '@/lib/utils'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface Dokument {
   id: string
@@ -80,7 +81,10 @@ export default function DokumentePage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap sm:flex-nowrap">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dokumente</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-3xl font-bold text-gray-900">Dokumente</h1>
+            <HelpButton articleId="dokumente.overview" />
+          </div>
           <p className="text-gray-600 mt-1 text-sm">
             Alle Dokumente über alle Kontakte, zentral in Google Drive
           </p>
@@ -99,18 +103,24 @@ export default function DokumentePage() {
 
       {/* Nicht verbunden Hinweis */}
       {connected === false && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm">
-          Google Drive ist noch nicht verbunden.{' '}
-          <Link href="/einstellungen/dokumente" className="font-semibold underline">
-            Jetzt verbinden →
-          </Link>
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm flex items-center gap-2">
+          <span>
+            Google Drive ist noch nicht verbunden.{' '}
+            <Link href="/einstellungen/dokumente" className="font-semibold underline">
+              Jetzt verbinden →
+            </Link>
+          </span>
+          <HelpButton articleId="dokumente.google-drive-verbindung" className="text-amber-500 hover:text-amber-800 transition-colors flex-shrink-0" />
         </div>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Dokumente</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+            Dokumente
+            <HelpButton articleId="dokumente.stats" />
+          </p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{stats.count}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -125,6 +135,9 @@ export default function DokumentePage() {
 
       {/* Suche */}
       <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1.5">
+          <HelpButton articleId="dokumente.suche-tabelle" />
+        </div>
         <div className="relative max-w-md">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

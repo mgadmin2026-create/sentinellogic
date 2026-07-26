@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface Aufgabe {
   id: string
@@ -201,7 +202,10 @@ export default function AufgabenPage() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Aufgaben</h1>
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-3xl font-bold text-gray-900">Aufgaben</h1>
+            <HelpButton articleId="aufgaben.overview" />
+          </div>
           <p className="text-gray-500 text-sm mt-0.5">
             {loading ? 'Lädt…' : `${aufgaben.filter((a) => a.status !== 'erledigt').length} offen, ${aufgaben.filter((a) => a.status === 'erledigt').length} erledigt`}
           </p>
@@ -228,6 +232,7 @@ export default function AufgabenPage() {
         />
 
         <div className="flex gap-2 flex-wrap items-center">
+          <HelpButton articleId="aufgaben.suche-filter" />
           {currentUserId && (
             <button
               onClick={() => setAssignedUserFilter(assignedUserFilter === currentUserId ? 'all' : currentUserId)}

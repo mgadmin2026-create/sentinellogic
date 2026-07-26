@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { isAdmin } from '@/lib/roles'
+import { HelpButton } from '@/components/help/HelpButton'
 
 const settingsSections = [
   {
@@ -58,7 +59,10 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Einstellungen</h1>
+        <div className="flex items-center gap-1.5 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900">Einstellungen</h1>
+          <HelpButton articleId="einstellungen.overview" />
+        </div>
         <p className="text-gray-600 mb-8">Passe dein CRM an deine Bedürfnisse an</p>
 
         <div className="grid gap-6">

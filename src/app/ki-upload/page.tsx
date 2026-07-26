@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface Leistung {
   type: string
@@ -147,7 +148,10 @@ export default function KiUploadPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">🤖 KI Upload</h1>
+        <div className="flex items-center gap-1.5 mb-2">
+          <h1 className="text-3xl font-bold text-gray-900">🤖 KI Upload</h1>
+          <HelpButton articleId="ki-upload.overview" />
+        </div>
         <p className="text-gray-600 mb-8">
           Versicherungsdokument hochladen — die KI erkennt den Kunden, legt den Kontakt an und
           ordnet die Datei automatisch in Google Drive ein.
@@ -192,6 +196,11 @@ export default function KiUploadPage() {
             </label>
           </div>
         )}
+        {phase === 'upload' && (
+          <div className="flex justify-center mt-3">
+            <HelpButton articleId="ki-upload.upload" />
+          </div>
+        )}
 
         {/* Phase: Analysiere / Speichere */}
         {(phase === 'analysiere' || phase === 'speichere') && (
@@ -211,6 +220,9 @@ export default function KiUploadPage() {
         {/* Phase: Pruefmaske */}
         {phase === 'pruefen' && daten && (
           <div className="space-y-4">
+            <div className="flex justify-end">
+              <HelpButton articleId="ki-upload.pruefmaske" />
+            </div>
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
               📄 <strong>{file?.name}</strong> — {daten.zusammenfassung}
               {daten.weitere_personen.length > 0 && (

@@ -12,6 +12,7 @@ import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { getActivityIcon, getActivityColor } from '@/components/kontakt/AktivitaetenPanel'
 import { PIPELINE_STEPS } from '@/components/kontakt/ProzessPanel'
+import { HelpButton } from '@/components/help/HelpButton'
 import { isAdmin } from '@/lib/roles'
 
 interface CurrentUser {
@@ -227,6 +228,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             )}
+            {admin && <HelpButton articleId="dashboard.ansicht-umschalter" />}
             <button
               onClick={() => setCsvModalOpen(true)}
               className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
@@ -303,6 +305,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
                 <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
                   🎯 Heute im Fokus
+                  <HelpButton articleId="dashboard.heute-im-fokus" />
                   {focusTasks.length > 0 && (
                     <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-100 text-red-700 text-[11px] font-bold">
                       {overdueTasks.length + todayTasks.length}
@@ -350,7 +353,10 @@ export default function DashboardPage() {
 
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A]">👤 {viewMode === 'me' ? 'Meine Kontakte' : 'Kontakte'}</h2>
+                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                  👤 {viewMode === 'me' ? 'Meine Kontakte' : 'Kontakte'}
+                  <HelpButton articleId="dashboard.meine-kontakte" />
+                </h2>
                 <Link href="/kontakte" className="text-sm text-gray-500 hover:text-[#1A1A1A] font-medium">Alle {totalKontakte} →</Link>
               </div>
               <div className="overflow-x-auto">
@@ -406,7 +412,10 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A]">📝 Letzte Aktivitäten</h2>
+                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                  📝 Letzte Aktivitäten
+                  <HelpButton articleId="dashboard.aktivitaeten" />
+                </h2>
               </div>
               <div className="px-5 py-2">
                 {loading ? (
@@ -439,7 +448,10 @@ export default function DashboardPage() {
 
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A]">📊 {viewMode === 'me' ? 'Meine Pipeline' : 'Team-Pipeline'}</h2>
+                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                  📊 {viewMode === 'me' ? 'Meine Pipeline' : 'Team-Pipeline'}
+                  <HelpButton articleId="dashboard.pipeline" />
+                </h2>
               </div>
               <div className="py-2.5">
                 {pipelineCounts.map((step, i) => (
@@ -456,7 +468,10 @@ export default function DashboardPage() {
 
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A]">⚡ Schnellzugriff</h2>
+                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                  ⚡ Schnellzugriff
+                  <HelpButton articleId="dashboard.schnellzugriff" />
+                </h2>
               </div>
               <div className="grid grid-cols-2 gap-2 p-4">
                 <button
