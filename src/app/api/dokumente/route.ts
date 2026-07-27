@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
+// dynamic='force-dynamic' verhindert nur das Caching der Route selbst — die
+// Supabase-Anfragen darunter liefen ohne dieses Flag trotzdem über den
+// Next.js Data Cache (fetch wird intern gepatcht) und konnten dadurch über
+// mehrere Deploys hinweg ein veraltetes Ergebnis zurückgeben, obwohl die
+// Datenbank längst aktualisiert war (siehe Bugfix v0.11.2/v0.11.3: gelöschte
+// Dokumente blieben in der Übersicht sichtbar).
+export const fetchCache = 'force-no-store'
 
 // GET: Alle Dokumente über alle Kontakte + Aggregat-Statistik
 export async function GET(request: NextRequest) {

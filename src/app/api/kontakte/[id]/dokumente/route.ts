@@ -17,6 +17,11 @@ function flatten(nodes: OrdnerstrukturNode[]): string[] {
 }
 
 export const dynamic = 'force-dynamic'
+// Siehe /api/dokumente/route.ts: dynamic='force-dynamic' allein reicht nicht,
+// um den Next.js Data Cache für die darunterliegenden Supabase-Requests zu
+// deaktivieren — ohne dieses Flag konnte die Liste über mehrere Deploys
+// hinweg veraltet bleiben.
+export const fetchCache = 'force-no-store'
 export const maxDuration = 120 // Claude-Analyse kann bei gescannten PDFs dauern
 
 // GET: Dokumente eines Kontakts auflisten

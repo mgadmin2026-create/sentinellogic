@@ -10,6 +10,9 @@ import { getCurrentUser } from '@/lib/auth'
 import { isAdmin } from '@/lib/roles'
 import { fileExistsInGoogleDrive } from '@/lib/google-drive-oauth'
 
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 async function findOrphaned() {
   const supabase = createServerClient()
 
@@ -47,7 +50,7 @@ async function findOrphaned() {
     }
   }
 
-  return { totalChecked: dokumente?.length ?? 0, checkedIds: (dokumente ?? []).map((d) => d.id), orphaned }
+  return { totalChecked: dokumente?.length ?? 0, orphaned }
 }
 
 export async function GET() {
@@ -57,11 +60,10 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Nur für Admins' }, { status: 403 })
     }
 
-    const { totalChecked, checkedIds, orphaned } = await findOrphaned()
+    const { totalChecked, orphaned } = await findOrphaned()
     return NextResponse.json({
       success: true,
       totalChecked,
-      checkedIds,
       orphanedCount: orphaned.filter((o) => !o.error).length,
       checkErrors: orphaned.filter((o) => o.error).length,
       orphaned,
