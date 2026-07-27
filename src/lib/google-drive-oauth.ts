@@ -550,6 +550,27 @@ export async function renameFileInGoogleDrive(fileId: string, newName: string): 
 }
 
 /**
+ * Prüft, ob eine Datei in Google Drive noch existiert (nicht gelöscht/im Papierkorb).
+ * Für die einmalige Bereinigung von Metadaten-Zeilen, die auf nicht mehr
+ * vorhandene Dateien zeigen (z.B. weil eine frühere Löschung wegen eines
+ * inzwischen behobenen Fehlers nur in Drive, aber nicht im CRM ankam, oder
+ * umgekehrt).
+ */
+export async function fileExistsInGoogleDrive(fileId: string): Promise<boolean> {
+  const { drive } = await getSystemDriveClient()
+
+  try {
+    const res = await drive.files.get({ fileId, fields: 'id, trashed' })
+    return res.data.trashed !== true
+  } catch (err: any) {
+    if (err?.code === 404 || err?.response?.status === 404) {
+      return false
+    }
+    throw new Error(err instanceof Error ? err.message : 'Fehler bei der Existenzprüfung')
+  }
+}
+
+/**
  * Datei aus Google Drive löschen
  */
 export async function deleteFileFromGoogleDrive(fileId: string): Promise<void> {
