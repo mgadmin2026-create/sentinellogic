@@ -1,0 +1,24 @@
+-- Beitragsübersicht: eine laufende Sparten-Vergleichsübersicht (bisheriger vs.
+-- Allianz-Beitrag) pro Kontakt, abgeleitet aus der bestehenden Excel-Vorlage
+-- "Beitragsuebersicht_Vorlage_Allianz_Guen". Keine Versionierung — jeder
+-- Speichervorgang überschreibt den bisherigen Stand (bewusste Entscheidung).
+--
+-- Struktur des JSONB-Werts:
+-- {
+--   "datum": "2026-07-27",
+--   "flotte_aktiv": false,
+--   "positionen": [
+--     { "sparte": "Privathaftpflicht", "versicherer_alt": "HUK-Coburg",
+--       "beitrag_alt": 98, "beitrag_neu": 79, "beginn": "2025-01-01",
+--       "ablauf": "2026-01-01", "bemerkung": "..." , "ist_flotte_zeile": false }
+--   ],
+--   "fahrzeuge": [
+--     { "kennzeichen": "OF-MG 101", "fahrzeug": "VW Caddy Cargo",
+--       "beitrag_alt": 1180, "beitrag_neu": 1029, "bemerkung": "" }
+--   ]
+-- }
+--
+-- Differenz, Summenzeile und die Ersparnis-/Mehrbeitrag-Box werden nie
+-- gespeichert, sondern bei jedem Laden aus beitrag_alt/beitrag_neu neu
+-- berechnet — exakt die Regel, die die Excel-Vorlage selbst vorgibt.
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS beitragsuebersicht jsonb;

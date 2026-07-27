@@ -24,6 +24,9 @@ import { AktivitaetenPanel, type Aktivität } from '@/components/kontakt/Aktivit
 import { AufgabenPanel, type KontaktAufgabe } from '@/components/kontakt/AufgabenPanel'
 import { CommentThread } from '@/components/kontakt/CommentThread'
 import { HelpButton } from '@/components/help/HelpButton'
+import { BeitragsuebersichtPanel } from '@/components/kontakt/BeitragsuebersichtPanel'
+import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
+import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
 
 interface Kontakt {
   id: string
@@ -81,6 +84,8 @@ interface Kontakt {
   versicherungsgesellschaft?: string
   dialfire_updated_at?: string
   dialfire_sync_error?: string
+  kontakt_typ?: 'privat' | 'gewerbe'
+  beitragsuebersicht?: Beitragsuebersicht
   geburtstag?: string
   geschlecht?: string
   jahreseinkommen?: string
@@ -135,6 +140,11 @@ type DrawerId =
   | 'placetel'
   | 'dialfire'
   | 'automation'
+  | 'beitragsuebersicht'
+
+function fmtEuroKachel(n: number): string {
+  return n.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'
+}
 
 export default function KontaktDetailPage() {
   const params = useParams()
@@ -591,7 +601,7 @@ export default function KontaktDetailPage() {
                 </div>
                 <div className="flex justify-between gap-3">
                   <dt className="text-gray-400">Typ</dt>
-                  <dd className="text-gray-900">{(kontakt as any).kontakt_typ === 'privat' ? '👤 Privat' : '🏢 Gewerbe'}</dd>
+                  <dd className="text-gray-900">{kontakt.kontakt_typ === 'privat' ? '👤 Privat' : '🏢 Gewerbe'}</dd>
                 </div>
               </dl>
             </div>
@@ -687,6 +697,52 @@ export default function KontaktDetailPage() {
                     ))}
                   </tbody>
                 </table>
+              )}
+            </div>
+
+            {/* Beitragsübersicht */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">📊 Beitragsübersicht</h3>
+                  <HelpButton articleId="kontakt-detail.beitragsuebersicht" />
+                </div>
+                <button
+                  onClick={() => setOpenDrawer('beitragsuebersicht')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Bearbeiten →
+                </button>
+              </div>
+              {kontakt.beitragsuebersicht ? (
+                (() => {
+                  const summen = berechneSummen(kontakt.beitragsuebersicht)
+                  return (
+                    <div className="flex items-center gap-5 flex-wrap">
+                      <div>
+                        <div className="text-lg font-bold text-gray-900 tabular-nums">{fmtEuroKachel(summen.sumAlt)}</div>
+                        <div className="text-[11px] text-gray-400 uppercase tracking-wide">Beitrag bisher / Jahr</div>
+                      </div>
+                      <div>
+                        <div className="text-lg font-bold text-gray-900 tabular-nums">{fmtEuroKachel(summen.sumNeu)}</div>
+                        <div className="text-[11px] text-gray-400 uppercase tracking-wide">Angebot Allianz / Jahr</div>
+                      </div>
+                      {summen.ersparnisProJahr > 0 ? (
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-full">
+                          ✓ Ersparnis {fmtEuroKachel(summen.ersparnisProJahr)} / Jahr
+                        </span>
+                      ) : summen.mehrbeitragProMonat > 0 ? (
+                        <span className="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold px-2.5 py-1 rounded-full">
+                          Mehrbeitrag {fmtEuroKachel(summen.mehrbeitragProMonat)} / Monat
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Kein Unterschied</span>
+                      )}
+                    </div>
+                  )
+                })()
+              ) : (
+                <p className="text-sm text-gray-400">Noch keine Beitragsübersicht angelegt.</p>
               )}
             </div>
 
@@ -917,6 +973,21 @@ export default function KontaktDetailPage() {
         widthClass="max-w-3xl"
       >
         <KontaktDokumenteTab kontaktId={kontaktId} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'beitragsuebersicht'}
+        title="📊 Beitragsübersicht bearbeiten"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-4xl"
+      >
+        <BeitragsuebersichtPanel
+          kontaktId={kontaktId}
+          kontaktTyp={kontakt.kontakt_typ === 'privat' ? 'privat' : 'gewerbe'}
+          initialData={kontakt.beitragsuebersicht}
+          onSave={handleSaveOverview}
+          onClose={() => setOpenDrawer(null)}
+        />
       </Drawer>
 
       <Drawer

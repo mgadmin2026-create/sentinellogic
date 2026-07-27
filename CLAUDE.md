@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.10.0 — Eingebaute Hilfe & Kundendokumentation | Aktiv in Entwicklung |
+| **Version** | 0.11.0 — Beitragsübersicht (Sparten-Vergleich) | Aktiv in Entwicklung |
 
 ---
 
@@ -36,7 +36,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 
 | Table | Purpose | Key Columns |
 |-------|---------|------------|
-| `contacts` | Kontakt-Stammdaten | id, first_name, last_name, email, source, status, pipeline_stage, archived_at, dialfire_campaign_id, dialfire_task_name_field, dialfire_id, klicktipp_id, automation_disabled |
+| `contacts` | Kontakt-Stammdaten | id, first_name, last_name, email, source, status, pipeline_stage, archived_at, dialfire_campaign_id, dialfire_task_name_field, dialfire_id, klicktipp_id, automation_disabled, `beitragsuebersicht` (JSONB, v0.11.0) |
 | `activities` | Aktivitäts-Audit-Trail | id, contact_id, type, description, data, created_at |
 | `tasks` | Aufgaben pro Kontakt | id, contact_id, title, status, priority, due_date, archived_at |
 | `rules` | Automation Rules | id, name, active, condition_source, actions (JSON), runs |
@@ -93,6 +93,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
 | **Kommentare & @-Erwähnungen** | ✅ Done | Wiederverwendbare `CommentThread`-Komponente in Kontaktdetail-Kachel und Aufgaben-Bearbeiten-Modal; Einzel- und Gruppen-Erwähnung (`@Alle` → Einzel-Erwähnung pro aktivem User bei Erstellung), Datei-Anhang (nur wenn Kontakt auflösbar, sonst HTTP 400), E-Mail-Benachrichtigung pro Erwähnung, `/erwaehnungen`-Seite + Sidebar-Badge mit Ungelesen-Zähler |
 | **Eingebaute Hilfe & Kundendokumentation** | ✅ Done | Rein statisches, im Code gepflegtes Hilfe-System (kein DB-Table, keine API-Route) — `~62` Artikel über `src/data/help/*.ts`. Kachel-genaue Hilfe per ❓-Symbol (`<HelpButton articleId="...">`, ~39 Einfügestellen) öffnet den passenden Artikel im globalen Drawer (`HelpProvider`); Taste `?` öffnet die Seiten-Standardhilfe (Prefix-Match für `/kontakte/[id]`, sonst Exact-Match), unterdrückt in Eingabefeldern und bei bereits offenem anderen Drawer/Modal; vollständiges durchsuchbares Handbuch unter `/hilfe` mit Bereichs-Gruppierung, Volltextsuche und Deep-Linking (`#<articleId>`, Scroll + Highlight) |
+| **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar; Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage |
 
 ## Konsolidierte Feature-Roadmap (Stand 2026-07-21)
 
@@ -230,6 +231,7 @@ Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase
 | `/api/comments` | GET, POST | Kommentare zu `entity_type=task\|contact` + `entity_id` laden / anlegen (FormData: `body`, `mentioned_user_ids`, `mention_all`, `attachments?[]`); Anhänge nur wenn sich ein Kontakt auflösen lässt |
 | `/api/mentions` | GET | Eigene @-Erwähnungen, neueste zuerst (`?unread=true` filtert); liefert `unreadCount` |
 | `/api/mentions/[id]` | PATCH | Eigene Erwähnung als gelesen markieren |
+| `/api/kontakte/[id]/beitragsuebersicht/pdf` | GET | Beitragsübersicht als PDF (`@react-pdf/renderer`, Layout an Excel-Vorlage angelehnt); 400 falls noch keine Übersicht angelegt |
 
 ### Activities (Auto-Logged)
 
@@ -328,6 +330,19 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.11.0 (2026-07-27) — Beitragsübersicht (Sparten-Vergleich)
+
+**Beitragsübersicht am Kontakt:**
+- ✅ Ausgangspunkt: die reale Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen" — deren eigenes „Hinweis für die CRM-Anbindung"-Sheet wurde als verbindliche Spezifikation behandelt, nicht nur als Inspiration
+- ✅ Migration 0051: `contacts.beitragsuebersicht JSONB` — eine laufende Übersicht pro Kontakt, kein Versionsverlauf; jeder Speichervorgang überschreibt den bisherigen Stand
+- ✅ `src/lib/beitragsuebersicht-calc.ts`: gemeinsames Berechnungsmodul für Differenz, Summenzeile und die sich gegenseitig ausschließenden Ersparnis-/Mehrbeitrag-Boxen — von der Editor-UI UND dem PDF-Generator identisch genutzt, damit beide nie auseinanderlaufen können; alle drei Werte werden nie in die DB geschrieben, immer live berechnet
+- ✅ `src/data/beitragsuebersicht-sparten.ts`: feste Sparten-Vorbelegung für Privat- bzw. Gewerbekunden, nur beim erstmaligen Öffnen angewendet, danach frei erweiter-/löschbar
+- ✅ `BeitragsuebersichtPanel.tsx` im bestehenden Drawer-Launcher-Muster: Sparten-Tabelle (Versicherer, Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), bei Gewerbekunden zusätzlich optionales Flottenblatt (ab 4 Fahrzeugen) — dessen Summe automatisch in die Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt und dort die manuelle Eingabe sperrt; bei 1–3 Fahrzeugen wie im Original direkt in der Zeile eintragen
+- ✅ `GET /api/kontakte/[id]/beitragsuebersicht/pdf`: PDF-Export im Layout der Excel-Vorlage (`@react-pdf/renderer`, gleiches Muster wie `kontakte-export-pdf.tsx`)
+- ✅ Neue Kachel „Beitragsübersicht" auf der Kontaktdetailseite (Summary + „Bearbeiten →"-Drawer) + Hilfe-Artikel `kontakt-detail.beitragsuebersicht`
+- 🧪 Neuer Playwright-Testfall `E2E-018` (`tests/e2e/beitragsuebersicht.spec.ts`): Alt-/Neu-Beitrag eintragen, Live-Differenz prüfen, speichern, Kachel-Zusammenfassung + Persistenz nach Reload prüfen, PDF-Endpunkt aufrufen
+- ⚠️ Vorgehen bewusst dreistufig: erst schriftlicher Analyse-/Integrationsvorschlag, dann ein klickbarer HTML-Prototyp (inkl. einer Nachbesserung um die Excel-Felder Beginn/Ablauf/Bemerkung) zur Freigabe, erst danach die echte Implementierung — auf ausdrücklichen Wunsch, bevor am echten Code gearbeitet wird
 
 ### v0.10.0 (2026-07-26) — Eingebaute Hilfe & Kundendokumentation
 
@@ -552,7 +567,14 @@ git push origin main # Deploy zu Vercel
 | `src/components/help/HelpProvider.tsx` | Globaler Hilfe-Kontext, `?`-Shortcut, gemeinsamer Drawer |
 | `src/components/help/HelpButton.tsx` | Kachel-genaues ❓-Symbol, öffnet spezifischen Artikel |
 | `src/app/hilfe/page.tsx` | Durchsuchbares Handbuch, Bereichs-Gruppierung, Deep-Linking |
+| `supabase/migrations/0051_beitragsuebersicht.sql` | `contacts.beitragsuebersicht JSONB` (v0.11.0) |
+| `src/types/beitragsuebersicht.ts` | `Beitragsuebersicht`/`BeitragsPosition`/`FlottenFahrzeug`-Typen + `emptyPosition`/`emptyFahrzeug` |
+| `src/data/beitragsuebersicht-sparten.ts` | Feste Sparten-Vorbelegung Privat/Gewerbe, `KFZ_FLOTTE_SPARTE` |
+| `src/lib/beitragsuebersicht-calc.ts` | Gemeinsames Berechnungsmodul (Differenz, Summen, Flotten-Summe) — von UI und PDF identisch genutzt |
+| `src/components/kontakt/BeitragsuebersichtPanel.tsx` | Drawer-Inhalt: Sparten-Tabelle + optionales Flottenblatt |
+| `src/lib/beitragsuebersicht-pdf.tsx` | PDF-Layout (`@react-pdf/renderer`), an Excel-Vorlage angelehnt |
+| `src/app/api/kontakte/[id]/beitragsuebersicht/pdf/route.ts` | PDF-Download-Endpoint |
 
 ---
 
-*Last Updated: 2026-07-26 — v0.10.0 Eingebaute Hilfe & Kundendokumentation (`/hilfe`, Kachel-genaue ❓-Symbole, Taste „?" für Seiten-Standardhilfe)*
+*Last Updated: 2026-07-27 — v0.11.0 Beitragsübersicht (Sparten-Vergleich, PDF-Export im Layout der Excel-Vorlage)*

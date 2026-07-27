@@ -81,6 +81,17 @@ export const kontaktDetailArticles: HelpArticle[] = [
       '"Verträge →" öffnet die vollständige Vertragsverwaltung dieses Kontakts (strukturierte Vertragsdatensätze, nicht nur die Vorversicherung). "Bearbeiten" öffnet das Panel mit allen Versicherungsfeldern, inklusive aller fünf möglichen PKV-Vertragsslots.',
   },
   {
+    id: 'kontakt-detail.beitragsuebersicht',
+    area: 'kontakt-detail',
+    title: 'Kachel „Beitragsübersicht"',
+    keywords: ['sparten vergleich', 'ersparnis', 'mehrbeitrag', 'kfz-flotte', 'pdf', 'angebot'],
+    body:
+      'Sparten-Vergleich zwischen dem bisherigen Beitrag des Kunden und dem Allianz-Angebot — die digitale Version der bekannten Beitragsübersicht-Vorlage. Es gibt eine laufende Übersicht pro Kontakt: jedes Speichern überschreibt den bisherigen Stand, es wird nicht versioniert.\n\n' +
+      '"Bearbeiten →" öffnet die Sparten-Tabelle mit Alt-/Neu-Beitrag, Beginn, Ablauf und Bemerkung pro Zeile — beim ersten Öffnen vorbelegt mit den üblichen Sparten für Privat- bzw. Gewerbekunden. Differenz, Summenzeile und die Ersparnis-/Mehrbeitrag-Box werden immer automatisch berechnet, nie händisch eingetragen.\n\n' +
+      'Bei Gewerbekunden mit 4 oder mehr Fahrzeugen lässt sich zusätzlich das Flottenblatt aktivieren — dessen Summe fließt automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" ein. Bei 1–3 Fahrzeugen einfach direkt in dieser Zeile eintragen.\n\n' +
+      '"PDF herunterladen" erzeugt ein Dokument im Layout der bekannten Excel-Vorlage zum Ausdrucken oder für das Kundengespräch.',
+  },
+  {
     id: 'kontakt-detail.dokumente',
     area: 'kontakt-detail',
     title: 'Kachel „Dokumente"',

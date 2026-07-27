@@ -31,6 +31,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'versicherungsgesellschaft_3', 'leistungen_3', 'aktueller_beitrag_3', 'kontoinhaber_3', 'iban_3',
   'versicherungsgesellschaft_4', 'leistungen_4', 'aktueller_beitrag_4', 'kontoinhaber_4', 'iban_4',
   'versicherungsgesellschaft_5', 'leistungen_5', 'aktueller_beitrag_5', 'kontoinhaber_5', 'iban_5',
+  'beitragsuebersicht',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']

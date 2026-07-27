@@ -303,4 +303,22 @@ export const TEST_CASES: TestCaseDefinition[] = [
       'durchsucht die Hilfe-Seite und filtert Artikel',
     ],
   },
+  {
+    id: 'E2E-018',
+    name: 'Beitragsübersicht bearbeiten, berechnen und als PDF exportieren',
+    description: 'Prüft die Sparten-Vergleichstabelle am Kontakt: Bearbeiten-Drawer mit Privat-Sparten-Vorbelegung, automatische Differenz-/Summenberechnung, dauerhaftes Speichern und den PDF-Download.',
+    steps: [
+      'Am Testkontakt die Beitragsübersicht-Kachel öffnen und Alt-/Neu-Beitrag in der ersten Sparte eintragen.',
+      'Die automatisch berechnete Differenz prüfen und speichern.',
+      'Die aktualisierte Zusammenfassung in der Kachel prüfen und nach einem Reload die Persistenz bestätigen.',
+      'Den PDF-Download-Endpunkt aufrufen und Statuscode sowie Content-Type prüfen.',
+    ],
+    area: 'Kontakte',
+    priority: 'Mittel',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: [
+      'berechnet Differenz und Summen live und speichert die Beitragsübersicht dauerhaft',
+    ],
+  },
 ]
