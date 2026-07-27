@@ -15,16 +15,21 @@ async function findOrphaned() {
 
   const { data: dokumente, error } = await supabase
     .from('dokumente_metadata')
-    .select('id, file_id, file_name, kontakt_id, contacts(first_name, last_name)')
+    .select('id, file_id, file_name, kontakt_id')
     .eq('ordner_archived', false)
 
   if (error) throw new Error(error.message)
 
+  const kontaktIds = Array.from(new Set((dokumente ?? []).map((d) => d.kontakt_id).filter(Boolean)))
+  const { data: contacts } = kontaktIds.length
+    ? await supabase.from('contacts').select('id, first_name, last_name').in('id', kontaktIds)
+    : { data: [] as Array<{ id: string; first_name: string; last_name: string }> }
+  const nameById = new Map((contacts ?? []).map((c) => [c.id, `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim()]))
+
   const orphaned: Array<{ id: string; file_name: string; kontakt_name: string; error?: string }> = []
 
   for (const dok of dokumente ?? []) {
-    const c = Array.isArray(dok.contacts) ? dok.contacts[0] : (dok.contacts as any)
-    const kontaktName = c ? `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() : '(gelöschter Kontakt)'
+    const kontaktName = nameById.get(dok.kontakt_id) || '(gelöschter Kontakt)'
     try {
       const exists = await fileExistsInGoogleDrive(dok.file_id)
       if (!exists) {
