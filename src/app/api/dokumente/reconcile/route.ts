@@ -47,7 +47,7 @@ async function findOrphaned() {
     }
   }
 
-  return { totalChecked: dokumente?.length ?? 0, orphaned }
+  return { totalChecked: dokumente?.length ?? 0, checkedIds: (dokumente ?? []).map((d) => d.id), orphaned }
 }
 
 export async function GET() {
@@ -57,10 +57,11 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Nur für Admins' }, { status: 403 })
     }
 
-    const { totalChecked, orphaned } = await findOrphaned()
+    const { totalChecked, checkedIds, orphaned } = await findOrphaned()
     return NextResponse.json({
       success: true,
       totalChecked,
+      checkedIds,
       orphanedCount: orphaned.filter((o) => !o.error).length,
       checkErrors: orphaned.filter((o) => o.error).length,
       orphaned,
