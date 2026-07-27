@@ -30,7 +30,10 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
     }
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('next', request.nextUrl.pathname)
+    // Query-String mitnehmen: Der eingehende Anruf öffnet z. B.
+    // /telefonie/eingehend?nummer=… — ohne die Rufnummer wäre die Seite
+    // nach dem Login wertlos.
+    loginUrl.searchParams.set('next', request.nextUrl.pathname + request.nextUrl.search)
     return NextResponse.redirect(loginUrl)
   }
 

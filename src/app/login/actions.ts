@@ -7,10 +7,22 @@ export interface LoginState {
   error?: string
 }
 
+/**
+ * Nur anwendungsinterne Ziele zulassen. Ohne diese Prüfung könnte ein
+ * präparierter Login-Link nach erfolgreicher Anmeldung auf eine fremde Seite
+ * weiterleiten (Open Redirect).
+ */
+function safeRedirectTarget(raw: string): string {
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) {
+    return '/dashboard'
+  }
+  return raw
+}
+
 export async function login(_prevState: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get('email') || '').trim()
   const password = String(formData.get('password') || '')
-  const next = String(formData.get('next') || '/dashboard')
+  const next = safeRedirectTarget(String(formData.get('next') || '/dashboard'))
 
   if (!email || !password) {
     return { error: 'E-Mail und Passwort erforderlich' }

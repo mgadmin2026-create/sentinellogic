@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.11.2 — Bugfix: Gelöschte Dokumente blieben in der Gesamtübersicht sichtbar | Aktiv in Entwicklung |
+| **Version** | 0.12.0 — Telefonie: Wählen über Softphone Plus, persönliche Nebenstellen, eingehende Anrufe | Aktiv in Entwicklung |
 
 ---
 
@@ -333,6 +333,39 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.12.0 (2026-07-27) — Telefonie: Wählen über Softphone Plus, persönliche Nebenstellen, eingehende Anrufe
+
+**Befund vor der Umsetzung (am Produktivsystem geprüft):**
+- 🔍 Die Telefonie war nicht halb gebaut, sondern **gebaut und nie eingeschaltet**: API-Token gültig (Tarif PROFI), Notify-Secret gesetzt, Webhook-Route korrekt — aber **null empfangene Notify-Ereignisse**, weil Notify im Placetel-Portal nie **pro Rufnummer** aktiviert wurde. Das erklärt beide Symptome gleichzeitig: keine Gesprächsdauern und 6 Anrufversuche, die dauerhaft auf `initiated` standen (genau dieser Rückkanal schaltet den Status weiter)
+- 🔍 Zweiter Blocker: `users` hatte **keine SIP-Zuordnung**. Alle Anrufe liefen über einen einzigen globalen SIP-Benutzer — nicht unterscheidbar, wer telefoniert hat
+- ✅ Der bestehende Webhook-Parser wurde Feld für Feld gegen die offizielle Placetel-Spezifikation (`Placetel/call-control-notify-api`) abgeglichen und ist inhaltlich korrekt — kein Änderungsbedarf
+
+**Entscheidung: Weg B — der Arbeitsplatz wählt selbst**
+- ✅ Migration 0052: `users.placetel_sipuid` (mit Eindeutigkeits-Index, damit keine Nebenstelle doppelt vergeben wird) + `system_config.placetel_dial`
+- ✅ `POST /api/calls/initiate` entscheidet anhand der Konfiguration, wie gewählt wird, und gibt dem Browser nur noch das auszuführende Kommando zurück. **Validierung, Rate-Limit, Länder-Freigabe, Anrufprotokoll und Aktivität bleiben serverseitig** — der Arbeitsplatz löst lediglich aus
+- ✅ Die Verknüpfung mit dem tatsächlichen Gespräch stellt anschließend die Placetel-Rückmeldung über Rufnummer + Zeitfenster her (die bestehende Zuordnungslogik im Webhook unterstützt das bereits)
+- ⚠️ Das exakte lokale Kommando von Softphone Plus ist **herstellerseitig nicht öffentlich dokumentiert**. Deshalb sind Methode (`tel` / `local_http`) und URL-Vorlage über `system_config` konfigurierbar — die Korrektur nach dem Test am Arbeitsplatz ist eine Einstellung, kein Deployment. Ziel-Hosts sind bewusst auf `localhost`/`127.0.0.1` begrenzt, sonst könnte eine Fehlkonfiguration Rufnummern an einen fremden Host schicken
+- ✅ Client (`dial-client.ts`) behandelt zwei Eigenheiten explizit: localhost gilt trotz HTTPS-Seite als vertrauenswürdig (kein Mixed-Content-Block), und die Anfrage läuft als `no-cors` — das Softphone antwortet voraussichtlich ohne CORS-Freigabe, die Antwort wird aber nicht benötigt
+
+**Persönliche Nebenstellen:**
+- ✅ SIP-Zuordnung je Mitarbeiter in `/einstellungen/team`, inkl. „Nach Namen zuordnen" für die eindeutigen Übereinstimmungen (fünf Namen stimmen 1:1 mit Placetel überein). Geräte ohne eigene Person (z. B. „Melih Mobil") bleiben bewusst unzugeordnet und laufen über die Standard-Nebenstelle
+- ✅ Ohne Zuordnung greift weiterhin `PLACETEL_DEFAULT_SIPUID`
+
+**Eingehende Anrufe:**
+- ✅ Neue Seite `/telefonie/eingehend?nummer=…`, die Softphone Plus beim Klingeln öffnet: genau ein Treffer → direkt in die Kundenakte, mehrere Treffer → Auswahlliste, unbekannt → Rufnummer wird angezeigt und die Anlage eines Kontakts angeboten (nicht erzwungen)
+- ⚠️ Im Browser **abheben** ist nicht umgesetzt und war nicht das Ziel: Placetel bietet dafür keine dokumentierte einbettbare Schnittstelle. Angenommen wird der Anruf weiterhin im Softphone
+- 🐛 Nebenbei behoben: Die Middleware hat beim Login-Redirect nur den Pfad, nicht den Query-String übernommen — die Rufnummer wäre nach einer Anmeldung verloren gegangen
+- 🔒 Nebenbei behoben: Der `next`-Parameter des Logins wurde ungeprüft weitergeleitet (Open Redirect). Jetzt sind nur anwendungsinterne Ziele zulässig
+
+**Gesprächsergebnisse:**
+- ✅ Ergebnis `nicht_erreicht` erzeugt automatisch eine Wiedervorlage **in 2 Tagen**, zugeordnet an den Betreuer des Kontakts (sonst an den Anrufenden). Die Notiz aus dem Anruf wird übernommen. Ein Fehlschlag beim Anlegen macht das Speichern des Ergebnisses nicht rückgängig
+
+**Noch offen (Konfiguration, kein Code):**
+- ⬜ Notify im Placetel-Portal **pro Rufnummer** aktivieren — ohne diesen Schalter bleiben Gesprächsdauern weiterhin leer
+- ⬜ Lokales Wähl-Kommando am Arbeitsplatz verifizieren und ggf. `placetel_dial` anpassen
+- ⬜ Action-URL für eingehende Anrufe je Arbeitsplatz im Softphone hinterlegen
+- ⬜ Die 6 Altdatensätze mit Status `initiated` bereinigen
+
 ### v0.11.2 (2026-07-27) — Bugfix: Gelöschte Dokumente blieben in der Gesamtübersicht sichtbar
 
 **Ursache 1 (Hauptursache): Löschen aus dem CRM war an Google Drive gekoppelt**
@@ -599,9 +632,17 @@ git push origin main # Deploy zu Vercel
 | `src/components/kontakt/BeitragsuebersichtPanel.tsx` | Drawer-Inhalt: Sparten-Tabelle + optionales Flottenblatt |
 | `src/lib/beitragsuebersicht-pdf.tsx` | PDF-Layout (`@react-pdf/renderer`), an Excel-Vorlage angelehnt |
 | `src/app/api/kontakte/[id]/beitragsuebersicht/pdf/route.ts` | PDF-Download-Endpoint |
+| `supabase/migrations/0052_placetel_persoenliche_sip_zuordnung.sql` | `users.placetel_sipuid` + `system_config.placetel_dial` (v0.12.0) |
+| `src/lib/telefonie/dial-config.ts` | Wähl-Methode + URL-Vorlage, Beschränkung auf localhost-Ziele |
+| `src/lib/telefonie/dial-client.ts` | Führt das Wähl-Kommando am Arbeitsplatz aus (tel: bzw. lokales HTTP) |
+| `src/app/api/calls/initiate/route.ts` | Prüft und protokolliert serverseitig, liefert das Wähl-Kommando |
+| `src/app/telefonie/eingehend/page.tsx` | Screen-Pop bei eingehenden Anrufen |
+| `src/app/api/calls/[id]/result/route.ts` | Gesprächsergebnis + Wiedervorlage bei „nicht erreicht" |
+| `src/app/api/placetel/sip-users/route.ts` | Nebenstellen-Auswahl für die Team-Zuordnung |
+| `docs/PLACETEL_TELEFONIE_KONZEPT.md` | Technischer Hintergrund, Notify-API, Sicherheitsanforderungen |
 | `src/components/Sidebar.tsx` | `NAV_ITEMS[].adminOnly` + Filter, Erwähnungen-Badge im Profil-Menü (v0.11.1) |
 | `src/app/api/sync/dialfire-pull/route.ts` | Dialfire-Batch-Pull-Sync über alle verbundenen Kontakte, bündelt Aufrufe (`CONCURRENCY=8`) + Timeout, loggt nach `sync_log` (v0.11.1) |
 
 ---
 
-*Last Updated: 2026-07-27 — v0.11.2 Bugfix: Dokument-Löschung nicht mehr an Google Drive gekoppelt + kein Browser-Cache mehr auf der Dokumente-Übersicht*
+*Last Updated: 2026-07-27 — v0.12.0 Telefonie: Wählen über Softphone Plus (Weg B), persönliche Nebenstellen je Mitarbeiter, Screen-Pop bei eingehenden Anrufen, Wiedervorlage bei „nicht erreicht"*

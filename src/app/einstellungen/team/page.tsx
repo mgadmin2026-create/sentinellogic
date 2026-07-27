@@ -10,6 +10,13 @@ interface TeamMember {
   role: string
   active: boolean
   created_at: string
+  placetel_sipuid: string | null
+}
+
+interface SipUser {
+  sipuid: string
+  name: string | null
+  online: boolean | null
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -38,9 +45,81 @@ export default function TeamPage() {
   const [resetPassword, setResetPassword] = useState('')
   const [resetting, setResetting] = useState(false)
 
+  const [sipUsers, setSipUsers] = useState<SipUser[]>([])
+  const [sipError, setSipError] = useState<string | null>(null)
+  const [autoAssigning, setAutoAssigning] = useState(false)
+
   useEffect(() => {
     loadMembers()
+    loadSipUsers()
   }, [])
+
+  async function loadSipUsers() {
+    try {
+      const res = await fetch('/api/placetel/sip-users', { cache: 'no-store' })
+      const data = await res.json()
+      if (data.success) {
+        setSipUsers(data.data)
+        setSipError(null)
+      } else {
+        setSipError(data.error || 'Placetel-Nebenstellen nicht verfügbar')
+      }
+    } catch {
+      setSipError('Placetel-Nebenstellen konnten nicht geladen werden')
+    }
+  }
+
+  async function changeSipuid(member: TeamMember, sipuid: string) {
+    try {
+      const res = await fetch(`/api/team/${member.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placetel_sipuid: sipuid }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Zuordnung fehlgeschlagen')
+      setError(null)
+      await loadMembers()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Zuordnung fehlgeschlagen')
+    }
+  }
+
+  /**
+   * Ordnet Nebenstellen zu, deren Name exakt einem Mitarbeiter entspricht.
+   * Bewusst nur bei eindeutiger Übereinstimmung — Geräte wie „Melih Mobil"
+   * bleiben unzugeordnet und laufen über den Standard-Benutzer.
+   */
+  async function autoAssignSipUsers() {
+    setAutoAssigning(true)
+    setError(null)
+    try {
+      const normalize = (value: string) => value.trim().toLowerCase()
+      let assigned = 0
+
+      for (const member of members) {
+        if (member.placetel_sipuid) continue
+        const matches = sipUsers.filter(
+          (sip) => sip.name && normalize(sip.name) === normalize(member.name)
+        )
+        if (matches.length !== 1) continue
+        const alreadyTaken = members.some((m) => m.placetel_sipuid === matches[0].sipuid)
+        if (alreadyTaken) continue
+
+        const res = await fetch(`/api/team/${member.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ placetel_sipuid: matches[0].sipuid }),
+        })
+        if ((await res.json()).success) assigned++
+      }
+
+      await loadMembers()
+      setError(assigned === 0 ? 'Keine eindeutige Namensübereinstimmung gefunden.' : null)
+    } finally {
+      setAutoAssigning(false)
+    }
+  }
 
   async function loadMembers() {
     try {
@@ -181,7 +260,8 @@ export default function TeamPage() {
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
           {members.map((member) => (
-            <div key={member.id} className="p-4 flex items-center justify-between gap-4">
+            <div key={member.id} className="p-4">
+              <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="font-medium text-gray-900 truncate">
                   {member.name}
@@ -225,8 +305,65 @@ export default function TeamPage() {
                   🗑️
                 </button>
               </div>
+              </div>
+
+              {/* Telefon-Nebenstelle: bestimmt, über welches Gerät dieser
+                  Mitarbeiter telefoniert und wem ein Anruf zugeordnet wird. */}
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                <span className="text-xs text-gray-500">☎️ Nebenstelle</span>
+                {sipUsers.length > 0 ? (
+                  <select
+                    value={member.placetel_sipuid ?? ''}
+                    onChange={(e) => changeSipuid(member, e.target.value)}
+                    data-testid={`sip-select-${member.id}`}
+                    className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                  >
+                    <option value="">— Standard-Nebenstelle —</option>
+                    {sipUsers.map((sip) => (
+                      <option key={sip.sipuid} value={sip.sipuid}>
+                        {sip.name || sip.sipuid}
+                        {sip.online === false ? ' (offline)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-xs text-gray-400">
+                    {sipError ? 'nicht verfügbar' : 'lädt…'}
+                  </span>
+                )}
+                {!member.placetel_sipuid && (
+                  <span className="text-[11px] text-gray-400">
+                    telefoniert über die gemeinsame Standard-Nebenstelle
+                  </span>
+                )}
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Hinweis + Sammelaktion für die Telefonie-Zuordnung */}
+      {!loading && members.length > 0 && (
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900">Telefonie-Zuordnung</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Jeder Mitarbeiter telefoniert über seine eigene Nebenstelle. Ohne Zuordnung läuft der
+                Anruf über die gemeinsame Standard-Nebenstelle und lässt sich nicht eindeutig zuordnen.
+              </p>
+              {sipError && (
+                <p className="mt-1.5 text-xs text-red-600">{sipError}</p>
+              )}
+            </div>
+            <button
+              onClick={autoAssignSipUsers}
+              disabled={autoAssigning || sipUsers.length === 0}
+              className="flex-shrink-0 rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {autoAssigning ? 'Ordnet zu…' : 'Nach Namen zuordnen'}
+            </button>
+          </div>
         </div>
       )}
 

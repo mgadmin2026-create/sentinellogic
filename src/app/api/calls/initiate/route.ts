@@ -3,6 +3,10 @@ import { getCurrentUser } from '@/lib/auth'
 import { createServerClient } from '@/lib/supabase/server'
 import { initiatePlacetelCall, PlacetelApiError, sanitizePlacetelCall } from '@/lib/integrations/placetel'
 import { isAllowedPhoneDestination, normalizePhoneNumber } from '@/lib/phone'
+import { buildDialCommand, getDialConfig } from '@/lib/telefonie/dial-config'
+
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ALLOWED_PHONE_FIELDS = new Set(['phone_mobile', 'phone_office'])
@@ -14,9 +18,25 @@ function getAllowedCountryCodes(): string[] {
     .map((value) => value.trim())
     .filter(Boolean)
 }
+
 function getDefaultSipuid(): string | null {
-  const sipuid = process.env.PLACETEL_DEFAULT_SIPUID?.trim()
-  return sipuid || null
+  return process.env.PLACETEL_DEFAULT_SIPUID?.trim() || null
+}
+
+/**
+ * SIP-Kennung des Anrufenden: bevorzugt die persönliche Zuordnung, sonst der
+ * gemeinsame Standard-Benutzer. Ohne persönliche Zuordnung wäre sonst nicht
+ * unterscheidbar, wer telefoniert hat.
+ */
+async function resolveSipuid(userId: string): Promise<string | null> {
+  const supabase = createServerClient()
+  const { data } = await supabase
+    .from('users')
+    .select('placetel_sipuid')
+    .eq('id', userId)
+    .maybeSingle()
+
+  return data?.placetel_sipuid?.trim() || getDefaultSipuid()
 }
 
 export async function POST(request: NextRequest) {
@@ -37,10 +57,20 @@ export async function POST(request: NextRequest) {
       return Response.json({ success: false, error: 'Ungültige Anrufauswahl' }, { status: 400 })
     }
 
-    const sipuid = getDefaultSipuid()
-    if (!sipuid) {
+    const dialConfig = await getDialConfig()
+    if (!dialConfig.enabled) {
       return Response.json(
-        { success: false, error: 'Placetel-SIP-Benutzer ist noch nicht konfiguriert' },
+        { success: false, error: 'Die Telefonie ist derzeit deaktiviert' },
+        { status: 503 }
+      )
+    }
+
+    const sipuid = await resolveSipuid(currentUser.id)
+    // Nur der serverseitige Rückruf braucht zwingend eine SIP-Kennung. Beim
+    // lokalen Wählen dient sie ausschließlich der Zuordnung des Anrufs.
+    if (!sipuid && dialConfig.method === 'placetel_api') {
+      return Response.json(
+        { success: false, error: 'Für dein Konto ist noch kein Placetel-Benutzer hinterlegt. Bitte bei einem Administrator melden.' },
         { status: 503 }
       )
     }
@@ -106,8 +136,52 @@ export async function POST(request: NextRequest) {
       return Response.json({ success: false, error: 'Anruf konnte nicht vorbereitet werden' }, { status: 500 })
     }
 
+    const logStartedActivity = async () => {
+      await supabase.from('activities').insert({
+        lead_id: contactId,
+        type: 'placetel_call_started',
+        description: `Anruf gestartet: ${contact.first_name} ${contact.last_name}`,
+        data: { call_log_id: pendingCall.id, phone_field: phoneField, dial_method: dialConfig.method },
+        user_id: currentUser.id,
+      })
+    }
+
+    // ── Weg B: Der Arbeitsplatz wählt selbst ────────────────────────────────
+    // Der Server prüft und protokolliert, gibt aber nur das auszuführende
+    // Kommando zurück. Die Verknüpfung mit dem tatsächlichen Gespräch stellt
+    // anschließend die Placetel-Rückmeldung über Rufnummer + Zeitfenster her.
+    if (dialConfig.method !== 'placetel_api') {
+      const command = buildDialCommand(dialConfig, target)
+      if (!command) {
+        await supabase
+          .from('call_logs')
+          .update({ status: 'failed', ended_at: new Date().toISOString() })
+          .eq('id', pendingCall.id)
+        return Response.json(
+          { success: false, error: 'Die Wähl-Konfiguration ist ungültig. Bitte in den Einstellungen prüfen.' },
+          { status: 503 }
+        )
+      }
+
+      await logStartedActivity()
+
+      return Response.json(
+        {
+          success: true,
+          data: {
+            callId: pendingCall.id,
+            status: 'initiated',
+            method: dialConfig.method,
+            dial: command,
+          },
+        },
+        { status: 201 }
+      )
+    }
+
+    // ── Weg A: Placetel baut den Anruf serverseitig auf ─────────────────────
     try {
-      const providerCall = await initiatePlacetelCall({ sipuid, target })
+      const providerCall = await initiatePlacetelCall({ sipuid: sipuid!, target })
       const placetelCallId = providerCall.id == null ? null : String(providerCall.id)
       const { error: updateError } = await supabase
         .from('call_logs')
@@ -121,12 +195,7 @@ export async function POST(request: NextRequest) {
         console.error('[POST /api/calls/initiate] Provider-ID konnte nicht gespeichert werden:', updateError.message)
       }
 
-      await supabase.from('activities').insert({
-        lead_id: contactId,
-        type: 'placetel_call_started',
-        description: `Placetel-Anruf gestartet: ${contact.first_name} ${contact.last_name}`,
-        data: { call_log_id: pendingCall.id, phone_field: phoneField },
-      })
+      await logStartedActivity()
 
       return Response.json(
         {
@@ -134,6 +203,7 @@ export async function POST(request: NextRequest) {
           data: {
             callId: pendingCall.id,
             status: 'initiated',
+            method: 'placetel_api',
             protocolStored: !updateError,
           },
         },

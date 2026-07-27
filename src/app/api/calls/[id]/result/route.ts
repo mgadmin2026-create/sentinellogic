@@ -13,6 +13,15 @@ const VALID_RESULTS = new Set<PlacetelCallResult>([
   'sonstiges',
 ])
 
+/** Wiedervorlage-Frist für nicht erreichte Kunden (festgelegt am 27.07.2026). */
+const NICHT_ERREICHT_FRIST_TAGE = 2
+
+function faelligkeitInTagen(tage: number): string {
+  const datum = new Date()
+  datum.setDate(datum.getDate() + tage)
+  return datum.toISOString().slice(0, 10)
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -59,12 +68,62 @@ export async function PATCH(
       await supabase.from('activities').insert({
         lead_id: data.contact_id,
         type: 'placetel_call_result_recorded',
-        description: 'Placetel-Gesprächsergebnis erfasst',
+        description: 'Gesprächsergebnis erfasst',
         data: { call_log_id: data.id, result },
+        user_id: currentUser.id,
       })
     }
 
-    return Response.json({ success: true, data })
+    // „Nicht erreicht" erzeugt automatisch eine Wiedervorlage in 2 Tagen —
+    // sonst geht der Kontaktversuch im Alltag verloren. Ein Scheitern hier darf
+    // das Speichern des Ergebnisses nicht rückgängig machen.
+    let folgeaufgabe: { id: string; fällig: string } | null = null
+    if (result === 'nicht_erreicht' && data.contact_id) {
+      const { data: kontakt } = await supabase
+        .from('contacts')
+        .select('first_name, last_name, assigned_user_id')
+        .eq('id', data.contact_id)
+        .maybeSingle()
+
+      // Wiedervorlage übernimmt der Betreuer des Kontakts, sonst der Anrufende.
+      const zustaendig = kontakt?.assigned_user_id || currentUser.id
+      const name = [kontakt?.first_name, kontakt?.last_name].filter(Boolean).join(' ').trim()
+      const faellig = faelligkeitInTagen(NICHT_ERREICHT_FRIST_TAGE)
+
+      const { data: aufgabe, error: aufgabeError } = await supabase
+        .from('tasks')
+        .insert({
+          contact_id: data.contact_id,
+          assigned_user_id: zustaendig,
+          created_by_user_id: currentUser.id,
+          titel: name ? `Erneut anrufen: ${name}` : 'Erneut anrufen',
+          beschreibung: notes
+            ? `Nicht erreicht. Notiz aus dem Anruf: ${notes}`
+            : 'Beim letzten Anruf nicht erreicht.',
+          status: 'offen',
+          priorität: 'mittel',
+          fällig: faellig,
+        })
+        // Bewusst nur die ID abfragen: Der Supabase-Typparser kommt mit dem
+        // Umlaut in „fällig" innerhalb der select-Angabe nicht zurecht.
+        .select('id')
+        .single()
+
+      if (aufgabeError) {
+        console.error('[PATCH /api/calls/[id]/result] Wiedervorlage fehlgeschlagen:', aufgabeError.message)
+      } else if (aufgabe) {
+        folgeaufgabe = { id: aufgabe.id, fällig: faellig }
+        await supabase.from('activities').insert({
+          lead_id: data.contact_id,
+          type: 'task_created',
+          description: `Wiedervorlage in ${NICHT_ERREICHT_FRIST_TAGE} Tagen angelegt (nicht erreicht)`,
+          data: { call_log_id: data.id, task_id: aufgabe.id },
+          user_id: currentUser.id,
+        })
+      }
+    }
+
+    return Response.json({ success: true, data, folgeaufgabe })
   } catch (error) {
     if (error instanceof SyntaxError) {
       return Response.json({ success: false, error: 'Ungültige Anfrage' }, { status: 400 })

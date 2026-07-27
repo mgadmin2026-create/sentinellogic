@@ -35,10 +35,22 @@ export async function PATCH(
   const updates: Record<string, unknown> = {}
   if (body.role !== undefined) updates.role = String(body.role).trim()
   if (body.active !== undefined) updates.active = body.active === true
+  // Leerer Wert = Zuordnung entfernen (Rückfall auf den Standard-SIP-Benutzer)
+  if (body.placetel_sipuid !== undefined) {
+    const sipuid = String(body.placetel_sipuid ?? '').trim()
+    updates.placetel_sipuid = sipuid || null
+  }
 
   if (Object.keys(updates).length > 0) {
     const { error } = await supabase.from('users').update(updates).eq('id', id)
     if (error) {
+      // Eindeutigkeits-Index: dieselbe SIP-Kennung darf nicht zweimal vergeben werden
+      if (error.code === '23505') {
+        return Response.json(
+          { success: false, error: 'Diese Placetel-Nebenstelle ist bereits einem anderen Mitarbeiter zugeordnet.' },
+          { status: 409 }
+        )
+      }
       console.error('[PATCH /api/team/[id]] Fehler:', error)
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }

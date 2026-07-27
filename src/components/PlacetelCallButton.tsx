@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { executeDialCommand, type DialCommand } from '@/lib/telefonie/dial-client'
 
 interface PlacetelCallButtonProps {
   contactId: string
@@ -50,13 +51,29 @@ export function PlacetelCallButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contactId, phoneField: option.field }),
       })
-      const result = await response.json().catch(() => null) as { success?: boolean; error?: string } | null
+      const result = await response.json().catch(() => null) as {
+        success?: boolean
+        error?: string
+        data?: { method?: string; dial?: DialCommand }
+      } | null
 
       if (!response.ok || !result?.success) {
-        throw new Error(result?.error || 'Placetel-Anruf konnte nicht gestartet werden')
+        throw new Error(result?.error || 'Anruf konnte nicht gestartet werden')
       }
 
-      setMessage({ type: 'success', text: 'Placetel verbindet den Anruf.' })
+      // Weg A: Placetel baut den Anruf serverseitig auf — das eigene Telefon klingelt.
+      if (!result.data?.dial) {
+        setMessage({ type: 'success', text: 'Placetel verbindet den Anruf — bitte abheben.' })
+        return
+      }
+
+      // Weg B: Das Softphone auf diesem Rechner wählt.
+      const dialResult = await executeDialCommand(result.data.dial)
+      setMessage(
+        dialResult.ok
+          ? { type: 'success', text: `${option.number} wird im Softphone gewählt.` }
+          : { type: 'error', text: dialResult.hint || 'Das Softphone konnte nicht angesprochen werden.' }
+      )
     } catch (error) {
       setMessage({
         type: 'error',
