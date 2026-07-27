@@ -24,7 +24,12 @@ export interface DialCommand {
 
 export interface DialResult {
   ok: boolean
-  /** Für den Nutzer verständliche Rückmeldung, falls etwas nicht geklappt hat. */
+  /**
+   * true = das Wählen ist nachweislich beim Softphone angekommen.
+   * false = wir haben es angestoßen, können den Erfolg aber nicht bestätigen.
+   */
+  confirmed: boolean
+  /** Für den Nutzer verständliche Rückmeldung. */
   hint?: string
 }
 
@@ -33,10 +38,16 @@ const LOCAL_TIMEOUT_MS = 4_000
 export async function executeDialCommand(command: DialCommand): Promise<DialResult> {
   if (command.scheme === 'tel') {
     // Öffnet den registrierten Protokoll-Handler (Softphone Plus).
-    // Ob ein Handler registriert ist, kann der Browser uns nicht mitteilen —
-    // deshalb hier bewusst keine Erfolgsmeldung erfinden.
+    // Der Browser meldet uns NICHT, ob überhaupt ein Handler existiert — ein
+    // fehlendes Softphone sieht exakt aus wie ein erfolgreicher Start.
+    // Deshalb hier bewusst keinen Erfolg behaupten, sondern sagen, woran es
+    // liegt, falls nichts passiert.
     window.location.href = command.url
-    return { ok: true }
+    return {
+      ok: true,
+      confirmed: false,
+      hint: 'An Softphone Plus übergeben. Passiert nichts, ist das Softphone nicht gestartet oder nicht als Telefon-Programm registriert.',
+    }
   }
 
   const controller = new AbortController()
@@ -49,11 +60,13 @@ export async function executeDialCommand(command: DialCommand): Promise<DialResu
       cache: 'no-store',
       signal: controller.signal,
     })
-    return { ok: true }
+    // Hier ist der Erfolg belastbar: Die Anfrage hat das Softphone erreicht.
+    return { ok: true, confirmed: true }
   } catch (error) {
     const aborted = error instanceof DOMException && error.name === 'AbortError'
     return {
       ok: false,
+      confirmed: false,
       hint: aborted
         ? 'Das Softphone hat nicht rechtzeitig geantwortet. Läuft Placetel Softphone Plus auf diesem Rechner?'
         : 'Das Softphone ist auf diesem Rechner nicht erreichbar. Bitte Softphone Plus starten — oder die Wähl-Einstellungen prüfen.',

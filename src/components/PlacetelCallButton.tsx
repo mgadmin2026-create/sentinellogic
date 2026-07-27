@@ -31,7 +31,7 @@ export function PlacetelCallButton({
 }: PlacetelCallButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [loadingField, setLoadingField] = useState<PhoneOption['field'] | null>(null)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null)
 
   const phoneOptions: PhoneOption[] = [
     ...(phoneMobile ? [{ field: 'phone_mobile' as const, label: 'Mobil', number: phoneMobile }] : []),
@@ -69,11 +69,15 @@ export function PlacetelCallButton({
 
       // Weg B: Das Softphone auf diesem Rechner wählt.
       const dialResult = await executeDialCommand(result.data.dial)
-      setMessage(
-        dialResult.ok
-          ? { type: 'success', text: `${option.number} wird im Softphone gewählt.` }
-          : { type: 'error', text: dialResult.hint || 'Das Softphone konnte nicht angesprochen werden.' }
-      )
+      if (!dialResult.ok) {
+        setMessage({ type: 'error', text: dialResult.hint || 'Das Softphone konnte nicht angesprochen werden.' })
+      } else if (dialResult.confirmed) {
+        setMessage({ type: 'success', text: `${option.number} wird im Softphone gewählt.` })
+      } else {
+        // Nicht bestätigbar (tel:-Handler) — als Hinweis darstellen statt als Erfolg,
+        // sonst sieht ein fehlendes Softphone wie ein erfolgreicher Anruf aus.
+        setMessage({ type: 'info', text: dialResult.hint || 'An das Softphone übergeben.' })
+      }
     } catch (error) {
       setMessage({
         type: 'error',
@@ -103,7 +107,11 @@ export function PlacetelCallButton({
 
       {message && (
         <span
-          className={`max-w-64 text-xs ${message.type === 'success' ? 'text-emerald-700' : 'text-red-700'}`}
+          className={`max-w-64 text-xs ${
+            message.type === 'success' ? 'text-emerald-700'
+              : message.type === 'info' ? 'text-gray-600'
+                : 'text-red-700'
+          }`}
           role="status"
         >
           {message.text}

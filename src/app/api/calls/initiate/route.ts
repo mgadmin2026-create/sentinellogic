@@ -116,6 +116,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Ältere eigene Versuche abschließen, die nie eine Rückmeldung bekommen
+    // haben (z. B. weil das Softphone nicht lief). Sonst sammeln sich dauerhaft
+    // Anrufe im Status „initiated". Trifft doch noch eine Placetel-Meldung ein,
+    // findet sie den Datensatz weiterhin über Rufnummer + Zeitfenster und
+    // korrigiert den Status.
+    const fuenfMinutenZurueck = new Date(Date.now() - 5 * 60_000).toISOString()
+    await supabase
+      .from('call_logs')
+      .update({
+        status: 'failed',
+        ended_at: new Date().toISOString(),
+        provider_payload: { hinweis: 'Ohne Rueckmeldung geblieben, automatisch abgeschlossen' },
+      })
+      .eq('initiated_by_user_id', currentUser.id)
+      .eq('status', 'initiated')
+      .lt('started_at', fuenfMinutenZurueck)
+
     const { data: pendingCall, error: insertError } = await supabase
       .from('call_logs')
       .insert({
