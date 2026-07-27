@@ -70,7 +70,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   const loadDokumente = async () => {
     try {
       setLoading(true)
-      const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`)
+      const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`, { cache: 'no-store' })
       const data = await res.json()
 
       if (data.success) {
@@ -131,6 +131,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   const handleDelete = async (dokumentId: string) => {
     if (confirm('Dokument wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
       setDeletingId(dokumentId)
+      setError(null)
       try {
         const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`, {
           method: 'DELETE',
@@ -139,6 +140,7 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
         })
         const data = await res.json()
         if (!data.success) throw new Error(data.error || 'Fehler')
+        setWarning(data.driveWarning ? `⚠️ ${data.driveWarning}` : null)
         await loadDokumente()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Fehler beim Löschen')

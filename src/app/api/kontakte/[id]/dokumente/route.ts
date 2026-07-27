@@ -383,8 +383,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
     }
 
-    // Aus Google Drive löschen
-    await deleteFileFromGoogleDrive(dokument.file_id)
+    // Aus Google Drive löschen — ein Fehler hier (z.B. Token-Refresh
+    // fehlgeschlagen) darf die Sichtbarkeit im CRM nicht blockieren, sonst
+    // taucht das "gelöschte" Dokument in der App weiter auf. Die Datei bleibt
+    // dann zwar vorerst in Drive liegen, ist aber für das Team klar als
+    // Warnung sichtbar statt eines stillen bzw. blockierenden Fehlers.
+    let driveWarning: string | null = null
+    try {
+      await deleteFileFromGoogleDrive(dokument.file_id)
+    } catch (driveErr) {
+      console.error('[Dokumente] Google-Drive-Löschung fehlgeschlagen:', driveErr)
+      driveWarning = `Datei konnte nicht aus Google Drive gelöscht werden (${driveErr instanceof Error ? driveErr.message : 'unbekannter Fehler'}). Sie wurde trotzdem aus dem CRM entfernt.`
+    }
 
     // Aus Datenbank löschen (soft-delete via ordner_archived)
     const { error: deleteError } = await supabase
@@ -403,6 +413,7 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       message: 'Dokument gelöscht',
+      driveWarning,
     })
   } catch (err) {
     console.error('[Dokumente] DELETE error:', err)

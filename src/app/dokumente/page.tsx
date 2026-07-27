@@ -51,7 +51,7 @@ export default function DokumentePage() {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/dokumente')
+      const res = await fetch('/api/dokumente', { cache: 'no-store' })
       const data = await res.json()
       if (data.success) {
         setDokumente(data.dokumente || [])

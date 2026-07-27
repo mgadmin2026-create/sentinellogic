@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.11.1 — Navigation: Admin-Sichtbarkeit, Erwähnungen im Profil-Menü, Dialfire-Batch-Sync | Aktiv in Entwicklung |
+| **Version** | 0.11.2 — Bugfix: Gelöschte Dokumente blieben in der Gesamtübersicht sichtbar | Aktiv in Entwicklung |
 
 ---
 
@@ -333,6 +333,17 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.11.2 (2026-07-27) — Bugfix: Gelöschte Dokumente blieben in der Gesamtübersicht sichtbar
+
+**Ursache 1 (Hauptursache): Löschen aus dem CRM war an Google Drive gekoppelt**
+- 🐛 `DELETE /api/kontakte/[id]/dokumente`: rief `deleteFileFromGoogleDrive()` auf, BEVOR die Metadaten-Zeile per Soft-Delete (`ordner_archived=true`) markiert wurde. Schlug die Drive-Löschung fehl — aktuell reproduzierbar der Fall, da der Google-Drive-Token-Refresh weiterhin fehlschlägt (siehe „Known Issues" unten, seit 2026-07-22) — brach die gesamte Anfrage mit einem Fehler ab, **bevor** die Datenbank je aktualisiert wurde. Das Dokument blieb dadurch technisch nie gelöscht und tauchte weiter in der Kontakt-Dokumentenliste und der globalen `/dokumente`-Übersicht auf
+- ✅ Fix: Die Google-Drive-Löschung läuft jetzt in einem eigenen `try/catch`, das einen Fehler nicht mehr weiterreicht. Das Dokument wird in der Datenbank in jedem Fall als gelöscht markiert (die CRM-Sichtbarkeit hängt nicht mehr von der Erreichbarkeit/dem Zustand von Google Drive ab); schlägt die Drive-Löschung fehl, kommt eine nicht blockierende Warnung (`driveWarning`) in der Antwort zurück, die `KontaktDokumenteTab.tsx` als gelben Hinweis anzeigt („Datei konnte nicht aus Google Drive gelöscht werden … wurde trotzdem aus dem CRM entfernt") — analog zum bestehenden `attachmentWarning`-Muster bei Kommentar-Anhängen
+- 🧪 Live gegen die tatsächlich unterbrochene Drive-Verbindung verifiziert: Löschung liefert `success: true` + `driveWarning`, Dokument verschwindet sofort aus Kontakt- und Gesamtübersicht
+
+**Ursache 2 (zusätzlich gefunden): Browser-HTTP-Cache auf `/api/dokumente`**
+- 🐛 `fetch('/api/dokumente')` in `src/app/dokumente/page.tsx` sowie `fetch(.../dokumente)` in `KontaktDokumenteTab.tsx` liefen ohne `cache: 'no-store'` — `export const dynamic = 'force-dynamic'` verhindert nur das serverseitige Next.js-Caching, nicht das HTTP-Caching im Browser für einen einfachen GET ohne Cache-Control-Header. Ein frisches `fetch()` derselben URL kurz nach einem vorherigen Aufruf konnte dadurch eine veraltete, den gelöschten Datensatz noch enthaltende Antwort liefern (live reproduziert: ohne `no-store` 17 Dokumente inkl. bereits gelöschtem Datensatz, mit `no-store` korrekt 16)
+- ✅ Fix: Beide Fetch-Aufrufe nutzen jetzt `cache: 'no-store'`
+
 ### v0.11.1 (2026-07-27) — Navigation: Admin-Sichtbarkeit, Erwähnungen im Profil-Menü, Dialfire-Batch-Sync
 
 **Sidebar-Anpassungen:**
@@ -593,4 +604,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-27 — v0.11.1 Navigation: Admin-Sichtbarkeit (Testdashboard/Einstellungen), Erwähnungen im Profil-Menü, Reporting→Selektion, Dialfire-Batch-Sync unter Synchronisation*
+*Last Updated: 2026-07-27 — v0.11.2 Bugfix: Dokument-Löschung nicht mehr an Google Drive gekoppelt + kein Browser-Cache mehr auf der Dokumente-Übersicht*
