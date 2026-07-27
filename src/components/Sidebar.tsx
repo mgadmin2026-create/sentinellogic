@@ -5,9 +5,24 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { logout } from '@/app/login/actions'
 import type { CurrentUser } from '@/lib/auth'
+import { isAdmin } from '@/lib/roles'
 import { useHelp } from '@/components/help/HelpProvider'
 
-const NAV_ITEMS = [
+const MENTIONS_ICON = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+  </svg>
+)
+
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ReactNode
+  /** Nur für Admins sichtbar (z.B. Testdashboard, Einstellungen) */
+  adminOnly?: boolean
+}
+
+const NAV_ITEMS: NavItem[] = [
   {
     href: '/dashboard',
     label: 'Dashboard',
@@ -96,7 +111,7 @@ const NAV_ITEMS = [
   },
   {
     href: '/reporting',
-    label: 'Reporting',
+    label: 'Selektion',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <line x1="18" y1="20" x2="18" y2="10" />
@@ -108,19 +123,11 @@ const NAV_ITEMS = [
   {
     href: '/testdashboard',
     label: 'Testdashboard',
+    adminOnly: true,
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 11l3 3L22 4" />
         <path d="M21 12a9 9 0 1 1-5.3-8.2" />
-      </svg>
-    ),
-  },
-  {
-    href: '/erwaehnungen',
-    label: 'Erwähnungen',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
       </svg>
     ),
   },
@@ -138,6 +145,7 @@ const NAV_ITEMS = [
   {
     href: '/einstellungen',
     label: 'Einstellungen',
+    adminOnly: true,
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3" />
@@ -266,7 +274,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin(currentUser?.role)).map((item) => {
           const active = isActive(item.href)
           return (
             <Link
@@ -284,12 +292,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
                 {item.icon}
               </span>
               {item.label}
-              {item.href === '/erwaehnungen' && unreadMentions > 0 && (
-                <span className="ml-auto bg-[#FFC300] text-[#1A1A1A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
-                  {unreadMentions > 99 ? '99+' : unreadMentions}
-                </span>
-              )}
-              {active && !(item.href === '/erwaehnungen' && unreadMentions > 0) && (
+              {active && (
                 <span className="ml-auto w-1 h-4 rounded-full bg-[#FFC300]" />
               )}
             </Link>
@@ -305,9 +308,16 @@ export default function Sidebar({ currentUser }: SidebarProps) {
               onClick={() => setProfileMenuOpen((v) => !v)}
               className="w-full flex items-center justify-between gap-2 text-left"
             >
-              <div className="min-w-0">
-                <p className="text-white/80 text-xs font-semibold truncate">{currentUser.name}</p>
-                <p className="text-white/30 text-[11px] truncate">{currentUser.email}</p>
+              <div className="min-w-0 flex items-center gap-2">
+                <div className="min-w-0">
+                  <p className="text-white/80 text-xs font-semibold truncate">{currentUser.name}</p>
+                  <p className="text-white/30 text-[11px] truncate">{currentUser.email}</p>
+                </div>
+                {unreadMentions > 0 && (
+                  <span className="flex-shrink-0 bg-[#FFC300] text-[#1A1A1A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                    {unreadMentions > 99 ? '99+' : unreadMentions}
+                  </span>
+                )}
               </div>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 flex-shrink-0">
                 <polyline points="6 9 12 15 18 9" />
@@ -325,6 +335,19 @@ export default function Sidebar({ currentUser }: SidebarProps) {
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                   Mein Profil
+                </Link>
+                <div className="h-px bg-white/10" />
+                <Link
+                  href="/erwaehnungen"
+                  className="flex items-center gap-2 px-3 py-2.5 text-xs text-white/75 hover:bg-white/5 transition-colors"
+                >
+                  <span className="flex-shrink-0">{MENTIONS_ICON}</span>
+                  <span className="flex-1">Erwähnungen</span>
+                  {unreadMentions > 0 && (
+                    <span className="flex-shrink-0 bg-[#FFC300] text-[#1A1A1A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                      {unreadMentions > 99 ? '99+' : unreadMentions}
+                    </span>
+                  )}
                 </Link>
                 <div className="h-px bg-white/10" />
                 <form action={logout}>

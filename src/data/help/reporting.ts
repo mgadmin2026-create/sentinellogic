@@ -4,7 +4,7 @@ export const reportingArticles: HelpArticle[] = [
   {
     id: 'reporting.overview',
     area: 'reporting',
-    title: 'Reporting — Überblick',
+    title: 'Selektion — Überblick',
     isPageDefault: true,
     route: '/reporting',
     matchMode: 'exact',

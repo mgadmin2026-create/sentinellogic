@@ -10,14 +10,14 @@ export const syncArticles: HelpArticle[] = [
     matchMode: 'exact',
     keywords: ['lead-import', 'quellen'],
     body:
-      'Zentrale Steuerung, woher neue Leads automatisch importiert werden: Facebook Lead Ads, Calendly, E-Mail (IMAP) und CSV-Import.\n\n' +
+      'Zentrale Steuerung, woher neue Leads automatisch importiert werden: Facebook Lead Ads, Calendly, E-Mail (IMAP), CSV-Import und Dialfire (Anruf-Ergebnisse aus dem Callcenter).\n\n' +
       'Jede Quelle kann automatisch in festen Intervallen synchronisieren oder manuell per Klick. Unten im Sync-Protokoll lässt sich jeder Lauf im Detail nachvollziehen.',
   },
   {
     id: 'sync.quellen-kacheln',
     area: 'sync',
     title: 'Quellen-Kacheln',
-    keywords: ['facebook', 'calendly', 'imap', 'csv', 'status', 'auto-sync'],
+    keywords: ['facebook', 'calendly', 'imap', 'csv', 'dialfire', 'status', 'auto-sync'],
     body:
       'Jede Kachel zeigt eine Quelle mit Verbindungsstatus (verbunden/Konfiguration ausstehend/inaktiv), dem Zeitpunkt der letzten Synchronisation und einem Auto-Sync-Schalter mit einstellbarem Intervall.\n\n' +
       '"Jetzt synchronisieren" löst pro Quelle einen sofortigen manuellen Lauf aus, unabhängig vom eingestellten Intervall. Bei Facebook lässt sich zusätzlich eine Vorschau der neuen Leads vor dem eigentlichen Import einblenden.',

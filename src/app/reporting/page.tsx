@@ -85,7 +85,7 @@ export default function ReportingPage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-1.5">
-        <h1 className="text-2xl font-bold text-gray-900">Reporting</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Selektion</h1>
         <HelpButton articleId="reporting.overview" />
       </div>
       <p className="text-sm text-gray-500 mb-6">

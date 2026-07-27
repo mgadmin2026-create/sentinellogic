@@ -10,7 +10,7 @@ export const erwaehnungenArticles: HelpArticle[] = [
     matchMode: 'exact',
     keywords: ['mention', '@', 'benachrichtigung'],
     body:
-      'Hier siehst du alle Kommentare, in denen du mit @ erwähnt wurdest — egal ob an einem Kontakt oder an einer Aufgabe. Neue Erwähnungen erscheinen außerdem als Zähler-Badge neben "Erwähnungen" in der Seitenleiste.\n\n' +
+      'Hier siehst du alle Kommentare, in denen du mit @ erwähnt wurdest — egal ob an einem Kontakt oder an einer Aufgabe. Neue Erwähnungen erscheinen außerdem als Zähler-Badge im Profil-Menü unten links ("Erwähnungen"-Eintrag und direkt am Profilnamen).\n\n' +
       'Ein Klick auf eine Erwähnung markiert sie als gelesen und springt direkt zum jeweiligen Kontakt bzw. zur jeweiligen Aufgabe.',
   },
   {

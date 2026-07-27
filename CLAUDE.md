@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.11.0 — Beitragsübersicht (Sparten-Vergleich) | Aktiv in Entwicklung |
+| **Version** | 0.11.1 — Navigation: Admin-Sichtbarkeit, Erwähnungen im Profil-Menü, Dialfire-Batch-Sync | Aktiv in Entwicklung |
 
 ---
 
@@ -257,10 +257,12 @@ Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase
 | Dashboard | `/` | Mitarbeiterdashboard: personalisierte KPIs, Heute im Fokus (überfällig/heute), Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter (Admin), CSV-Import |
 | Kontakte | `/kontakte` | Kontakt-Liste mit Prozess-Fortschritt, Import/Export, Tag-Filter, Archiv-Toggle |
 | Kontakt-Detail | `/kontakte/[id]` | Tab-Interface (Übersicht, Prozess, Aktivitäten, Aufgaben, Dialfire, Dokumente, Verträge, Automation) + Tags-Leiste |
-| Testdashboard | `/testdashboard` | Regressionstest-Übersicht, Testläufe, Umgebungsstatus (v0.6.0) |
+| Testdashboard | `/testdashboard` | Regressionstest-Übersicht, Testläufe, Umgebungsstatus (v0.6.0) — **nur Admin-Rolle sichtbar in der Sidebar (v0.11.1)** |
 | Release Notes | `/release-notes` | In-App Feature-History |
-| Erwähnungen | `/erwaehnungen` | Eigene @-Erwähnungen aus Kommentaren, Alle/Ungelesen-Filter |
+| Erwähnungen | `/erwaehnungen` | Eigene @-Erwähnungen aus Kommentaren, Alle/Ungelesen-Filter — Seite bleibt für alle Rollen erreichbar, der Sidebar-Einstieg liegt seit v0.11.1 im Profil-Menü (nicht mehr eigener Hauptnav-Eintrag) mit Zähler-Badge am Profilnamen |
 | Hilfe | `/hilfe` | Durchsuchbares Hilfe-Handbuch (v0.10.0), siehe eigener Abschnitt unten |
+| Selektion (vormals „Reporting") | `/reporting` | NL→SQL-Freitextauswertung, siehe „Reporting & Analytics" — Route/API unverändert `/reporting` bzw. `/api/reporting`, nur die sichtbare Bezeichnung wurde v0.11.1 umbenannt |
+| Einstellungen | `/einstellungen` + Unterseiten | KI-Suche, Venture-/Firmendaten, Team, Zahlungsmodelle, Mail-Vorlagen, Produktverwaltungs-Config — **nur Admin-Rolle sichtbar in der Sidebar (v0.11.1)**, Seiten selbst unverändert nur serverseitig admin-only wo bereits vorher der Fall |
 
 ### Tabs im Kontakt-Detail
 
@@ -330,6 +332,18 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.11.1 (2026-07-27) — Navigation: Admin-Sichtbarkeit, Erwähnungen im Profil-Menü, Dialfire-Batch-Sync
+
+**Sidebar-Anpassungen:**
+- ✅ `Testdashboard` und `Einstellungen` sind nur noch für die Rolle `admin` in der Sidebar sichtbar (`NAV_ITEMS`-Einträge bekamen ein `adminOnly`-Flag, gefiltert via `isAdmin(currentUser?.role)` aus `src/lib/roles.ts`); die Seiten selbst sind unverändert erreichbar, falls direkt verlinkt — reine Sidebar-Sichtbarkeit, keine neue serverseitige Zugriffssperre
+- ✅ `Erwähnungen` ist kein eigener Hauptnav-Eintrag mehr, sondern liegt im Profil-Menü unten links: ein Zähler-Badge erscheint direkt am Profilnamen (Kachel geschlossen) UND als Eintrag im aufgeklappten Menü — Route `/erwaehnungen` und ihr Inhalt bleiben unverändert
+- ✅ `Reporting` in der Sidebar zu `Selektion` umbenannt (nur sichtbare Bezeichnung — Route `/reporting`, API `/api/reporting`, Datenmodell und interne Bezeichner unverändert); Seiten-H1, `HELP_AREA_LABELS.reporting` und die Hilfe-Artikeltitel wurden mitgezogen, damit Sidebar/Seite/Hilfe konsistent bleiben
+
+**Dialfire-Batch-Sync unter „Synchronisation":**
+- ✅ Neue Route `GET /api/sync/dialfire-pull`: läuft über alle Kontakte mit gesetzter `dialfire_id` + `dialfire_campaign_id`, ruft pro Kontakt dieselbe Edge Function (`dialfire-pull-sync`) auf wie der bestehende manuelle Einzel-Sync (`DialfireSyncPanel` → `/api/dialfire/pull-sync`) und schreibt einen gesammelten Eintrag in `sync_log` — exakt derselbe Mechanismus (Quellen-Kachel, „Jetzt synchronisieren", Sync-Protokoll) wie bei Facebook/Calendly/E-Mail/CSV
+- ✅ Kontakte werden mit Bündelung (`CONCURRENCY = 8`) statt streng nacheinander verarbeitet, jeder Edge-Function-Aufruf mit 15s-Timeout (`AbortController`) — ein rein sequenzieller Lauf über die aktuell 189 verbundenen Kontakte hätte die Laufzeitgrenze von Serverless-Functions gerissen (beim ersten Testlauf während der Verifikation tatsächlich beobachtet: > 30s ohne Antwort)
+- ⚠️ Bei der Browser-Verifikation wurde die neue „Jetzt synchronisieren"-Kachel für Dialfire dreimal gegen die echte, produktive Supabase-Instanz ausgelöst (kein separates Test-System für diesen Anwendungsfall) — unbedenklich, da rein lesend gegenüber Dialfire und exakt dieselbe idempotente Pull-Logik, die der bestehende manuelle Sync-Button ohnehin pro Kontakt ausführt, aber dadurch entstanden reale `activities`-/`dialfire_sync_log`-Einträge auf allen 189 verbundenen Kontakten (dreifach) als Nebeneffekt der Verifikation — kein Datenverlust, aber erwähnenswertes Verifikations-Rauschen im Audit-Trail
 
 ### v0.11.0 (2026-07-27) — Beitragsübersicht (Sparten-Vergleich)
 
@@ -574,7 +588,9 @@ git push origin main # Deploy zu Vercel
 | `src/components/kontakt/BeitragsuebersichtPanel.tsx` | Drawer-Inhalt: Sparten-Tabelle + optionales Flottenblatt |
 | `src/lib/beitragsuebersicht-pdf.tsx` | PDF-Layout (`@react-pdf/renderer`), an Excel-Vorlage angelehnt |
 | `src/app/api/kontakte/[id]/beitragsuebersicht/pdf/route.ts` | PDF-Download-Endpoint |
+| `src/components/Sidebar.tsx` | `NAV_ITEMS[].adminOnly` + Filter, Erwähnungen-Badge im Profil-Menü (v0.11.1) |
+| `src/app/api/sync/dialfire-pull/route.ts` | Dialfire-Batch-Pull-Sync über alle verbundenen Kontakte, bündelt Aufrufe (`CONCURRENCY=8`) + Timeout, loggt nach `sync_log` (v0.11.1) |
 
 ---
 
-*Last Updated: 2026-07-27 — v0.11.0 Beitragsübersicht (Sparten-Vergleich, PDF-Export im Layout der Excel-Vorlage)*
+*Last Updated: 2026-07-27 — v0.11.1 Navigation: Admin-Sichtbarkeit (Testdashboard/Einstellungen), Erwähnungen im Profil-Menü, Reporting→Selektion, Dialfire-Batch-Sync unter Synchronisation*

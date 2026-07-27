@@ -57,6 +57,7 @@ const INITIAL_SOURCES: SyncSource[] = [
   { id: 'calendly', name: 'Calendly', description: 'Terminbuchungen automatisch als Leads', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 30 },
   { id: 'email', name: 'E-Mail (IMAP)', description: 'Eingehende Anfragen als Leads erkennen', status: 'warning', count: 'Konfiguration ausstehend', lastSync: '—', autoInterval: 60 },
   { id: 'csv', name: 'CSV-Import', description: 'Manuelle Datei-Importe', status: 'inactive', count: 'Manuell', lastSync: '—', autoInterval: 0 },
+  { id: 'dialfire', name: 'Dialfire', description: 'Anruf-Ergebnisse aus dem Callcenter in verbundene Kontakte übernehmen', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 0 },
 ]
 
 const STATUS_CFG: Record<SyncStatus, { label: string; dot: string; badge: string }> = {
@@ -130,6 +131,22 @@ export default function SyncPage() {
             setTimeout(() => setSyncing(null), delay)
           })
       }
+    } else if (id === 'dialfire') {
+      setSyncing(id)
+      const startTime = Date.now()
+      fetch('/api/sync/dialfire-pull')
+        .then(r => r.json())
+        .then((data) => {
+          setSources(prev => prev.map(s => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
+          loadSyncLog()
+          return data
+        })
+        .catch(console.error)
+        .finally(() => {
+          const elapsed = Date.now() - startTime
+          const delay = Math.max(0, 2000 - elapsed)
+          setTimeout(() => setSyncing(null), delay)
+        })
     } else {
       setSyncing(id)
       setTimeout(() => {

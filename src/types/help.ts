@@ -25,7 +25,7 @@ export const HELP_AREA_LABELS: Record<HelpArea, string> = {
   'ki-upload': 'KI Upload',
   sync: 'Synchronisation',
   regeln: 'Automatisierungen',
-  reporting: 'Reporting',
+  reporting: 'Selektion',
   erwaehnungen: 'Erwähnungen',
   einstellungen: 'Einstellungen',
 }
