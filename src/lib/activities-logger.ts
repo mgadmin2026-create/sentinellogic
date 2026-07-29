@@ -17,6 +17,8 @@ export type ActivityType =
   | 'klicktipp_sync_failed'
   | 'dialfire_synced'
   | 'dialfire_sync_failed'
+  | 'superchat_synced'
+  | 'superchat_sync_failed'
   | 'facebook_imported'
   | 'facebook_linked'
   | 'facebook_skipped_duplicate'

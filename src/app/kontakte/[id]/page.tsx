@@ -18,6 +18,7 @@ import { KontaktVertraegeTab } from '@/components/KontaktVertraegeTab'
 import { ContactEmailModal } from '@/components/ContactEmailModal'
 import { type Tag } from '@/components/TagInput'
 import { PlacetelCallHistory } from '@/components/PlacetelCallHistory'
+import { SuperchatSyncButton } from '@/components/SuperchatSyncButton'
 import { Drawer } from '@/components/kontakt/Drawer'
 import { ProzessPanel, PIPELINE_STEPS } from '@/components/kontakt/ProzessPanel'
 import { AktivitaetenPanel, type Aktivität } from '@/components/kontakt/AktivitaetenPanel'
@@ -66,6 +67,9 @@ interface Kontakt {
   dialfire_campaign?: string
   dialfire_last_sync?: string
   dialfire_task_name?: string
+  superchat_id?: string | null
+  superchat_last_sync?: string | null
+  superchat_sync_error?: string | null
   automation_disabled?: boolean
   dialfire_campaign_auto?: boolean
   dialfire_campaign_id?: string
@@ -795,6 +799,16 @@ export default function KontaktDetailPage() {
                   </span>
                   <span className="text-yellow-600 text-xs font-semibold">→</span>
                 </button>
+                <div className="border-t border-gray-100 pt-2 mt-2">
+                  <SuperchatSyncButton
+                    contactId={kontakt.id}
+                    superchatId={kontakt.superchat_id}
+                    lastSync={kontakt.superchat_last_sync}
+                    syncError={kontakt.superchat_sync_error}
+                    disabled={!!kontakt.archived_at}
+                    onSynchronized={loadKontakt}
+                  />
+                </div>
                 <button
                   onClick={() => openEditDrawer('integrations')}
                   className="flex justify-between w-full text-left hover:text-yellow-700 group"

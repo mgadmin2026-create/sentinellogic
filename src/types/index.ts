@@ -33,6 +33,9 @@ export interface Contact {
   klicktipp_tags?: string[]
   klicktipp_last_sync?: string
   dialfire_id?: string
+  superchat_id?: string
+  superchat_last_sync?: string
+  superchat_sync_error?: string
   notes?: string
   notes_updated_at?: string
   // Facebook Lead Fields

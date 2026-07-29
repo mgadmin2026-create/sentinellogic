@@ -96,3 +96,42 @@ test.describe('Kontaktdetail: Aufgaben', () => {
     ]))
   })
 })
+
+test.describe('Kontaktdetail: SuperChat-Übertragung', () => {
+  applyTestCaseControl('E2E-019')
+
+  test('überträgt einen Kontakt kontrolliert an SuperChat', async ({ page, request }) => {
+    const contact = createPlaywrightTestContact('SuperChatSync')
+    const createRes = await request.post('/api/kontakte', { data: contact })
+    const { data: created } = await expectOk(createRes, 'Testkontakt anlegen')
+    let requestMethod = ''
+
+    // Kein externer Provider-Aufruf mit Live-Testdaten: Der Browser simuliert
+    // ausschließlich die Antwort unserer geschützten Serverroute.
+    await page.route(`**/api/kontakte/${created.id}/superchat`, async (route) => {
+      requestMethod = route.request().method()
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            superchatId: 'ct_playwright_test',
+            synchronizedAt: new Date().toISOString(),
+            operation: 'created',
+          },
+        }),
+      })
+    })
+
+    await page.goto(`/kontakte/${created.id}`)
+    const syncPanel = page.getByTestId('superchat-sync')
+    await expect(syncPanel.getByText('Noch nicht an SuperChat übertragen')).toBeVisible()
+    await syncPanel.getByRole('button', { name: 'Übertragen', exact: true }).click()
+
+    await expect(syncPanel.getByRole('status')).toHaveText(
+      'Kontakt wurde an SuperChat übertragen.'
+    )
+    expect(requestMethod).toBe('POST')
+  })
+})

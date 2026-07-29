@@ -321,4 +321,20 @@ export const TEST_CASES: TestCaseDefinition[] = [
       'berechnet Differenz und Summen live und speichert die Beitragsübersicht dauerhaft',
     ],
   },
+  {
+    id: 'E2E-019',
+    name: 'Kontakt an SuperChat übertragen',
+    description: 'Prüft den kontrollierten Start der SuperChat-Übertragung aus der Kontaktdetailseite, ohne Testdaten an den externen Provider zu senden.',
+    steps: [
+      'Einen eindeutig markierten Testkontakt anlegen und seine Detailseite öffnen.',
+      'Den noch nicht übertragenen SuperChat-Status prüfen.',
+      'Die Übertragung auslösen; die geschützte Serverroute im Browser sicher simulieren.',
+      'HTTP-Methode und verständliche Erfolgsmeldung prüfen.',
+    ],
+    area: 'Integrationen',
+    priority: 'Hoch',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: ['überträgt einen Kontakt kontrolliert an SuperChat'],
+  },
 ]

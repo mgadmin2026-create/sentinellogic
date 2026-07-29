@@ -140,9 +140,13 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Placetel-Swagger geprüft und technisches Integrationskonzept vervollständigt
 - [x] Placetel Call-Control-/Notify-Dokumentation geprüft und Webhook auf HMAC, Dauer sowie offizielle Auflegegründe umgestellt
 - [x] Migration `0047_placetel_notify_statuses.sql` angewendet und Placetel Notify API konfiguriert
+- [x] Key-User-Präsentation zum aktuellen Anwendungsstand erstellt
+- [x] Regressionstest-Status geprüft: letzter vollständiger Lauf 11/11 grün; aktuelle Pipeline durch HTTP 401 vor Teststart blockiert
+- [x] Idempotente Einzelkontakt-Synchronisation zu SuperChat mit Status, Aktivitätsprotokoll und E2E-019 implementiert
+- [x] Migration `0054_superchat_contact_sync.sql` auf Live-Supabase verifiziert
 
 **Nächste Aufgabe:**
-→ Vollständigen Regressionstest erneut ausführen und verbleibende fachliche Fehler beschreiben
+→ SuperChat-Konfiguration in der Laufzeitumgebung verifizieren und einen synthetischen Pilotkontakt übertragen
 
 -----
 
