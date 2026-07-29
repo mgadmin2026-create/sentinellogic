@@ -1,9 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { normalizePhoneNumber } from '@/lib/phone'
 
 interface SuperchatSyncButtonProps {
   contactId: string
+  firstName?: string | null
+  lastName?: string | null
+  email?: string | null
+  phoneMobile?: string | null
+  phoneOffice?: string | null
   superchatId?: string | null
   lastSync?: string | null
   syncError?: string | null
@@ -13,6 +19,11 @@ interface SuperchatSyncButtonProps {
 
 export function SuperchatSyncButton({
   contactId,
+  firstName,
+  lastName,
+  email,
+  phoneMobile,
+  phoneOffice,
   superchatId,
   lastSync,
   syncError,
@@ -63,6 +74,29 @@ export function SuperchatSyncButton({
       ? 'Mit SuperChat verknüpft'
       : 'Noch nicht an SuperChat übertragen'
 
+  function buildSuperchatUrl(): string | null {
+    const mobile = normalizePhoneNumber(phoneMobile)
+    const office = normalizePhoneNumber(phoneOffice)
+    const normalizedEmail = email?.trim().toLowerCase()
+    const params = new URLSearchParams()
+
+    if (mobile) {
+      params.set('wa', mobile.replace(/^\+/, ''))
+    } else if (office) {
+      params.set('sms', office.replace(/^\+/, ''))
+    } else if (normalizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      params.set('email', normalizedEmail)
+    } else {
+      return null
+    }
+
+    if (firstName?.trim()) params.set('firstname', firstName.trim())
+    if (lastName?.trim()) params.set('lastname', lastName.trim())
+    return `https://app.superchat.de/inbox/find/?${params.toString()}`
+  }
+
+  const superchatUrl = superchatId ? buildSuperchatUrl() : null
+
   return (
     <div className="space-y-2" data-testid="superchat-sync">
       <div className="flex items-center justify-between gap-3">
@@ -91,6 +125,16 @@ export function SuperchatSyncButton({
         >
           {message?.text || syncError}
         </p>
+      )}
+      {superchatUrl && (
+        <a
+          href={superchatUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex text-xs font-semibold text-yellow-700 hover:text-yellow-800 hover:underline"
+        >
+          Kontakt in SuperChat öffnen ↗
+        </a>
       )}
     </div>
   )

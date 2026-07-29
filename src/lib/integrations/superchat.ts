@@ -10,11 +10,43 @@ export interface SuperchatContactInput {
   phoneMobile?: string | null
   phoneOffice?: string | null
   gender?: string | null
+  companyName?: string | null
+  street?: string | null
+  houseNumber?: string | null
+  postalCode?: string | null
+  city?: string | null
+  country?: string | null
+  birthDate?: string | null
 }
 
 interface SuperchatHandle {
   id?: string
   type: 'mail' | 'phone'
+  value: string
+}
+
+type SuperchatCustomAttributeType =
+  | 'text'
+  | 'dateonly'
+  | 'number'
+  | 'datetime'
+  | 'single_select'
+  | 'multi_select'
+
+interface SuperchatCustomAttributeDefinition {
+  id: string
+  name: string
+  type: SuperchatCustomAttributeType
+}
+
+interface SuperchatCustomAttributeValue {
+  id: string
+  value: string
+}
+
+interface DesiredCustomAttribute {
+  name: string
+  type: 'text' | 'dateonly'
   value: string
 }
 
@@ -66,6 +98,47 @@ function mapGender(raw?: string | null): 'female' | 'male' | 'diverse' | undefin
   return undefined
 }
 
+function normalizeText(raw?: string | null): string | null {
+  const value = raw?.trim()
+  return value || null
+}
+
+function normalizeDateOnly(raw?: string | null): string | null {
+  const value = raw?.trim()
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+
+  const date = new Date(`${value}T00:00:00.000Z`)
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value
+    ? null
+    : value
+}
+
+function buildAddress(contact: SuperchatContactInput): string | null {
+  const streetLine = [normalizeText(contact.street), normalizeText(contact.houseNumber)]
+    .filter(Boolean)
+    .join(' ')
+  const cityLine = [normalizeText(contact.postalCode), normalizeText(contact.city)]
+    .filter(Boolean)
+    .join(' ')
+
+  return [streetLine, cityLine, normalizeText(contact.country)].filter(Boolean).join(', ') || null
+}
+
+function getDesiredCustomAttributes(
+  contact: SuperchatContactInput
+): DesiredCustomAttribute[] {
+  const company = normalizeText(contact.companyName)
+  const address = buildAddress(contact)
+  const birthDate = normalizeDateOnly(contact.birthDate)
+  const attributes: Array<DesiredCustomAttribute | null> = [
+    company ? { name: 'Firma', type: 'text', value: company } : null,
+    address ? { name: 'Adresse', type: 'text', value: address } : null,
+    birthDate ? { name: 'Geburtsdatum', type: 'dateonly', value: birthDate } : null,
+  ]
+
+  return attributes.filter((attribute): attribute is DesiredCustomAttribute => Boolean(attribute))
+}
+
 function buildHandles(contact: SuperchatContactInput): SuperchatHandle[] {
   const handles: SuperchatHandle[] = []
   const seen = new Set<string>()
@@ -91,6 +164,68 @@ function buildHandles(contact: SuperchatContactInput): SuperchatHandle[] {
   }
 
   return handles
+}
+
+function readCustomAttributeDefinitions(body: unknown): SuperchatCustomAttributeDefinition[] {
+  if (!body || typeof body !== 'object') return []
+  const results = (body as Record<string, unknown>).results
+  if (!Array.isArray(results)) return []
+
+  return results.flatMap((raw): SuperchatCustomAttributeDefinition[] => {
+    if (!raw || typeof raw !== 'object') return []
+    const attribute = raw as Record<string, unknown>
+    if (
+      typeof attribute.id !== 'string' ||
+      typeof attribute.name !== 'string' ||
+      ![
+        'text',
+        'dateonly',
+        'number',
+        'datetime',
+        'single_select',
+        'multi_select',
+      ].includes(String(attribute.type))
+    ) {
+      return []
+    }
+    return [{
+      id: attribute.id,
+      name: attribute.name,
+      type: attribute.type as SuperchatCustomAttributeType,
+    }]
+  })
+}
+
+function readNextCustomAttributeCursor(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null
+  const pagination = (body as Record<string, unknown>).pagination
+  if (!pagination || typeof pagination !== 'object') return null
+  const cursor = (pagination as Record<string, unknown>).next_cursor
+  return typeof cursor === 'string' && cursor ? cursor : null
+}
+
+function readCustomAttributeDefinition(body: unknown): SuperchatCustomAttributeDefinition | null {
+  if (!body || typeof body !== 'object') return null
+  const attribute = body as Record<string, unknown>
+  if (
+    typeof attribute.id !== 'string' ||
+    typeof attribute.name !== 'string' ||
+    ![
+      'text',
+      'dateonly',
+      'number',
+      'datetime',
+      'single_select',
+      'multi_select',
+    ].includes(String(attribute.type))
+  ) {
+    return null
+  }
+  return {
+    id: attribute.id,
+    name: attribute.name,
+    type: attribute.type as SuperchatCustomAttributeType,
+  }
 }
 
 function readContactId(body: unknown): string | null {
@@ -161,9 +296,71 @@ async function superchatRequest(
   }
 }
 
+async function listCustomAttributes(): Promise<SuperchatCustomAttributeDefinition[]> {
+  const attributes: SuperchatCustomAttributeDefinition[] = []
+  let cursor: string | null = null
+
+  do {
+    const query = cursor ? `?limit=100&after=${encodeURIComponent(cursor)}` : '?limit=100'
+    const body = await superchatRequest(`/custom-attributes${query}`, 'GET')
+    attributes.push(...readCustomAttributeDefinitions(body))
+    cursor = readNextCustomAttributeCursor(body)
+  } while (cursor)
+
+  return attributes
+}
+
+async function createCustomAttribute(
+  attribute: Pick<DesiredCustomAttribute, 'name' | 'type'>
+): Promise<SuperchatCustomAttributeDefinition> {
+  const body = await superchatRequest('/custom-attributes', 'POST', {
+    name: attribute.name,
+    resource: 'contact',
+    type: attribute.type,
+  })
+  const created = readCustomAttributeDefinition(body)
+  if (!created) {
+    throw new SuperchatApiError(
+      `SuperChat hat für das Kontaktfeld „${attribute.name}“ keine ID zurückgegeben`
+    )
+  }
+  return created
+}
+
+async function buildCustomAttributeValues(
+  contact: SuperchatContactInput
+): Promise<SuperchatCustomAttributeValue[] | undefined> {
+  const desiredAttributes = getDesiredCustomAttributes(contact)
+  if (desiredAttributes.length === 0) return undefined
+
+  const definitions = await listCustomAttributes()
+  const values: SuperchatCustomAttributeValue[] = []
+
+  for (const desired of desiredAttributes) {
+    let definition = definitions.find(
+      (candidate) => candidate.name.trim().toLowerCase() === desired.name.toLowerCase()
+    )
+
+    if (definition && definition.type !== desired.type) {
+      throw new SuperchatApiError(
+        `Das SuperChat-Kontaktfeld „${desired.name}“ hat nicht den erwarteten Feldtyp`
+      )
+    }
+    if (!definition) {
+      definition = await createCustomAttribute(desired)
+      definitions.push(definition)
+    }
+
+    values.push({ id: definition.id, value: desired.value })
+  }
+
+  return values
+}
+
 function buildContactPayload(
   contact: SuperchatContactInput,
-  handles?: SuperchatHandle[]
+  handles?: SuperchatHandle[],
+  customAttributes?: SuperchatCustomAttributeValue[]
 ): Record<string, unknown> {
   const gender = mapGender(contact.gender)
   return {
@@ -171,6 +368,7 @@ function buildContactPayload(
     last_name: contact.lastName?.trim() || null,
     ...(gender ? { gender } : {}),
     ...(handles ? { handles } : {}),
+    ...(customAttributes ? { custom_attributes: customAttributes } : {}),
   }
 }
 
@@ -226,10 +424,11 @@ function mergeMissingHandles(
 export async function createSuperchatContact(
   contact: SuperchatContactInput
 ): Promise<SuperchatContactResult> {
+  const customAttributes = await buildCustomAttributeValues(contact)
   const responseBody = await superchatRequest(
     '/contacts',
     'POST',
-    buildContactPayload(contact, buildHandles(contact))
+    buildContactPayload(contact, buildHandles(contact), customAttributes)
   )
   const id = readContactId(responseBody)
   if (!id) {
@@ -246,15 +445,15 @@ export async function updateSuperchatContact(
   if (!/^[A-Za-z0-9_-]+$/.test(contactId)) {
     throw new SuperchatApiError('Ungültige SuperChat-Kontakt-ID')
   }
-  const existingContact = await superchatRequest(
-    `/contacts/${encodeURIComponent(contactId)}`,
-    'GET'
-  )
+  const [existingContact, customAttributes] = await Promise.all([
+    superchatRequest(`/contacts/${encodeURIComponent(contactId)}`, 'GET'),
+    buildCustomAttributeValues(contact),
+  ])
   const handles = mergeMissingHandles(readExistingHandles(existingContact), buildHandles(contact))
   await superchatRequest(
     `/contacts/${encodeURIComponent(contactId)}`,
     'PATCH',
-    buildContactPayload(contact, handles)
+    buildContactPayload(contact, handles, customAttributes)
   )
   return { id: contactId }
 }

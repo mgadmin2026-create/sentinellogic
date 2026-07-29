@@ -23,6 +23,9 @@ im verbundenen SuperChat-Workspace an beziehungsweise aktualisiert ihn.
    entfernt keine später in SuperChat ergänzten Kontaktwege.
 5. Erfolg oder Fehler erscheint verständlich in der Oberfläche und wird in der
    Aktivitätshistorie protokolliert.
+6. Nach der ersten Verknüpfung öffnet „Kontakt in SuperChat öffnen“ über den
+   offiziell unterstützten SuperChat-Link die bestehende Unterhaltung
+   beziehungsweise den Kontakt in einem neuen Tab.
 
 ## Übertragene Daten
 
@@ -30,6 +33,14 @@ im verbundenen SuperChat-Workspace an beziehungsweise aktualisiert ihn.
 - Geschlecht, sofern es sicher auf `female`, `male` oder `diverse` abbildbar ist
 - gültige E-Mail-Adresse
 - gültige Mobil- und Büronummern im E.164-Format
+- Firma als SuperChat-Kontaktattribut `Firma`
+- vollständige Anschrift als SuperChat-Kontaktattribut `Adresse`
+- Geburtsdatum als SuperChat-Kontaktattribut `Geburtsdatum`
+
+Die drei Kontaktattribute werden beim ersten Bedarf anhand ihres Namens und
+Typs im SuperChat-Workspace gefunden oder automatisch angelegt. `Firma` und
+`Adresse` sind Textfelder, `Geburtsdatum` ist ein reines Datumsfeld. Die
+Adresse wird aus Straße, Hausnummer, Postleitzahl, Ort und Land zusammengesetzt.
 
 Mindestens eine gültige E-Mail-Adresse oder Telefonnummer ist erforderlich.
 Unbekannte Geschlechtswerte werden nicht übertragen. Die lokale Kontakt-ID,

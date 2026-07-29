@@ -802,6 +802,11 @@ export default function KontaktDetailPage() {
                 <div className="border-t border-gray-100 pt-2 mt-2">
                   <SuperchatSyncButton
                     contactId={kontakt.id}
+                    firstName={kontakt.first_name}
+                    lastName={kontakt.last_name}
+                    email={kontakt.email}
+                    phoneMobile={kontakt.phone_mobile}
+                    phoneOffice={kontakt.phone_office}
                     superchatId={kontakt.superchat_id}
                     lastSync={kontakt.superchat_last_sync}
                     syncError={kontakt.superchat_sync_error}

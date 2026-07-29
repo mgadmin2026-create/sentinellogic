@@ -31,7 +31,7 @@ export async function POST(
   const { data: contact, error: contactError } = await supabase
     .from('contacts')
     .select(
-      'id, first_name, last_name, email, phone_mobile, phone_office, anrede, archived_at, superchat_id'
+      'id, first_name, last_name, email, phone_mobile, phone_office, anrede, company_name, street, hausnummer, postal_code, city, country, geburtstag, archived_at, superchat_id'
     )
     .eq('id', params.id)
     .single()
@@ -53,6 +53,13 @@ export async function POST(
     phoneMobile: contact.phone_mobile,
     phoneOffice: contact.phone_office,
     gender: contact.anrede,
+    companyName: contact.company_name,
+    street: contact.street,
+    houseNumber: contact.hausnummer,
+    postalCode: contact.postal_code,
+    city: contact.city,
+    country: contact.country,
+    birthDate: contact.geburtstag,
   }
 
   try {

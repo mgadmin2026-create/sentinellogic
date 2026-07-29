@@ -145,6 +145,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Idempotente Einzelkontakt-Synchronisation zu SuperChat mit Status, Aktivitätsprotokoll und E2E-019 implementiert
 - [x] Migration `0054_superchat_contact_sync.sql` auf Live-Supabase verifiziert
 - [x] SuperChat-Live-Pilot mit technisch markiertem `TESTKONTAKT` erfolgreich durchgeführt
+- [x] SuperChat-Feldmapping um Firma, Adresse und Geburtsdatum sowie direkten Kontaktlink erweitert
 
 **Nächste Aufgabe:**
 → Zugriff der Testfallsteuerung in GitHub Actions korrigieren und vollständigen Regressionstest erneut ausführen

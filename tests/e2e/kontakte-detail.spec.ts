@@ -134,4 +134,29 @@ test.describe('Kontaktdetail: SuperChat-Übertragung', () => {
     )
     expect(requestMethod).toBe('POST')
   })
+
+  test('öffnet einen verknüpften Kontakt direkt in SuperChat', async ({ page, request }) => {
+    const contact = {
+      ...createPlaywrightTestContact('SuperChatLink'),
+      phone_mobile: '+49 151 23456789',
+    }
+    const createRes = await request.post('/api/kontakte', { data: contact })
+    const { data: created } = await expectOk(createRes, 'Testkontakt anlegen')
+
+    await page.route(`**/api/kontakte/${created.id}`, async (route) => {
+      const response = await route.fetch()
+      const body = await response.json()
+      body.data.superchat_id = 'ct_playwright_test'
+      await route.fulfill({ response, json: body })
+    })
+
+    await page.goto(`/kontakte/${created.id}`)
+
+    const link = page.getByRole('link', { name: 'Kontakt in SuperChat öffnen' })
+    await expect(link).toHaveAttribute(
+      'href',
+      /https:\/\/app\.superchat\.de\/inbox\/find\/\?wa=4915123456789/
+    )
+    await expect(link).toHaveAttribute('target', '_blank')
+  })
 })
