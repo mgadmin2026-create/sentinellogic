@@ -80,3 +80,18 @@ automatische Übertragung bei Neuanlage, Stapelübertragung, Kontaktlisten,
 Nachrichten und ein Rückkanal von SuperChat sind nicht Bestandteil dieses
 Features. Diese Erweiterungen sollten erst nach dem erfolgreichen Pilotlauf und
 einer fachlichen Entscheidung zu Einwilligungen und WhatsApp-Prozessen folgen.
+
+## Live-Pilot vom 29. Juli 2026
+
+Der synthetische und technisch markierte Kontakt „TESTKONTAKT“ wurde in der
+Produktionsumgebung angelegt und erfolgreich an SuperChat übertragen.
+
+- Der Datensatz ist als Testdatensatz markiert.
+- Die SuperChat-ID und der Synchronisationszeitpunkt wurden gespeichert.
+- `superchat_sync_error` ist leer.
+- Die Aktivität „Kontakt an SuperChat übertragen“ wurde protokolliert.
+- Es wurden keine echten Kundendaten verwendet.
+
+Beim ersten Versuch zeigte sich, dass die Live-Tabelle statt des älteren
+UI-Felds `geschlecht` das Feld `anrede` führt. Die Serverroute wurde daraufhin
+an das tatsächliche Live-Schema angepasst und der Pilot erfolgreich wiederholt.

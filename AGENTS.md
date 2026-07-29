@@ -144,9 +144,10 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Regressionstest-Status geprüft: letzter vollständiger Lauf 11/11 grün; aktuelle Pipeline durch HTTP 401 vor Teststart blockiert
 - [x] Idempotente Einzelkontakt-Synchronisation zu SuperChat mit Status, Aktivitätsprotokoll und E2E-019 implementiert
 - [x] Migration `0054_superchat_contact_sync.sql` auf Live-Supabase verifiziert
+- [x] SuperChat-Live-Pilot mit technisch markiertem `TESTKONTAKT` erfolgreich durchgeführt
 
 **Nächste Aufgabe:**
-→ SuperChat-Konfiguration in der Laufzeitumgebung verifizieren und einen synthetischen Pilotkontakt übertragen
+→ Zugriff der Testfallsteuerung in GitHub Actions korrigieren und vollständigen Regressionstest erneut ausführen
 
 -----
 
