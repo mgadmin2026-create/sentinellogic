@@ -32,6 +32,21 @@ export const regelnArticles: HelpArticle[] = [
       'Inaktive Regeln bleiben gespeichert, greifen aber nicht — praktisch, um eine Regel vorübergehend zu pausieren, ohne sie zu löschen.',
   },
   {
+    id: 'regeln.verlauf',
+    area: 'regeln',
+    title: 'Verlauf: Was hat die Regel bewirkt?',
+    keywords: ['historie', 'nachvollziehen', 'protokoll', 'sync-fehler', 'angelegt', 'synchronisiert'],
+    body:
+      '„Verlauf" unter jeder Regel klappt auf, welche Kontakte die Regel tatsächlich verändert hat — und was danach passiert ist.\n\n' +
+      'Je Zeile siehst du:\n' +
+      '- Zeitpunkt und ob die Regel automatisch beim Kontakteingang oder manuell über „Anwenden" gelaufen ist\n' +
+      '- den Kontakt, mit Hinweis „neu angelegt", wenn er in diesem Zuge entstanden ist\n' +
+      '- welche Felder gesetzt wurden (Dialfire-Kampagne, Task, Status, KlickTipp-Tag)\n' +
+      '- ob die Übertragung an Dialfire und KlickTipp geklappt hat; bei einem Fehler steht die Meldung im Klartext darunter\n\n' +
+      'Der Sync-Stand zeigt immer die letzte Rückmeldung zu diesem Kontakt — ein späterer erfolgreicher Lauf hebt einen früheren Fehler also auf.\n\n' +
+      'Steht dort „keinen Kontakt verändert", wurde die Regel zwar ausgeführt, es passte aber kein Kontakt zur eingestellten Quelle. Das ist kein Fehler.',
+  },
+  {
     id: 'regeln.manuelle-ausfuehrung',
     area: 'regeln',
     title: 'Manuelle Ausführung',

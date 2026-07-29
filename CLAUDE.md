@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.12.0 — Telefonie: Wählen über Softphone Plus, persönliche Nebenstellen, eingehende Anrufe | Aktiv in Entwicklung |
+| **Version** | 0.13.0 — Lauf-Historie der Automatisierungsregeln | Aktiv in Entwicklung |
 
 ---
 
@@ -332,6 +332,33 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.13.0 (2026-07-29) — Lauf-Historie der Automatisierungsregeln
+
+**Ausgangslage:** Auf `/regeln` gab es nur einen `runs`-Zähler. Ob eine Regel einen Kontakt
+tatsächlich angelegt und ob die Übertragung an Dialfire/KlickTipp funktioniert hat, war nur
+über die Aktivitäten am einzelnen Kontakt oder die Vercel-Logs nachvollziehbar.
+
+- 🔍 Datenlage vorab geprüft: Die nötigen Bausteine existieren bereits im Aktivitätsprotokoll
+  (`contact_created`, `dialfire_synced` 1.358×, `dialfire_sync_failed` 417×, `klicktipp_sync_failed` 20×,
+  `automation_executed` 1.258×). Was fehlte, war die Verknüpfung zur auslösenden Regel
+- 🐛 Ursache dafür gefunden: Der **Batch-Pfad** schrieb die Regel-ID nur in den Beschreibungstext
+  („Batch: Rule &lt;uuid&gt; applied"), der automatische Pfad dagegen sauber ins Datenfeld.
+  Konkret: 34 Einträge strukturiert, 1.215 nur als Text. Beide Pfade schreiben jetzt
+  `{ rule_id, trigger }` ins Datenfeld
+- ✅ `GET /api/rules/[id]/runs`: liefert je betroffenem Kontakt Zeitpunkt, Auslöser
+  (automatisch/manuell), ob der Kontakt neu angelegt wurde, die gesetzten Felder und den
+  Sync-Stand für Dialfire und KlickTipp inkl. Fehlertext. Berücksichtigt bewusst **beide**
+  Schreibweisen der Regel-ID, damit auch die 1.215 Altdatensätze sichtbar bleiben
+- ✅ Aufklappbarer „Verlauf" je Regel auf `/regeln` (`RegelLaufHistorie.tsx`) mit Kopfzeile
+  „n betroffene Kontakte · m mit Sync-Fehler" und Verlinkung in die Kundenakte
+- ⚠️ Bewusste Einschränkung: Die Sync-Aktivitäten kennen die auslösende Regel nicht — sie werden
+  über den Kontakt zugeordnet. Angezeigt wird deshalb der **letzte Sync-Stand des Kontakts**,
+  nicht eine erfundene Kausalkette pro Lauf. Ein späterer Erfolg hebt einen früheren Fehler auf;
+  das steht auch als Hinweis unter der Tabelle
+- ✅ Leerfall wird erklärt statt als Fehler zu wirken: Regeln mit `runs > 0`, aber ohne betroffene
+  Kontakte (der Zähler steigt auch bei 0 Treffern) zeigen einen entsprechenden Hinweis
+- ✅ Hilfe-Artikel `regeln.verlauf` ergänzt
 
 ### v0.12.0 (2026-07-27) — Telefonie: Wählen über Softphone Plus, persönliche Nebenstellen, eingehende Anrufe
 
@@ -645,4 +672,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-27 — v0.12.0 Telefonie: Wählen über Softphone Plus (Weg B), persönliche Nebenstellen je Mitarbeiter, Screen-Pop bei eingehenden Anrufen, Wiedervorlage bei „nicht erreicht"*
+*Last Updated: 2026-07-29 — v0.13.0 Lauf-Historie der Automatisierungsregeln: je Kontakt nachvollziehbar, ob er angelegt und ob nach Dialfire/KlickTipp synchronisiert wurde*

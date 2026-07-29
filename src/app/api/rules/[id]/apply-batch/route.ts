@@ -166,13 +166,14 @@ export async function POST(
           continue
         }
 
-        // Log activity
+        // Log activity — rule_id gehört strukturiert ins Datenfeld, nicht nur in
+        // den Text. Sonst muss die Lauf-Historie die Beschreibung parsen.
         await logActivity(
           null,
           contact.id,
           'automation_executed',
           `Batch: Rule ${rule.id} applied (${Object.keys(fieldsToSet).join(', ')})`,
-          fieldsSummary
+          { rule_id: rule.id, trigger: 'batch', ...fieldsSummary }
         )
 
         // Dialfire Sync: Only if campaign or task is set

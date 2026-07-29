@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { SOURCE_LABELS, type LeadStatus, type LeadSource } from '@/data/mock'
 import { HelpButton } from '@/components/help/HelpButton'
+import { RegelLaufHistorie } from '@/components/RegelLaufHistorie'
 
 interface Rule {
   id: string; created_at: string; name: string
@@ -420,6 +421,8 @@ export default function RegelnPage() {
                   </button>
                 </div>
               </div>
+
+              <RegelLaufHistorie ruleId={rule.id} runs={rule.runs} />
             </div>
           ))}
         </div>

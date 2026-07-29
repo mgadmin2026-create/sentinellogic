@@ -168,7 +168,7 @@ export async function executeAutomation(
         contactId,
         'automation_executed',
         `Automation rule applied: ${fieldNames}`,
-        { rule_id: matchingRule.id, ...fieldsSummary }
+        { rule_id: matchingRule.id, trigger: 'auto', ...fieldsSummary }
       )
 
       console.log(`[Automation] Rules applied for contact ${contactId}:`, fieldsSummary)
