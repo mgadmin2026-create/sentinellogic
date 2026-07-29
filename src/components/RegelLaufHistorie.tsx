@@ -167,11 +167,20 @@ export function RegelLaufHistorie({ ruleId, runs }: { ruleId: string; runs: numb
                         <td className="px-3 py-2">
                           <span className="flex flex-wrap gap-1">
                             <SyncMarke label="Dialfire" info={lauf.dialfire} />
-                            <SyncMarke label="KlickTipp" info={lauf.klicktipp} />
+                            {/* Für KlickTipp bewusst KEIN Sync-Status: Die Tags werden
+                                über Zapier übertragen, außerhalb dieser Anwendung. Ein
+                                Erfolg ist hier nicht belegbar — nachweisbar ist nur,
+                                dass das CRM den Tag gesetzt hat. */}
+                            {lauf.gesetzte_felder.includes('KlickTipp-Tag') && (
+                              <span className="inline-flex items-center gap-1 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[11px] text-blue-700">
+                                <span className="font-semibold">KlickTipp</span>
+                                <span>Tag gesetzt</span>
+                              </span>
+                            )}
                           </span>
-                          {(lauf.dialfire.status === 'failed' || lauf.klicktipp.status === 'failed') && (
+                          {lauf.dialfire.status === 'failed' && (
                             <span className="mt-1 block text-[11px] leading-snug text-red-600">
-                              {lauf.dialfire.status === 'failed' ? lauf.dialfire.detail : lauf.klicktipp.detail}
+                              {lauf.dialfire.detail}
                             </span>
                           )}
                         </td>
@@ -183,8 +192,10 @@ export function RegelLaufHistorie({ ruleId, runs }: { ruleId: string; runs: numb
 
               <p className="mt-2 text-[11px] leading-relaxed text-gray-400">
                 {begrenzt && 'Es werden die 50 jüngsten Einträge gezeigt. '}
-                Der Sync-Stand zeigt jeweils die letzte Rückmeldung zu diesem Kontakt — ein späterer
-                Erfolg hebt einen früheren Fehler auf.
+                Der Dialfire-Stand zeigt jeweils die letzte Rückmeldung zu diesem Kontakt — ein
+                späterer Erfolg hebt einen früheren Fehler auf. KlickTipp-Tags werden über Zapier
+                übertragen; dieser Versand läuft außerhalb der Anwendung und lässt sich hier nicht
+                bestätigen — angezeigt wird nur, dass der Tag am Kontakt gesetzt wurde.
               </p>
             </>
           )}

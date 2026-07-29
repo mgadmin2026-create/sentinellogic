@@ -42,8 +42,9 @@ export const regelnArticles: HelpArticle[] = [
       '- Zeitpunkt und ob die Regel automatisch beim Kontakteingang oder manuell über „Anwenden" gelaufen ist\n' +
       '- den Kontakt, mit Hinweis „neu angelegt", wenn er in diesem Zuge entstanden ist\n' +
       '- welche Felder gesetzt wurden (Dialfire-Kampagne, Task, Status, KlickTipp-Tag)\n' +
-      '- ob die Übertragung an Dialfire und KlickTipp geklappt hat; bei einem Fehler steht die Meldung im Klartext darunter\n\n' +
-      'Der Sync-Stand zeigt immer die letzte Rückmeldung zu diesem Kontakt — ein späterer erfolgreicher Lauf hebt einen früheren Fehler also auf.\n\n' +
+      '- ob die Übertragung an Dialfire geklappt hat; bei einem Fehler steht die Meldung im Klartext darunter\n\n' +
+      'Der Dialfire-Stand zeigt immer die letzte Rückmeldung zu diesem Kontakt — ein späterer erfolgreicher Lauf hebt einen früheren Fehler also auf.\n\n' +
+      'Bei KlickTipp steht bewusst kein Übertragungsstatus: Die Tags werden über Zapier gesetzt, also außerhalb dieser Anwendung. Angezeigt wird deshalb nur, dass der Tag am Kontakt gesetzt wurde — ob er bei KlickTipp angekommen ist, lässt sich hier nicht feststellen.\n\n' +
       'Steht dort „keinen Kontakt verändert", wurde die Regel zwar ausgeführt, es passte aber kein Kontakt zur eingestellten Quelle. Das ist kein Fehler.',
   },
   {

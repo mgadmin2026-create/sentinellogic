@@ -333,6 +333,25 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.13.2 (2026-07-29) — Korrektur: KlickTipp läuft über Zapier, kein Sync-Status im CRM
+
+**Vom Nutzer klargestellt:** Die KlickTipp-Tags werden **über Zapier** gesetzt, nicht über die
+KlickTipp-API. Der direkte API-Weg funktioniert nicht (`403 ["API access denied."]`).
+
+- 🐛 Dadurch war die tags zuvor ausgelieferte Lauf-Historie (v0.13.0) **irreführend**: Sie zeigte
+  für KlickTipp einen Sync-Status, der niemals „synchronisiert" werden kann — die Zapier-Strecke
+  liegt außerhalb der Anwendung und schreibt nichts nach `activities` zurück. Ein Kontakt, dessen
+  Tag über Zapier korrekt ankam, wäre im CRM als „nicht erfolgt" bzw. „fehlgeschlagen" erschienen
+- ✅ Die Historie zeigt für KlickTipp jetzt nur noch die belegbare Tatsache: **„Tag gesetzt"**,
+  wenn die Regel einen Tag am Kontakt gesetzt hat. Kein Übertragungsstatus mehr
+- ✅ Fußnote und Hilfe-Artikel `regeln.verlauf` entsprechend richtiggestellt
+- ℹ️ Die 20 `klicktipp_sync_failed`-Einträge (letzte am 20.07.2026) stammen aus dem alten
+  Direktweg und sind Altrauschen, kein laufender Fehler
+- ⬜ Offen: `src/lib/klicktipp-client.ts` und seine Aufrufer (`automation-engine.ts`,
+  `api/kontakte`, `api/leads`, `apply-batch`) sind faktisch toter Code, der beim Auslösen weiter
+  403-Fehler erzeugt. Im Anwendungscode gibt es **keinen** Zapier-Bezug — der Zap wird außerhalb
+  ausgelöst. Aufräumen erst nach Rücksprache
+
 ### v0.13.1 (2026-07-29) — Bugfix: Versicherungstyp einer Regel wurde nie gespeichert und nie ausgewertet
 
 **Gemeldetes Symptom:** Im Regel-Dialog lässt sich ein Versicherungstyp auswählen, nach dem
@@ -698,4 +717,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-29 — v0.13.1 Bugfix: Versicherungstyp einer Regel wurde weder gespeichert noch beim Regelabgleich ausgewertet (Spaltenname wich vom Anwendungscode ab)*
+*Last Updated: 2026-07-29 — v0.13.2 KlickTipp läuft über Zapier: Lauf-Historie zeigt nur noch „Tag gesetzt" statt eines nicht belegbaren Sync-Status*
