@@ -333,6 +333,32 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.13.1 (2026-07-29) — Bugfix: Versicherungstyp einer Regel wurde nie gespeichert und nie ausgewertet
+
+**Gemeldetes Symptom:** Im Regel-Dialog lässt sich ein Versicherungstyp auswählen, nach dem
+Speichern ist er wieder weg.
+
+**Tatsächliche Ursache — und sie reicht weiter als das Symptom:**
+- 🐛 Migration 0030 legte die Spalte als `rules.condition_insurance_product` an. Die gesamte
+  Anwendung spricht sie jedoch als `condition_sparte` an — Regel-Formular, `POST/PATCH /api/rules`,
+  `automation-engine.ts` und `apply-batch`. Es gab keine Stelle, die zwischen beiden vermittelt
+- 🐛 Folge 1: Jedes Speichern des Versicherungstyps brach ab. Direkt reproduziert:
+  `Could not find the 'condition_sparte' column of 'rules' in the schema cache`
+- 🐛 Folge 2 (schwerwiegender): **Die Sparten-Bedingung hat nie gefiltert.** Beim Lesen liefert die
+  Datenbank `condition_insurance_product`; geprüft wurde `rule.condition_sparte` — immer `undefined`,
+  die Bedingung `!rule.condition_sparte || …` damit immer wahr. Dasselbe im Batch-Pfad
+  (`query.eq('sparte', …)` wurde nie angehängt)
+- 🔍 Damit erklärt: Die Regel „Facebook + Unternehmerschutz" trägt in der Datenbank korrekt
+  `Unternehmerschutz`, hat aber trotzdem alle Facebook-Kontakte erfasst — darunter vier mit
+  Sparte `PKV`. Das war die Fehlzuordnung, die am 29.07. manuell zurückgesetzt werden musste
+  (Dialfire-ID, Kampagne und Task bei 5 Kontakten; alte Werte als Aktivität gesichert)
+- ✅ Migration 0053 benennt die Spalte in `condition_sparte` um — inklusive Index. Umbenennen statt
+  Neuanlage, damit die vorhandenen Werte (`PKV`, `Unternehmerschutz`) erhalten bleiben. Der Name
+  passt zudem zu `contacts.sparte`, gegen das verglichen wird. Anwendungscode bleibt unverändert
+- ⚠️ Verhaltensänderung nach dem Einspielen: Die Sparten-Bedingung greift erstmals wirklich.
+  Bestehende Regeln mit gesetztem Versicherungstyp erfassen ab dann weniger Kontakte als bisher —
+  das ist beabsichtigt, aber beim erneuten „Anwenden" spürbar
+
 ### v0.13.0 (2026-07-29) — Lauf-Historie der Automatisierungsregeln
 
 **Ausgangslage:** Auf `/regeln` gab es nur einen `runs`-Zähler. Ob eine Regel einen Kontakt
@@ -672,4 +698,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-29 — v0.13.0 Lauf-Historie der Automatisierungsregeln: je Kontakt nachvollziehbar, ob er angelegt und ob nach Dialfire/KlickTipp synchronisiert wurde*
+*Last Updated: 2026-07-29 — v0.13.1 Bugfix: Versicherungstyp einer Regel wurde weder gespeichert noch beim Regelabgleich ausgewertet (Spaltenname wich vom Anwendungscode ab)*
