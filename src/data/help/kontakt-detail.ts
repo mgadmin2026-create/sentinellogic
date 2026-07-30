@@ -119,8 +119,9 @@ export const kontaktDetailArticles: HelpArticle[] = [
     keywords: ['leitfaden', 'anruf', 'fragebogen', 'erstanruf', 'sparte', 'unternehmerschutz'],
     body:
       'Ein sparten-spezifischer Gesprächsleitfaden fürs erste Telefonat mit dem Kontakt — die Fragen orientieren sich an der hinterlegten Sparte (z.B. Unternehmerschutz).\n\n' +
-      'Jede Frage zeigt den vorgeschlagenen Gesprächseinstieg in Anführungszeichen, darunter die zugehörigen Felder direkt editierbar. Antworten werden lokal gesammelt und erst über "Antworten speichern" übernommen — es geht also kein Request pro Tastendruck raus.\n\n' +
-      'Der letzte Punkt ist eine reine Bestätigungs-Anzeige (Firmenname/Telefon/E-Mail laut Datensatz), keine erneute Eingabe. Der Abschluss-Hinweis führt zu "+ Aufgabe: Folgetermin anlegen", die dieselbe Aufgaben-Erfassung öffnet wie überall sonst auf der Seite.\n\n' +
+      'Die Kachel selbst zeigt nur einen kurzen Hinweis, welche Sparte hinterlegt ist. "Bearbeiten" öffnet den vollständigen Leitfaden in einem Panel von rechts (wie bei Aufgaben/Dokumenten) — darin zuerst Name/E-Mail/Telefon und das Notizen-Feld, darunter die Fragen.\n\n' +
+      'Jede Frage zeigt den vorgeschlagenen Gesprächseinstieg in Anführungszeichen, darunter die zugehörigen Felder direkt editierbar. Antworten werden lokal gesammelt und erst über "Antworten speichern" übernommen — es geht also kein Request pro Tastendruck raus. "↓ Zum Ende" / "↑ Zum Anfang" springen innerhalb des Panels.\n\n' +
+      'Der letzte Punkt ist eine reine Bestätigungs-Anzeige (Firmenname/Telefon/E-Mail laut Datensatz), keine erneute Eingabe. Der Abschluss-Hinweis führt zu "+ Aufgabe: Folgetermin anlegen" — legt eine neue Aufgabe mit vorbelegtem Titel "Beratungstermin" an.\n\n' +
       'Ist für den Kontakt keine Sparte gesetzt oder existiert für die Sparte noch kein Leitfaden, zeigt die Kachel einen entsprechenden Hinweis statt eines Fehlers.',
   },
   {

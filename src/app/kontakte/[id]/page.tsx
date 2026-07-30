@@ -27,6 +27,7 @@ import { CommentThread } from '@/components/kontakt/CommentThread'
 import { HelpButton } from '@/components/help/HelpButton'
 import { BeitragsuebersichtPanel } from '@/components/kontakt/BeitragsuebersichtPanel'
 import { ErstgespraechPanel } from '@/components/kontakt/ErstgespraechPanel'
+import { ERSTGESPRAECH_LEITFAEDEN } from '@/data/erstgespraech-leitfaden'
 import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
 import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
 
@@ -149,6 +150,7 @@ type DrawerId =
   | 'dialfire'
   | 'automation'
   | 'beitragsuebersicht'
+  | 'erstgespraech'
 
 function fmtEuroKachel(n: number): string {
   return n.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'
@@ -864,16 +866,25 @@ export default function KontaktDetailPage() {
           <div className="flex flex-col gap-4">
             {/* Erstgespräch */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1.5 mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">🎙️ Erstgespräch</h3>
-                <HelpButton articleId="kontakt-detail.erstgespraech" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">🎙️ Erstgespräch</h3>
+                  <HelpButton articleId="kontakt-detail.erstgespraech" />
+                </div>
+                <button
+                  onClick={() => setOpenDrawer('erstgespraech')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Bearbeiten
+                </button>
               </div>
-              <ErstgespraechPanel
-                kontakt={kontakt}
-                onSave={handleSaveErstgespraech}
-                onSaveNotes={handleSaveNotes}
-                onFolgeterminClick={() => openNewTaskWithTitle('Beratungstermin')}
-              />
+              <p className="text-xs text-gray-400 mt-2">
+                {!kontakt.sparte
+                  ? 'Keine Sparte hinterlegt'
+                  : ERSTGESPRAECH_LEITFAEDEN[kontakt.sparte]
+                    ? `Leitfaden: ${kontakt.sparte}`
+                    : `Kein Leitfaden für Sparte „${kontakt.sparte}"`}
+              </p>
             </div>
 
             {/* Nächste Aufgabe */}
@@ -987,6 +998,20 @@ export default function KontaktDetailPage() {
         onClose={() => setOpenDrawer(null)}
       >
         <AktivitaetenPanel aktivitäten={aktivitäten} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'erstgespraech'}
+        title="🎙️ Erstgespräch"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-3xl"
+      >
+        <ErstgespraechPanel
+          kontakt={kontakt}
+          onSave={handleSaveErstgespraech}
+          onSaveNotes={handleSaveNotes}
+          onFolgeterminClick={() => openNewTaskWithTitle('Beratungstermin')}
+        />
       </Drawer>
 
       <Drawer

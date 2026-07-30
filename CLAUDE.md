@@ -333,6 +333,16 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.15.2 (2026-07-30) — Erstgespräch-Kachel: standardmäßig zugeklappt, öffnet als Drawer
+
+- ✅ Kachel in der Übersicht zeigt nur noch einen kompakten Hinweis (welche Sparte, ob ein
+  Leitfaden existiert) + „Bearbeiten"-Button — analog zu Dokumente/Verträge
+- ✅ „Bearbeiten" öffnet den vollständigen Leitfaden (Kontaktinfo, Notizen, alle Fragen) in einem
+  Drawer von rechts, exakt demselben Muster wie bei „Aufgaben für diesen Kontakt"
+  (`openDrawer === 'erstgespraech'`, neuer `DrawerId`-Wert)
+- ℹ️ Kein Verhaltensunterschied für Speichern/Notizen/Schnellnavigation — der Drawer-Inhalt ist
+  derselbe `ErstgespraechPanel`, nur die Platzierung hat sich geändert (Drawer statt Inline-Kachel)
+
 ### v0.15.1 (2026-07-30) — Erstgespräch-Kachel: Position, Kontaktinfo, Notizen, Schnellnavigation, Aufgaben-Vorbelegung
 
 - ✅ Kachel verschoben: jetzt oben in der rechten Arbeits-Spalte, oberhalb von „Nächste Aufgabe"
@@ -785,4 +795,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.15.1 Erstgespräch-Kachel: Position, Kontaktinfo, Notizen, Schnellnavigation, Aufgaben-Vorbelegung*
+*Last Updated: 2026-07-30 — v0.15.2 Erstgespräch-Kachel standardmäßig zugeklappt, öffnet als Drawer über "Bearbeiten"*
