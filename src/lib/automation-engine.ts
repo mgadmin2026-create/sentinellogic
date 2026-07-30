@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { sendRuleNotification } from '@/lib/rule-notifications'
+import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 
 interface Rule {
   id: string
@@ -10,6 +11,7 @@ interface Rule {
   condition_sparte?: string
   actions: {
     klicktipp_tag?: string
+    klicktipp_tags?: string[]
     dialfire_campaign?: string
     dialfire_task_name?: string
     set_status?: string
@@ -134,14 +136,15 @@ export async function executeAutomation(
       fieldsSummary.dialfire_task_name = matchingRule.actions.dialfire_task_name
     }
 
-    if (matchingRule.actions.klicktipp_tag) {
-      fieldsToSet.klicktipp_tags = [matchingRule.actions.klicktipp_tag]
-      const tagId = klicktippTagsMap[matchingRule.actions.klicktipp_tag]
-      if (tagId) {
-        fieldsToSet.klicktipp_tag_ids = [tagId]
+    const klicktippTags = ruleKlicktippTags(matchingRule.actions)
+    if (klicktippTags.length > 0) {
+      fieldsToSet.klicktipp_tags = klicktippTags
+      const tagIds = klicktippTags.map((tag) => klicktippTagsMap[tag]).filter(Boolean)
+      if (tagIds.length > 0) {
+        fieldsToSet.klicktipp_tag_ids = tagIds
       }
-      fieldsSummary.klicktipp_tags = [matchingRule.actions.klicktipp_tag]
-      fieldsSummary.klicktipp_tag_ids = tagId ? [tagId] : []
+      fieldsSummary.klicktipp_tags = klicktippTags
+      fieldsSummary.klicktipp_tag_ids = tagIds
     }
 
     if (matchingRule.actions.set_status) {

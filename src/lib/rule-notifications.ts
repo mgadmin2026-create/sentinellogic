@@ -1,17 +1,20 @@
 // E-Mail-Benachrichtigungen fuer Automatisierungsregeln (Resend)
 import { Resend } from 'resend'
+import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 
 const FROM = 'Sentimental Logic <noreply@guen-versicherung.de>'
 
 export interface RuleNotificationActions {
   klicktipp_tag?: string
+  klicktipp_tags?: string[]
   dialfire_campaign?: string
   set_status?: string
 }
 
 function actionsToText(actions: RuleNotificationActions): string {
+  const tags = ruleKlicktippTags(actions)
   return [
-    actions.klicktipp_tag ? `• KlickTipp Tag: "${actions.klicktipp_tag}"` : null,
+    tags.length ? `• KlickTipp Tags: "${tags.join('", "')}"` : null,
     actions.dialfire_campaign ? `• Dialfire Kampagne: "${actions.dialfire_campaign}"` : null,
     actions.set_status ? `• Status gesetzt: ${actions.set_status}` : null,
   ]

@@ -333,6 +333,18 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.14.0 (2026-07-30) — Regeln: mehrere KlickTipp-Tags pro Regel
+
+- ✅ Eine Regel kann jetzt mehrere KlickTipp-Tags gleichzeitig setzen (`actions.klicktipp_tags`,
+  Array), statt nur eines (`actions.klicktipp_tag`). Mehrfachauswahl im Regel-Formular per
+  `<select multiple>` — dieselbe Bedienung wie bei den Kontakt-Automatisierungseinstellungen
+- ✅ Bestehende Regeln mit dem alten Einzel-Tag-Format bleiben ohne Migration lesbar
+  (`src/lib/rule-klicktipp-tags.ts`, `ruleKlicktippTags()` liest neues Format, fällt sonst auf
+  das alte zurück). Neue/bearbeitete Regeln schreiben immer das neue Array-Format
+- ℹ️ Geändert: `automation-engine.ts`, `apply-batch/route.ts`, `rule-notifications.ts`,
+  `regeln/page.tsx`. Die Lauf-Historie (`/api/rules/[id]/runs`) brauchte keine Änderung, da sie
+  bereits generisch auf dem Array `data.klicktipp_tags` arbeitet
+
 ### v0.13.2 (2026-07-29) — Korrektur: KlickTipp läuft über Zapier, kein Sync-Status im CRM
 
 **Vom Nutzer klargestellt:** Die KlickTipp-Tags werden **über Zapier** gesetzt, nicht über die
@@ -717,4 +729,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-29 — v0.13.2 KlickTipp läuft über Zapier: Lauf-Historie zeigt nur noch „Tag gesetzt" statt eines nicht belegbaren Sync-Status*
+*Last Updated: 2026-07-30 — v0.14.0 Mehrere KlickTipp-Tags pro Regel*

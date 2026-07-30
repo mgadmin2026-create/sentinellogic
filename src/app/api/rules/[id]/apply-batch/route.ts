@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { sendRuleBatchNotification } from '@/lib/rule-notifications'
+import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface Rule {
@@ -11,6 +12,7 @@ interface Rule {
     dialfire_campaign?: string
     dialfire_task_name?: string
     klicktipp_tag?: string
+    klicktipp_tags?: string[]
     set_status?: string
     send_notification?: boolean
     notification_email?: string
@@ -116,7 +118,8 @@ export async function POST(
     const actionsSummary: string[] = []
     if (rule.actions.set_status) actionsSummary.push(`Status → "${rule.actions.set_status}"`)
     if (rule.actions.dialfire_campaign) actionsSummary.push(`Dialfire-Kampagne "${rule.actions.dialfire_campaign}"${rule.actions.dialfire_task_name ? ` (Task: ${rule.actions.dialfire_task_name})` : ''}`)
-    if (rule.actions.klicktipp_tag) actionsSummary.push(`KlickTipp-Tag "${rule.actions.klicktipp_tag}"`)
+    const ruleKlicktippTagList = ruleKlicktippTags(rule.actions)
+    if (ruleKlicktippTagList.length) actionsSummary.push(`KlickTipp-Tags "${ruleKlicktippTagList.join('", "')}"`)
     if (rule.actions.send_notification && rule.actions.notification_email) actionsSummary.push(`Benachrichtigung an ${rule.actions.notification_email}`)
 
     for (const contact of contactList) {
@@ -135,9 +138,9 @@ export async function POST(
           fieldsSummary.dialfire_task_name = rule.actions.dialfire_task_name
         }
 
-        if (rule.actions.klicktipp_tag) {
-          fieldsToSet.klicktipp_tags = [rule.actions.klicktipp_tag]
-          fieldsSummary.klicktipp_tags = [rule.actions.klicktipp_tag]
+        if (ruleKlicktippTagList.length) {
+          fieldsToSet.klicktipp_tags = ruleKlicktippTagList
+          fieldsSummary.klicktipp_tags = ruleKlicktippTagList
         }
 
         if (rule.actions.set_status) {

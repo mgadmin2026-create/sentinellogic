@@ -3,13 +3,15 @@ import { useState, useEffect } from 'react'
 import { SOURCE_LABELS, type LeadStatus, type LeadSource } from '@/data/mock'
 import { HelpButton } from '@/components/help/HelpButton'
 import { RegelLaufHistorie } from '@/components/RegelLaufHistorie'
+import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 
 interface Rule {
   id: string; created_at: string; name: string
   condition_source: LeadSource | 'all'
   condition_sparte?: string
   actions: {
-    klicktipp_tag?: string; dialfire_campaign?: string; dialfire_task_name?: string
+    klicktipp_tag?: string; klicktipp_tags?: string[]
+    dialfire_campaign?: string; dialfire_task_name?: string
     set_status?: LeadStatus; send_notification?: boolean
     notification_email?: string
   }
@@ -61,7 +63,7 @@ export default function RegelnPage() {
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [newSource, setNewSource] = useState('facebook')
   const [newSparte, setNewSparte] = useState('')
-  const [newKlicktipp, setNewKlicktipp] = useState('')
+  const [newKlicktippTags, setNewKlicktippTags] = useState<string[]>([])
   const [newDialfire, setNewDialfire] = useState('')
   const [newDialfireTask, setNewDialfireTask] = useState('')
   const [newStatus, setNewStatus] = useState('')
@@ -126,11 +128,11 @@ export default function RegelnPage() {
   }
 
   async function saveRule() {
-    if (!newKlicktipp && !newDialfire && !newDialfireTask && !newStatus && !newNotification) return
+    if (!newKlicktippTags.length && !newDialfire && !newDialfireTask && !newStatus && !newNotification) return
     setSaving(true)
     const sourceLbl = SOURCE_OPTIONS.find((s) => s.value === newSource)?.label ?? newSource
     const actions: Rule['actions'] = {}
-    if (newKlicktipp) actions.klicktipp_tag = newKlicktipp
+    if (newKlicktippTags.length) actions.klicktipp_tags = newKlicktippTags
     if (newDialfire) actions.dialfire_campaign = newDialfire
     if (newDialfireTask) actions.dialfire_task_name = newDialfireTask
     if (newStatus) actions.set_status = newStatus as LeadStatus
@@ -174,7 +176,7 @@ export default function RegelnPage() {
       setTimeout(() => setToast(null), 3000)
     }
     setSaving(false); setModalOpen(false); setEditingRuleId(null)
-    setNewSource('facebook'); setNewSparte(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
+    setNewSource('facebook'); setNewSparte(''); setNewKlicktippTags([]); setNewDialfire(''); setNewDialfireTask('')
     setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
     loadRules()
   }
@@ -183,7 +185,7 @@ export default function RegelnPage() {
     setEditingRuleId(rule.id)
     setNewSource(rule.condition_source)
     setNewSparte(rule.condition_sparte || '')
-    setNewKlicktipp(rule.actions.klicktipp_tag || '')
+    setNewKlicktippTags(ruleKlicktippTags(rule.actions))
     setNewDialfire(rule.actions.dialfire_campaign || '')
     setNewDialfireTask(rule.actions.dialfire_task_name || '')
     setNewStatus(rule.actions.set_status || '')
@@ -206,7 +208,7 @@ export default function RegelnPage() {
         </div>
         <button onClick={() => {
           setEditingRuleId(null)
-          setNewSource('facebook'); setNewSparte(''); setNewKlicktipp(''); setNewDialfire(''); setNewDialfireTask('')
+          setNewSource('facebook'); setNewSparte(''); setNewKlicktippTags([]); setNewDialfire(''); setNewDialfireTask('')
           setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
           setModalOpen(true)
         }}
@@ -360,10 +362,11 @@ export default function RegelnPage() {
                     <div className="bg-[#FFC300]/8 border border-[#FFC300]/20 rounded-lg px-4 py-3 flex-1">
                       <p className="text-xs font-bold text-[#b88c00] uppercase tracking-wide mb-2">DANN</p>
                       <div className="space-y-1">
-                        {rule.actions.klicktipp_tag && (
+                        {ruleKlicktippTags(rule.actions).length > 0 && (
                           <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                            KlickTipp Tag: <span className="font-semibold ml-1">{rule.actions.klicktipp_tag}</span>
+                            KlickTipp {ruleKlicktippTags(rule.actions).length > 1 ? 'Tags' : 'Tag'}:{' '}
+                            <span className="font-semibold ml-1">{ruleKlicktippTags(rule.actions).join(', ')}</span>
                           </div>
                         )}
                         {rule.actions.dialfire_campaign && (
@@ -463,16 +466,21 @@ export default function RegelnPage() {
                 </select>
               </div>
 
-              {/* KlickTipp Tag - Dropdown */}
+              {/* KlickTipp Tags - Mehrfachauswahl */}
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">KlickTipp Tag (optional)</label>
-                <select value={newKlicktipp} onChange={(e) => setNewKlicktipp(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
-                  <option value="">-- Kein Tag --</option>
+                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">KlickTipp Tags (optional)</label>
+                <select
+                  multiple
+                  value={newKlicktippTags}
+                  onChange={(e) => setNewKlicktippTags(Array.from(e.target.selectedOptions, (opt) => opt.value))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]"
+                  size={4}
+                >
                   {config.klicktipp_tags?.map((tag) => (
                     <option key={tag.tag_id} value={tag.tag_name}>{tag.tag_label}</option>
                   ))}
                 </select>
+                <p className="text-xs text-gray-400 mt-1">💡 Ctrl/Cmd gedrückt halten, um mehrere Tags auszuwählen</p>
               </div>
 
               {/* Dialfire Campaign - Dropdown */}
