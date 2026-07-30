@@ -113,6 +113,17 @@ export const kontaktDetailArticles: HelpArticle[] = [
       '- KlickTipp & Integrations: schreibgeschützte Übersicht der externen IDs (Dialfire, KlickTipp) dieses Kontakts',
   },
   {
+    id: 'kontakt-detail.erstgespraech',
+    area: 'kontakt-detail',
+    title: 'Kachel „Erstgespräch"',
+    keywords: ['leitfaden', 'anruf', 'fragebogen', 'erstanruf', 'sparte', 'unternehmerschutz'],
+    body:
+      'Ein sparten-spezifischer Gesprächsleitfaden fürs erste Telefonat mit dem Kontakt — die Fragen orientieren sich an der hinterlegten Sparte (z.B. Unternehmerschutz).\n\n' +
+      'Jede Frage zeigt den vorgeschlagenen Gesprächseinstieg in Anführungszeichen, darunter die zugehörigen Felder direkt editierbar. Antworten werden lokal gesammelt und erst über "Antworten speichern" übernommen — es geht also kein Request pro Tastendruck raus.\n\n' +
+      'Der letzte Punkt ist eine reine Bestätigungs-Anzeige (Firmenname/Telefon/E-Mail laut Datensatz), keine erneute Eingabe. Der Abschluss-Hinweis führt zu "+ Aufgabe: Folgetermin anlegen", die dieselbe Aufgaben-Erfassung öffnet wie überall sonst auf der Seite.\n\n' +
+      'Ist für den Kontakt keine Sparte gesetzt oder existiert für die Sparte noch kein Leitfaden, zeigt die Kachel einen entsprechenden Hinweis statt eines Fehlers.',
+  },
+  {
     id: 'kontakt-detail.naechste-aufgabe',
     area: 'kontakt-detail',
     title: 'Kachel „Nächste Aufgabe"',

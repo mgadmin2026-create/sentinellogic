@@ -26,6 +26,7 @@ import { AufgabenPanel, type KontaktAufgabe } from '@/components/kontakt/Aufgabe
 import { CommentThread } from '@/components/kontakt/CommentThread'
 import { HelpButton } from '@/components/help/HelpButton'
 import { BeitragsuebersichtPanel } from '@/components/kontakt/BeitragsuebersichtPanel'
+import { ErstgespraechPanel } from '@/components/kontakt/ErstgespraechPanel'
 import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
 import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
 
@@ -86,6 +87,9 @@ interface Kontakt {
   rechtsform?: string
   sparte?: string
   versicherungsgesellschaft?: string
+  seit_wann_gewerbe?: string
+  geburtstag_gf_inhaber?: string
+  inhaltssumme?: string
   dialfire_updated_at?: string
   dialfire_sync_error?: string
   kontakt_typ?: 'privat' | 'gewerbe'
@@ -228,6 +232,16 @@ export default function KontaktDetailPage() {
     } finally {
       setNotesSaving(false)
     }
+  }
+
+  async function handleSaveErstgespraech(changes: Record<string, unknown>) {
+    const res = await fetch(`/api/kontakte/${kontaktId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    })
+    if (!res.ok) throw new Error('Fehler beim Speichern')
+    await loadKontakt()
   }
 
   async function handleArchiveKontakt(archiveTasks: boolean) {
@@ -749,6 +763,19 @@ export default function KontaktDetailPage() {
               ) : (
                 <p className="text-sm text-gray-400">Noch keine Beitragsübersicht angelegt.</p>
               )}
+            </div>
+
+            {/* Erstgespräch */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
+              <div className="flex items-center gap-1.5 mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">🎙️ Erstgespräch</h3>
+                <HelpButton articleId="kontakt-detail.erstgespraech" />
+              </div>
+              <ErstgespraechPanel
+                kontakt={kontakt}
+                onSave={handleSaveErstgespraech}
+                onFolgeterminClick={openNewTask}
+              />
             </div>
 
             {/* Dokumente */}

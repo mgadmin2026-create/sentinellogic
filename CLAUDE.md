@@ -333,6 +333,30 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.15.0 (2026-07-30) — Neue Kachel „Erstgespräch": Sparten-Leitfaden fürs erste Telefonat
+
+- ✅ Neue Kachel auf der Kontaktdetailseite: ein sparten-spezifischer Gesprächsleitfaden, an dem
+  sich der Mitarbeiter beim ersten Anruf orientiert. Jede Frage zeigt den vorgeschlagenen
+  Gesprächseinstieg, darunter die zugehörigen Felder direkt editierbar
+- ✅ Fragen sind auf bestehende `contacts`-Spalten gemappt — **keine neue Migration nötig**, alle
+  benötigten Felder existierten bereits (`company_name`, `rechtsform`, `street`, `hausnummer`,
+  `postal_code`, `city`, `seit_wann_gewerbe`, `geburtstag_gf_inhaber`, `industry`,
+  `mitarbeitanzahl`, `jahresumsatz`, `inhaltssumme`, `versicherungstyp`, `bestandskunde`,
+  `versicherungsgesellschaft`)
+- ✅ Leitfaden-Inhalt liegt in `src/data/erstgespraech-leitfaden.ts` (`ERSTGESPRAECH_LEITFAEDEN`,
+  Sparte → Fragenliste). Neue Sparte hinzufügen = neuer Eintrag in diesem Record, kein Code an
+  anderer Stelle nötig. Bisher nur **Unternehmerschutz** befüllt (Inhalt vom Nutzer geliefert);
+  **PKV zeigt bewusst einen Platzhalter** („kein Leitfaden hinterlegt"), Inhalt folgt später
+- ✅ Änderungen werden lokal gesammelt (wie `ContactOverview`) und erst über „Antworten
+  speichern" in einem Rutsch übernommen — kein Request pro Tastendruck während des Telefonats
+- ✅ Letzte Frage („Bestätigung der Firmendaten") ist reine Anzeige, keine erneute Eingabe.
+  Abschluss-Hinweis führt zu „+ Aufgabe: Folgetermin anlegen" (öffnet dieselbe
+  Aufgaben-Erfassung wie überall sonst auf der Seite)
+- ⚠️ Sparten-Zuordnung ist ein exakter String-Vergleich auf `contacts.sparte` (aktuell nur
+  `PKV`/`Unternehmerschutz` im Umlauf, siehe `SPARTE_OPTIONS` in `regeln/page.tsx`). Ohne
+  gesetzte oder unbekannte Sparte zeigt die Kachel einen erklärenden Hinweis statt eines Fehlers
+- 🆕 Datei: `src/components/kontakt/ErstgespraechPanel.tsx`
+
 ### v0.14.1 (2026-07-30) — Kontakthistorie: umbenannt, ins ⋯-Menü verschoben, fachlich/technisch getrennt
 
 - ✅ Die "Aktivitäten"-Kachel ist aus der Kontaktdetail-Übersicht entfernt. Der volle Verlauf
@@ -745,4 +769,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.14.1 Kontakthistorie umbenannt, ins ⋯-Menü verschoben, fachlich/technisch getrennt*
+*Last Updated: 2026-07-30 — v0.15.0 Neue Kachel „Erstgespräch": Sparten-Leitfaden fürs erste Telefonat*
