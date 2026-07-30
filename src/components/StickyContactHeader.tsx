@@ -22,6 +22,7 @@ interface StickyContactHeaderProps {
   onEmailClick?: () => void
   onEditClick: () => void
   onDelete: () => void
+  onHistoryClick: () => void
   isArchived?: boolean
   tags: Tag[]
   onTagsChange: (tags: Tag[]) => void
@@ -74,6 +75,7 @@ export function StickyContactHeader({
   onEmailClick,
   onEditClick,
   onDelete,
+  onHistoryClick,
   isArchived,
   tags,
   onTagsChange,
@@ -235,36 +237,40 @@ export function StickyContactHeader({
                 🗑️
               </button>
 
-              {/* ⋯-Menü: tel-Anruf + WhatsApp */}
-              {(callNumber || waNumber) && (
-                <div className="relative group">
-                  <button className="px-2.5 py-2 text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-gray-300 rounded-lg transition-colors" title="Weitere Aktionen">
-                    ⋯
+              {/* ⋯-Menü: Kontakthistorie + tel-Anruf + WhatsApp */}
+              <div className="relative group">
+                <button className="px-2.5 py-2 text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-gray-300 rounded-lg transition-colors" title="Weitere Aktionen">
+                  ⋯
+                </button>
+                <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <button
+                    onClick={onHistoryClick}
+                    className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
+                  >
+                    📋 Kontakthistorie
                   </button>
-                  <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                    {callNumber && (
-                      <a
-                        href={`tel:${callNumber}`}
-                        title={`Anrufen: ${callNumber}`}
-                        className="block px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
-                      >
-                        📞 Anrufen (Gerät): {callNumber}
-                      </a>
-                    )}
-                    {waNumber && (
-                      <a
-                        href={`https://wa.me/${waNumber}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="WhatsApp-Chat öffnen"
-                        className="block px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50"
-                      >
-                        💬 WhatsApp öffnen
-                      </a>
-                    )}
-                  </div>
+                  {callNumber && (
+                    <a
+                      href={`tel:${callNumber}`}
+                      title={`Anrufen: ${callNumber}`}
+                      className="block px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
+                    >
+                      📞 Anrufen (Gerät): {callNumber}
+                    </a>
+                  )}
+                  {waNumber && (
+                    <a
+                      href={`https://wa.me/${waNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="WhatsApp-Chat öffnen"
+                      className="block px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50"
+                    >
+                      💬 WhatsApp öffnen
+                    </a>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

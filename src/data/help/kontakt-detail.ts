@@ -124,11 +124,12 @@ export const kontaktDetailArticles: HelpArticle[] = [
   {
     id: 'kontakt-detail.aktivitaeten',
     area: 'kontakt-detail',
-    title: 'Kachel „Aktivitäten"',
-    keywords: ['verlauf', 'protokoll', 'log', 'timeline'],
+    title: 'Kontakthistorie',
+    keywords: ['verlauf', 'protokoll', 'log', 'timeline', 'aktivitäten', 'fachlich', 'technisch'],
     body:
-      'Zeigt die letzten 4 protokollierten Ereignisse zu diesem Kontakt (E-Mails, Anrufe, Statusänderungen, Datei-Uploads, ...) mit Zeitstempel und Akteur.\n\n' +
-      '"Alle (n) →" öffnet die vollständige, chronologische Aktivitäten-Historie.',
+      'Die vollständige, chronologische Historie eines Kontakts — erreichbar über das ⋯-Menü oben im Kopfbereich (nicht mehr als eigene Kachel in der Übersicht).\n\n' +
+      'Standardmäßig siehst du nur fachlich relevante Ereignisse: Kontakt angelegt, Status-/Pipeline-Änderungen, Aufgabe erstellt, Datei hochgeladen, Notiz, E-Mail gesendet.\n\n' +
+      'Technische Einträge (Sync-Vorgänge mit Dialfire/KlickTipp/Superchat/Facebook, automatische Regelausführung, reine Feld-Updates) sind standardmäßig ausgeblendet, weil sie zahlenmäßig dominieren und den fachlichen Verlauf überdecken würden. Über "+ N technische Einträge anzeigen" lassen sie sich bei Bedarf einblenden — z.B. um einen Sync-Fehler nachzuvollziehen.',
   },
   {
     id: 'kontakt-detail.kommentare',

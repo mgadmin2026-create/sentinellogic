@@ -333,6 +333,22 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.14.1 (2026-07-30) — Kontakthistorie: umbenannt, ins ⋯-Menü verschoben, fachlich/technisch getrennt
+
+- ✅ Die "Aktivitäten"-Kachel ist aus der Kontaktdetail-Übersicht entfernt. Der volle Verlauf
+  (jetzt „Kontakthistorie") ist über das ⋯-Menü im Kopfbereich erreichbar (`StickyContactHeader.tsx`)
+  — das Menü zeigte bisher nur Anruf/WhatsApp und war deshalb an das Vorhandensein einer
+  Telefonnummer gekoppelt; es wird jetzt immer angezeigt
+- ✅ `AktivitaetenPanel.tsx` trennt Einträge in fachlich (Standard sichtbar: Kontakt angelegt,
+  Status-/Pipeline-Änderungen, Aufgabe erstellt, Datei, Notiz, E-Mail) und technisch (Sync mit
+  Dialfire/KlickTipp/Superchat/Facebook, Regelausführung, Feld-Updates — zuschaltbar über
+  "+ N technische Einträge anzeigen"). Klassifizierung anhand der realen Verteilung in der
+  Produktiv-DB geprüft (5.983 Einträge, dominiert von facebook_linked/dialfire_synced/
+  automation_executed) — unbekannte künftige Typen landen bewusst im fachlichen Default,
+  damit nichts unsichtbar verschwindet
+- ℹ️ `facebook_imported` (Kontakt-Erstellung via Facebook) ist bewusst fachlich, `facebook_linked`
+  (Webhook-Zustellung an bestehenden Kontakt, oft mehrfach) bewusst technisch
+
 ### v0.14.0 (2026-07-30) — Regeln: mehrere KlickTipp-Tags pro Regel
 
 - ✅ Eine Regel kann jetzt mehrere KlickTipp-Tags gleichzeitig setzen (`actions.klicktipp_tags`,
@@ -729,4 +745,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.14.0 Mehrere KlickTipp-Tags pro Regel*
+*Last Updated: 2026-07-30 — v0.14.1 Kontakthistorie umbenannt, ins ⋯-Menü verschoben, fachlich/technisch getrennt*

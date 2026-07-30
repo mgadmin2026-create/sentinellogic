@@ -481,6 +481,7 @@ export default function KontaktDetailPage() {
         onEmailClick={() => setEmailModalOpen(true)}
         onEditClick={() => openEditDrawer()}
         onDelete={() => setDeleteConfirm(true)}
+        onHistoryClick={() => setOpenDrawer('aktivitaeten')}
         isArchived={!!kontakt.archived_at}
         tags={kontaktTags}
         onTagsChange={handleTagsChange}
@@ -880,38 +881,6 @@ export default function KontaktDetailPage() {
               </div>
             </div>
 
-            {/* Aktivitäten */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-semibold text-gray-900">📝 Aktivitäten</h3>
-                  <HelpButton articleId="kontakt-detail.aktivitaeten" />
-                </div>
-                <button
-                  onClick={() => setOpenDrawer('aktivitaeten')}
-                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
-                >
-                  Alle ({aktivitäten.length}) →
-                </button>
-              </div>
-              {aktivitäten.length === 0 ? (
-                <p className="text-sm text-gray-400">Keine Aktivitäten vorhanden.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {aktivitäten.slice(0, 4).map((akt) => (
-                    <div key={akt.id} className="text-xs">
-                      <p className="text-gray-900 line-clamp-2">{akt.description}</p>
-                      <p className="text-gray-400 mt-0.5">
-                        {new Date(akt.created_at).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                        {' · '}
-                        {akt.user?.name || 'System'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Kommentare */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center gap-1.5 mb-3">
@@ -966,7 +935,7 @@ export default function KontaktDetailPage() {
 
       <Drawer
         isOpen={openDrawer === 'aktivitaeten'}
-        title="📝 Aktivitätshistorie"
+        title="📋 Kontakthistorie"
         onClose={() => setOpenDrawer(null)}
       >
         <AktivitaetenPanel aktivitäten={aktivitäten} />
