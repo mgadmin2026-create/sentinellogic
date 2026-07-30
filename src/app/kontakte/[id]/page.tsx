@@ -165,6 +165,11 @@ export default function KontaktDetailPage() {
   const [editSection, setEditSection] = useState<string | undefined>(undefined)
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [editingAufgabe, setEditingAufgabe] = useState<Aufgabe | null>(null)
+  // Vorbelegte "Neue Aufgabe" (z.B. Titel "Beratungstermin" aus dem Erstgespräch) —
+  // getrennt von editingAufgabe, damit handleSaveAufgabe weiterhin korrekt POST statt
+  // PATCH wählt (die Unterscheidung dort hängt an editingAufgabe, nicht am Vorhandensein
+  // eines Titels).
+  const [newTaskDefaults, setNewTaskDefaults] = useState<Aufgabe | null>(null)
   const [notes, setNotes] = useState('')
   const [notesSaving, setNotesSaving] = useState(false)
   const [aktivitäten, setAktivitäten] = useState<Aktivität[]>([])
@@ -344,6 +349,7 @@ export default function KontaktDetailPage() {
       }
       setTaskModalOpen(false)
       setEditingAufgabe(null)
+      setNewTaskDefaults(null)
       await loadKontakt()
     } catch (err: any) {
       throw err
@@ -407,6 +413,20 @@ export default function KontaktDetailPage() {
 
   function openNewTask() {
     setEditingAufgabe(null)
+    setNewTaskDefaults(null)
+    setTaskModalOpen(true)
+  }
+
+  function openNewTaskWithTitle(titel: string) {
+    setEditingAufgabe(null)
+    setNewTaskDefaults({
+      contact_id: kontaktId,
+      titel,
+      beschreibung: '',
+      fällig: new Date().toISOString().split('T')[0],
+      priorität: 'mittel',
+      status: 'offen',
+    } as Aufgabe)
     setTaskModalOpen(true)
   }
 
@@ -765,19 +785,6 @@ export default function KontaktDetailPage() {
               )}
             </div>
 
-            {/* Erstgespräch */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
-              <div className="flex items-center gap-1.5 mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">🎙️ Erstgespräch</h3>
-                <HelpButton articleId="kontakt-detail.erstgespraech" />
-              </div>
-              <ErstgespraechPanel
-                kontakt={kontakt}
-                onSave={handleSaveErstgespraech}
-                onFolgeterminClick={openNewTask}
-              />
-            </div>
-
             {/* Dokumente */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between">
@@ -855,6 +862,20 @@ export default function KontaktDetailPage() {
 
           {/* Rechte Spalte: Arbeit */}
           <div className="flex flex-col gap-4">
+            {/* Erstgespräch */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center gap-1.5 mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">🎙️ Erstgespräch</h3>
+                <HelpButton articleId="kontakt-detail.erstgespraech" />
+              </div>
+              <ErstgespraechPanel
+                kontakt={kontakt}
+                onSave={handleSaveErstgespraech}
+                onSaveNotes={handleSaveNotes}
+                onFolgeterminClick={() => openNewTaskWithTitle('Beratungstermin')}
+              />
+            </div>
+
             {/* Nächste Aufgabe */}
             <div className="bg-white rounded-xl border-2 border-yellow-400 p-4">
               <div className="flex items-center justify-between mb-2">
@@ -1103,11 +1124,12 @@ export default function KontaktDetailPage() {
       {/* Aufgabe anlegen/bearbeiten */}
       <AufgabenEditModal
         kontaktId={kontaktId}
-        aufgabe={editingAufgabe}
+        aufgabe={editingAufgabe || newTaskDefaults}
         isOpen={taskModalOpen}
         onClose={() => {
           setTaskModalOpen(false)
           setEditingAufgabe(null)
+          setNewTaskDefaults(null)
         }}
         onSave={handleSaveAufgabe}
       />

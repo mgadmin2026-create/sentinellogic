@@ -333,6 +333,22 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.15.1 (2026-07-30) — Erstgespräch-Kachel: Position, Kontaktinfo, Notizen, Schnellnavigation, Aufgaben-Vorbelegung
+
+- ✅ Kachel verschoben: jetzt oben in der rechten Arbeits-Spalte, oberhalb von „Nächste Aufgabe"
+  (vorher unten in der linken Daten-Spalte)
+- ✅ Vor der ersten Frage stehen jetzt Name, E-Mail und Telefon des Kontakts als schneller Kontext
+- ✅ Notizen-Feld (`contacts.notes`, dieselbe Spalte wie im Kopfbereich) direkt in der Kachel
+  verfügbar — eigener kleiner Speichern-Button, unabhängig vom „Antworten speichern" der
+  Leitfaden-Felder, da freier Notiztext einer anderen Eingabe-Rhythmik folgt als die Q&A-Felder
+- ✅ „↓ Zum Ende" / „↑ Zum Anfang" springen innerhalb der Kachel, ohne dass man bei zehn Fragen
+  manuell scrollen muss
+- ✅ „+ Aufgabe: Folgetermin anlegen" belegt den Aufgaben-Titel jetzt mit „Beratungstermin" vor.
+  Dafür neuer State-Pfad `newTaskDefaults` in `kontakte/[id]/page.tsx`, getrennt von
+  `editingAufgabe` — die POST/PATCH-Unterscheidung beim Speichern hängt weiterhin ausschließlich
+  an `editingAufgabe`, damit eine vorbelegte neue Aufgabe nicht versehentlich als Bearbeitung
+  einer nicht existierenden Aufgabe interpretiert wird
+
 ### v0.15.0 (2026-07-30) — Neue Kachel „Erstgespräch": Sparten-Leitfaden fürs erste Telefonat
 
 - ✅ Neue Kachel auf der Kontaktdetailseite: ein sparten-spezifischer Gesprächsleitfaden, an dem
@@ -769,4 +785,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.15.0 Neue Kachel „Erstgespräch": Sparten-Leitfaden fürs erste Telefonat*
+*Last Updated: 2026-07-30 — v0.15.1 Erstgespräch-Kachel: Position, Kontaktinfo, Notizen, Schnellnavigation, Aufgaben-Vorbelegung*
