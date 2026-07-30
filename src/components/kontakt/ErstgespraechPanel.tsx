@@ -63,26 +63,17 @@ export function ErstgespraechPanel({ kontakt, onSave, onSaveNotes, onFolgetermin
   }
 
   const dirty = Object.keys(edits).length > 0
-  const name = `${kontakt.first_name ?? ''} ${kontakt.last_name ?? ''}`.trim() || '—'
 
   return (
     <div>
       <div ref={topRef} />
 
-      {/* Grundlegende Kontaktinfo */}
-      <div className="grid grid-cols-3 gap-3 pb-3 mb-3 border-b border-gray-100 text-sm">
-        <div>
-          <p className="text-xs text-gray-500 font-medium">Name</p>
-          <p className="text-gray-900 mt-1 truncate">{name}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500 font-medium">E-Mail</p>
-          <p className="text-gray-900 mt-1 truncate">{kontakt.email || '—'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500 font-medium">Telefon</p>
-          <p className="text-gray-900 mt-1 truncate">{kontakt.phone_mobile || kontakt.phone_office || '—'}</p>
-        </div>
+      {/* Grundlegende Kontaktinfo — direkt editierbar, Teil derselben Antworten-Speicherung */}
+      <div className="grid grid-cols-2 gap-3 pb-3 mb-3 border-b border-gray-100">
+        <Field label="Vorname" field="first_name" value={getValue('first_name')} onChange={handleChange} isEditing />
+        <Field label="Nachname" field="last_name" value={getValue('last_name')} onChange={handleChange} isEditing />
+        <Field label="E-Mail" field="email" type="email" value={getValue('email')} onChange={handleChange} isEditing />
+        <Field label="Telefon" field="phone_mobile" value={getValue('phone_mobile')} onChange={handleChange} isEditing />
       </div>
 
       {/* Notizen — dieselbe Spalte wie im Kopfbereich (contacts.notes) */}

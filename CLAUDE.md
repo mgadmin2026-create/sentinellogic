@@ -333,6 +333,13 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.15.3 (2026-07-30) — Erstgespräch-Drawer: Name/E-Mail/Telefon jetzt editierbar
+
+- 🐛 Die Kontaktinfo am Anfang des Drawers (Name, E-Mail, Telefon) war nur Anzeige, keine
+  Eingabe — nicht nutzbar, um diese Angaben beim ersten Anruf zu erfassen oder zu korrigieren
+- ✅ Ersetzt durch dieselben `Field`-Komponenten wie der Rest des Leitfadens (Vorname, Nachname,
+  E-Mail, Telefon-Mobil) — Teil derselben lokalen Sammlung und desselben „Antworten speichern"
+
 ### v0.15.2 (2026-07-30) — Erstgespräch-Kachel: standardmäßig zugeklappt, öffnet als Drawer
 
 - ✅ Kachel in der Übersicht zeigt nur noch einen kompakten Hinweis (welche Sparte, ob ein
@@ -795,4 +802,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.15.2 Erstgespräch-Kachel standardmäßig zugeklappt, öffnet als Drawer über "Bearbeiten"*
+*Last Updated: 2026-07-30 — v0.15.3 Erstgespräch-Drawer: Name/E-Mail/Telefon jetzt editierbar*
