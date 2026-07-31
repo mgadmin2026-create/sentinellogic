@@ -376,6 +376,24 @@ export default function KontaktePage() {
     const savedOrder = localStorage.getItem('kontakte-column-order')
     const savedDensity = localStorage.getItem('kontakte-density')
     const savedWidths = localStorage.getItem('kontakte-column-widths')
+    const savedSortBy = localStorage.getItem('kontakte-sort-by')
+    const savedSortOrder = localStorage.getItem('kontakte-sort-order')
+
+    if (savedSortBy) {
+      try {
+        setSortBy(JSON.parse(savedSortBy))
+      } catch (err) {
+        console.error('Error loading sort field:', err)
+      }
+    }
+
+    if (savedSortOrder) {
+      try {
+        setSortOrder(JSON.parse(savedSortOrder))
+      } catch (err) {
+        console.error('Error loading sort order:', err)
+      }
+    }
 
     if (savedVisibility) {
       try {
@@ -775,10 +793,14 @@ export default function KontaktePage() {
 
   const toggleSort = (field: keyof Kontakt | 'name' | 'progress') => {
     if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+      const nextOrder = sortOrder === 'asc' ? 'desc' : 'asc'
+      setSortOrder(nextOrder)
+      localStorage.setItem('kontakte-sort-order', JSON.stringify(nextOrder))
     } else {
       setSortBy(field)
       setSortOrder('asc')
+      localStorage.setItem('kontakte-sort-by', JSON.stringify(field))
+      localStorage.setItem('kontakte-sort-order', JSON.stringify('asc'))
     }
   }
 

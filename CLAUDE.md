@@ -333,6 +333,14 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.16.1 (2026-07-30) — Kontaktliste: Sortierung bleibt beim Verlassen erhalten
+
+- 🐛 Sortierspalte + Richtung (`sortBy`/`sortOrder`) waren reiner `useState` ohne Persistenz —
+  jeder Seitenwechsel setzte auf den Default (Vorname, aufsteigend) zurück
+- ✅ In `localStorage` gespeichert (`kontakte-sort-by`, `kontakte-sort-order`), analog zum
+  bestehenden Muster für Spalten-Sichtbarkeit/-Reihenfolge/-Dichte in derselben Datei. Schreiben
+  direkt in `toggleSort()` (einzige Mutationsstelle), kein zusätzlicher Sync-Effect nötig
+
 ### v0.16.0 (2026-07-30) — Neuer Kontakt-Status „Nicht interessiert" + einheitliches Farbschema
 
 - ✅ Neuer Status `not_interested` ("Nicht interessiert") zu allen Status-Definitionen
@@ -823,4 +831,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.16.0 Neuer Kontakt-Status „Nicht interessiert" + einheitliches Farbschema (grau/blau/gelb/grün/rot)*
+*Last Updated: 2026-07-30 — v0.16.1 Kontaktliste: Sortierung bleibt beim Verlassen der Seite erhalten*
