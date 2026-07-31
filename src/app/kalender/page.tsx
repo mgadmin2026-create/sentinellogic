@@ -1,332 +1,377 @@
 'use client'
-import { useState, useEffect } from 'react'
+// Kalender — nachgebaut nach dem STRATO-Webmail-Kalender des Kunden:
+// Tag/Arbeitswoche/Woche/Monat/Jahr-Ansichten, Mini-Kalender-Navigator links,
+// "Meine Kalender"-Sidebar mit togglebaren Quellen. Zeigt echte Termine
+// (termine-Tabelle, Uhrzeit-basiert) zusammen mit Aufgaben-Fälligkeiten und
+// Geburtstagen (aus contacts.geburtstag) im selben Raster — jede Quelle ist
+// einzeln aus-/einblendbar, wie bei STRATO die einzelnen Kalender.
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { HelpButton } from '@/components/help/HelpButton'
+import { TerminEditModal, type Termin } from '@/components/TerminEditModal'
+import { MiniMonat } from '@/components/kalender/MiniMonat'
+import { ZeitrasterView } from '@/components/kalender/ZeitrasterView'
+import { MonatsView } from '@/components/kalender/MonatsView'
+import { JahresView } from '@/components/kalender/JahresView'
+import type { KalenderEintrag, KalenderQuelle } from '@/types/kalender'
+import { QUELLEN_FARBEN, QUELLEN_LABEL } from '@/types/kalender'
+import {
+  arbeitsWochenTage,
+  wochenTage,
+  monateAddieren,
+  monatsRaster,
+  tageAddieren,
+  toDateKey,
+  kalenderwoche,
+} from '@/lib/kalender-helpers'
 
-const ChevronLeft = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="15 18 9 12 15 6"></polyline>
-  </svg>
-)
+type Ansicht = 'tag' | 'arbeitswoche' | 'woche' | 'monat' | 'jahr'
 
-const ChevronRight = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6"></polyline>
-  </svg>
-)
+interface TerminApi extends Termin {
+  id: string
+  contact?: { id: string; first_name: string; last_name: string } | null
+}
 
 interface Aufgabe {
   id: string
   titel: string
   fällig: string
-  status: 'offen' | 'in_bearbeitung' | 'erledigt'
-  priorität: 'niedrig' | 'mittel' | 'hoch'
-  contact_id?: string
-  contact?: { first_name: string; last_name: string }
+  status: string
+  contact?: { first_name: string; last_name: string } | null
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  offen: 'bg-red-100 text-red-800',
-  in_bearbeitung: 'bg-yellow-100 text-yellow-800',
-  erledigt: 'bg-emerald-100 text-emerald-800',
+interface KontaktMitGeburtstag {
+  id: string
+  first_name: string
+  last_name: string
+  geburtstag?: string
 }
 
-const PRIORITÄT_COLORS: Record<string, string> = {
-  niedrig: 'text-gray-500',
-  mittel: 'text-orange-500',
-  hoch: 'text-red-500',
+const ANSICHT_LABEL: Record<Ansicht, string> = {
+  tag: 'Tag', arbeitswoche: 'Arbeitswoche', woche: 'Woche', monat: 'Monat', jahr: 'Jahr',
 }
 
-const TAGE_DER_WOCHE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']
+function aufgabenZuEintraegen(aufgaben: Aufgabe[], von: Date, bis: Date): KalenderEintrag[] {
+  return aufgaben
+    .filter((a) => a.status !== 'erledigt' && a.fällig)
+    .map((a) => {
+      const d = new Date(`${a.fällig}T00:00:00`)
+      return { d, a }
+    })
+    .filter(({ d }) => d >= von && d < bis)
+    .map(({ d, a }) => ({
+      id: `auf-${a.id}`,
+      quelle: 'aufgaben' as const,
+      titel: a.titel,
+      start: d,
+      end: d,
+      ganztaegig: true,
+      farbe: '',
+      contactName: a.contact ? `${a.contact.first_name} ${a.contact.last_name}` : undefined,
+      raw: a,
+    }))
+}
+
+function geburtstageZuEintraegen(kontakte: KontaktMitGeburtstag[], von: Date, bis: Date): KalenderEintrag[] {
+  const ergebnisse: KalenderEintrag[] = []
+  for (const k of kontakte) {
+    if (!k.geburtstag) continue
+    const geb = new Date(`${k.geburtstag}T00:00:00`)
+    if (isNaN(geb.getTime())) continue
+    for (let jahr = von.getFullYear(); jahr <= bis.getFullYear(); jahr++) {
+      const anlass = new Date(jahr, geb.getMonth(), geb.getDate())
+      if (anlass >= von && anlass < bis) {
+        const alter = jahr - geb.getFullYear()
+        ergebnisse.push({
+          id: `geb-${k.id}-${jahr}`,
+          quelle: 'geburtstage',
+          titel: `🎂 ${k.first_name} ${k.last_name} (${alter})`,
+          start: anlass,
+          end: anlass,
+          ganztaegig: true,
+          farbe: '',
+          contactName: `${k.first_name} ${k.last_name}`,
+          raw: k,
+        })
+      }
+    }
+  }
+  return ergebnisse
+}
+
+function terminZuEintrag(t: TerminApi): KalenderEintrag {
+  return {
+    id: t.id!,
+    quelle: 'termine',
+    titel: t.titel,
+    start: new Date(t.start_zeit),
+    end: new Date(t.end_zeit),
+    ganztaegig: !!t.ganztaegig,
+    farbe: '',
+    ort: t.ort,
+    contactName: t.contact ? `${t.contact.first_name} ${t.contact.last_name}` : undefined,
+    raw: t,
+  }
+}
+
+function berechneTitel(ansicht: Ansicht, currentDate: Date, tage: Date[]): string {
+  if (ansicht === 'tag') {
+    return currentDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric' })
+  }
+  if (ansicht === 'arbeitswoche' || ansicht === 'woche') {
+    const start = tage[0]
+    const end = tage[tage.length - 1]
+    if (start.getMonth() === end.getMonth()) return start.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+    if (start.getFullYear() === end.getFullYear()) {
+      return `${start.toLocaleDateString('de-DE', { month: 'long' })} – ${end.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}`
+    }
+    return `${start.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })} – ${end.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}`
+  }
+  if (ansicht === 'monat') return currentDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+  return String(currentDate.getFullYear())
+}
 
 export default function KalenderPage() {
-  const [view, setView] = useState<'month' | 'week'>('month')
+  const router = useRouter()
+  const [ansicht, setAnsicht] = useState<Ansicht>('woche')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [termine, setTermine] = useState<TerminApi[]>([])
   const [aufgaben, setAufgaben] = useState<Aufgabe[]>([])
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [statusFilter, setStatusFilter] = useState<string>('nicht-erledigt')
+  const [kontakte, setKontakte] = useState<KontaktMitGeburtstag[]>([])
   const [loading, setLoading] = useState(true)
+  const [quellenAktiv, setQuellenAktiv] = useState<Record<KalenderQuelle, boolean>>({
+    termine: true,
+    aufgaben: true,
+    geburtstage: true,
+  })
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingTermin, setEditingTermin] = useState<TerminApi | null>(null)
+  const [neuerStart, setNeuerStart] = useState<Date | null>(null)
+
+  const tage = useMemo(() => {
+    if (ansicht === 'tag') return [currentDate]
+    if (ansicht === 'arbeitswoche') return arbeitsWochenTage(currentDate)
+    if (ansicht === 'woche') return wochenTage(currentDate)
+    return []
+  }, [ansicht, currentDate])
+
+  const { von, bis } = useMemo(() => {
+    if (ansicht === 'tag') {
+      const start = new Date(currentDate)
+      start.setHours(0, 0, 0, 0)
+      return { von: start, bis: tageAddieren(start, 1) }
+    }
+    if (ansicht === 'arbeitswoche' || ansicht === 'woche') {
+      const start = new Date(tage[0])
+      start.setHours(0, 0, 0, 0)
+      return { von: start, bis: tageAddieren(tage[tage.length - 1], 1) }
+    }
+    if (ansicht === 'monat') {
+      const raster = monatsRaster(currentDate)
+      return { von: raster[0], bis: tageAddieren(raster[raster.length - 1], 1) }
+    }
+    // jahr
+    return { von: new Date(currentDate.getFullYear(), 0, 1), bis: new Date(currentDate.getFullYear() + 1, 0, 1) }
+  }, [ansicht, currentDate, tage])
+
+  const ladeTermine = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/termine?von=${von.toISOString()}&bis=${bis.toISOString()}`)
+      const json = await res.json()
+      if (json.success) setTermine(json.data)
+    } catch (err) {
+      console.error('Fehler beim Laden der Termine:', err)
+    }
+  }, [von, bis])
 
   useEffect(() => {
-    loadAufgaben()
-  }, [statusFilter])
+    setLoading(true)
+    Promise.all([
+      ladeTermine(),
+      fetch('/api/aufgaben?limit=1000').then((r) => r.json()).then((j) => { if (j.success) setAufgaben(j.data) }),
+      fetch('/api/kontakte?limit=1000').then((r) => r.json()).then((j) => { if (j.success) setKontakte(j.data) }),
+    ]).finally(() => setLoading(false))
+  }, [ladeTermine])
 
-  async function loadAufgaben() {
-    try {
-      setLoading(true)
-      const res = await fetch('/api/aufgaben?limit=1000')
-      const json = await res.json()
-      if (json.success) {
-        let data = json.data || []
-        // Filter: exclude completed by default
-        if (statusFilter === 'nicht-erledigt') {
-          data = data.filter((a: Aufgabe) => a.status !== 'erledigt')
-        }
-        setAufgaben(data)
-      }
-    } catch (err) {
-      console.error('Fehler beim Laden der Aufgaben:', err)
-    } finally {
-      setLoading(false)
+  const eintraege: KalenderEintrag[] = useMemo(() => {
+    const alle: KalenderEintrag[] = []
+    if (quellenAktiv.termine) alle.push(...termine.map(terminZuEintrag))
+    if (quellenAktiv.aufgaben) alle.push(...aufgabenZuEintraegen(aufgaben, von, bis))
+    if (quellenAktiv.geburtstage) alle.push(...geburtstageZuEintraegen(kontakte, von, bis))
+    return alle
+  }, [termine, aufgaben, kontakte, quellenAktiv, von, bis])
+
+  const markierteTage = useMemo(() => new Set(eintraege.map((e) => toDateKey(e.start))), [eintraege])
+
+  function navigiere(richtung: 1 | -1) {
+    if (ansicht === 'tag') setCurrentDate((d) => tageAddieren(d, richtung))
+    else if (ansicht === 'arbeitswoche' || ansicht === 'woche') setCurrentDate((d) => tageAddieren(d, richtung * 7))
+    else if (ansicht === 'monat') setCurrentDate((d) => monateAddieren(d, richtung))
+    else setCurrentDate((d) => new Date(d.getFullYear() + richtung, d.getMonth(), 1))
+  }
+
+  function heute() {
+    setCurrentDate(new Date())
+  }
+
+  function neuerTermin(start: Date) {
+    setEditingTermin(null)
+    setNeuerStart(start)
+    setModalOpen(true)
+  }
+
+  function eventKlick(e: KalenderEintrag) {
+    if (e.quelle === 'termine') {
+      setEditingTermin(e.raw as TerminApi)
+      setNeuerStart(null)
+      setModalOpen(true)
+    } else if (e.quelle === 'aufgaben') {
+      router.push(`/aufgaben/${(e.raw as Aufgabe).id}`)
+    } else {
+      const k = e.raw as KontaktMitGeburtstag
+      router.push(`/kontakte/${k.id}`)
     }
   }
 
-  function getAufgabenForDate(date: Date): Aufgabe[] {
-    const dateStr = date.toISOString().split('T')[0]
-    return aufgaben.filter((a) => a.fällig === dateStr)
-  }
-
-  function getDaysInMonth(date: Date): number {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
-  }
-
-  function getFirstDayOfMonth(date: Date): number {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay()
-  }
-
-  function getWeekDates(date: Date): Date[] {
-    const start = new Date(date)
-    start.setDate(date.getDate() - date.getDay() + 1)
-    const week = []
-    for (let i = 0; i < 7; i++) {
-      week.push(new Date(start))
-      start.setDate(start.getDate() + 1)
+  async function handleSave(form: Termin) {
+    const url = editingTermin ? `/api/termine/${editingTermin.id}` : '/api/termine'
+    const method = editingTermin ? 'PATCH' : 'POST'
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => null)
+      throw new Error(json?.error || 'Fehler beim Speichern')
     }
-    return week
+    await ladeTermine()
   }
 
-  function prevMonth() {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))
+  async function handleDelete() {
+    if (!editingTermin) return
+    await fetch(`/api/termine/${editingTermin.id}`, { method: 'DELETE' })
+    await ladeTermine()
   }
 
-  function nextMonth() {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
+  function tagKlickMonat(datum: Date) {
+    setCurrentDate(datum)
+    setAnsicht('tag')
   }
 
-  function prevWeek() {
-    const prev = new Date(currentDate)
-    prev.setDate(prev.getDate() - 7)
-    setCurrentDate(prev)
+  function tagKlickJahr(datum: Date) {
+    setCurrentDate(datum)
+    setAnsicht('monat')
   }
 
-  function nextWeek() {
-    const next = new Date(currentDate)
-    next.setDate(next.getDate() + 7)
-    setCurrentDate(next)
+  function tagKlickMini(datum: Date) {
+    setCurrentDate(datum)
   }
-
-  const formatDate = (d: Date) => d.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })
 
   return (
     <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-2xl font-bold text-gray-900">Kalender</h1>
+          <HelpButton articleId="kalender.overview" />
+        </div>
+        <button
+          onClick={() => neuerTermin(new Date())}
+          className="flex items-center gap-2 bg-[#FFC300] hover:bg-[#e6b000] text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Neuer Termin
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-[240px_1fr] gap-6 items-start">
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <MiniMonat monat={currentDate} ausgewaehlt={currentDate} onTagClick={tagKlickMini} markierteTage={markierteTage} kompakt />
+
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Meine Kalender</p>
+              <HelpButton articleId="kalender.meine-kalender" />
+            </div>
+            <div className="space-y-1.5">
+              {(Object.keys(QUELLEN_LABEL) as KalenderQuelle[]).map((quelle) => (
+                <label key={quelle} className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={quellenAktiv[quelle]}
+                    onChange={(e) => setQuellenAktiv((prev) => ({ ...prev, [quelle]: e.target.checked }))}
+                    className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+                  />
+                  <span className={`w-2.5 h-2.5 rounded-full ${QUELLEN_FARBEN[quelle].punkt}`} />
+                  <span className="text-gray-700">{QUELLEN_LABEL[quelle]}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Hauptbereich */}
         <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-3xl font-bold text-gray-900">Kalender</h1>
-            <HelpButton articleId="kalender.overview" />
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
+                <button onClick={() => navigiere(-1)} className="p-2 hover:bg-gray-100 transition-colors" aria-label="Zurück">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <button onClick={heute} className="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 border-x border-gray-200 transition-colors">
+                  Heute
+                </button>
+                <button onClick={() => navigiere(1)} className="p-2 hover:bg-gray-100 transition-colors" aria-label="Weiter">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <h2 className="text-lg font-bold text-gray-900">{berechneTitel(ansicht, currentDate, tage)}</h2>
+              {ansicht !== 'jahr' && (
+                <span className="text-xs font-semibold text-gray-400 bg-gray-100 px-2 py-1 rounded">KW {kalenderwoche(currentDate)}</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <HelpButton articleId="kalender.ansicht" />
+              <select
+                value={ansicht}
+                onChange={(e) => setAnsicht(e.target.value as Ansicht)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+              >
+                {(Object.keys(ANSICHT_LABEL) as Ansicht[]).map((a) => (
+                  <option key={a} value={a}>{ANSICHT_LABEL[a]}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <p className="text-gray-500 text-sm mt-1">Fällige Aufgaben</p>
-        </div>
-        <div className="flex gap-2 items-center">
-          <HelpButton articleId="kalender.ansicht" />
-          <button
-            onClick={() => setView('month')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              view === 'month' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Monat
-          </button>
-          <button
-            onClick={() => setView('week')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-              view === 'week' ? 'bg-yellow-400 text-gray-900' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Woche
-          </button>
+
+          {loading ? (
+            <div className="border border-gray-200 rounded-xl bg-white p-12 text-center text-gray-400 text-sm">Lädt…</div>
+          ) : (
+            <>
+              {(ansicht === 'tag' || ansicht === 'arbeitswoche' || ansicht === 'woche') && (
+                <ZeitrasterView tage={tage} eintraege={eintraege} onSlotClick={neuerTermin} onEventClick={eventKlick} />
+              )}
+              {ansicht === 'monat' && (
+                <MonatsView monat={currentDate} eintraege={eintraege} onTagClick={tagKlickMonat} onEventClick={eventKlick} />
+              )}
+              {ansicht === 'jahr' && (
+                <JahresView jahr={currentDate.getFullYear()} markierteTage={markierteTage} onTagClick={tagKlickJahr} />
+              )}
+            </>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Kalender */}
-        <div className="col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          {/* Navigation */}
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={view === 'month' ? prevMonth : prevWeek}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ChevronLeft />
-            </button>
-            <h2 className="text-lg font-semibold text-gray-900">
-              {view === 'month'
-                ? currentDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
-                : `Woche ${formatDate(getWeekDates(currentDate)[0])} - ${formatDate(getWeekDates(currentDate)[6])}`}
-            </h2>
-            <button
-              onClick={view === 'month' ? nextMonth : nextWeek}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ChevronRight />
-            </button>
-          </div>
-
-          {/* Month View */}
-          {view === 'month' && (
-            <div>
-              {/* Wochentage Header */}
-              <div className="grid grid-cols-7 gap-2 mb-2">
-                {TAGE_DER_WOCHE.map((day) => (
-                  <div key={day} className="text-center text-sm font-semibold text-gray-600 py-2">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Kalender Grid */}
-              <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: getFirstDayOfMonth(currentDate) - 1 }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-24 bg-gray-50 rounded-lg" />
-                ))}
-
-                {Array.from({ length: getDaysInMonth(currentDate) }).map((_, i) => {
-                  const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1)
-                  const dayAufgaben = getAufgabenForDate(date)
-                  const isToday = new Date().toISOString().split('T')[0] === date.toISOString().split('T')[0]
-
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => setSelectedDate(date)}
-                      className={`min-h-24 p-2 rounded-lg border-2 cursor-pointer transition-colors ${
-                        isToday
-                          ? 'border-yellow-400 bg-yellow-50'
-                          : selectedDate.toISOString().split('T')[0] === date.toISOString().split('T')[0]
-                            ? 'border-yellow-400 bg-yellow-100'
-                            : dayAufgaben.length > 0
-                              ? 'border-blue-200 bg-blue-50 hover:bg-blue-100'
-                              : 'border-gray-200 bg-white hover:bg-gray-50'
-                      }`}
-                    >
-                      <p className="text-sm font-semibold text-gray-900 mb-1">{i + 1}</p>
-                      <div className="space-y-1">
-                        {dayAufgaben.slice(0, 2).map((a) => (
-                          <div key={a.id} className="text-xs text-gray-600 truncate" title={a.titel}>
-                            • {a.titel.substring(0, 12)}
-                          </div>
-                        ))}
-                        {dayAufgaben.length > 2 && <div className="text-xs text-gray-500">+{dayAufgaben.length - 2} mehr</div>}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Week View */}
-          {view === 'week' && (
-            <div className="space-y-2">
-              {getWeekDates(currentDate).map((date) => {
-                const dayAufgaben = getAufgabenForDate(date)
-                const isToday = new Date().toISOString().split('T')[0] === date.toISOString().split('T')[0]
-
-                return (
-                  <div
-                    key={date.toISOString()}
-                    onClick={() => setSelectedDate(date)}
-                    className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                      isToday
-                        ? 'border-yellow-400 bg-yellow-50'
-                        : selectedDate.toISOString().split('T')[0] === date.toISOString().split('T')[0]
-                          ? 'border-yellow-400 bg-yellow-100'
-                          : dayAufgaben.length > 0
-                            ? 'border-blue-200 bg-blue-50 hover:bg-blue-100'
-                            : 'border-gray-200 bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    <p className="font-semibold text-gray-900 mb-2">
-                      {formatDate(date)} {isToday && <span className="text-yellow-600">(Heute)</span>}
-                    </p>
-                    {dayAufgaben.length === 0 ? (
-                      <p className="text-sm text-gray-400">Keine Aufgaben</p>
-                    ) : (
-                      <div className="space-y-1">
-                        {dayAufgaben.map((a) => (
-                          <div key={a.id} className="text-sm text-gray-600">
-                            • {a.titel}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar: Aufgaben Details */}
-        <div className="space-y-4">
-          {/* Status Filter */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 font-semibold uppercase mb-3 flex items-center gap-1.5">
-              Status Filter
-              <HelpButton articleId="kalender.status-filter" />
-            </p>
-            <div className="space-y-2">
-              <button
-                onClick={() => setStatusFilter('nicht-erledigt')}
-                className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  statusFilter === 'nicht-erledigt'
-                    ? 'bg-yellow-100 text-yellow-900 border border-yellow-400'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Nicht erledigt
-              </button>
-              <button
-                onClick={() => setStatusFilter('alle')}
-                className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left ${
-                  statusFilter === 'alle' ? 'bg-yellow-100 text-yellow-900 border border-yellow-400' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Alle
-              </button>
-            </div>
-          </div>
-
-          {/* Ausgewählter Tag */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 font-semibold uppercase mb-3 flex items-center gap-1.5">
-              {selectedDate.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
-              <HelpButton articleId="kalender.ausgewaehlter-tag" />
-            </p>
-
-            {loading ? (
-              <p className="text-gray-400 text-sm">Laden…</p>
-            ) : getAufgabenForDate(selectedDate).length === 0 ? (
-              <p className="text-gray-400 text-sm">Keine Aufgaben</p>
-            ) : (
-              <div className="space-y-3">
-                {getAufgabenForDate(selectedDate).map((a) => (
-                  <div key={a.id} className="border border-gray-200 rounded-lg p-3">
-                    <p className="text-sm font-semibold text-gray-900">{a.titel}</p>
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      <span className={`text-xs font-medium px-2 py-1 rounded ${STATUS_COLORS[a.status]}`}>{a.status}</span>
-                      <span className={`text-xs font-bold ${PRIORITÄT_COLORS[a.priorität]}`}>
-                        {'●'.repeat(['niedrig', 'mittel', 'hoch'].indexOf(a.priorität) + 1)}
-                      </span>
-                    </div>
-                    {a.contact && <p className="text-xs text-gray-500 mt-2">{a.contact.first_name} {a.contact.last_name}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <TerminEditModal
+        termin={editingTermin}
+        initialStart={neuerStart}
+        isOpen={modalOpen}
+        onClose={() => { setModalOpen(false); setEditingTermin(null); setNeuerStart(null) }}
+        onSave={handleSave}
+        onDelete={editingTermin ? handleDelete : undefined}
+      />
     </div>
   )
 }

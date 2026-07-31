@@ -146,7 +146,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🟢 Alle drei als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
 | **Eigene minimale Kommunikationslösung** | Hoch | 🟢 Kommentare mit @-Erwähnung (Einzel + „Alle") an Kontakten und Aufgaben, Datei-Anhang, E-Mail-Benachrichtigung, `/erwaehnungen`-Übersicht + Sidebar-Badge | Stabil halten; bei Bedarf Kontakt-Kommentare auf weitere Entitäten ausweiten |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
-| **Externe Kalenderintegration** | Niedrig | 🟡 Interner Aufgabenkalender vorhanden | Nur bei belegtem Bedarf Google-/Outlook-Sync planen |
+| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟡 Kalender mit STRATO-Optik + echtem Termine-Datenmodell fertig (v0.17.0), Sync-Vorbereitung (`external_uid`/`external_source`) angelegt | Wartet auf CalDAV-Zugangsdaten vom Kunden (STRATO Webmail → Kalender-Einstellungen); danach Sync-Edge-Function umsetzen |
 | **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
 | **SuperChat-Datenmigration** | Niedrig | 🔴 Nicht umgesetzt | Erst nach strategischer SuperChat-Entscheidung betrachten |
 | **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🔴 Nicht umgesetzt | Als separates Ausbauprojekt behandeln |
@@ -332,6 +332,33 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.17.0 (2026-07-31) — Kalender komplett neu: STRATO-Optik + echtes Termine-Datenmodell
+
+Der Kunde nutzt STRATO Webmail (Open-Xchange) und ist an dessen Kalenderoptik gewöhnt. Auf Wunsch
+nachgebaut — als Basis für die später geplante STRATO-CalDAV-Synchronisation (noch nicht Teil
+dieser Änderung, wartet auf CalDAV-Zugangsdaten vom Kunden).
+
+- ✅ **Neue Tabelle `termine`** (Migration `0055_termine.sql`) — echte Kalendertermine mit
+  Start-/Endzeit, getrennt von Aufgaben-Fälligkeiten (die kein Zeitkonzept haben). Felder für
+  künftige Sync bereits vorgesehen (`external_uid`, `external_source`, `kalender_quelle`), aber
+  noch ungenutzt — keine Sync-Logik in dieser Änderung
+- ✅ **5 Ansichten** wie bei STRATO: Tag / Arbeitswoche / Woche (Stundenraster mit roter
+  Live-Zeit-Linie) / Monat (6-Wochen-Raster) / Jahr (12 Mini-Monate, 3-spaltig, mit KW-Spalte)
+- ✅ **Drei Quellen im selben Raster**, einzeln togglebar über "Meine Kalender" links: Termine
+  (blau), Aufgaben-Fälligkeiten (orange, wie bisher), Geburtstage (pink, neu — aus
+  `contacts.geburtstag` abgeleitet, erscheint automatisch jedes Jahr wieder)
+- ✅ Überlappende Termine bekommen automatisch Nebeneinander-Spalten statt sich zu überdecken
+  (`lib/kalender-layout.ts`, Greedy-Spaltenzuweisung)
+- ✅ Klick auf leere Zeitzelle → neuer Termin vorbefüllt mit der Uhrzeit; Klick auf Termin →
+  bearbeiten; Klick auf Aufgabe → öffnet die Aufgabe; Klick auf Geburtstag → öffnet den Kontakt;
+  Klick auf Tag in Monatsansicht → Tagesansicht; Klick auf Tag in Jahresansicht → Monatsansicht
+- 🆕 Dateien: `api/termine/route.ts` + `[id]/route.ts`, `components/TerminEditModal.tsx`,
+  `components/kalender/{ZeitrasterView,MonatsView,JahresView,MiniMonat}.tsx`,
+  `lib/kalender-helpers.ts`, `lib/kalender-layout.ts`, `types/kalender.ts`
+- ⚠️ Migration musste vom Nutzer manuell in Supabase ausgeführt werden (Projekt-Konvention,
+  siehe unten) — vor dem ersten Test war `/api/termine` mit 500 fehlgeschlagen (Tabelle fehlte),
+  Seite blieb aber nutzbar (Aufgaben/Geburtstage liefen weiter)
 
 ### v0.16.1 (2026-07-30) — Kontaktliste: Sortierung bleibt beim Verlassen erhalten
 
@@ -831,4 +858,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.16.1 Kontaktliste: Sortierung bleibt beim Verlassen der Seite erhalten*
+*Last Updated: 2026-07-31 — v0.17.0 Kalender komplett neu: STRATO-Optik + echtes Termine-Datenmodell*
