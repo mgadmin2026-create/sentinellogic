@@ -4,6 +4,7 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
+import { getStratoConfig, pushStratoEvent } from '@/lib/strato-caldav'
 
 export async function GET(request: NextRequest) {
   try {
@@ -81,6 +82,37 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('[POST /api/termine] Fehler:', error)
       return Response.json({ success: false, error: error.message }, { status: 500 })
+    }
+
+    // Sofort zu STRATO pushen (beidseitige Sync) — best effort: schlägt der
+    // Push fehl, bleibt der Termin trotzdem im CRM gespeichert, nur eben
+    // (noch) nicht synchronisiert. Nächster manueller Sync-Lauf holt ihn nicht
+    // erneut rein (kein external_uid gesetzt bei Fehler), Nutzer kann bei
+    // Bedarf erneut speichern.
+    const stratoConfig = getStratoConfig()
+    if (stratoConfig) {
+      try {
+        const gepusht = await pushStratoEvent(stratoConfig, {
+          titel: data.titel,
+          beschreibung: data.beschreibung,
+          ort: data.ort,
+          start: new Date(data.start_zeit),
+          end: new Date(data.end_zeit),
+          ganztaegig: data.ganztaegig,
+        })
+        await supabase
+          .from('termine')
+          .update({
+            external_uid: gepusht.uid,
+            external_href: gepusht.href,
+            external_etag: gepusht.etag,
+            external_source: 'strato_caldav',
+            last_synced_at: new Date().toISOString(),
+          })
+          .eq('id', data.id)
+      } catch (err) {
+        console.error('[POST /api/termine] STRATO-Push fehlgeschlagen (Termin bleibt lokal gespeichert):', err)
+      }
     }
 
     return Response.json({ success: true, data }, { status: 201 })

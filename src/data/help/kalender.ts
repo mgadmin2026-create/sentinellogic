@@ -43,4 +43,16 @@ export const kalenderArticles: HelpArticle[] = [
       'Ein Termin braucht mindestens Titel, Start und Ende. "Ganztägig" blendet die Uhrzeitfelder aus und rechnet den Termin auf den ganzen Tag. Optional: Ort, Beschreibung, Verknüpfung zu einem Kontakt und ein Verantwortlicher aus dem Team.\n\n' +
       'Beim Bearbeiten eines bestehenden Termins steht unten links ein "Löschen"-Button zur Verfügung.',
   },
+  {
+    id: 'kalender.strato-sync',
+    area: 'kalender',
+    title: 'STRATO-Synchronisation',
+    keywords: ['caldav', 'strato', 'webmail', 'synchronisieren', 'zwei-wege'],
+    body:
+      'Termine werden beidseitig mit dem STRATO-Webmail-Kalender abgeglichen:\n\n' +
+      '- CRM → STRATO läuft automatisch: ein neu angelegter, bearbeiteter oder gelöschter Termin wird sofort zu STRATO übertragen.\n' +
+      '- STRATO → CRM läuft manuell über "🔄 Jetzt von STRATO holen" — neue oder auf STRATO-Seite geänderte Termine werden geholt und im CRM ergänzt bzw. aktualisiert.\n\n' +
+      'Bewusste Einschränkung: Wird ein Termin direkt in STRATO gelöscht, verschwindet die CRM-Kopie beim nächsten Holen NICHT automatisch — das würde bei einem STRATO-seitigen Versehen sonst unbemerkt echte CRM-Daten löschen. Soll ein synchronisierter Termin verschwinden, im CRM löschen (das propagiert automatisch zu STRATO).\n\n' +
+      'Ohne konfigurierte STRATO-Zugangsdaten (Umgebungsvariablen) bleibt der Kalender voll nutzbar — nur eben ohne die STRATO-Quelle.',
+  },
 ]

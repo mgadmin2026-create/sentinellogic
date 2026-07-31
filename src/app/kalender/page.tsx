@@ -147,6 +147,8 @@ export default function KalenderPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingTermin, setEditingTermin] = useState<TerminApi | null>(null)
   const [neuerStart, setNeuerStart] = useState<Date | null>(null)
+  const [stratoSyncLaeuft, setStratoSyncLaeuft] = useState(false)
+  const [stratoSyncMeldung, setStratoSyncMeldung] = useState<string | null>(null)
 
   const tage = useMemo(() => {
     if (ansicht === 'tag') return [currentDate]
@@ -268,6 +270,29 @@ export default function KalenderPage() {
     setCurrentDate(datum)
   }
 
+  async function stratoSynchronisieren() {
+    setStratoSyncLaeuft(true)
+    setStratoSyncMeldung(null)
+    try {
+      const res = await fetch('/api/termine/sync-strato', { method: 'POST' })
+      const json = await res.json()
+      if (!json.success) {
+        setStratoSyncMeldung(`❌ ${json.error}`)
+        return
+      }
+      const { neu, aktualisiert, unveraendert, fehler } = json.data
+      setStratoSyncMeldung(
+        `✅ ${neu} neu, ${aktualisiert} aktualisiert, ${unveraendert} unverändert` +
+        (fehler > 0 ? `, ${fehler} Fehler` : '')
+      )
+      await ladeTermine()
+    } catch (err) {
+      setStratoSyncMeldung('❌ Synchronisation fehlgeschlagen')
+    } finally {
+      setStratoSyncLaeuft(false)
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
@@ -308,6 +333,27 @@ export default function KalenderPage() {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">STRATO-Synchronisation</p>
+              <HelpButton articleId="kalender.strato-sync" />
+            </div>
+            <button
+              onClick={stratoSynchronisieren}
+              disabled={stratoSyncLaeuft}
+              className="w-full text-xs font-semibold px-3 py-2 bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 rounded-lg transition-colors"
+            >
+              {stratoSyncLaeuft ? '⏳ Synchronisiert…' : '🔄 Jetzt von STRATO holen'}
+            </button>
+            {stratoSyncMeldung && (
+              <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{stratoSyncMeldung}</p>
+            )}
+            <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
+              Neue/bearbeitete Termine gehen sofort automatisch zu STRATO. Änderungen von STRATO-Seite
+              holt dieser Button — Löschungen auf STRATO werden bewusst nicht automatisch im CRM entfernt.
+            </p>
           </div>
         </div>
 

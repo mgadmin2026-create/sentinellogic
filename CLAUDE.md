@@ -146,7 +146,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🟢 Alle drei als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
 | **Eigene minimale Kommunikationslösung** | Hoch | 🟢 Kommentare mit @-Erwähnung (Einzel + „Alle") an Kontakten und Aufgaben, Datei-Anhang, E-Mail-Benachrichtigung, `/erwaehnungen`-Übersicht + Sidebar-Badge | Stabil halten; bei Bedarf Kontakt-Kommentare auf weitere Entitäten ausweiten |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
-| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟡 Kalender mit STRATO-Optik + echtem Termine-Datenmodell fertig (v0.17.0), Sync-Vorbereitung (`external_uid`/`external_source`) angelegt | Wartet auf CalDAV-Zugangsdaten vom Kunden (STRATO Webmail → Kalender-Einstellungen); danach Sync-Edge-Function umsetzen |
+| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟡 Beidseitige Sync implementiert (v0.18.0), aber ungetestet — Benutzername/Passwort fehlen noch | Zugangsdaten in `.env.local`/Vercel eintragen (`STRATO_CALDAV_USER/_PASSWORD`), dann Push+Pull live gegen echten Server verifizieren; danach ggf. Pull auf Cron statt manuellem Button umstellen |
 | **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
 | **SuperChat-Datenmigration** | Niedrig | 🔴 Nicht umgesetzt | Erst nach strategischer SuperChat-Entscheidung betrachten |
 | **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🔴 Nicht umgesetzt | Als separates Ausbauprojekt behandeln |
@@ -332,6 +332,29 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.18.0 (2026-07-31) — STRATO-CalDAV-Synchronisation (beidseitig), noch ungetestet
+
+- ✅ **CRM → STRATO läuft automatisch**: `POST/PATCH/DELETE /api/termine(/[id])` pushen sofort per
+  CalDAV (`lib/strato-caldav.ts`, `fetch` mit `REPORT`/`PUT`/`DELETE`, ICS von Hand gebaut).
+  Best-effort — schlägt der Push fehl (STRATO nicht erreichbar o.ä.), bleibt der Termin trotzdem
+  lokal gespeichert, nur eben nicht synchronisiert
+- ✅ **STRATO → CRM läuft manuell** über "🔄 Jetzt von STRATO holen" in der Kalender-Sidebar
+  (`POST /api/termine/sync-strato`) — dedupliziert über `external_uid`, erkennt Änderungen über
+  den WebDAV-`ETag` (`external_etag`)
+- ⚠️ **Bewusst keine Löschpropagierung STRATO → CRM**: verschwindet ein Termin auf STRATO-Seite,
+  bleibt die CRM-Kopie unangetastet — verhindert, dass ein STRATO-seitiges Versehen automatisch
+  echte CRM-Daten löscht. Termin im CRM löschen propagiert dagegen automatisch zu STRATO
+- ✅ Neue Migration `0056_termine_strato_sync.sql` (`external_etag`, `external_href`,
+  `last_synced_at`), neue Dependencies `node-ical` (ICS-Parsing) + `fast-xml-parser`
+  (WebDAV-Multistatus-XML), Zugangsdaten in `.env.example` dokumentiert
+  (`STRATO_CALDAV_URL/_USER/_PASSWORD`, ausschließlich serverseitig)
+- ⚠️ **Noch nicht gegen den echten STRATO-Server getestet** — nur `tsc` sauber. Der Nutzer hat
+  bislang nur die CalDAV-URL geliefert (`https://dav.webmail.strato.de/caldav/Y2FsOi8vMC8zMQ`,
+  entspricht Ordner `cal://0/31` = Kalender „Gün, Melih"), Benutzername/Passwort fehlen noch. Vor
+  echtem Produktivsatz: Zugangsdaten eintragen, dann Push (Termin anlegen) und Pull (Button) live
+  gegen den echten Kalender verifizieren — Open-Xchanges genaues REPORT-Antwortformat und ob PUT
+  auf eine frische `.ics`-URL ohne vorheriges `MKCALENDAR` akzeptiert wird, sind ungeprüfte Annahmen
 
 ### v0.17.0 (2026-07-31) — Kalender komplett neu: STRATO-Optik + echtes Termine-Datenmodell
 
@@ -858,4 +881,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-31 — v0.17.0 Kalender komplett neu: STRATO-Optik + echtes Termine-Datenmodell*
+*Last Updated: 2026-07-31 — v0.18.0 STRATO-CalDAV-Synchronisation (beidseitig), noch ungetestet ohne Zugangsdaten*
