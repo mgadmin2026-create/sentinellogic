@@ -24,7 +24,7 @@ interface Kontakt {
   city?: string
   country?: string
   source?: string
-  status: 'new' | 'contacted' | 'qualified' | 'customer'
+  status: 'new' | 'contacted' | 'qualified' | 'customer' | 'not_interested'
   qualität?: string
   assigned_user_id?: string
   pipeline_stage?: string
@@ -185,13 +185,15 @@ const STATUS_LABELS: Record<string, string> = {
   contacted: 'Kontaktiert',
   qualified: 'Qualifiziert',
   customer: 'Kunde',
+  not_interested: 'Nicht interessiert',
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  contacted: 'bg-yellow-100 text-yellow-800',
-  qualified: 'bg-emerald-100 text-emerald-800',
-  customer: 'bg-purple-100 text-purple-800',
+  new: 'bg-gray-100 text-gray-800',
+  contacted: 'bg-blue-100 text-blue-800',
+  qualified: 'bg-yellow-100 text-yellow-800',
+  customer: 'bg-emerald-100 text-emerald-800',
+  not_interested: 'bg-red-100 text-red-800',
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -220,6 +222,7 @@ const KONTAKT_FILTER = [
   { label: 'Kontaktiert', value: 'contacted' },
   { label: 'Qualifiziert', value: 'qualified' },
   { label: 'Kunde', value: 'customer' },
+  { label: 'Nicht interessiert', value: 'not_interested' },
 ]
 
 const PIPELINE_STEPS = [
@@ -1168,7 +1171,7 @@ export default function KontaktePage() {
                             <select
                               value={kontakt.status}
                               onChange={(e) => handleStatusChange(kontakt.id, e.target.value)}
-                              className="text-xs px-1.5 sm:px-2 py-1 border border-gray-200 rounded hover:bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                              className={`text-xs font-medium px-1.5 sm:px-2 py-1 border-0 rounded-full focus:outline-none focus:ring-2 focus:ring-yellow-400 ${STATUS_COLORS[kontakt.status] || 'bg-gray-100 text-gray-800'}`}
                               onClick={(e) => e.stopPropagation()}
                             >
                               {Object.entries(STATUS_LABELS).map(([optKey, label]) => (
@@ -1400,7 +1403,7 @@ export default function KontaktePage() {
                   <select
                     value={kontakt.status}
                     onChange={(e) => handleStatusChange(kontakt.id, e.target.value)}
-                    className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 flex-shrink-0"
+                    className={`text-xs font-medium px-2 py-1.5 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 flex-shrink-0 ${STATUS_COLORS[kontakt.status] || 'bg-gray-100 text-gray-800'}`}
                   >
                     {Object.entries(STATUS_LABELS).map(([optKey, label]) => (
                       <option key={optKey} value={optKey}>{label}</option>

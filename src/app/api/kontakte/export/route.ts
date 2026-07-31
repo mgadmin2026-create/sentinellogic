@@ -6,10 +6,10 @@ import { applyKontakteFilters } from '@/lib/kontakte-filters'
 import { buildContactsPdfBuffer, type ExportRow } from '@/lib/kontakte-export-pdf'
 import ExcelJS from 'exceljs'
 
-const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
+const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 
 const STATUS_LABELS: Record<string, string> = {
-  new: 'Neu', contacted: 'Kontaktiert', qualified: 'Qualifiziert', customer: 'Kunde',
+  new: 'Neu', contacted: 'Kontaktiert', qualified: 'Qualifiziert', customer: 'Kunde', not_interested: 'Nicht interessiert',
 }
 const SOURCE_LABELS: Record<string, string> = {
   manuell: 'Manuell', csv: 'CSV', facebook: 'Facebook', tiktok: 'TikTok', calendly: 'Calendly', email: 'E-Mail', ki_upload: 'KI Upload',

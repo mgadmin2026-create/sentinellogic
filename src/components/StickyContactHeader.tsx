@@ -36,10 +36,11 @@ interface StickyContactHeaderProps {
 }
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
-  new: { label: 'Neu', className: 'bg-blue-500 text-white' },
-  contacted: { label: 'Kontaktiert', className: 'bg-amber-400 text-gray-900' },
-  qualified: { label: 'Qualifiziert', className: 'bg-emerald-500 text-white' },
-  customer: { label: 'Kunde', className: 'bg-purple-500 text-white' },
+  new: { label: 'Neu', className: 'bg-gray-400 text-white' },
+  contacted: { label: 'Kontaktiert', className: 'bg-blue-500 text-white' },
+  qualified: { label: 'Qualifiziert', className: 'bg-yellow-400 text-gray-900' },
+  customer: { label: 'Kunde', className: 'bg-emerald-500 text-white' },
+  not_interested: { label: 'Nicht interessiert', className: 'bg-red-500 text-white' },
 }
 
 const QUALITÄT_LABELS: Record<string, string> = {

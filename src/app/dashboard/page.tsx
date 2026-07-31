@@ -27,7 +27,7 @@ interface Kontakt {
   first_name: string
   last_name: string
   company_name?: string
-  status: 'new' | 'contacted' | 'qualified' | 'customer'
+  status: 'new' | 'contacted' | 'qualified' | 'customer' | 'not_interested'
   pipeline_stage?: string
   assigned_user_id?: string
   created_at: string

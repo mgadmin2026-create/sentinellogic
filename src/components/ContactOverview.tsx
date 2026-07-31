@@ -240,7 +240,21 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
               </span>
             </div>
           ) : (
-            <Field label="Status" field="status" type="select" options={['new', 'contacted', 'qualified', 'customer']} value={getValue('status')} onChange={handleChange} isEditing={isEditing} />
+            <Field
+              label="Status"
+              field="status"
+              type="select"
+              options={[
+                { value: 'new', label: 'Neu' },
+                { value: 'contacted', label: 'Kontaktiert' },
+                { value: 'qualified', label: 'Qualifiziert' },
+                { value: 'customer', label: 'Kunde' },
+                { value: 'not_interested', label: 'Nicht interessiert' },
+              ]}
+              value={getValue('status')}
+              onChange={handleChange}
+              isEditing={isEditing}
+            />
           )}
 
           {/* Qualität (Dropdown) */}

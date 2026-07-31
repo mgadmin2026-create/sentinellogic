@@ -43,7 +43,7 @@ async function invokeEdgeFunction(functionName: string, payload: any) {
     return null
   }
 }
-const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
+const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 
 // Pipeline-Schritte für Init

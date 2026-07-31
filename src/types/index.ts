@@ -1,7 +1,7 @@
 // Zentrale TypeScript-Typen für Sentinel Logic
 // Neue Struktur: Kontakte (statt Leads) mit Opportunities & Tasks
 
-export type ContactStatus = 'new' | 'contacted' | 'qualified' | 'customer'
+export type ContactStatus = 'new' | 'contacted' | 'qualified' | 'customer' | 'not_interested'
 export type LeadStatus = ContactStatus // Backward compat
 export type LeadSource = 'facebook' | 'tiktok' | 'manual' | 'klicktipp'
 

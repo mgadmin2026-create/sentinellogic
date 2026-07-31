@@ -34,7 +34,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'beitragsuebersicht',
 ])
 
-const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer']
+const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 
 // Pipeline-Schritte und ihre Status-Ableitung

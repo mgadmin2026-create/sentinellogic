@@ -1,7 +1,7 @@
 // Mock-Daten für den Sentimental Logic Prototyp
 // Keine echte Datenbankanbindung — alle Daten sind fiktiv
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer'
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer' | 'not_interested'
 export type LeadSource = 'facebook' | 'tiktok' | 'calendly' | 'csv' | 'email'
 
 export interface MockActivity {
@@ -566,13 +566,15 @@ export const STATUS_LABELS: Record<string, string> = {
   contacted: 'Kontaktiert',
   qualified: 'Qualifiziert',
   customer: 'Kunde',
+  not_interested: 'Nicht interessiert',
 }
 
 export const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800',
-  contacted: 'bg-yellow-100 text-yellow-800',
-  qualified: 'bg-emerald-100 text-emerald-800',
-  customer: 'bg-purple-100 text-purple-800',
+  new: 'bg-gray-100 text-gray-800',
+  contacted: 'bg-blue-100 text-blue-800',
+  qualified: 'bg-yellow-100 text-yellow-800',
+  customer: 'bg-emerald-100 text-emerald-800',
+  not_interested: 'bg-red-100 text-red-800',
 }
 
 export const SOURCE_LABELS: Record<string, string> = {

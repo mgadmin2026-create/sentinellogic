@@ -49,7 +49,7 @@ interface Kontakt {
   country?: string
   website?: string
   source?: string
-  status: 'new' | 'contacted' | 'qualified' | 'customer'
+  status: 'new' | 'contacted' | 'qualified' | 'customer' | 'not_interested'
   pipeline_stage?: string
   pipeline_steps?: Array<{
     key: string

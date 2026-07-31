@@ -14,7 +14,7 @@ TABELLE contacts  — Kontakte/Leads (Haupttabelle, jeder Kunde/Interessent)
   company_name text, industry text, position text
   street text, "hausnummer" text, postal_code text, city text, country text
   source text            -- Herkunft: 'facebook','tiktok','calendly','csv','email','manuell','ki_upload'
-  status text            -- 'new','contacted','qualified','customer' (NULL = neu)
+  status text            -- 'new','contacted','qualified','customer','not_interested' (NULL = neu)
   pipeline_stage text    -- Prozessschritt: lead_in, contacted, data_gathering, wait_policies,
                          --   calc_offers, download_offers, contract_overview, send_offers,
                          --   offer_meeting, sales_talk, contracts_store, aftercare

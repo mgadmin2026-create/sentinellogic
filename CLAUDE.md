@@ -333,6 +333,27 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.16.0 (2026-07-30) — Neuer Kontakt-Status „Nicht interessiert" + einheitliches Farbschema
+
+- ✅ Neuer Status `not_interested` ("Nicht interessiert") zu allen Status-Definitionen
+  hinzugefügt: `types/index.ts` (`ContactStatus`), `data/mock.ts` (`LeadStatus`, historisch
+  doppelt gepflegt), Kontaktliste, Kontaktdetail, Dashboard, Regeln ("Status setzen"-Aktion),
+  Export (CSV/Excel/PDF), Reporting-Schema-Doku, serverseitige `VALID_STATUSES` in
+  `api/kontakte/route.ts` + `api/kontakte/[id]/route.ts` + `api/kontakte/export/route.ts`
+- ✅ Einheitliches Farbschema für alle fünf Status, überall gleich: **Neu = grau, Kontaktiert =
+  blau, Qualifiziert = gelb, Kunde = grün, Nicht interessiert = rot**. Vorher inkonsistent
+  (z.B. „Kunde" war lila, „Kontaktiert" gelb) und je nach Stelle unterschiedlich
+- 🐛 Der Status-Dropdown in der Kontaktliste (Tabelle + Mobile-Karten) hatte bisher **gar keine
+  Farbe** — `STATUS_COLORS` war definiert, aber nirgends verdrahtet. Jetzt eingefärbt
+  (`bg-{farbe}-100 text-{farbe}-800`, abgerundete Pille statt normaler Select-Rahmen)
+- 🐛 Der Status-Dropdown im Bearbeiten-Formular (`ContactOverview.tsx`) zeigte bisher die
+  rohen englischen Werte ("new", "contacted", ...) statt deutscher Labels — `Field`-Komponente
+  bekam nur ein `string[]`, kein `{value,label}[]`. Auf benannte Optionen umgestellt
+- ℹ️ Pipeline-Stufen (`lib/pipeline.ts`, 12-Schritte-Prozess) mappen weiterhin nur auf
+  new/contacted/qualified/customer — „Nicht interessiert" ist bewusst ein manueller
+  Status außerhalb der Pipeline, kein Automatik-Ziel eines Schritts
+- ⬜ Bewusst nicht angefasst: `/leads` + `/api/leads` (bestätigte Altlast, siehe Task-Chip)
+
 ### v0.15.3 (2026-07-30) — Erstgespräch-Drawer: Name/E-Mail/Telefon jetzt editierbar
 
 - 🐛 Die Kontaktinfo am Anfang des Drawers (Name, E-Mail, Telefon) war nur Anzeige, keine
@@ -802,4 +823,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-30 — v0.15.3 Erstgespräch-Drawer: Name/E-Mail/Telefon jetzt editierbar*
+*Last Updated: 2026-07-30 — v0.16.0 Neuer Kontakt-Status „Nicht interessiert" + einheitliches Farbschema (grau/blau/gelb/grün/rot)*

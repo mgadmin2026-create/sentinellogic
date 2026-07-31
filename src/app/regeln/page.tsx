@@ -25,7 +25,7 @@ interface IntegrationConfig {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  new: 'Neu', contacted: 'Kontaktiert', qualified: 'Qualifiziert', customer: 'Kunde',
+  new: 'Neu', contacted: 'Kontaktiert', qualified: 'Qualifiziert', customer: 'Kunde', not_interested: 'Nicht interessiert',
 }
 const SOURCE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'all', label: 'Alle Quellen' },
@@ -45,6 +45,7 @@ const SPARTE_OPTIONS: Array<{ value: string; label: string }> = [
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Neu' }, { value: 'contacted', label: 'Kontaktiert' },
   { value: 'qualified', label: 'Qualifiziert' }, { value: 'customer', label: 'Kunde' },
+  { value: 'not_interested', label: 'Nicht interessiert' },
 ]
 
 export default function RegelnPage() {
