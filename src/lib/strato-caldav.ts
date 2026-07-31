@@ -72,8 +72,17 @@ export async function fetchStratoEvents(cfg: StratoConfig): Promise<StratoEvent[
   const responses = normalizeArray(parsed?.multistatus?.response)
   const ereignisse: StratoEvent[] = []
 
+  const serverOrigin = new URL(cfg.url).origin
+
   for (const r of responses) {
-    const href: string | undefined = r?.href
+    // STRATO liefert relative Pfade (z.B. "/caldav/…") statt vollständiger
+    // URLs. Node.js' fetch() kennt anders als ein Browser keine implizite
+    // Basis-URL — ohne Normalisierung würde ein späterer PUT/DELETE mit
+    // diesem href fehlschlagen.
+    const rohHref: string | undefined = r?.href
+    const href = rohHref
+      ? (rohHref.startsWith('http') ? rohHref : `${serverOrigin}${rohHref.startsWith('/') ? '' : '/'}${rohHref}`)
+      : undefined
     const propstat = normalizeArray(r?.propstat)[0]
     const etag: string | undefined = propstat?.prop?.getetag
     const calendarData: string | undefined = propstat?.prop?.['calendar-data']
