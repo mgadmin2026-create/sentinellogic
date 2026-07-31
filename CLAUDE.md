@@ -146,7 +146,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🟢 Alle drei als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
 | **Eigene minimale Kommunikationslösung** | Hoch | 🟢 Kommentare mit @-Erwähnung (Einzel + „Alle") an Kontakten und Aufgaben, Datei-Anhang, E-Mail-Benachrichtigung, `/erwaehnungen`-Übersicht + Sidebar-Badge | Stabil halten; bei Bedarf Kontakt-Kommentare auf weitere Entitäten ausweiten |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
-| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟡 Beidseitige Sync implementiert (v0.18.0), aber ungetestet — Benutzername/Passwort fehlen noch | Zugangsdaten in `.env.local`/Vercel eintragen (`STRATO_CALDAV_USER/_PASSWORD`), dann Push+Pull live gegen echten Server verifizieren; danach ggf. Pull auf Cron statt manuellem Button umstellen |
+| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟢 Beidseitige Sync live verifiziert (v0.18.1) — Anlegen/Bearbeiten/Löschen bestätigt gegen echten STRATO-Server | Stabil halten; bei Bedarf Pull von manuellem Button auf Cron/Edge Function umstellen, damit STRATO-seitige Änderungen automatisch ohne Klick ankommen |
 | **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
 | **SuperChat-Datenmigration** | Niedrig | 🔴 Nicht umgesetzt | Erst nach strategischer SuperChat-Entscheidung betrachten |
 | **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🔴 Nicht umgesetzt | Als separates Ausbauprojekt behandeln |
@@ -333,6 +333,21 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.18.1 (2026-07-31) — STRATO-CalDAV-Synchronisation: Href-Bug behoben, live verifiziert
+
+- 🐛 Beim ersten Live-Test entdeckt: STRATO liefert im CalDAV-REPORT relative Pfade zurück
+  (`/caldav/…`), keine vollständigen URLs. Node.js' `fetch()` kennt anders als ein Browser keine
+  implizite Basis-URL — ein späterer PUT/DELETE mit diesem `href` wäre fehlgeschlagen. Behoben:
+  `fetchStratoEvents()` normalisiert relative Pfade auf die absolute Server-URL
+- ✅ **Kompletter Zyklus live gegen den echten STRATO-Server verifiziert** (Produktion, nicht nur
+  lokal): Termin anlegen → Push bestätigt (`external_uid`/`href`/`etag` gesetzt); Titel bearbeiten
+  → lokalen Titel absichtlich überschrieben, per Pull den echten von STRATO zurückgeholt, Titel
+  stimmte → Push hat STRATO wirklich verändert; Termin löschen → anschließender Pull fand „0 neu"
+  → auch auf STRATO-Seite wirklich weg, kein Zombie-Wiederauftauchen
+- ℹ️ STRATO liefert bei `PUT` keinen `ETag`-Response-Header (`external_etag` bleibt nach einem
+  Push leer) — kein Bug, nur kosmetisch: der nächste Pull holt den echten ETag nach und zeigt den
+  Termin dabei einmalig als „aktualisiert", obwohl inhaltlich nichts geändert wurde
+
 ### v0.18.0 (2026-07-31) — STRATO-CalDAV-Synchronisation (beidseitig), noch ungetestet
 
 - ✅ **CRM → STRATO läuft automatisch**: `POST/PATCH/DELETE /api/termine(/[id])` pushen sofort per
@@ -349,8 +364,9 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
   `last_synced_at`), neue Dependencies `node-ical` (ICS-Parsing) + `fast-xml-parser`
   (WebDAV-Multistatus-XML), Zugangsdaten in `.env.example` dokumentiert
   (`STRATO_CALDAV_URL/_USER/_PASSWORD`, ausschließlich serverseitig)
-- ⚠️ **Noch nicht gegen den echten STRATO-Server getestet** — nur `tsc` sauber. Der Nutzer hat
-  bislang nur die CalDAV-URL geliefert (`https://dav.webmail.strato.de/caldav/Y2FsOi8vMC8zMQ`,
+- ⚠️ Ursprünglich noch nicht gegen den echten STRATO-Server getestet — siehe v0.18.1 für die
+  Live-Verifikation. Der Nutzer hat bislang nur die CalDAV-URL geliefert
+  (`https://dav.webmail.strato.de/caldav/Y2FsOi8vMC8zMQ`,
   entspricht Ordner `cal://0/31` = Kalender „Gün, Melih"), Benutzername/Passwort fehlen noch. Vor
   echtem Produktivsatz: Zugangsdaten eintragen, dann Push (Termin anlegen) und Pull (Button) live
   gegen den echten Kalender verifizieren — Open-Xchanges genaues REPORT-Antwortformat und ob PUT
@@ -881,4 +897,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-31 — v0.18.0 STRATO-CalDAV-Synchronisation (beidseitig), noch ungetestet ohne Zugangsdaten*
+*Last Updated: 2026-07-31 — v0.18.1 STRATO-CalDAV-Synchronisation live verifiziert (Anlegen/Bearbeiten/Löschen)*
