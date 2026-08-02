@@ -146,7 +146,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🟢 Alle drei als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
 | **Eigene minimale Kommunikationslösung** | Hoch | 🟢 Kommentare mit @-Erwähnung (Einzel + „Alle") an Kontakten und Aufgaben, Datei-Anhang, E-Mail-Benachrichtigung, `/erwaehnungen`-Übersicht + Sidebar-Badge | Stabil halten; bei Bedarf Kontakt-Kommentare auf weitere Entitäten ausweiten |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
-| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟢 Beidseitige Sync live verifiziert (v0.18.1) — Anlegen/Bearbeiten/Löschen bestätigt gegen echten STRATO-Server | Stabil halten; bei Bedarf Pull von manuellem Button auf Cron/Edge Function umstellen, damit STRATO-seitige Änderungen automatisch ohne Klick ankommen |
+| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟢 Beidseitige Sync live verifiziert (v0.18.1); Timezone-Bug bei ganztägigen Terminen behoben (v0.18.2) | Stabil halten; bei Bedarf Pull von manuellem Button auf Cron/Edge Function umstellen, damit STRATO-seitige Änderungen automatisch ohne Klick ankommen |
 | **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
 | **SuperChat-Datenmigration** | Niedrig | 🔴 Nicht umgesetzt | Erst nach strategischer SuperChat-Entscheidung betrachten |
 | **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🔴 Nicht umgesetzt | Als separates Ausbauprojekt behandeln |
@@ -332,6 +332,22 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.18.2 (2026-08-03) — Ganztägiger Termin verschob sich um einen Tag (UTC vs. lokal)
+
+- 🐛 Nutzer meldete: ein für den 06.08. angelegter ganztägiger Termin wurde in der Kalender-UI am
+  07.08. angezeigt. Ursache: `TerminEditModal.tsx` las das Datumsfeld bei ganztägigen Terminen
+  UTC-basiert aus (`start_zeit.slice(0, 10)`), schrieb neue Werte aber lokal-zeitbasiert zurück
+  (`new Date(\`${value}T00:00\`)`, ohne Zeitzonen-Suffix → lokale Zeit laut ECMAScript). In
+  Europe/Berlin (UTC+2) verschob dieser Mismatch das gespeicherte Datum bei jeder Bearbeitung
+  einen Tag nach vorn. Derselbe Bug steckte in `strato-caldav.ts`s `toIcsDate()` und hätte auch
+  das falsche Datum zu STRATO gepusht
+- ✅ Behoben in beiden Dateien durch Umstellung auf `toDateKey()` (lokale Kalendertag-Extraktion
+  via `getFullYear()/getMonth()/getDate()`) — dieselbe Konvention, die im restlichen
+  Kalender-Code (`istGleicherTag`, `MiniMonat`, `MonatsView`) bereits durchgängig verwendet wird
+- ✅ Live verifiziert: betroffenen Real-Termin ("Schulung CRM") korrigiert, DB zeigt jetzt
+  `06.08.2026` (Europe/Berlin), UI zeigt ihn korrekt unter "6 Do." an; per STRATO-Pull bestätigt,
+  dass die Korrektur auch im echten STRATO-Kalender ankam
 
 ### v0.18.1 (2026-07-31) — STRATO-CalDAV-Synchronisation: Href-Bug behoben, live verifiziert
 
@@ -897,4 +913,4 @@ git push origin main # Deploy zu Vercel
 
 ---
 
-*Last Updated: 2026-07-31 — v0.18.1 STRATO-CalDAV-Synchronisation live verifiziert (Anlegen/Bearbeiten/Löschen)*
+*Last Updated: 2026-08-03 — v0.18.2 Timezone-Bug bei ganztägigen Terminen behoben (UTC vs. lokal)*
