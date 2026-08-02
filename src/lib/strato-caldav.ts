@@ -5,6 +5,7 @@
 import ical from 'node-ical'
 import type { VEvent } from 'node-ical'
 import { XMLParser } from 'fast-xml-parser'
+import { toDateKey } from '@/lib/kalender-helpers'
 
 export interface StratoEvent {
   uid: string
@@ -122,7 +123,9 @@ function normalizeArray<T>(value: T | T[] | undefined): T[] {
 
 function toIcsDate(d: Date, ganztaegig: boolean): string {
   if (ganztaegig) {
-    return d.toISOString().slice(0, 10).replace(/-/g, '')
+    // Lokales Kalenderdatum, nicht UTC — sonst verschiebt sich ein
+    // ganztägiger Termin je nach Zeitzone/Uhrzeit um einen Tag.
+    return toDateKey(d).replace(/-/g, '')
   }
   return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
 }

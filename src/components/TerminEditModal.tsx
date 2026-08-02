@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { toDatetimeLocalValue } from '@/lib/kalender-helpers'
+import { toDatetimeLocalValue, toDateKey } from '@/lib/kalender-helpers'
 
 export interface Termin {
   id?: string
@@ -181,7 +181,7 @@ export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave,
               <input
                 type={form.ganztaegig ? 'date' : 'datetime-local'}
                 required
-                value={form.ganztaegig ? form.start_zeit.slice(0, 10) : toDatetimeLocalValue(new Date(form.start_zeit))}
+                value={form.ganztaegig ? toDateKey(new Date(form.start_zeit)) : toDatetimeLocalValue(new Date(form.start_zeit))}
                 onChange={(e) => setStart(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               />
@@ -191,7 +191,7 @@ export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave,
               <input
                 type={form.ganztaegig ? 'date' : 'datetime-local'}
                 required
-                value={form.ganztaegig ? form.end_zeit.slice(0, 10) : toDatetimeLocalValue(new Date(form.end_zeit))}
+                value={form.ganztaegig ? toDateKey(new Date(form.end_zeit)) : toDatetimeLocalValue(new Date(form.end_zeit))}
                 onChange={(e) => setEnd(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
               />
