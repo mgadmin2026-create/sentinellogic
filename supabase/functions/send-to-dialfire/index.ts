@@ -20,6 +20,12 @@ function getCampaignConfig(campaignId: string): { api_key: string; task_name: st
         api_key: Deno.env.get("DIALFIRE_API_KEY_PKV") || "",
         task_name: "anrufen_stufe",
       }
+    case "7ZXEC6Z53YHPL2GR":
+      // Auslandskrankenversicherung
+      return {
+        api_key: Deno.env.get("DIALFIRE_API_KEY_AUSLANDSKRANKENVERSICHERUNG") || "",
+        task_name: "anrufen_stufe",
+      }
     default:
       return null
   }
@@ -165,7 +171,7 @@ serve(async (req) => {
 
     if (!config.api_key) {
       console.error(`[Dialfire] Missing API key for campaign: ${campaignId}`)
-      throw new Error(`Missing API key for campaign ${campaignId}. Check environment variables: DIALFIRE_API_KEY or DIALFIRE_API_KEY_FACEBOOK or DIALFIRE_API_KEY_PKV`)
+      throw new Error(`Missing API key for campaign ${campaignId}. Check environment variables: DIALFIRE_API_KEY or DIALFIRE_API_KEY_FACEBOOK or DIALFIRE_API_KEY_PKV or DIALFIRE_API_KEY_AUSLANDSKRANKENVERSICHERUNG`)
     }
 
     const payload: DialfireContactPayload = {
