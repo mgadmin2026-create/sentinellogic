@@ -1,0 +1,20 @@
+name: Facebook Lead Auto-Sync Trigger
+
+# Vercel Hobby erlaubt nur 1 Cron-Ausführung/Tag -- reicht für die
+# 15/30/60-Minuten-Optionen im "Auto"-Toggle auf /sync nicht aus. Deshalb
+# hier ein externer, planabhängiger Trigger alle 15 Minuten; die Route
+# selbst prüft anhand von facebook_sync_config, ob ein Sync tatsächlich
+# fällig ist, und macht bei "enabled=false" oder "noch nicht fällig" nichts.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cron-Endpunkt aufrufen
+        run: |
+          curl -sf -X GET "https://sentinellogic.vercel.app/api/cron/facebook-sync" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

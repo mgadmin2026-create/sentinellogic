@@ -313,6 +313,16 @@ export default function SyncPage() {
                     {isSyncing ? 'Läuft…' : 'Jetzt synchronisieren'}
                   </button>
                 </div>
+                {isFacebook && facebookEnabled && facebookConfig?.next_sync_at && (
+                  <p className="text-xs text-gray-400">
+                    Nächster automatischer Sync: {new Date(facebookConfig.next_sync_at).toLocaleDateString('de-DE')},{' '}
+                    {new Date(facebookConfig.next_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                    {facebookConfig.last_sync_at && (
+                      <> · Letzter Auto-Sync: {new Date(facebookConfig.last_sync_at).toLocaleDateString('de-DE')},{' '}
+                      {new Date(facebookConfig.last_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</>
+                    )}
+                  </p>
+                )}
                 {isFacebook && (
                   <div className="flex items-center gap-2.5 pt-2 border-t border-gray-100">
                     <button onClick={() => setFacebookPreviewEnabled(!facebookPreviewEnabled)}

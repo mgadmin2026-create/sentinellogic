@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { berechneNaechstenSync } from '@/lib/facebook-sync-schedule'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,35 +64,7 @@ export async function PATCH(request: NextRequest) {
 
     // Calculate next_sync_at based on interval_type
     const now = new Date()
-    let next_sync_at: Date | null = null
-
-    if (enabled) {
-      switch (interval_type) {
-        case '15min':
-          next_sync_at = new Date(now.getTime() + 15 * 60 * 1000)
-          break
-        case '30min':
-          next_sync_at = new Date(now.getTime() + 30 * 60 * 1000)
-          break
-        case '60min':
-          next_sync_at = new Date(now.getTime() + 60 * 60 * 1000)
-          break
-        case 'daily':
-          next_sync_at = new Date(now)
-          next_sync_at.setUTCHours(8, 0, 0, 0)
-          if (next_sync_at <= now) {
-            next_sync_at.setUTCDate(next_sync_at.getUTCDate() + 1)
-          }
-          break
-        case 'weekly':
-          next_sync_at = new Date(now)
-          const currentDay = next_sync_at.getUTCDay()
-          const daysUntilMonday = currentDay === 1 ? 7 : (1 - currentDay + 7) % 7 || 7
-          next_sync_at.setUTCDate(next_sync_at.getUTCDate() + daysUntilMonday)
-          next_sync_at.setUTCHours(8, 0, 0, 0)
-          break
-      }
-    }
+    const next_sync_at: Date | null = enabled ? berechneNaechstenSync(interval_type, now) : null
 
     // Get existing config ID first (should only be one)
     const { data: existing } = await supabase

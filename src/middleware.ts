@@ -7,6 +7,8 @@ import { updateSession } from '@/lib/supabase/middleware'
 // - /api/test-environment, /api/test-runs: eigene Token-Absicherung für CI/Playwright
 // - /api/auth/google/*: bestehender Google-Drive-System-OAuth-Flow, separates Thema
 // - /datenschutz: Datenschutzerklärung, u.a. als Pflicht-URL in den Facebook-App-Einstellungen hinterlegt
+// - /api/cron/*: externer Scheduler (GitHub Actions) ruft diese ohne Login-Session auf,
+//   eigene Bearer-Token-Absicherung via CRON_SECRET innerhalb der jeweiligen Route
 const PUBLIC_PATH_PREFIXES = [
   '/login',
   '/api/webhooks/',
@@ -14,6 +16,7 @@ const PUBLIC_PATH_PREFIXES = [
   '/api/test-runs',
   '/api/auth/google/',
   '/datenschutz',
+  '/api/cron/',
 ]
 
 function isPublicPath(pathname: string): boolean {
