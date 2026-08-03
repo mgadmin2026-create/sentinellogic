@@ -351,7 +351,7 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
     'wie_bist_du_aktuell_krankenversichert?': 'krankenversicherung_status',
 
     // Auslandsreiseversicherung (KinderProfis, Formular-ID 3169048349946307)
-    'wie_viele_personen_sollen_in_der_family_abgesichert_werden?': 'anzahl_personen',
+    'wie_viele_personen_sollen_in_der_family__abgesichert_werden?': 'anzahl_personen',
     'wann_verreist_ihr_das_nächste_mal?': 'reisezeitpunkt',
   }
 
