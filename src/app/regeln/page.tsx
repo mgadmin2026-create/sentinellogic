@@ -41,6 +41,8 @@ const SPARTE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Alle Sparten' },
   { value: 'PKV', label: 'PKV (Private Krankenversicherung)' },
   { value: 'Unternehmerschutz', label: 'Unternehmerschutz' },
+  { value: 'Auslandsreiseversicherung', label: 'Auslandsreiseversicherung' },
+  { value: 'Auslandskrankenversicherung', label: 'Auslandskrankenversicherung' },
 ]
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Neu' }, { value: 'contacted', label: 'Kontaktiert' },
