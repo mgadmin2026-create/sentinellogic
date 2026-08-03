@@ -1,0 +1,20 @@
+name: Dialfire Pull-Sync Trigger
+
+# Vercel Hobby erlaubt nur 1 Cron-Ausführung/Tag -- reicht für einen
+# regelmäßigen Dialfire-Pull nicht aus. Externer, planabhängiger Trigger
+# alle 30 Minuten (gleiches Muster wie facebook-sync-cron.yml), ruft
+# /api/cron/dialfire-pull auf, welcher wiederum alle verbundenen Kontakte
+# (dialfire_id + dialfire_campaign_id gesetzt) gegen Dialfire abgleicht.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cron-Endpunkt aufrufen
+        run: |
+          curl -sf -X GET "https://sentinellogic.vercel.app/api/cron/dialfire-pull" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
