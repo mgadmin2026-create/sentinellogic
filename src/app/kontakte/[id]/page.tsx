@@ -742,18 +742,12 @@ export default function KontaktDetailPage() {
                   </tbody>
                 </table>
               )}
-            </div>
-
-            {/* Auslandsreiseversicherung — nur bei dieser Sparte sichtbar */}
-            {kontakt.sparte === 'Auslandsreiseversicherung' && (
-              <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
-                <div className="flex items-center gap-1.5 mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900">🧳 Auslandsreiseversicherung</h3>
-                  <HelpButton articleId="kontakt-detail.auslandsreiseversicherung" />
+              {kontakt.sparte === 'Auslandsreiseversicherung' && (
+                <div className="border-t border-gray-100 mt-3 pt-3">
+                  <AuslandsreiseversicherungPanel kontakt={kontakt} onSave={handleSaveOverview} />
                 </div>
-                <AuslandsreiseversicherungPanel kontakt={kontakt} onSave={handleSaveOverview} />
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Beitragsübersicht */}
             <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
