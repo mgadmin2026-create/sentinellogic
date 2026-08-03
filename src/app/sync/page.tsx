@@ -28,7 +28,7 @@ interface SyncLogEntry {
   duplicate_details?: Array<{ facebook_id: string; email: string | null; existing_contact_id: string | null; action: string; reason: string }>
 }
 
-interface FacebookSyncConfig {
+interface SourceSyncConfig {
   enabled: boolean
   interval_type: IntervalType
   daily_hour: number
@@ -80,16 +80,21 @@ export default function SyncPage() {
   const [syncLog, setSyncLog] = useState<SyncLogEntry[]>([])
   const [loadingLog, setLoadingLog] = useState(true)
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
-  const [facebookConfig, setFacebookConfig] = useState<FacebookSyncConfig | null>(null)
+  const [facebookConfig, setFacebookConfig] = useState<SourceSyncConfig | null>(null)
+  const [dialfireConfig, setDialfireConfig] = useState<SourceSyncConfig | null>(null)
   const [facebookPreviewEnabled, setFacebookPreviewEnabled] = useState(false)
   const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
-  // Load sync config for Facebook
+  // Load sync config for Facebook + Dialfire
   useEffect(() => {
     fetch('/api/sync-config')
       .then(r => r.json())
       .then(cfg => setFacebookConfig(cfg))
+      .catch(console.error)
+    fetch('/api/dialfire-sync-config')
+      .then(r => r.json())
+      .then(cfg => setDialfireConfig(cfg))
       .catch(console.error)
   }, [])
 
@@ -167,6 +172,16 @@ export default function SyncPage() {
         .then(r => r.json())
         .then(cfg => setFacebookConfig(cfg))
         .catch(console.error)
+    } else if (id === 'dialfire' && dialfireConfig) {
+      const newEnabled = !dialfireConfig.enabled
+      fetch('/api/dialfire-sync-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: newEnabled, interval_type: dialfireConfig.interval_type }),
+      })
+        .then(r => r.json())
+        .then(cfg => setDialfireConfig(cfg))
+        .catch(console.error)
     } else {
       setSources(prev => prev.map(s =>
         s.id === id ? { ...s, autoInterval: s.autoInterval > 0 ? 0 : (s.id === 'facebook' ? 15 : s.id === 'calendly' ? 30 : 60) } : s
@@ -184,16 +199,25 @@ export default function SyncPage() {
         .then(r => r.json())
         .then(cfg => setFacebookConfig(cfg))
         .catch(console.error)
+    } else if (id === 'dialfire' && dialfireConfig) {
+      fetch('/api/dialfire-sync-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: true, interval_type: intervalType }),
+      })
+        .then(r => r.json())
+        .then(cfg => setDialfireConfig(cfg))
+        .catch(console.error)
     } else {
       const minutes = intervalType === '15min' ? 15 : intervalType === '30min' ? 30 : 60
       setSources(prev => prev.map(s => s.id === id ? { ...s, autoInterval: minutes } : s))
     }
   }
 
-  const facebookSource = sources.find(s => s.id === 'facebook')
-  const isFacebookSyncing = syncing === 'facebook'
   const facebookEnabled = facebookConfig?.enabled || false
   const facebookInterval = facebookConfig?.interval_type || '15min'
+  const dialfireEnabled = dialfireConfig?.enabled || false
+  const dialfireInterval = dialfireConfig?.interval_type || '30min'
 
   return (
     <div className="p-8">
@@ -263,8 +287,9 @@ export default function SyncPage() {
           const cfg = STATUS_CFG[source.status]
           const isSyncing = syncing === source.id
           const isFacebook = source.id === 'facebook'
-          const autoEnabled = isFacebook ? facebookEnabled : source.autoInterval > 0
-          const displayInterval = isFacebook ? facebookInterval : (['15min', '30min', '60min', 'daily', 'weekly'].includes(String(source.autoInterval)) ? String(source.autoInterval) as IntervalType : '15min')
+          const isDialfire = source.id === 'dialfire'
+          const autoEnabled = isFacebook ? facebookEnabled : isDialfire ? dialfireEnabled : source.autoInterval > 0
+          const displayInterval = isFacebook ? facebookInterval : isDialfire ? dialfireInterval : (['15min', '30min', '60min', 'daily', 'weekly'].includes(String(source.autoInterval)) ? String(source.autoInterval) as IntervalType : '15min')
 
           return (
             <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -320,6 +345,16 @@ export default function SyncPage() {
                     {facebookConfig.last_sync_at && (
                       <> · Letzter Auto-Sync: {new Date(facebookConfig.last_sync_at).toLocaleDateString('de-DE')},{' '}
                       {new Date(facebookConfig.last_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</>
+                    )}
+                  </p>
+                )}
+                {isDialfire && dialfireEnabled && dialfireConfig?.next_sync_at && (
+                  <p className="text-xs text-gray-400">
+                    Nächster automatischer Sync: {new Date(dialfireConfig.next_sync_at).toLocaleDateString('de-DE')},{' '}
+                    {new Date(dialfireConfig.next_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                    {dialfireConfig.last_sync_at && (
+                      <> · Letzter Auto-Sync: {new Date(dialfireConfig.last_sync_at).toLocaleDateString('de-DE')},{' '}
+                      {new Date(dialfireConfig.last_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</>
                     )}
                   </p>
                 )}
