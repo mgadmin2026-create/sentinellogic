@@ -70,6 +70,24 @@ async function getDialfireApiKey(supabase: any, campaign_id: string): Promise<st
   return data?.value || null
 }
 
+// Kampagnen-Mapping für den ENV-Var-Fallback -- muss zu getCampaignConfig()
+// in supabase/functions/send-to-dialfire/index.ts passen (dort ist es die
+// Push-seitige Quelle der Wahrheit für Campaign-ID -> API-Key-Variable).
+function getFallbackApiKeyEnvVar(campaignId: string): string | null {
+  switch (campaignId) {
+    case 'GENS85UE5SU4SSC7':
+      return Deno.env.get('DIALFIRE_API_KEY') || null
+    case 'SFU6DSEG4RU2Z6HX':
+      return Deno.env.get('DIALFIRE_API_KEY_FACEBOOK') || null
+    case '6X42NJWGH4YA6HC7':
+      return Deno.env.get('DIALFIRE_API_KEY_PKV') || null
+    case '7ZXEC6Z53YHPL2GR':
+      return Deno.env.get('DIALFIRE_API_KEY_AUSLANDSKRANKENVERSICHERUNG') || null
+    default:
+      return null
+  }
+}
+
 // Helper: Fetch Dialfire Contact via flat_view
 async function fetchDialfireContact(
   dialfireId: string,
@@ -529,9 +547,7 @@ serve(async (req) => {
     const apiKey = await getDialfireApiKey(supabase, campaign_id)
     if (!apiKey) {
       // Fallback to env var for backward compatibility
-      const fallbackKey = campaign_id === 'GENS85UE5SU4SSC7'
-        ? Deno.env.get('DIALFIRE_API_KEY')
-        : Deno.env.get('DIALFIRE_API_KEY_FACEBOOK')
+      const fallbackKey = getFallbackApiKeyEnvVar(campaign_id)
 
       if (!fallbackKey) {
         throw new Error(`No API key found for campaign ${campaign_id}`)
