@@ -267,6 +267,7 @@ export async function POST(request: NextRequest) {
       prüfung_grund: body.prüfung_grund ? String(body.prüfung_grund).trim() : null,
       krankenversicherung_status: body.krankenversicherung_status ? String(body.krankenversicherung_status).trim() : null,
       situation: body.situation ? String(body.situation).trim() : null,
+      usa_kanada_eingeschlossen: body.usa_kanada_eingeschlossen ? String(body.usa_kanada_eingeschlossen).trim() : null,
       // Klassifikation / Gewerbe-Felder (bisher beim Anlegen fälschlich nicht übernommen)
       sparte: body.sparte ? String(body.sparte).trim() : null,
       qualität: body.qualität ? String(body.qualität).trim() : null,
