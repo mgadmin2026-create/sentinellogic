@@ -209,8 +209,9 @@ export default function Sidebar({ currentUser }: SidebarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [profileMenuOpen])
 
-  // Auf der Login-Seite gibt es keine Navigation — Seite füllt den ganzen Viewport
-  if (pathname === '/login') return null
+  // Auf der Login-Seite und der öffentlichen Datenschutzerklärung gibt es
+  // keine Navigation — Seite füllt den ganzen Viewport
+  if (pathname === '/login' || pathname === '/datenschutz') return null
 
   return (
     <>

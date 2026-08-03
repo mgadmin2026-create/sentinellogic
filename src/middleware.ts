@@ -6,12 +6,14 @@ import { updateSession } from '@/lib/supabase/middleware'
 // - /api/webhooks/*: externe Dienste (Dialfire, KlickTipp, Facebook) rufen diese direkt auf
 // - /api/test-environment, /api/test-runs: eigene Token-Absicherung für CI/Playwright
 // - /api/auth/google/*: bestehender Google-Drive-System-OAuth-Flow, separates Thema
+// - /datenschutz: Datenschutzerklärung, u.a. als Pflicht-URL in den Facebook-App-Einstellungen hinterlegt
 const PUBLIC_PATH_PREFIXES = [
   '/login',
   '/api/webhooks/',
   '/api/test-environment',
   '/api/test-runs',
   '/api/auth/google/',
+  '/datenschutz',
 ]
 
 function isPublicPath(pathname: string): boolean {
