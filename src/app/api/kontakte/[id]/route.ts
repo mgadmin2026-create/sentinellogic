@@ -34,6 +34,8 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'beitragsuebersicht',
   // Auslandsreiseversicherung-Felder (Facebook, KinderProfis, Formular 3169048349946307)
   'anzahl_personen', 'reisezeitpunkt',
+  // Auslandskrankenversicherung (Dialfire-Kampagne 7ZXEC6Z53YHPL2GR)
+  'usa_kanada_eingeschlossen',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']

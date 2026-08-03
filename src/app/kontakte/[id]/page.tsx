@@ -88,6 +88,7 @@ interface Kontakt {
   situation?: string
   anzahl_personen?: string
   reisezeitpunkt?: string
+  usa_kanada_eingeschlossen?: string
   rechtsform?: string
   sparte?: string
   versicherungsgesellschaft?: string

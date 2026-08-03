@@ -65,6 +65,8 @@ interface DialfireContactPayload {
   "aktueller_Beitrag"?: number | string
   Kontoinhaber?: string
   IBAN?: string
+  // Auslandskrankenversicherung (Kampagne 7ZXEC6Z53YHPL2GR)
+  "soll_USA_Kanada_eingeschlossen_werden_"?: string
   [key: string]: any
 }
 
@@ -243,6 +245,9 @@ serve(async (req) => {
 
       // Additional Notes
       "Notizen2": contact.notizen_2,
+
+      // Auslandskrankenversicherung (Kampagne 7ZXEC6Z53YHPL2GR)
+      "soll_USA_Kanada_eingeschlossen_werden_": contact.usa_kanada_eingeschlossen,
     }
 
     // Task-Name: bevorzugt der per Regel gesetzte Wert, sonst Kampagnen-Default

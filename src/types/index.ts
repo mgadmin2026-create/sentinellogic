@@ -63,6 +63,7 @@ export interface Contact {
   krankenversicherung_status?: string
   anzahl_personen?: string
   reisezeitpunkt?: string
+  usa_kanada_eingeschlossen?: string
   // Pipeline
   pipeline_stage?: string
   pipeline_steps?: Array<{ key: string; done: boolean; completed_at?: string; due_date?: string }>

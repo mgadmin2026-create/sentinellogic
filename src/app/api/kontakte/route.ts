@@ -426,6 +426,7 @@ export async function POST(request: NextRequest) {
             kontoinhaber_5: c.kontoinhaber_5,
             iban_5: c.iban_5,
             notizen_2: c.notizen_2,
+            usa_kanada_eingeschlossen: c.usa_kanada_eingeschlossen,
             dialfire_campaign_id: updatedContact?.dialfire_campaign_id,
             dialfire_task_name_field: updatedContact?.dialfire_task_name_field,
           },

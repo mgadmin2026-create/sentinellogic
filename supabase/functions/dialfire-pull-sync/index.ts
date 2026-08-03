@@ -159,6 +159,8 @@ function buildFieldMap(campaignId: string): Record<string, string[]> {
     seit_wann_selbststaendig: ['seit_wann_selbstständig'],
     dienstverhaltnis: ['Dienstverhältnis_'],
     notizen_2: ['Notizen2'],
+    // Auslandskrankenversicherung (Kampagne 7ZXEC6Z53YHPL2GR)
+    usa_kanada_eingeschlossen: ['soll_USA_Kanada_eingeschlossen_werden_'],
     // Versicherung 2-5 (nur numerierte Dialfire-Felder → kein Konflikt)
     versicherungsgesellschaft_2: ['Versicherungsgesellschaft_2'],
     leistungen_2: ['Leistungen_2'],
