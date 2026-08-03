@@ -323,6 +323,8 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
     contact.sparte = 'PKV'
   } else if (formId === '1488535808896676') {
     contact.sparte = 'Unternehmerschutz'
+  } else if (formId === '3169048349946307') {
+    contact.sparte = 'Auslandsreiseversicherung'
   }
 
   const fieldMap: Record<string, string> = {
@@ -347,6 +349,10 @@ function mapFacebookFieldsToContact(fieldData: any[] = [], qualificationStatus?:
     'wie_viele_mitarbeitende_habt_ihr?__': 'mitarbeitanzahl',
     'welche_situation_passt_aktuell_am_besten_zu_dir?': 'situation',
     'wie_bist_du_aktuell_krankenversichert?': 'krankenversicherung_status',
+
+    // Auslandsreiseversicherung (KinderProfis, Formular-ID 3169048349946307)
+    'wie_viele_personen_sollen_in_der_family_abgesichert_werden?': 'anzahl_personen',
+    'wann_verreist_ihr_das_nächste_mal?': 'reisezeitpunkt',
   }
 
   let fullName = ''

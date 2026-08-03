@@ -61,6 +61,8 @@ export interface Contact {
   prüfung_grund?: string
   situation?: string
   krankenversicherung_status?: string
+  anzahl_personen?: string
+  reisezeitpunkt?: string
   // Pipeline
   pipeline_stage?: string
   pipeline_steps?: Array<{ key: string; done: boolean; completed_at?: string; due_date?: string }>

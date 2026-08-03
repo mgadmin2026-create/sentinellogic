@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
           }
 
           // Map Facebook fields to contact structure
-          const contact = mapFacebookFieldsToContact(fbLead.field_data, fbLead.qualification_status)
+          const contact = mapFacebookFieldsToContact(fbLead.field_data, fbLead.qualification_status, formId)
           contact.facebook_id = leadGenId
           contact.facebook_form_id = formId
           contact.source = 'facebook'
@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: string[] }> = [], qualificationStatus?: string): Record<string, any> {
+function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: string[] }> = [], qualificationStatus?: string, formId?: string): Record<string, any> {
   const contact: Record<string, any> = {
     metadata: {},
   }
@@ -269,6 +269,15 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
   // Store Facebook phase/qualification status
   if (qualificationStatus) {
     contact.facebook_phase = qualificationStatus
+  }
+
+  // Sparte anhand der Formular-ID setzen (FirmenProfis + KinderProfis Formulare)
+  if (formId === '1251160670355401') {
+    contact.sparte = 'PKV'
+  } else if (formId === '1488535808896676') {
+    contact.sparte = 'Unternehmerschutz'
+  } else if (formId === '3169048349946307') {
+    contact.sparte = 'Auslandsreiseversicherung'
   }
 
   const fieldMap: Record<string, string> = {
@@ -313,6 +322,10 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
     absicherung: 'sparte',
     sparte: 'sparte',
 
+    // Auslandsreiseversicherung (KinderProfis, Formular-ID 3169048349946307)
+    'wie_viele_personen_sollen_in_der_family_abgesichert_werden?': 'anzahl_personen',
+    'wann_verreist_ihr_das_nächste_mal?': 'reisezeitpunkt',
+
     // Other
     website: 'website',
     position: 'position',
@@ -333,6 +346,8 @@ function mapFacebookFieldsToContact(fieldData: Array<{ name: string; values: str
       // Convert mitarbeitanzahl to integer if it's a numeric string
       if (mappedField === 'mitarbeitanzahl' && /^\d+$/.test(value)) {
         contact[mappedField] = parseInt(value, 10)
+      } else if (mappedField === 'sparte' && contact.sparte) {
+        // Nicht überschreiben: sparte wurde bereits anhand der Formular-ID gesetzt
       } else {
         contact[mappedField] = value
       }
