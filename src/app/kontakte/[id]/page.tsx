@@ -27,6 +27,7 @@ import { CommentThread } from '@/components/kontakt/CommentThread'
 import { HelpButton } from '@/components/help/HelpButton'
 import { BeitragsuebersichtPanel } from '@/components/kontakt/BeitragsuebersichtPanel'
 import { ErstgespraechPanel } from '@/components/kontakt/ErstgespraechPanel'
+import { AuslandsreiseversicherungPanel } from '@/components/kontakt/AuslandsreiseversicherungPanel'
 import { ERSTGESPRAECH_LEITFAEDEN } from '@/data/erstgespraech-leitfaden'
 import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
 import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
@@ -85,6 +86,8 @@ interface Kontakt {
   prüfung_grund?: string
   krankenversicherung_status?: string
   situation?: string
+  anzahl_personen?: string
+  reisezeitpunkt?: string
   rechtsform?: string
   sparte?: string
   versicherungsgesellschaft?: string
@@ -740,6 +743,17 @@ export default function KontaktDetailPage() {
                 </table>
               )}
             </div>
+
+            {/* Auslandsreiseversicherung — nur bei dieser Sparte sichtbar */}
+            {kontakt.sparte === 'Auslandsreiseversicherung' && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <h3 className="text-sm font-semibold text-gray-900">🧳 Auslandsreiseversicherung</h3>
+                  <HelpButton articleId="kontakt-detail.auslandsreiseversicherung" />
+                </div>
+                <AuslandsreiseversicherungPanel kontakt={kontakt} onSave={handleSaveOverview} />
+              </div>
+            )}
 
             {/* Beitragsübersicht */}
             <div className="bg-white rounded-xl border border-gray-200 p-4 sm:col-span-2">

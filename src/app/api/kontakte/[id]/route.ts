@@ -32,6 +32,8 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'versicherungsgesellschaft_4', 'leistungen_4', 'aktueller_beitrag_4', 'kontoinhaber_4', 'iban_4',
   'versicherungsgesellschaft_5', 'leistungen_5', 'aktueller_beitrag_5', 'kontoinhaber_5', 'iban_5',
   'beitragsuebersicht',
+  // Auslandsreiseversicherung-Felder (Facebook, KinderProfis, Formular 3169048349946307)
+  'anzahl_personen', 'reisezeitpunkt',
 ])
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']

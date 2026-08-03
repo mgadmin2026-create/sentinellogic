@@ -92,6 +92,15 @@ export const kontaktDetailArticles: HelpArticle[] = [
       '"PDF herunterladen" erzeugt ein Dokument im Layout der bekannten Excel-Vorlage zum Ausdrucken oder für das Kundengespräch.',
   },
   {
+    id: 'kontakt-detail.auslandsreiseversicherung',
+    area: 'kontakt-detail',
+    title: 'Kachel „Auslandsreiseversicherung"',
+    keywords: ['kinderprofis', 'reise', 'personen', 'facebook', 'family'],
+    body:
+      'Erscheint nur bei Kontakten mit Sparte „Auslandsreiseversicherung" — diese Sparte wird bei Facebook-Leads von KinderProfis automatisch anhand der Formular-ID gesetzt.\n\n' +
+      'Zeigt die zwei Zusatzfragen aus dem Facebook-Lead-Formular: Anzahl der abzusichernden Personen und den nächsten Reisezeitpunkt. Beide Felder sind direkt editierbar; „Speichern" übernimmt die Änderungen in einem Schritt, kein Autosave pro Tastendruck.',
+  },
+  {
     id: 'kontakt-detail.dokumente',
     area: 'kontakt-detail',
     title: 'Kachel „Dokumente"',
