@@ -22,11 +22,13 @@ test.describe('STRATO E-Mail-Postfach', () => {
           configured: true,
           data: {
             account: 'postfach@example.invalid',
+            uidValidity: '12345',
             total: 1,
             page: 1,
             pageSize: 30,
             messages: [{
               uid: 42,
+              messageId: '<test-message@example.invalid>',
               subject: 'Beratungsanfrage',
               from: [{ name: 'Melanie Muster', address: 'melanie@example.invalid' }],
               to: [{ name: '', address: 'postfach@example.invalid' }],
@@ -76,9 +78,9 @@ test.describe('STRATO E-Mail-Postfach', () => {
     await expect(page.getByRole('link', { name: /Kontakt öffnen: Melanie Muster/ })).toBeVisible()
 
     await page.getByRole('button', { name: '↩ Antworten' }).click()
-    await expect(page.getByLabel('An')).toHaveValue('melanie@example.invalid')
-    await expect(page.getByLabel('Betreff')).toHaveValue('Re: Beratungsanfrage')
-    await page.getByLabel('Nachricht').fill('Vielen Dank. Ich melde mich bei Ihnen.')
+    await expect(page.getByRole('textbox', { name: 'An', exact: true })).toHaveValue('melanie@example.invalid')
+    await expect(page.getByRole('textbox', { name: 'Betreff', exact: true })).toHaveValue('Re: Beratungsanfrage')
+    await page.getByRole('textbox', { name: 'Nachricht', exact: true }).fill('Vielen Dank. Ich melde mich bei Ihnen.')
     await page.getByRole('button', { name: 'Senden' }).click()
 
     await expect.poll(() => sentPayload).not.toBeNull()
@@ -88,5 +90,8 @@ test.describe('STRATO E-Mail-Postfach', () => {
       inReplyTo: '<test-message@example.invalid>',
     })
     await expect(page.getByText('E-Mail wurde über das STRATO-Postfach versendet.')).toBeVisible()
+
+    await page.goto('/postfach?uid=42&uidValidity=12345')
+    await expect(page.getByText('Ich wünsche einen Beratungstermin.')).toBeVisible()
   })
 })

@@ -27,6 +27,7 @@ export type ActivityType =
   | 'notification_sent'
   | 'notification_failed'
   | 'email_sent'
+  | 'email_received'
   | 'email_failed'
   | 'call_prep_saved'
 

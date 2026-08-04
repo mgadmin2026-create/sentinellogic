@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
+import { syncIncomingMailActivities } from '@/lib/strato-incoming-activities'
 import {
   listInbox,
   sendStratoMail,
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
   try {
     const page = Number(request.nextUrl.searchParams.get('page') || 1)
     const data = await listInbox(page)
+    await syncIncomingMailActivities(data)
     return Response.json({ success: true, configured: true, data })
   } catch (error) {
     console.error('[Postfach] Posteingang konnte nicht geladen werden:', error instanceof Error ? error.name : 'Unbekannter Fehler')
