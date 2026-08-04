@@ -2,7 +2,7 @@
 // Große Monatsansicht (Hauptbereich) — 6×7-Raster mit Termin-Pills je Tag.
 import type { KalenderEintrag } from '@/types/kalender'
 import { QUELLEN_FARBEN } from '@/types/kalender'
-import { istGleicherTag, istHeute, istImMonat, monatsRaster, toDateKey } from '@/lib/kalender-helpers'
+import { beruehrtTag, istHeute, istImMonat, monatsRaster, toDateKey } from '@/lib/kalender-helpers'
 
 const WOCHENTAGE = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
 const MAX_PRO_TAG = 3
@@ -21,7 +21,7 @@ export function MonatsView({ monat, eintraege, onTagClick, onEventClick }: Props
 
   function eintraegeDesTages(tag: Date) {
     return eintraege
-      .filter((e) => e.ganztaegig ? istGleicherTag(e.start, tag) : istGleicherTag(e.start, tag))
+      .filter((e) => beruehrtTag(e.start, e.end, tag))
       .sort((a, b) => a.start.getTime() - b.start.getTime())
   }
 

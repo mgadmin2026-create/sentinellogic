@@ -5,10 +5,11 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getStratoConfig, pushStratoEvent, deleteStratoEvent } from '@/lib/strato-caldav'
+import { sanitizeTeilnehmer } from '@/lib/kalender-helpers'
 
 const ALLOWED_UPDATE_FIELDS = new Set([
   'titel', 'beschreibung', 'start_zeit', 'end_zeit', 'ganztaegig',
-  'ort', 'contact_id', 'assigned_user_id', 'farbe',
+  'ort', 'contact_id', 'assigned_user_id', 'farbe', 'teilnehmer',
 ])
 
 export async function GET(
@@ -53,6 +54,7 @@ export async function PATCH(
     for (const key of Object.keys(raw)) {
       if (raw[key] === '') raw[key] = null
     }
+    if ('teilnehmer' in raw) raw.teilnehmer = sanitizeTeilnehmer(raw.teilnehmer)
     raw.updated_at = new Date().toISOString()
 
     if (Object.keys(raw).length === 0) {
@@ -90,6 +92,7 @@ export async function PATCH(
           start: new Date(data.start_zeit),
           end: new Date(data.end_zeit),
           ganztaegig: data.ganztaegig,
+          teilnehmer: data.teilnehmer,
         })
         await supabase
           .from('termine')

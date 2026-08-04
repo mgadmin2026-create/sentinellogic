@@ -5,6 +5,7 @@ import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getStratoConfig, pushStratoEvent } from '@/lib/strato-caldav'
+import { sanitizeTeilnehmer } from '@/lib/kalender-helpers'
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
       created_by_user_id: currentUser?.id || null,
       kalender_quelle: 'crm',
       farbe: body.farbe || null,
+      teilnehmer: sanitizeTeilnehmer(body.teilnehmer),
     }
 
     const { data, error } = await supabase
@@ -99,6 +101,7 @@ export async function POST(request: NextRequest) {
           start: new Date(data.start_zeit),
           end: new Date(data.end_zeit),
           ganztaegig: data.ganztaegig,
+          teilnehmer: data.teilnehmer,
         })
         await supabase
           .from('termine')

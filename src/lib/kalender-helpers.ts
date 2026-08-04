@@ -5,6 +5,18 @@ export function istGleicherTag(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
+// Prüft, ob ein Termin/Eintrag [start, end] den Kalendertag `tag` berührt —
+// nicht nur ob er an diesem Tag beginnt. Mehrtägige Termine (z.B. ganztägig
+// 07.08.–08.08.) müssen an JEDEM ihrer Tage im Kalender erscheinen, nicht nur
+// am Starttag.
+export function beruehrtTag(start: Date, end: Date, tag: Date): boolean {
+  const tagStart = new Date(tag)
+  tagStart.setHours(0, 0, 0, 0)
+  const tagEnde = new Date(tagStart)
+  tagEnde.setDate(tagEnde.getDate() + 1)
+  return start < tagEnde && end >= tagStart
+}
+
 export function istHeute(d: Date): boolean {
   return istGleicherTag(d, new Date())
 }
@@ -81,6 +93,26 @@ export function toDatetimeLocalValue(d: Date): string {
   const h = String(d.getHours()).padStart(2, '0')
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${y}-${m}-${day}T${h}:${min}`
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Serverseitige Bereinigung der von TerminEditModal gesendeten Teilnehmer —
+// verwirft ungültige/doppelte Einträge, statt sie ungeprüft in die DB und
+// später in den iCal-ATTENDEE-Zeilen an STRATO landen zu lassen.
+export function sanitizeTeilnehmer(input: unknown): { email: string; name?: string }[] {
+  if (!Array.isArray(input)) return []
+  const ergebnis: { email: string; name?: string }[] = []
+  const gesehen = new Set<string>()
+  for (const eintrag of input) {
+    if (!eintrag || typeof eintrag !== 'object') continue
+    const email = String((eintrag as any).email ?? '').trim()
+    if (!EMAIL_REGEX.test(email) || gesehen.has(email.toLowerCase())) continue
+    gesehen.add(email.toLowerCase())
+    const name = (eintrag as any).name ? String((eintrag as any).name).trim() : undefined
+    ergebnis.push(name ? { email, name } : { email })
+  }
+  return ergebnis
 }
 
 export const STUNDEN = Array.from({ length: 24 }, (_, i) => i)

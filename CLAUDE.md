@@ -333,6 +333,26 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.21.0 (2026-08-04) — Kalender: mehrtägige Termine korrekt anzeigen + Teilnehmer einladen
+
+- 🐛 Mehrtägige Termine (z.B. ganztägig 07.08.–08.08.) wurden in Monats-/Wochen-/Tagesansicht und im
+  Mini-Kalender nur an ihrem Starttag angezeigt — `MonatsView`, `ZeitrasterView` und die
+  `markierteTage`-Berechnung in `kalender/page.tsx` filterten Termine je Tag über
+  `istGleicherTag(e.start, tag)`, was jeden Tag außer dem ersten ausschloss. Neuer Helper
+  `beruehrtTag(start, end, tag)` (`src/lib/kalender-helpers.ts`) prüft stattdessen echte
+  Intervall-Überlappung; das Zeitraster clippt zusätzlich Start/Ende auf den jeweiligen Tag, damit
+  auch über Mitternacht gehende Termine mit korrekter Höhe auf beiden Tagen erscheinen
+- ✅ Termine können jetzt Teilnehmer per E-Mail einladen — bisher gab es dafür keine Möglichkeit.
+  Neue Spalte `termine.teilnehmer` (JSONB `[{email, name?}]`, analog zu anderen flexiblen Listen wie
+  `payment_steps`). `TerminEditModal.tsx` bekommt ein „Teilnehmer einladen"-Feld (akzeptiert reine
+  E-Mails sowie `Name <email>`, analog zum STRATO-Webmail-Dialog), Liste mit Entfernen-Button.
+  Serverseitig validiert/dedupliziert `sanitizeTeilnehmer()` vor dem Speichern
+- ✅ STRATO-Sync erweitert: `pushStratoEvent` schreibt ATTENDEE-Zeilen (+ ORGANIZER anhand der
+  CalDAV-Zugangs-E-Mail, nur wenn Teilnehmer vorhanden), `fetchStratoEvents` parst ATTENDEE beim
+  Pull zurück in dasselbe Format — beidseitig konsistent wie der Rest der Synchronisation
+- ✅ Live verifiziert: mehrtägiger Testtermin erscheint jetzt an beiden Tagen (Monat, Woche, Mini-
+  Kalender); Teilnehmer hinzufügen/entfernen inkl. „Name <email>"-Parsing persistiert korrekt
+
 ### v0.20.0 (2026-08-04) — Mehrfach-Sparten pro Kontakt + admin-pflegbare Erstgespräch-Leitfäden
 
 - ✅ Neue Tabellen `sparten` (Name + Leitfaden als JSONB: `leitfaden_titel`, `leitfaden_fragen`,

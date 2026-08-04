@@ -44,6 +44,7 @@ export async function POST() {
           start_zeit: ev.start.toISOString(),
           end_zeit: ev.end.toISOString(),
           ganztaegig: ev.ganztaegig,
+          teilnehmer: ev.teilnehmer,
           external_href: ev.href,
           external_etag: ev.etag,
           last_synced_at: new Date().toISOString(),

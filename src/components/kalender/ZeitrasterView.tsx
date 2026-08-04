@@ -6,7 +6,7 @@ import type { KalenderEintrag } from '@/types/kalender'
 import { QUELLEN_FARBEN } from '@/types/kalender'
 import {
   STUNDEN,
-  istGleicherTag,
+  beruehrtTag,
   istHeute,
   minutenSeitMitternacht,
   toDateKey,
@@ -57,7 +57,7 @@ export function ZeitrasterView({ tage, eintraege, onSlotClick, onEventClick }: P
         <div className="flex border-b border-gray-200">
           <div className="w-16 flex-shrink-0 text-[10px] text-gray-400 text-right pr-2 py-1.5">Ganztägig</div>
           {tage.map((tag) => {
-            const einträgeDesTages = ganztaegige.filter((e) => istGleicherTag(e.start, tag))
+            const einträgeDesTages = ganztaegige.filter((e) => beruehrtTag(e.start, e.end, tag))
             return (
               <div key={toDateKey(tag)} className="flex-1 min-w-0 border-l border-gray-100 p-1 space-y-1">
                 {einträgeDesTages.map((e) => {
@@ -93,13 +93,23 @@ export function ZeitrasterView({ tage, eintraege, onSlotClick, onEventClick }: P
         {/* Tages-Spalten */}
         <div className="flex-1 flex relative">
           {tage.map((tag, tagIndex) => {
-            const tagesEintraege = zeitEintraege.filter((e) => istGleicherTag(e.start, tag))
+            const tagStart = new Date(tag)
+            tagStart.setHours(0, 0, 0, 0)
+            const tagEnde = new Date(tagStart)
+            tagEnde.setDate(tagEnde.getDate() + 1)
+
+            // An diesem Tag beginnende/andauernde Termine, auf den Tag geclippt
+            // (ein Termin, der über Mitternacht hinausgeht, endet in dieser
+            // Spalte visuell um 24:00, nicht am rechnerisch "negativen" Ende).
+            const tagesEintraege = zeitEintraege.filter((e) => beruehrtTag(e.start, e.end, tag))
             const positioniert = positioniereEreignisse(
-              tagesEintraege.map((e) => ({
-                id: e.id,
-                startMin: minutenSeitMitternacht(e.start),
-                endMin: Math.max(minutenSeitMitternacht(e.end), minutenSeitMitternacht(e.start) + 20),
-              }))
+              tagesEintraege.map((e) => {
+                const effStart = e.start < tagStart ? tagStart : e.start
+                const effEnd = e.end > tagEnde ? tagEnde : e.end
+                const startMin = minutenSeitMitternacht(effStart)
+                const endMin = effEnd.getTime() === tagEnde.getTime() ? 24 * 60 : minutenSeitMitternacht(effEnd)
+                return { id: e.id, startMin, endMin: Math.max(endMin, startMin + 20) }
+              })
             )
 
             return (

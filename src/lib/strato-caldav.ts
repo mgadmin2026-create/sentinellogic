@@ -7,6 +7,11 @@ import type { VEvent } from 'node-ical'
 import { XMLParser } from 'fast-xml-parser'
 import { toDateKey } from '@/lib/kalender-helpers'
 
+export interface StratoTeilnehmer {
+  email: string
+  name?: string
+}
+
 export interface StratoEvent {
   uid: string
   href: string
@@ -17,6 +22,7 @@ export interface StratoEvent {
   start: Date
   end: Date
   ganztaegig: boolean
+  teilnehmer: StratoTeilnehmer[]
 }
 
 export interface StratoConfig {
@@ -32,6 +38,8 @@ export function getStratoConfig(): StratoConfig | null {
   if (!url || !user || !password) return null
   return { url: url.replace(/\/$/, ''), user, password }
 }
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function authHeader(cfg: StratoConfig): string {
   return 'Basic ' + Buffer.from(`${cfg.user}:${cfg.password}`).toString('base64')
@@ -106,6 +114,7 @@ export async function fetchStratoEvents(cfg: StratoConfig): Promise<StratoEvent[
           start: new Date(eintrag.start),
           end: new Date(eintrag.end ?? eintrag.start),
           ganztaegig,
+          teilnehmer: parseAttendees(eintrag.attendee),
         })
       }
     } catch (err) {
@@ -119,6 +128,23 @@ export async function fetchStratoEvents(cfg: StratoConfig): Promise<StratoEvent[
 function normalizeArray<T>(value: T | T[] | undefined): T[] {
   if (value === undefined) return []
   return Array.isArray(value) ? value : [value]
+}
+
+// ATTENDEE-Werte von node-ical sind entweder ein roher String
+// ("mailto:foo@bar.de") oder ein Objekt { val, params: { CN } } mit Anzeigename.
+function parseAttendees(attendee: VEvent['attendee']): StratoTeilnehmer[] {
+  if (!attendee) return []
+  const liste = Array.isArray(attendee) ? attendee : [attendee]
+  const ergebnis: StratoTeilnehmer[] = []
+  for (const eintrag of liste) {
+    const wert = typeof eintrag === 'string' ? eintrag : eintrag?.val
+    const name = typeof eintrag === 'string' ? undefined : eintrag?.params?.CN
+    if (!wert) continue
+    const email = wert.replace(/^mailto:/i, '').trim()
+    if (!email) continue
+    ergebnis.push({ email, name: name || undefined })
+  }
+  return ergebnis
 }
 
 function toIcsDate(d: Date, ganztaegig: boolean): string {
@@ -142,6 +168,8 @@ function buildIcs(termin: {
   start: Date
   end: Date
   ganztaegig: boolean
+  teilnehmer?: StratoTeilnehmer[]
+  organizerEmail?: string
 }): string {
   const dtType = termin.ganztaegig ? ';VALUE=DATE' : ''
   const zeilen = [
@@ -157,6 +185,16 @@ function buildIcs(termin: {
   ]
   if (termin.beschreibung) zeilen.push(`DESCRIPTION:${escapeIcsText(termin.beschreibung)}`)
   if (termin.ort) zeilen.push(`LOCATION:${escapeIcsText(termin.ort)}`)
+  // ORGANIZER nur, wenn Teilnehmer eingeladen sind — ohne ATTENDEE-Zeilen
+  // erwartet kein CalDAV-Server einen Organizer, und ohne ihn zeigt STRATO
+  // eingeladene Teilnehmer trotzdem korrekt an.
+  if (termin.teilnehmer?.length && termin.organizerEmail) {
+    zeilen.push(`ORGANIZER:mailto:${termin.organizerEmail}`)
+  }
+  for (const t of termin.teilnehmer ?? []) {
+    const cn = t.name ? `;CN=${escapeIcsText(t.name)}` : ''
+    zeilen.push(`ATTENDEE${cn};RSVP=TRUE:mailto:${t.email}`)
+  }
   zeilen.push('END:VEVENT', 'END:VCALENDAR')
   return zeilen.join('\r\n')
 }
@@ -176,11 +214,13 @@ export async function pushStratoEvent(
     start: Date
     end: Date
     ganztaegig: boolean
+    teilnehmer?: StratoTeilnehmer[]
   }
 ): Promise<{ uid: string; href: string; etag: string }> {
   const uid = termin.uid || `${crypto.randomUUID()}@sentinellogic`
   const href = termin.href || `${cfg.url}/${uid}.ics`
-  const ics = buildIcs({ ...termin, uid })
+  const organizerEmail = EMAIL_REGEX.test(cfg.user) ? cfg.user : undefined
+  const ics = buildIcs({ ...termin, uid, organizerEmail })
 
   const res = await fetch(href, {
     method: 'PUT',

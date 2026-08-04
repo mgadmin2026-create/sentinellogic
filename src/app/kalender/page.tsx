@@ -203,7 +203,22 @@ export default function KalenderPage() {
     return alle
   }, [termine, aufgaben, kontakte, quellenAktiv, von, bis])
 
-  const markierteTage = useMemo(() => new Set(eintraege.map((e) => toDateKey(e.start))), [eintraege])
+  // Mehrtägige Termine markieren jeden ihrer Tage, nicht nur den Starttag
+  // (gedeckelt gegen fehlerhaft sehr lange Zeiträume).
+  const markierteTage = useMemo(() => {
+    const tage = new Set<string>()
+    for (const e of eintraege) {
+      const tag = new Date(e.start)
+      tag.setHours(0, 0, 0, 0)
+      const letzterTag = new Date(e.end)
+      letzterTag.setHours(0, 0, 0, 0)
+      for (let i = 0; tag <= letzterTag && i < 366; i++) {
+        tage.add(toDateKey(tag))
+        tag.setDate(tag.getDate() + 1)
+      }
+    }
+    return tage
+  }, [eintraege])
 
   function navigiere(richtung: 1 | -1) {
     if (ansicht === 'tag') setCurrentDate((d) => tageAddieren(d, richtung))

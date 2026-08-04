@@ -2,6 +2,11 @@
 import { useState, useEffect } from 'react'
 import { toDatetimeLocalValue, toDateKey } from '@/lib/kalender-helpers'
 
+export interface TerminTeilnehmer {
+  email: string
+  name?: string
+}
+
 export interface Termin {
   id?: string
   titel: string
@@ -12,6 +17,7 @@ export interface Termin {
   ort?: string
   contact_id?: string
   assigned_user_id?: string
+  teilnehmer?: TerminTeilnehmer[]
 }
 
 interface Kontakt {
@@ -46,7 +52,27 @@ function leeresFormular(initialStart?: Date | null): Termin {
     end_zeit: end.toISOString(),
     ganztaegig: false,
     ort: '',
+    teilnehmer: [],
   }
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Erlaubt sowohl reine E-Mails ("max@firma.de") als auch das übliche
+// "Name <email>"-Format, wie es Nutzer beim Kopieren aus Outlook/Mail
+// erwarten — analog zum "Name oder E-Mail-Adresse"-Feld bei STRATO.
+function parseTeilnehmerEingabe(eingabe: string): TerminTeilnehmer | null {
+  const wert = eingabe.trim()
+  if (!wert) return null
+  const spitzKlammernMatch = wert.match(/^(.*?)<([^<>]+)>$/)
+  if (spitzKlammernMatch) {
+    const name = spitzKlammernMatch[1].trim().replace(/^["']|["']$/g, '')
+    const email = spitzKlammernMatch[2].trim()
+    if (!EMAIL_REGEX.test(email)) return null
+    return { email, name: name || undefined }
+  }
+  if (!EMAIL_REGEX.test(wert)) return null
+  return { email: wert }
 }
 
 export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave, onDelete }: Props) {
@@ -56,6 +82,8 @@ export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave,
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  const [teilnehmerEingabe, setTeilnehmerEingabe] = useState('')
+  const [teilnehmerFehler, setTeilnehmerFehler] = useState('')
 
   const isEdit = !!termin?.id
 
@@ -63,6 +91,8 @@ export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave,
     if (isOpen) {
       setForm(termin || leeresFormular(initialStart))
       setError('')
+      setTeilnehmerEingabe('')
+      setTeilnehmerFehler('')
       loadKontakte()
       loadTeamMembers()
     }
@@ -132,6 +162,26 @@ export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave,
   function setEnd(value: string) {
     const end = form.ganztaegig ? new Date(`${value}T23:59`) : new Date(value)
     setForm({ ...form, end_zeit: end.toISOString() })
+  }
+
+  function addTeilnehmer() {
+    const teilnehmer = parseTeilnehmerEingabe(teilnehmerEingabe)
+    if (!teilnehmer) {
+      setTeilnehmerFehler('Bitte eine gültige E-Mail-Adresse eingeben')
+      return
+    }
+    const bestehende = form.teilnehmer || []
+    if (bestehende.some((t) => t.email.toLowerCase() === teilnehmer.email.toLowerCase())) {
+      setTeilnehmerFehler('Dieser Teilnehmer ist bereits eingeladen')
+      return
+    }
+    setForm({ ...form, teilnehmer: [...bestehende, teilnehmer] })
+    setTeilnehmerEingabe('')
+    setTeilnehmerFehler('')
+  }
+
+  function removeTeilnehmer(email: string) {
+    setForm({ ...form, teilnehmer: (form.teilnehmer || []).filter((t) => t.email !== email) })
   }
 
   return (
@@ -245,6 +295,55 @@ export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave,
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">Teilnehmer einladen</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={teilnehmerEingabe}
+                onChange={(e) => { setTeilnehmerEingabe(e.target.value); setTeilnehmerFehler('') }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); addTeilnehmer() }
+                }}
+                placeholder="Name oder E-Mail-Adresse"
+                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
+              />
+              <button
+                type="button"
+                onClick={addTeilnehmer}
+                className="px-3 py-2 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50"
+              >
+                Hinzufügen
+              </button>
+            </div>
+            {teilnehmerFehler && <p className="text-xs text-red-600 mt-1">{teilnehmerFehler}</p>}
+            {(form.teilnehmer || []).length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {(form.teilnehmer || []).map((t) => (
+                  <li
+                    key={t.email}
+                    className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5"
+                  >
+                    <span className="text-sm text-gray-900 truncate">
+                      {t.name ? <>{t.name} <span className="text-gray-400">· {t.email}</span></> : t.email}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeTeilnehmer(t.email)}
+                      aria-label={`${t.email} entfernen`}
+                      className="text-gray-400 hover:text-red-600 flex-shrink-0"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-gray-100">
