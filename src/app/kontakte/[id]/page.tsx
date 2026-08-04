@@ -29,7 +29,6 @@ import { BeitragsuebersichtPanel } from '@/components/kontakt/Beitragsuebersicht
 import { ErstgespraechPanel } from '@/components/kontakt/ErstgespraechPanel'
 import { CallPrepPanel } from '@/components/kontakt/CallPrepPanel'
 import { AuslandsreiseversicherungPanel } from '@/components/kontakt/AuslandsreiseversicherungPanel'
-import { ERSTGESPRAECH_LEITFAEDEN } from '@/data/erstgespraech-leitfaden'
 import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
 import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
 
@@ -134,6 +133,22 @@ interface Kontakt {
   tags?: { id: string; name: string }[]
 }
 
+interface KontaktSparte {
+  is_primary: boolean
+  sparte: {
+    id: string
+    name: string
+    leitfaden_titel: string | null
+    leitfaden_fragen: Array<{
+      id: string
+      frage: string
+      felder: Array<{ feld: string; label: string; typ?: 'text' | 'date' | 'number' | 'checkbox' }>
+      nurAnzeige?: boolean
+    }>
+    leitfaden_abschluss: string | null
+  }
+}
+
 type Aufgabe = KontaktAufgabe & {
   triggered_by_process_step?: string
   amis_task_type?: 'person_create' | 'person_create_quote'
@@ -191,6 +206,7 @@ export default function KontaktDetailPage() {
   const [amisCreating, setAmisCreating] = useState<'person_create' | 'person_create_quote' | null>(null)
   const [amisMessage, setAmisMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
   const [kontaktTags, setKontaktTags] = useState<{ id: string; name: string }[]>([])
+  const [kontaktSparten, setKontaktSparten] = useState<KontaktSparte[]>([])
 
   useEffect(() => {
     loadKontakt()
@@ -208,6 +224,7 @@ export default function KontaktDetailPage() {
         setAktivitäten(data.activities || [])
         setAufgaben(data.tasks || [])
         setKontaktTags(data.tags || [])
+        setKontaktSparten(data.sparten || [])
 
         // Load Dialfire response snapshot
         if (data.dialfire_id) {
@@ -712,8 +729,10 @@ export default function KontaktDetailPage() {
               </div>
               <div className="grid sm:grid-cols-3 gap-x-6 gap-y-1.5 text-sm mb-1">
                 <div className="flex justify-between gap-3">
-                  <span className="text-gray-400">Sparte</span>
-                  <span className="text-gray-900 truncate">{kontakt.sparte || '—'}</span>
+                  <span className="text-gray-400">Sparten</span>
+                  <span className="text-gray-900 truncate">
+                    {kontaktSparten.length > 0 ? kontaktSparten.map((z) => z.sparte.name).join(', ') : '—'}
+                  </span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-gray-400">Prüfgrund</span>
@@ -746,7 +765,7 @@ export default function KontaktDetailPage() {
                   </tbody>
                 </table>
               )}
-              {kontakt.sparte === 'Auslandsreiseversicherung' && (
+              {kontaktSparten.some((z) => z.sparte.name === 'Auslandsreiseversicherung') && (
                 <div className="border-t border-gray-100 mt-3 pt-3">
                   <AuslandsreiseversicherungPanel kontakt={kontakt} onSave={handleSaveOverview} />
                 </div>
@@ -891,11 +910,13 @@ export default function KontaktDetailPage() {
                 </button>
               </div>
               <p className="text-xs text-gray-400 mt-2">
-                {!kontakt.sparte
+                {kontaktSparten.length === 0
                   ? 'Keine Sparte hinterlegt'
-                  : ERSTGESPRAECH_LEITFAEDEN[kontakt.sparte]
-                    ? `Leitfaden: ${kontakt.sparte}`
-                    : `Kein Leitfaden für Sparte „${kontakt.sparte}"`}
+                  : kontaktSparten.length === 1
+                    ? kontaktSparten[0].sparte.leitfaden_fragen.length > 0
+                      ? `Leitfaden: ${kontaktSparten[0].sparte.name}`
+                      : `Kein Leitfaden für Sparte „${kontaktSparten[0].sparte.name}"`
+                    : `${kontaktSparten.length} Sparten: ${kontaktSparten.map((z) => z.sparte.name).join(', ')}`}
               </p>
             </div>
 
@@ -1020,6 +1041,7 @@ export default function KontaktDetailPage() {
       >
         <ErstgespraechPanel
           kontakt={kontakt}
+          sparten={kontaktSparten}
           onSave={handleSaveErstgespraech}
           onSaveNotes={handleSaveNotes}
           onFolgeterminClick={() => openNewTaskWithTitle('Beratungstermin')}

@@ -31,6 +31,12 @@ const settingsSections = [
     icon: '✉️'
   },
   {
+    title: 'Sparten & Erstgespräch-Leitfäden',
+    description: 'Sparten verwalten und den Gesprächsleitfaden pro Sparte pflegen',
+    href: '/einstellungen/sparten',
+    icon: '📋'
+  },
+  {
     title: 'Allgemein',
     description: 'Allgemeine Einstellungen (kommt bald)',
     href: '#',

@@ -106,6 +106,11 @@ export async function GET(
       .select('tag:tag_id(id, name)')
       .eq('contact_id', id)
 
+    const { data: sparteRows } = await supabase
+      .from('contact_sparte_map')
+      .select('is_primary, sparte:sparte_id(id, name, leitfaden_titel, leitfaden_fragen, leitfaden_abschluss)')
+      .eq('contact_id', id)
+
     return Response.json({
       success: true,
       data: {
@@ -113,6 +118,7 @@ export async function GET(
         activities: activities ?? [],
         tasks: tasks ?? [],
         tags: (tagRows ?? []).map((r: any) => r.tag),
+        sparten: sparteRows ?? [],
       },
     })
   } catch (error) {

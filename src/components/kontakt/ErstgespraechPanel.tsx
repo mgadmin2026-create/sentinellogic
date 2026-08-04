@@ -7,16 +7,40 @@
 // nicht bei jedem Tastendruck ein Request rausgeht.
 import { useRef, useState } from 'react'
 import { Field } from '@/components/kontakt/Field'
-import { ERSTGESPRAECH_LEITFAEDEN } from '@/data/erstgespraech-leitfaden'
+
+interface LeitfadenFeld {
+  feld: string
+  label: string
+  typ?: 'text' | 'date' | 'number' | 'checkbox'
+}
+
+interface LeitfadenFrage {
+  id: string
+  frage: string
+  felder: LeitfadenFeld[]
+  nurAnzeige?: boolean
+}
+
+interface KontaktSparte {
+  is_primary: boolean
+  sparte: {
+    id: string
+    name: string
+    leitfaden_titel: string | null
+    leitfaden_fragen: LeitfadenFrage[]
+    leitfaden_abschluss: string | null
+  }
+}
 
 interface ErstgespraechPanelProps {
   kontakt: Record<string, any>
+  sparten: KontaktSparte[]
   onSave: (changes: Record<string, unknown>) => Promise<void>
   onSaveNotes: (notes: string) => Promise<void>
   onFolgeterminClick: () => void
 }
 
-export function ErstgespraechPanel({ kontakt, onSave, onSaveNotes, onFolgeterminClick }: ErstgespraechPanelProps) {
+export function ErstgespraechPanel({ kontakt, sparten, onSave, onSaveNotes, onFolgeterminClick }: ErstgespraechPanelProps) {
   const [edits, setEdits] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
   const [gespeichert, setGespeichert] = useState(false)
@@ -28,8 +52,8 @@ export function ErstgespraechPanel({ kontakt, onSave, onSaveNotes, onFolgetermin
   const topRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  const sparte = kontakt.sparte as string | undefined
-  const leitfaden = sparte ? ERSTGESPRAECH_LEITFAEDEN[sparte] : undefined
+  const sparteMitLeitfaden = sparten.filter((z) => z.sparte.leitfaden_fragen.length > 0)
+  const mehrfach = sparten.length > 1
 
   function getValue(feld: string) {
     return edits[feld] !== undefined ? edits[feld] : kontakt[feld]
@@ -97,13 +121,15 @@ export function ErstgespraechPanel({ kontakt, onSave, onSaveNotes, onFolgetermin
         )}
       </div>
 
-      {!sparte ? (
+      {sparten.length === 0 ? (
         <p className="text-sm text-gray-400">
           Für diesen Kontakt ist noch keine Sparte hinterlegt — der Leitfaden richtet sich nach der Sparte.
         </p>
-      ) : !leitfaden ? (
+      ) : sparteMitLeitfaden.length === 0 ? (
         <p className="text-sm text-gray-400">
-          Für Sparte „{sparte}" ist noch kein Leitfaden hinterlegt.
+          {sparten.length === 1
+            ? `Für Sparte „${sparten[0].sparte.name}" ist noch kein Leitfaden hinterlegt.`
+            : `Für die zugeordneten Sparten (${sparten.map((z) => z.sparte.name).join(', ')}) ist noch kein Leitfaden hinterlegt.`}
         </p>
       ) : (
         <div className="space-y-4">
@@ -117,44 +143,56 @@ export function ErstgespraechPanel({ kontakt, onSave, onSaveNotes, onFolgetermin
             </button>
           </div>
 
-          {leitfaden.fragen.map((frage, i) => (
-            <div key={frage.id} className={i > 0 ? 'border-t border-gray-100 pt-3' : ''}>
-              <p className="text-xs text-gray-500 italic mb-2">„{frage.frage}"</p>
-              <div className="grid grid-cols-2 gap-3">
-                {frage.felder.map((f) =>
-                  frage.nurAnzeige ? (
-                    <div key={f.feld}>
-                      <p className="text-xs text-gray-500 font-medium">{f.label}</p>
-                      <p className="text-sm text-gray-900 mt-1">{getValue(f.feld) || '—'}</p>
+          {sparteMitLeitfaden.map((z, sIdx) => (
+            <div key={z.sparte.id} className={sIdx > 0 ? 'border-t-2 border-gray-200 pt-4' : ''}>
+              {mehrfach && (
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3">{z.sparte.name}</h4>
+              )}
+              <div className="space-y-4">
+                {z.sparte.leitfaden_fragen.map((frage, i) => (
+                  <div key={frage.id} className={i > 0 ? 'border-t border-gray-100 pt-3' : ''}>
+                    <p className="text-xs text-gray-500 italic mb-2">„{frage.frage}"</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {frage.felder.map((f) =>
+                        frage.nurAnzeige ? (
+                          <div key={f.feld}>
+                            <p className="text-xs text-gray-500 font-medium">{f.label}</p>
+                            <p className="text-sm text-gray-900 mt-1">{getValue(f.feld) || '—'}</p>
+                          </div>
+                        ) : f.typ === 'checkbox' ? (
+                          <label key={f.feld} className="flex items-center gap-2 mt-4">
+                            <input
+                              type="checkbox"
+                              checked={!!getValue(f.feld)}
+                              onChange={(e) => handleChange(f.feld, e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm text-gray-900">{f.label}</span>
+                          </label>
+                        ) : (
+                          <Field
+                            key={f.feld}
+                            label={f.label}
+                            field={f.feld}
+                            type={f.typ || 'text'}
+                            value={getValue(f.feld)}
+                            onChange={handleChange}
+                            isEditing
+                          />
+                        )
+                      )}
                     </div>
-                  ) : f.typ === 'checkbox' ? (
-                    <label key={f.feld} className="flex items-center gap-2 mt-4">
-                      <input
-                        type="checkbox"
-                        checked={!!getValue(f.feld)}
-                        onChange={(e) => handleChange(f.feld, e.target.checked)}
-                        className="rounded border-gray-300"
-                      />
-                      <span className="text-sm text-gray-900">{f.label}</span>
-                    </label>
-                  ) : (
-                    <Field
-                      key={f.feld}
-                      label={f.label}
-                      field={f.feld}
-                      type={f.typ || 'text'}
-                      value={getValue(f.feld)}
-                      onChange={handleChange}
-                      isEditing
-                    />
-                  )
+                  </div>
+                ))}
+
+                {z.sparte.leitfaden_abschluss && (
+                  <p className="text-xs text-gray-500 italic pt-1">„{z.sparte.leitfaden_abschluss}"</p>
                 )}
               </div>
             </div>
           ))}
 
           <div className="border-t border-gray-100 pt-3">
-            <p className="text-xs text-gray-500 italic mb-2">„{leitfaden.abschluss}"</p>
             <button
               onClick={onFolgeterminClick}
               className="text-xs font-semibold px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"

@@ -37,13 +37,6 @@ const SOURCE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'manuell', label: 'Manuell' },
   { value: 'ki_upload', label: 'KI Upload' },
 ]
-const SPARTE_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Alle Sparten' },
-  { value: 'PKV', label: 'PKV (Private Krankenversicherung)' },
-  { value: 'Unternehmerschutz', label: 'Unternehmerschutz' },
-  { value: 'Auslandsreiseversicherung', label: 'Auslandsreiseversicherung' },
-  { value: 'Auslandskrankenversicherung', label: 'Auslandskrankenversicherung' },
-]
 const STATUS_OPTIONS = [
   { value: 'new', label: 'Neu' }, { value: 'contacted', label: 'Kontaktiert' },
   { value: 'qualified', label: 'Qualifiziert' }, { value: 'customer', label: 'Kunde' },
@@ -61,6 +54,9 @@ export default function RegelnPage() {
   const [saving, setSaving] = useState(false)
   const [config, setConfig] = useState<IntegrationConfig>({})
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [sparteOptions, setSparteOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: '', label: 'Alle Sparten' },
+  ])
 
   // Form state
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
@@ -77,10 +73,17 @@ export default function RegelnPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/config?key=system_config').then(r => r.json()),
-      fetch('/api/rules').then(r => r.json())
-    ]).then(([configRes, rulesRes]) => {
+      fetch('/api/rules').then(r => r.json()),
+      fetch('/api/sparten').then(r => r.json()),
+    ]).then(([configRes, rulesRes, spartenRes]) => {
       if (configRes.success) setConfig(configRes.data)
       if (rulesRes.success) setRules(rulesRes.data)
+      if (spartenRes.success) {
+        setSparteOptions([
+          { value: '', label: 'Alle Sparten' },
+          ...spartenRes.data.map((s: { name: string }) => ({ value: s.name, label: s.name })),
+        ])
+      }
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
@@ -144,7 +147,7 @@ export default function RegelnPage() {
       if (newNotificationEmail.trim()) actions.notification_email = newNotificationEmail.trim()
     }
 
-    const sparteLbl = SPARTE_OPTIONS.find((i) => i.value === newSparte)?.label
+    const sparteLbl = sparteOptions.find((i) => i.value === newSparte)?.label
     const ruleName = sparteLbl && sparteLbl !== 'Alle Sparten'
       ? `${sourceLbl} + ${sparteLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
       : `${sourceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
@@ -352,7 +355,7 @@ export default function RegelnPage() {
                       </p>
                       {rule.condition_sparte && (
                         <p className="text-sm font-semibold text-[#1A1A1A] text-blue-700">
-                          + Sparte = {SPARTE_OPTIONS.find((i) => i.value === rule.condition_sparte)?.label ?? rule.condition_sparte}
+                          + Sparte = {sparteOptions.find((i) => i.value === rule.condition_sparte)?.label ?? rule.condition_sparte}
                         </p>
                       )}
                     </div>
@@ -463,7 +466,7 @@ export default function RegelnPage() {
                 <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Versicherungstyp (optional)</label>
                 <select value={newSparte} onChange={(e) => setNewSparte(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
-                  {SPARTE_OPTIONS.map((opt) => (
+                  {sparteOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>

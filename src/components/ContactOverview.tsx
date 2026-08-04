@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, memo } from 'react'
 import { Field } from '@/components/kontakt/Field'
+import { SparteMultiSelect } from '@/components/kontakt/SparteMultiSelect'
 
 interface Kontakt {
   id: string
@@ -420,7 +421,7 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
         onToggle={() => toggleSection('versicherung_allgemein')}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-4">
-          <Field label="Sparte" field="sparte" value={getValue('sparte')} onChange={handleChange} isEditing={isEditing} />
+          <SparteMultiSelect contactId={kontakt.id} isEditing={isEditing} />
           <div className="sm:col-span-2">
             <Field label="Prüfungsgrund" field="prüfung_grund" value={getValue('prüfung_grund')} onChange={handleChange} isEditing={isEditing} />
           </div>
