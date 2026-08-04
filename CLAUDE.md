@@ -333,6 +333,17 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.21.1 (2026-08-04) — Melih wird bei jedem neuen Termin automatisch eingeladen
+
+- ✅ Fachliche Vorgabe: `melih.guen@allianz.de` wird bei jedem NEU angelegten Termin automatisch
+  als Teilnehmer ergänzt (`STANDARD_TEILNEHMER` + `mitStandardTeilnehmer()` in
+  `src/lib/kalender-helpers.ts`), serverseitig in `POST /api/termine` durchgesetzt — unabhängig
+  davon, was das Formular sendet, damit es auch bei künftigen anderen Erstellungswegen greift.
+  `TerminEditModal.tsx` zeigt ihn im „Neuer Termin"-Formular direkt vorbelegt (Transparenz statt
+  unsichtbarer Server-Magie). Case-insensitive Dedupe verhindert einen doppelten Eintrag, wenn er
+  bereits manuell mit anderer Schreibweise hinzugefügt wurde. Gilt bewusst nur für `POST`
+  (Neuanlage), nicht für `PATCH` (nachträgliches Entfernen bei bestehenden Terminen bleibt möglich)
+
 ### v0.21.0 (2026-08-04) — Kalender: mehrtägige Termine korrekt anzeigen + Teilnehmer einladen
 
 - 🐛 Mehrtägige Termine (z.B. ganztägig 07.08.–08.08.) wurden in Monats-/Wochen-/Tagesansicht und im

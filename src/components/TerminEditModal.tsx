@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { toDatetimeLocalValue, toDateKey } from '@/lib/kalender-helpers'
+import { toDatetimeLocalValue, toDateKey, STANDARD_TEILNEHMER } from '@/lib/kalender-helpers'
 
 export interface TerminTeilnehmer {
   email: string
@@ -52,7 +52,10 @@ function leeresFormular(initialStart?: Date | null): Termin {
     end_zeit: end.toISOString(),
     ganztaegig: false,
     ort: '',
-    teilnehmer: [],
+    // Wird bei jedem neuen Termin automatisch eingeladen (siehe
+    // mitStandardTeilnehmer in der POST-Route) — hier schon vorbelegt,
+    // damit das Formular es transparent zeigt statt es unsichtbar zu tun.
+    teilnehmer: [STANDARD_TEILNEHMER],
   }
 }
 

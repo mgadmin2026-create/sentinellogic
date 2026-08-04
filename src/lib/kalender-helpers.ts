@@ -115,6 +115,16 @@ export function sanitizeTeilnehmer(input: unknown): { email: string; name?: stri
   return ergebnis
 }
 
+// Melih soll bei jedem NEU angelegten Termin automatisch als Teilnehmer
+// eingeladen werden (fachliche Vorgabe) — unabhängig davon, wer den Termin
+// erstellt oder ob er im Formular manuell hinzugefügt wurde.
+export const STANDARD_TEILNEHMER = { email: 'melih.guen@allianz.de', name: 'Melih Gün' }
+
+export function mitStandardTeilnehmer(teilnehmer: { email: string; name?: string }[]): { email: string; name?: string }[] {
+  if (teilnehmer.some((t) => t.email.toLowerCase() === STANDARD_TEILNEHMER.email.toLowerCase())) return teilnehmer
+  return [...teilnehmer, STANDARD_TEILNEHMER]
+}
+
 export const STUNDEN = Array.from({ length: 24 }, (_, i) => i)
 
 // Vertikale Position (px) eines Zeitpunkts im Stundenraster.

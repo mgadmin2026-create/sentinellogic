@@ -5,7 +5,7 @@ import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getStratoConfig, pushStratoEvent } from '@/lib/strato-caldav'
-import { sanitizeTeilnehmer } from '@/lib/kalender-helpers'
+import { sanitizeTeilnehmer, mitStandardTeilnehmer } from '@/lib/kalender-helpers'
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,7 +68,9 @@ export async function POST(request: NextRequest) {
       created_by_user_id: currentUser?.id || null,
       kalender_quelle: 'crm',
       farbe: body.farbe || null,
-      teilnehmer: sanitizeTeilnehmer(body.teilnehmer),
+      // Melih wird bei jedem neuen Termin automatisch eingeladen, unabhängig
+      // davon, was das Formular sendet (siehe mitStandardTeilnehmer).
+      teilnehmer: mitStandardTeilnehmer(sanitizeTeilnehmer(body.teilnehmer)),
     }
 
     const { data, error } = await supabase
