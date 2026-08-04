@@ -190,6 +190,10 @@ export async function sendStratoMail(params: {
   inReplyTo?: string
   references?: string[]
   attachments?: StratoMailAttachment[]
+  // Kalendereinladung/-update/-absage als echter iTIP-Anhang statt normaler
+  // Datei — Outlook/Gmail/Apple Kalender rendern damit Annehmen/Ablehnen-
+  // Buttons direkt in der Mail (siehe src/lib/termin-email.ts).
+  icalEvent?: { method: 'REQUEST' | 'CANCEL'; content: string }
 }): Promise<{ messageId: string }> {
   const config = getConfig()
   const transporter = nodemailer.createTransport({
@@ -212,6 +216,7 @@ export async function sendStratoMail(params: {
     inReplyTo: params.inReplyTo,
     references: params.references,
     attachments: params.attachments,
+    icalEvent: params.icalEvent,
   })
 
   return { messageId: result.messageId }

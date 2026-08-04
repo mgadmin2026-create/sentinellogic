@@ -333,6 +333,33 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.22.0 (2026-08-04) — Termin-Änderungen werden per E-Mail an Teilnehmer gesendet
+
+- ✅ Verschieben, Ort ändern, Titel/Beschreibung ändern und Stornieren eines Termins lösen jetzt
+  automatisch eine E-Mail an die Teilnehmer aus (`src/lib/termin-email.ts`, `sendTerminBenachrichtigung()`)
+  — echte Kalendereinladung mit ICS-Anhang (`METHOD:REQUEST`/`CANCEL`), damit Outlook/Gmail/Apple
+  Kalender Annehmen/Ablehnen-Buttons zeigen, nicht nur eine normale Mail. Nutzt dieselbe
+  STRATO-Postfach/Resend-Infrastruktur wie `contact-email.ts` (STRATO-Mailbox bevorzugt, Resend als
+  Fallback mit ICS als normalem Anhang)
+- ✅ Neue Spalte `termine.sequence` (Migration `0063_termine_sequence.sql`) — iTIP-SEQUENCE-Zähler,
+  wird bei jeder für Teilnehmer relevanten Änderung erhöht (RFC 5546), sowohl in der Mail als auch im
+  CalDAV-Push an STRATO (`pushStratoEvent` nimmt jetzt `sequence` entgegen)
+- ✅ `PATCH /api/termine/[id]` vergleicht vor dem Speichern den bestehenden mit dem resultierenden
+  Stand und verschickt gezielt: neu hinzugefügte Teilnehmer bekommen eine Einladung, entfernte eine
+  Absage, weiterhin eingeladene bei inhaltlicher Änderung (Zeit/Ort/Titel/Beschreibung) ein Update
+  mit lesbarer Änderungsliste. Rein interne Änderungen (z.B. `assigned_user_id`, `farbe`) lösen
+  bewusst keine Mail und keinen SEQUENCE-Sprung aus
+- ✅ `DELETE /api/termine/[id]` verschickt vor dem eigentlichen Löschen eine Absage an alle
+  aktuellen Teilnehmer (best effort, wie der bestehende STRATO-Push)
+- ✅ Live verifiziert (ohne echten Mailversand, da lokal kein Absender konfiguriert ist — der
+  „Kein Absender konfiguriert"-Zweig wurde bewusst genutzt, um Testmails an Fake-Adressen zu
+  vermeiden): Anlegen → 1 Einladung; Ort ändern → 1 Update, SEQUENCE 0→1; Verschieben +
+  neuer Teilnehmer gleichzeitig → 1 Update + 1 Einladung, SEQUENCE 1→2; Teilnehmer entfernen
+  (ohne weitere Änderung) → nur 1 Absage an den Entfernten, keine Mail an Verbleibende, SEQUENCE
+  2→3; irrelevante Änderung (`farbe`) → keine Mail, SEQUENCE unverändert; Stornieren → 1 Absage vor
+  dem Löschen. Alle Aufrufzahlen exakt wie erwartet
+- 🆕 Dateien: `src/lib/termin-email.ts`, `supabase/migrations/0063_termine_sequence.sql`
+
 ### v0.21.1 (2026-08-04) — Melih wird bei jedem neuen Termin automatisch eingeladen
 
 - ✅ Fachliche Vorgabe: `melih.guen@allianz.de` wird bei jedem NEU angelegten Termin automatisch

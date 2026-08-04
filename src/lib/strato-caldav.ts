@@ -170,6 +170,7 @@ function buildIcs(termin: {
   ganztaegig: boolean
   teilnehmer?: StratoTeilnehmer[]
   organizerEmail?: string
+  sequence?: number
 }): string {
   const dtType = termin.ganztaegig ? ';VALUE=DATE' : ''
   const zeilen = [
@@ -178,6 +179,7 @@ function buildIcs(termin: {
     'PRODID:-//Sentimental Logic//Kalender//DE',
     'BEGIN:VEVENT',
     `UID:${termin.uid}`,
+    `SEQUENCE:${termin.sequence ?? 0}`,
     `DTSTAMP:${toIcsDate(new Date(), false)}`,
     `DTSTART${dtType}:${toIcsDate(termin.start, termin.ganztaegig)}`,
     `DTEND${dtType}:${toIcsDate(termin.end, termin.ganztaegig)}`,
@@ -215,6 +217,7 @@ export async function pushStratoEvent(
     end: Date
     ganztaegig: boolean
     teilnehmer?: StratoTeilnehmer[]
+    sequence?: number
   }
 ): Promise<{ uid: string; href: string; etag: string }> {
   const uid = termin.uid || `${crypto.randomUUID()}@sentinellogic`

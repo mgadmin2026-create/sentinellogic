@@ -6,6 +6,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getStratoConfig, pushStratoEvent } from '@/lib/strato-caldav'
 import { sanitizeTeilnehmer, mitStandardTeilnehmer } from '@/lib/kalender-helpers'
+import { sendTerminBenachrichtigung } from '@/lib/termin-email'
 
 export async function GET(request: NextRequest) {
   try {
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
           end: new Date(data.end_zeit),
           ganztaegig: data.ganztaegig,
           teilnehmer: data.teilnehmer,
+          sequence: data.sequence,
         })
         await supabase
           .from('termine')
@@ -118,6 +120,19 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error('[POST /api/termine] STRATO-Push fehlgeschlagen (Termin bleibt lokal gespeichert):', err)
       }
+    }
+
+    // Einladungs-Mail an alle Teilnehmer (inkl. dem automatisch ergänzten
+    // Standard-Teilnehmer) — best effort, wie der STRATO-Push oben.
+    try {
+      await sendTerminBenachrichtigung({
+        termin: data,
+        teilnehmer: data.teilnehmer ?? [],
+        art: 'einladung',
+        sequence: data.sequence ?? 0,
+      })
+    } catch (err) {
+      console.error('[POST /api/termine] Einladungs-Mail fehlgeschlagen:', err)
     }
 
     return Response.json({ success: true, data }, { status: 201 })
