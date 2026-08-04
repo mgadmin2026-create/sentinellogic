@@ -333,6 +333,40 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.20.0 (2026-08-04) — Mehrfach-Sparten pro Kontakt + admin-pflegbare Erstgespräch-Leitfäden
+
+- ✅ Neue Tabellen `sparten` (Name + Leitfaden als JSONB: `leitfaden_titel`, `leitfaden_fragen`,
+  `leitfaden_abschluss`) und `contact_sparte_map` (n:m, `is_primary`, max. eine Primärsparte pro
+  Kontakt via partiellem Unique-Index) ersetzen den bisherigen statischen Import
+  `src/data/erstgespraech-leitfaden.ts` (gelöscht) und die 1:1-Beziehung über `contacts.sparte`
+- ✅ `contacts.sparte` (Legacy-Spalte) bleibt bestehen und wird ausschließlich in
+  `PUT /api/kontakte/[id]/sparten` automatisch auf den Namen der Primärsparte synchron gehalten —
+  bewusste Entscheidung, damit Dialfire-Kampagnen-Zuordnung, KlickTipp-Tags, Facebook-Import und
+  Regeln-Bedingungen (`automation-engine.ts`, `regeln/page.tsx`) unverändert weiterlaufen, ohne an
+  ~25 Stellen im Code angefasst zu werden
+- ✅ Neue Einstellungsseite `/einstellungen/sparten` (Muster: `mail-vorlagen/page.tsx`) — Melih
+  verwaltet die feste Sparten-Liste inkl. verschachteltem Leitfaden-Editor (Fragen-Array, pro Frage
+  ein Felder-Array mit `feld`/`label`/`typ`/`nurAnzeige`)
+- ✅ `SparteMultiSelect.tsx` (Muster: `TagInput.tsx`, aber feste Liste statt Freitext) ersetzt das
+  alte Freitextfeld „Sparte" in `ContactOverview.tsx`; speichert sofort bei jeder Änderung über
+  `PUT /api/kontakte/[id]/sparten` (Body `{ sparteIds, primarySparteId }`, ersetzt den kompletten
+  Satz je Kontakt in einem Rutsch, analog `contact_tag_map`)
+- ✅ `ErstgespraechPanel.tsx` rendert jetzt 0/1/≥2 zugeordnete Sparten: bei ≥2 erscheint pro Sparte
+  mit hinterlegtem Leitfaden ein eigener Abschnitt mit Sparten-Namen als Zwischenüberschrift, alle
+  Antworten weiterhin gemeinsam über einen „Antworten speichern"-Button persistiert (Felder sind
+  echte `contacts`-Spalten ohne Kollisionsgefahr zwischen Sparten)
+- ✅ `regeln/page.tsx`: `SPARTE_OPTIONS` (hartcodiert) durch `GET /api/sparten` ersetzt — rein
+  lesend, `automation-engine.ts` vergleicht weiterhin exakt gegen `contacts.sparte` wie bisher
+- ✅ Live verifiziert: Migration inkl. Seed (Unternehmerschutz-Leitfaden 1:1 aus der alten Datei
+  übernommen, PKV/Auslandsreiseversicherung/Auslandskrankenversicherung leer) und Best-Effort-
+  Backfill bestehender `contacts.sparte`-Werte in `contact_sparte_map`; an einem Bestandskontakt
+  eine zweite und dritte Sparte zugewiesen, `contacts.sparte` blieb korrekt auf der Primärsparte,
+  Erstgespräch-Kachel zeigte alle zugeordneten Leitfäden, Regeln-Dropdown zog die Liste live aus
+  der API
+- 🆕 Dateien: `supabase/migrations/0060_sparten_leitfaden.sql`, `src/app/api/sparten/route.ts`,
+  `src/app/api/sparten/[id]/route.ts`, `src/app/api/kontakte/[id]/sparten/route.ts`,
+  `src/app/einstellungen/sparten/page.tsx`, `src/components/kontakt/SparteMultiSelect.tsx`
+
 ### v0.19.0 (2026-08-04) — KI-Agent Nr. 1: Call-Vorbereitung
 
 - ✅ Neuer Button „🧠 Vorbereiten" in der Kontakt-Kopfzeile (`StickyContactHeader.tsx`, neben dem
