@@ -8,6 +8,9 @@
 // überdecken. Default zeigt nur Fachliches, Technisches ist zuschaltbar.
 import { useState } from 'react'
 import { HelpButton } from '@/components/help/HelpButton'
+import { istTechnisch } from '@/lib/activity-classification'
+
+export { istTechnisch }
 
 export interface Aktivität {
   id: string
@@ -32,18 +35,6 @@ export function getActivityColor(type: string) {
   if (type.includes('superchat')) return 'bg-emerald-100 text-emerald-600'
   if (type.includes('task')) return 'bg-emerald-100 text-emerald-600'
   return 'bg-yellow-100 text-yellow-600'
-}
-
-// Technisch = Sync- und Automations-Mechanik (Dialfire/KlickTipp/Superchat/
-// Facebook-Abgleich, Regelausführung, reine Feld-Updates). Alles andere gilt
-// als fachlich und ist damit standardmäßig sichtbar — unbekannte künftige
-// Typen landen bewusst im fachlichen Default statt unsichtbar zu werden.
-export function istTechnisch(type: string): boolean {
-  if (type.includes('sync')) return true
-  if (type.startsWith('automation_')) return true
-  if (type === 'facebook_linked' || type === 'facebook_skipped_duplicate') return true
-  if (type === 'contact_updated') return true
-  return false
 }
 
 function zeitpunkt(iso: string): string {

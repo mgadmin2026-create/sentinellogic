@@ -119,7 +119,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Facebook Lead-Import produktiv abnehmen** | Mittel | 🟢 Webhook und manueller Sync implementiert | Echten Lead-End-to-End-Lauf inklusive Dubletten, Automation und Downstream-Sync durchführen |
 | **KlickTipp-Synchronisation vervollständigen** | Mittel | 🟢 Kontakt-/Tag-Sync vorhanden | Statusänderung → Tag-Rücksynchronisation und Fehlerwiederholung vereinheitlichen |
 | **Gewerbedaten-Recherche** | Mittel | 🔴 Nur Datenmodell/Mock-Bausteine vorhanden | Zulässige Datenquellen und einen realistischen Recherche-MVP festlegen |
-| **KI-Gesprächsvorbereitung** | Mittel | 🔴 Bisher nur statischer Alt-Platzhalter | Echten KI-Endpunkt, strukturierte Ausgabe und manuelle Prüfung implementieren |
+| **KI-Gesprächsvorbereitung** | Mittel | 🟢 v1 live (v0.19.0): Button „Anruf vorbereiten", Claude Sonnet, strukturierte Ausgabe, manuelle Prüfung im Panel | Phase 2+: automatischer Trigger bei eingehendem Anruf/Kalendertermin, automatisches Gesprächsprotokoll |
 | **Dialfire-Synchronisation** | Niedrig | 🟢 Create-/Pull-Pfade vorhanden | Nur stabil halten; kein größerer Ausbau, wenn Placetel den operativen Bedarf ersetzt |
 | **Dialfire-Kampagnenflexibilität** | Niedrig | 🟡 Teilweise konfigurierbar | Nur noch notwendige Hardcodierungen entfernen; keine neue Fachlogik priorisieren |
 | **Granulare Rechte pro Benutzer** | Niedrig | 🟡 Rollenarchitektur vorbereitet | Erst nach Stabilisierung der Kernprozesse eine Berechtigungsmatrix definieren |
@@ -332,6 +332,44 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.19.0 (2026-08-04) — KI-Agent Nr. 1: Call-Vorbereitung
+
+- ✅ Neuer Button „🧠 Vorbereiten" in der Kontakt-Kopfzeile (`StickyContactHeader.tsx`, neben dem
+  Placetel-Anruf-Button, immer sichtbar — nicht an eine hinterlegte Telefonnummer gekoppelt) öffnet
+  ein Drawer-Panel (`CallPrepPanel.tsx`), das beim Öffnen automatisch eine kurze interne
+  Zusammenfassung generiert: Kurzprofil, mindestens drei Gesprächsvorschläge, optionale Hinweise
+  auf sensible Punkte (`flags`, z.B. offener Vorgang, überfällige Rückmeldung, Datenwiderspruch)
+- ✅ `POST /api/agents/call-prep` aggregiert serverseitig Stammdaten, fachliche Aktivitäten (via
+  `istTechnisch()`-Filter), offene Aufgaben, Notizverlauf und Dokumentenanzahl und ruft
+  `generateCallPrep()` (`src/lib/call-prep.ts`, Claude Sonnet 5, `json_schema` Structured Outputs,
+  gleiches Muster wie `ki-upload.ts`) auf. Keine Persistierung bei reiner Generierung
+- ✅ „Als Notiz speichern" schreibt die Zusammenfassung über die bestehende
+  `POST /api/kontakte/[id]/notes`-Route in `contact_notes_history` (`type: 'system'`,
+  `category: 'call'`, `metadata.source: 'call_prep_agent'` als Herkunfts-Markierung, da `type`/
+  `category` feste DB-Enums ohne einen dedizierten „call-prep"-Wert sind). Erkennt die Route
+  `metadata.source === 'call_prep_agent'`, loggt sie zusätzlich eine fachliche Aktivität
+  (neuer Typ `call_prep_saved` in `activities-logger.ts`) — andere Notiz-Quellen bleiben
+  unverändert ohne Activity-Log, wie bisher
+- 🐛 Beim Bauen entdeckt: `istTechnisch()` lag ursprünglich in `AktivitaetenPanel.tsx`
+  (`'use client'`-Komponente) — ein Import davon aus einer server-seitigen API-Route schlägt in
+  Next.js fehl (`... is not a function`, Client-Reference statt echter Funktion). Behoben durch
+  Extraktion in ein eigenes, direktivenloses Modul `src/lib/activity-classification.ts`;
+  `AktivitaetenPanel.tsx` re-exportiert die Funktion weiterhin für Bestandscode
+- ⚠️ Bewusst kein `onSaved`-Reload nach dem Speichern: ein initial verdrahteter `loadKontakt()`-
+  Callback löste über das Seiten-Loading-Gate (`if (loading) return ...`) einen kompletten Remount
+  der Detailseite aus — das Panel verlor seinen Zustand und startete ungewollt eine weitere
+  (kostenpflichtige) Claude-Generierung, statt die „✓ Gespeichert"-Bestätigung zu zeigen. Da
+  `NotesHistory.tsx` seinen Inhalt ohnehin beim eigenen Öffnen selbst nachlädt, war der Reload
+  nicht nötig — einfach entfernt
+- ✅ Live gegen die produktive Supabase-Instanz verifiziert (kein separates Test-System, siehe
+  bestehende Projekt-Konvention): sowohl ein Bestandskontakt mit reicher Historie (mehrere
+  Anrufversuche, überfällige Aufgabe, Datenwiderspruch zwischen Sparten-Feld und Notiz — alles
+  korrekt erkannt und in `flags` ausgewiesen) als auch ein frischer Facebook-Lead ohne jede
+  Historie (Output fokussiert auf Bedarfsklärung/Erstkontakt statt Rückblick, wie gefordert)
+  produzierten sinnvolle, grundierte Ausgaben ohne erfundene Fakten
+- 🆕 Dateien: `src/lib/call-prep.ts`, `src/lib/activity-classification.ts`,
+  `src/app/api/agents/call-prep/route.ts`, `src/components/kontakt/CallPrepPanel.tsx`
 
 ### v0.18.2 (2026-08-03) — Ganztägiger Termin verschob sich um einen Tag (UTC vs. lokal)
 
@@ -910,7 +948,11 @@ git push origin main # Deploy zu Vercel
 | `docs/PLACETEL_TELEFONIE_KONZEPT.md` | Technischer Hintergrund, Notify-API, Sicherheitsanforderungen |
 | `src/components/Sidebar.tsx` | `NAV_ITEMS[].adminOnly` + Filter, Erwähnungen-Badge im Profil-Menü (v0.11.1) |
 | `src/app/api/sync/dialfire-pull/route.ts` | Dialfire-Batch-Pull-Sync über alle verbundenen Kontakte, bündelt Aufrufe (`CONCURRENCY=8`) + Timeout, loggt nach `sync_log` (v0.11.1) |
+| `src/lib/call-prep.ts` | Call-Vorbereitungs-Agent: Claude-Sonnet-Aufruf + JSON-Schema für Kurzprofil/Gesprächsvorschläge/Flags (v0.19.0) |
+| `src/lib/activity-classification.ts` | `istTechnisch()` — geteiltes, direktivenloses Modul (fachlich/technisch-Klassifizierung für Aktivitäten), von UI und server-seitigem Code nutzbar (v0.19.0) |
+| `src/app/api/agents/call-prep/route.ts` | Aggregiert Kontaktdaten + ruft `call-prep.ts` auf; keine Persistierung (v0.19.0) |
+| `src/components/kontakt/CallPrepPanel.tsx` | Drawer-Inhalt: Auto-Generierung beim Öffnen, „Neu generieren", „Als Notiz speichern" (v0.19.0) |
 
 ---
 
-*Last Updated: 2026-08-03 — v0.18.2 Timezone-Bug bei ganztägigen Terminen behoben (UTC vs. lokal)*
+*Last Updated: 2026-08-04 — v0.19.0 Call-Vorbereitungs-Agent (erster KI-Agent) live*

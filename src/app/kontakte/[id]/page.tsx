@@ -27,6 +27,7 @@ import { CommentThread } from '@/components/kontakt/CommentThread'
 import { HelpButton } from '@/components/help/HelpButton'
 import { BeitragsuebersichtPanel } from '@/components/kontakt/BeitragsuebersichtPanel'
 import { ErstgespraechPanel } from '@/components/kontakt/ErstgespraechPanel'
+import { CallPrepPanel } from '@/components/kontakt/CallPrepPanel'
 import { AuslandsreiseversicherungPanel } from '@/components/kontakt/AuslandsreiseversicherungPanel'
 import { ERSTGESPRAECH_LEITFAEDEN } from '@/data/erstgespraech-leitfaden'
 import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
@@ -155,6 +156,7 @@ type DrawerId =
   | 'automation'
   | 'beitragsuebersicht'
   | 'erstgespraech'
+  | 'call-prep'
 
 function fmtEuroKachel(n: number): string {
   return n.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'
@@ -522,6 +524,7 @@ export default function KontaktDetailPage() {
         onEditClick={() => openEditDrawer()}
         onDelete={() => setDeleteConfirm(true)}
         onHistoryClick={() => setOpenDrawer('aktivitaeten')}
+        onCallPrepClick={() => setOpenDrawer('call-prep')}
         isArchived={!!kontakt.archived_at}
         tags={kontaktTags}
         onTagsChange={handleTagsChange}
@@ -1021,6 +1024,14 @@ export default function KontaktDetailPage() {
           onSaveNotes={handleSaveNotes}
           onFolgeterminClick={() => openNewTaskWithTitle('Beratungstermin')}
         />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'call-prep'}
+        title="🧠 Anruf vorbereiten"
+        onClose={() => setOpenDrawer(null)}
+      >
+        <CallPrepPanel kontaktId={kontaktId} />
       </Drawer>
 
       <Drawer

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
+import { logActivity } from '@/lib/activities-logger'
 
 export async function GET(
   request: NextRequest,
@@ -49,7 +51,7 @@ export async function POST(
     const contactId = params.id
     const body = await request.json()
 
-    const { content, type = 'manual', category = 'general', created_by = 'user' } = body
+    const { content, type = 'manual', category = 'general', created_by = 'user', metadata = {} } = body
 
     if (!content || !content.trim()) {
       return NextResponse.json(
@@ -67,6 +69,7 @@ export async function POST(
           type,
           category,
           created_by,
+          metadata,
         },
       ])
       .select()
@@ -77,6 +80,24 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: error.message },
         { status: 500 }
+      )
+    }
+
+    // Gesprächsvorbereitung, die explizit als Notiz gespeichert wurde, landet
+    // zusätzlich in der fachlichen Aktivitäten-Historie (andere Notiz-Quellen
+    // bleiben unverändert ohne Activity-Log, wie bisher). `type`/`category`
+    // sind DB-Enums mit fester Werteliste (manual/system/dialfire_sync/activity
+    // bzw. general/dialfire/klicktipp/internal/follow_up/call/email/meeting) —
+    // die Herkunft "Call-Prep-Agent" wird deshalb separat in metadata markiert.
+    if (metadata?.source === 'call_prep_agent') {
+      const currentUser = await getCurrentUser()
+      await logActivity(
+        null,
+        contactId,
+        'call_prep_saved',
+        'KI-Gesprächsvorbereitung als Notiz gespeichert',
+        {},
+        currentUser?.id
       )
     }
 

@@ -28,6 +28,7 @@ export type ActivityType =
   | 'notification_failed'
   | 'email_sent'
   | 'email_failed'
+  | 'call_prep_saved'
 
 interface ActivityData {
   [key: string]: any

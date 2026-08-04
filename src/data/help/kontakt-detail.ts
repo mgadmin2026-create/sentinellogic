@@ -45,6 +45,16 @@ export const kontaktDetailArticles: HelpArticle[] = [
       'Die Notiz ist ein freies Textfeld mit automatischem Speichern (kurz nach dem Tippen, kein Speichern-Button nötig). Auf die gekürzte Vorschau klicken, um sie aufzuklappen und zu bearbeiten.',
   },
   {
+    id: 'kontakt-detail.call-prep',
+    area: 'kontakt-detail',
+    title: 'Anruf vorbereiten',
+    keywords: ['ki', 'agent', 'gesprächsvorbereitung', 'claude'],
+    body:
+      '🧠 Vorbereiten in der Kopfzeile generiert in wenigen Sekunden eine kurze, rein interne Zusammenfassung des Kontakts — als Vorbereitung, bevor du über den 📞-Button anrufst.\n\n' +
+      'Die Zusammenfassung enthält ein Kurzprofil, mindestens drei konkrete Gesprächsvorschläge und — falls vorhanden — Hinweise auf sensible Punkte (z.B. offener Vorgang, überfällige Rückmeldung). Sie basiert ausschließlich auf vorhandenen CRM-Daten (Stammdaten, Notizen, fachliche Aktivitäten, offene Aufgaben) — es werden keine Fakten erfunden.\n\n' +
+      'Die Zusammenfassung wird standardmäßig NICHT gespeichert. Erst ein Klick auf "Als Notiz speichern" legt sie im Kontaktverlauf ab. "Neu generieren" erstellt eine frische Zusammenfassung mit dem aktuellen Datenstand.',
+  },
+  {
     id: 'kontakt-detail.prozess-stepper',
     area: 'kontakt-detail',
     title: 'Vertriebsprozess (12 Schritte)',

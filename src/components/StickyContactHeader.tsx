@@ -23,6 +23,7 @@ interface StickyContactHeaderProps {
   onEditClick: () => void
   onDelete: () => void
   onHistoryClick: () => void
+  onCallPrepClick: () => void
   isArchived?: boolean
   tags: Tag[]
   onTagsChange: (tags: Tag[]) => void
@@ -77,6 +78,7 @@ export function StickyContactHeader({
   onEditClick,
   onDelete,
   onHistoryClick,
+  onCallPrepClick,
   isArchived,
   tags,
   onTagsChange,
@@ -157,6 +159,15 @@ export function StickyContactHeader({
                   menuAlign="right"
                 />
               )}
+
+              <button
+                onClick={onCallPrepClick}
+                disabled={isArchived}
+                title="KI-Zusammenfassung zur Gesprächsvorbereitung generieren"
+                className="px-3 py-2 text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white rounded-lg transition-colors"
+              >
+                🧠 Vorbereiten
+              </button>
 
               {email && (
                 <button
