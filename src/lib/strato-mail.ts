@@ -80,6 +80,7 @@ function listItem(message: FetchMessageObject): MailListItem {
   const rawDate = message.envelope?.date || message.internalDate
   return {
     uid: message.uid,
+    messageId: message.envelope?.messageId || null,
     subject: message.envelope?.subject || '(Kein Betreff)',
     from: envelopeAddresses(message.envelope?.from),
     to: envelopeAddresses(message.envelope?.to),
@@ -101,13 +102,14 @@ export async function listInbox(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise
   try {
     await client.connect()
     const mailbox = await client.mailboxOpen('INBOX')
+    const uidValidity = mailbox.uidValidity.toString()
     if (mailbox.exists === 0) {
-      return { account: config.user, messages: [], total: 0, page: safePage, pageSize: safePageSize }
+      return { account: config.user, uidValidity, messages: [], total: 0, page: safePage, pageSize: safePageSize }
     }
 
     const end = Math.max(0, mailbox.exists - (safePage - 1) * safePageSize)
     if (end === 0) {
-      return { account: config.user, messages: [], total: mailbox.exists, page: safePage, pageSize: safePageSize }
+      return { account: config.user, uidValidity, messages: [], total: mailbox.exists, page: safePage, pageSize: safePageSize }
     }
     const start = Math.max(1, end - safePageSize + 1)
     const messages: MailListItem[] = []
@@ -123,7 +125,7 @@ export async function listInbox(page = 1, pageSize = DEFAULT_PAGE_SIZE): Promise
     }
 
     messages.sort((a, b) => b.uid - a.uid)
-    return { account: config.user, messages, total: mailbox.exists, page: safePage, pageSize: safePageSize }
+    return { account: config.user, uidValidity, messages, total: mailbox.exists, page: safePage, pageSize: safePageSize }
   } finally {
     if (client.usable) await client.logout().catch(() => undefined)
     else client.close()

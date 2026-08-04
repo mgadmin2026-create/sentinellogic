@@ -21,6 +21,29 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.11.1',
+    date: '2026-08-04',
+    title: 'Eingehende E-Mails in der Kontakttimeline',
+    summary:
+      'Nachrichten bekannter Kontakte erscheinen jetzt automatisch und ohne Duplikate in der Aktivitäten-Timeline.',
+    features: [
+      {
+        title: 'E-Mail-Eingang als Aktivität',
+        description:
+          'Beim Aktualisieren des STRATO-Posteingangs wird eine eingehende Nachricht bei eindeutigem Adresstreffer einmalig am Kontakt protokolliert – mit Betreff und Empfangszeitpunkt, aber ohne Nachrichtentext.',
+        category: 'feature',
+        icon: '✉️',
+      },
+      {
+        title: 'Duplikatschutz und Datenschutz',
+        description:
+          'Ein nicht rückrechenbarer technischer Schlüssel verhindert doppelte Einträge. Absenderadresse und Nachrichtentext werden nicht im Idempotenzdatensatz gespeichert.',
+        category: 'security',
+        icon: '🔒',
+      },
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-08-04',
     title: 'STRATO E-Mail-Postfach',

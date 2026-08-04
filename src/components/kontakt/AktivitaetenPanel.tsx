@@ -7,6 +7,7 @@
 // relevanten Verlauf (Kontakt angelegt, Status geändert, Aufgabe erstellt, ...)
 // überdecken. Default zeigt nur Fachliches, Technisches ist zuschaltbar.
 import { useState } from 'react'
+import Link from 'next/link'
 import { HelpButton } from '@/components/help/HelpButton'
 import { istTechnisch } from '@/lib/activity-classification'
 
@@ -22,6 +23,7 @@ export interface Aktivität {
 }
 
 export function getActivityIcon(type: string) {
+  if (type.includes('email')) return '✉️'
   if (type.includes('klicktipp')) return '🔗'
   if (type.includes('dialfire')) return '📞'
   if (type.includes('superchat')) return '💬'
@@ -30,6 +32,7 @@ export function getActivityIcon(type: string) {
 }
 
 export function getActivityColor(type: string) {
+  if (type.includes('email')) return 'bg-sky-100 text-sky-700'
   if (type.includes('klicktipp')) return 'bg-blue-100 text-blue-600'
   if (type.includes('dialfire')) return 'bg-purple-100 text-purple-600'
   if (type.includes('superchat')) return 'bg-emerald-100 text-emerald-600'
@@ -80,6 +83,14 @@ export function AktivitaetenPanel({ aktivitäten }: { aktivitäten: Aktivität[]
               </div>
               <div className="flex-1 pt-1">
                 <p className="text-sm font-medium text-gray-900">{akt.description}</p>
+                {akt.type === 'email_received' && Number.isInteger(Number(akt.data?.mailbox_uid)) && Number(akt.data?.mailbox_uid) > 0 && akt.data?.uid_validity && (
+                  <Link
+                    href={`/postfach?uid=${Number(akt.data?.mailbox_uid)}&uidValidity=${encodeURIComponent(String(akt.data.uid_validity))}`}
+                    className="mt-1 inline-block text-xs font-semibold text-sky-700 hover:underline"
+                  >
+                    E-Mail im Postfach öffnen →
+                  </Link>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   <p className="text-xs text-gray-400">{zeitpunkt(akt.created_at)}</p>
                   <span className="text-xs text-gray-400">· {akt.user?.name || 'System'}</span>

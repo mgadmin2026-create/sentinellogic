@@ -5,6 +5,7 @@ export interface MailAddress {
 
 export interface MailListItem {
   uid: number
+  messageId: string | null
   subject: string
   from: MailAddress[]
   to: MailAddress[]
@@ -31,6 +32,7 @@ export interface MailDetail extends MailListItem {
 
 export interface MailboxPage {
   account: string
+  uidValidity: string
   messages: MailListItem[]
   total: number
   page: number

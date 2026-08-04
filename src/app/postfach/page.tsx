@@ -39,7 +39,7 @@ export default function PostfachPage() {
   const [sendError, setSendError] = useState<string | null>(null)
   const [sentNotice, setSentNotice] = useState<string | null>(null)
 
-  const loadInbox = useCallback(async (silent = false) => {
+  const loadInbox = useCallback(async (silent = false): Promise<MailboxPage | null> => {
     if (!silent) setLoading(true)
     setError(null)
     try {
@@ -47,14 +47,39 @@ export default function PostfachPage() {
       const result = await response.json()
       if (!response.ok || !result.success) throw new Error(result.error || 'Posteingang konnte nicht geladen werden')
       setMailbox(result.data)
+      return result.data
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Posteingang konnte nicht geladen werden')
+      return null
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { loadInbox() }, [loadInbox])
+  useEffect(() => {
+    async function initializeMailbox() {
+      const loadedMailbox = await loadInbox()
+      const searchParams = new URLSearchParams(window.location.search)
+      const requestedUid = Number(searchParams.get('uid'))
+      const requestedUidValidity = searchParams.get('uidValidity')
+
+      // UID-Werte sind nur innerhalb einer UIDVALIDITY-Generation eindeutig.
+      // So kann ein alter Timeline-Link niemals versehentlich eine andere Mail öffnen.
+      if (
+        loadedMailbox
+        && Number.isInteger(requestedUid)
+        && requestedUid > 0
+        && requestedUidValidity === loadedMailbox.uidValidity
+      ) {
+        await selectMessage(requestedUid)
+      }
+    }
+
+    initializeMailbox()
+    // selectMessage ist absichtlich kein Dependency: Der URL-Sprung soll nur
+    // beim initialen Seitenaufruf ausgeführt werden, nicht nach jedem Rendern.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadInbox])
 
   async function selectMessage(uid: number) {
     setSelectedUid(uid)

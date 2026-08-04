@@ -35,6 +35,7 @@ Das Passwort darf weder in Git noch in Logs oder Browser-Antworten erscheinen.
 - Einzelne Nachricht sicher als Text lesen
 - E-Mail schreiben und auf eine Nachricht antworten
 - Bekannte Absender automatisch mit einem Kontakt verknüpfen
+- Eingehende E-Mails bekannter Kontakte idempotent in der Aktivitäten-Timeline protokollieren
 - Kontakt-E-Mail-Dialog über STRATO senden, sobald STRATO konfiguriert ist
 - Ausgehende E-Mail als Kontaktaktivität protokollieren, ohne den Nachrichtentext abzulegen
 
@@ -44,3 +45,11 @@ Das Passwort darf weder in Git noch in Logs oder Browser-Antworten erscheinen.
 - Zunächst wird ausschließlich der Posteingang dargestellt; Ordner wie „Gesendet" oder „Entwürfe" folgen später.
 - Es werden keine E-Mail-Inhalte dauerhaft in Supabase kopiert. Die App liest Nachrichten bei Bedarf direkt per IMAP.
 - HTML-E-Mails werden als ungefährlicher Klartext dargestellt; externe Bilder und aktive Inhalte werden nicht geladen.
+
+## Eingehende Aktivitäten
+
+Beim Laden oder Aktualisieren des Posteingangs wird die Absenderadresse exakt und ohne Beachtung der Groß-/Kleinschreibung mit den Kontaktadressen abgeglichen. Nur ein eindeutiger Treffer erzeugt eine Aktivität vom Typ `email_received`.
+
+Ein SHA-256-Schlüssel aus Postfach und technischer Nachrichtenkennung verhindert doppelte Timeline-Einträge. In Supabase werden nur dieser technische Schlüssel, Kontaktbezug, Betreff, Empfangszeitpunkt und technische Mailkennung gespeichert. Nachrichtentext und Absenderadresse werden nicht dauerhaft übernommen.
+
+Unbekannte oder mehrdeutige Absender werden nicht protokolliert. Wird später ein eindeutiger Kontakt angelegt oder korrigiert, kann die Aktivität beim nächsten Postfachabgleich nachgeholt werden.

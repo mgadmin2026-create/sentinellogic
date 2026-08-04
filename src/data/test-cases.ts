@@ -353,4 +353,22 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: ['liest eine STRATO-Nachricht und versendet eine Antwort über den geschützten Postfach-Endpunkt'],
   },
+  {
+    id: 'E2E-021',
+    name: 'Eingehende STRATO-E-Mail in der Kontakttimeline',
+    description: 'Prüft die eindeutige Kontaktzuordnung und idempotente Timeline-Erfassung einer eingehenden E-Mail, ohne den Nachrichtentext zu speichern.',
+    steps: [
+      'Einen eindeutig markierten Testkontakt mit einer kontrollierten Test-E-Mail-Adresse anlegen.',
+      'Von dieser Adresse eine Testnachricht an das STRATO-Postfach senden.',
+      'Den Posteingang aktualisieren und anschließend die Aktivitäten-Timeline des Testkontakts öffnen.',
+      'Genau einen Eintrag „E-Mail empfangen" mit Betreff und Empfangszeitpunkt prüfen.',
+      'Den Posteingang erneut aktualisieren und sicherstellen, dass kein doppelter Timeline-Eintrag entsteht.',
+      'Prüfen, dass der Nachrichtentext weder in der Aktivität noch im technischen Idempotenzdatensatz gespeichert wurde.',
+    ],
+    area: 'Integrationen',
+    priority: 'Hoch',
+    state: 'Geplant',
+    kind: 'E2E',
+    resultTitles: [],
+  },
 ]
