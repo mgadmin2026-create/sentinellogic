@@ -337,4 +337,20 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: ['überträgt einen Kontakt kontrolliert an SuperChat'],
   },
+  {
+    id: 'E2E-020',
+    name: 'STRATO-Postfach lesen und E-Mail versenden',
+    description: 'Prüft die Postfach-Oberfläche mit sicher simulierter IMAP-/SMTP-Antwort, ohne eine echte Kunden-E-Mail zu laden oder zu versenden.',
+    steps: [
+      'Den STRATO-Posteingang serverseitig sicher simulieren und /postfach öffnen.',
+      'Postfach-Adresse, Nachrichtenanzahl und Ungelesen-Markierung prüfen.',
+      'Eine simulierte Nachricht öffnen und die automatische Kontaktzuordnung prüfen.',
+      'Auf die Nachricht antworten und Empfänger, Antwort-Betreff sowie Versandaufruf prüfen.',
+    ],
+    area: 'Integrationen',
+    priority: 'Kritisch',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: ['liest eine STRATO-Nachricht und versendet eine Antwort über den geschützten Postfach-Endpunkt'],
+  },
 ]

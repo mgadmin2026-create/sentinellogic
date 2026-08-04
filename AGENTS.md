@@ -146,6 +146,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Migration `0054_superchat_contact_sync.sql` auf Live-Supabase verifiziert
 - [x] SuperChat-Live-Pilot mit technisch markiertem `TESTKONTAKT` erfolgreich durchgeführt
 - [x] SuperChat-Feldmapping um Firma, Adresse und Geburtsdatum sowie direkten Kontaktlink erweitert
+- [x] STRATO-E-Mail-Postfach als IMAP-/SMTP-MVP mit Posteingang, Lesen, Antworten, Versand und Kontaktzuordnung integriert
 
 **Nächste Aufgabe:**
 → Zugriff der Testfallsteuerung in GitHub Actions korrigieren und vollständigen Regressionstest erneut ausführen

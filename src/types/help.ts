@@ -7,6 +7,7 @@ export type HelpArea =
   | 'kontakt-detail'
   | 'aufgaben'
   | 'kalender'
+  | 'postfach'
   | 'dokumente'
   | 'ki-upload'
   | 'sync'
@@ -21,6 +22,7 @@ export const HELP_AREA_LABELS: Record<HelpArea, string> = {
   'kontakt-detail': 'Kontaktdetail',
   aufgaben: 'Aufgaben',
   kalender: 'Kalender',
+  postfach: 'E-Mail',
   dokumente: 'Dokumente',
   'ki-upload': 'KI Upload',
   sync: 'Synchronisation',
@@ -37,6 +39,7 @@ export const HELP_AREA_ORDER: HelpArea[] = [
   'kontakt-detail',
   'aufgaben',
   'kalender',
+  'postfach',
   'dokumente',
   'ki-upload',
   'sync',
