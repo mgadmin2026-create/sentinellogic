@@ -29,13 +29,7 @@ export async function GET(request: NextRequest) {
     .single()
 
   if (configError || !config || !config.enabled) {
-    // TEMP-DEBUG: warum genau wird übersprungen (Bug-Diagnose, wird gleich wieder entfernt)
-    return NextResponse.json({
-      ok: true,
-      skipped: true,
-      reason: 'disabled',
-      debug: { configError, config },
-    })
+    return NextResponse.json({ ok: true, skipped: true, reason: 'disabled' })
   }
 
   const now = new Date()
