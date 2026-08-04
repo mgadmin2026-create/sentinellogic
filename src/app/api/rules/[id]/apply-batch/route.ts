@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { sendRuleBatchNotification } from '@/lib/rule-notifications'
 import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
+import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface Rule {
@@ -111,6 +112,8 @@ export async function POST(
     let skippedCount = 0
     let dialfireSynced = 0
     let dialfireFailed = 0
+    let klicktippSynced = 0
+    let klicktippFailed = 0
     const errors: string[] = []
     const affectedContacts: { email: string; name: string; dialfire: 'synced' | 'failed' | 'none' }[] = []
 
@@ -178,6 +181,15 @@ export async function POST(
           `Batch: Rule ${rule.id} applied (${Object.keys(fieldsToSet).join(', ')})`,
           { rule_id: rule.id, trigger: 'batch', ...fieldsSummary }
         )
+
+        if (ruleKlicktippTagList.length > 0) {
+          const klicktippResult = await syncStoredContactToKlickTipp(supabase, {
+            ...contact,
+            ...fieldsToSet,
+          })
+          if (klicktippResult.status === 'synced') klicktippSynced++
+          if (klicktippResult.status === 'failed') klicktippFailed++
+        }
 
         // Dialfire Sync: Only if campaign or task is set
         // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
@@ -316,6 +328,8 @@ export async function POST(
       total: contactList.length,
       dialfireSynced,
       dialfireFailed,
+      klicktippSynced,
+      klicktippFailed,
       actionsSummary,
       affectedContacts,
       errors: errors.length > 0 ? errors : undefined,

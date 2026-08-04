@@ -6,7 +6,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { executeAutomation } from '@/lib/automation-engine'
 import { logActivity, logContactCreated } from '@/lib/activities-logger'
 import { getCurrentUser } from '@/lib/auth'
-import { syncContactToKlickTipp } from '@/lib/klicktipp-client'
+import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
 import { detectTestContact } from '@/lib/test-data'
 
 // Helper: Rufe Edge Function auf
@@ -117,8 +117,6 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient()
     const body = await request.json()
-
-    console.log('[POST /api/kontakte] Body:', { klicktipp_tag: body.klicktipp_tag, email: body.email })
 
     // Pflichtfelder — E-Mail ist optional (KI-Upload: Dokumente enthalten oft keine Kunden-E-Mail)
     if (!body.first_name || !body.last_name) {
@@ -323,42 +321,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // KlickTipp Sync: Synce neuen Kontakt zu KlickTipp mit Tag "Sentinel"
-    if (data?.id && data?.email && !testContact.isTestData) {
-      try {
-        const klicktippResult = await syncContactToKlickTipp({
-          id: data.id,
-          email: data.email,
-          first_name: data.first_name,
-          last_name: data.last_name,
-          company_name: data.company_name,
-          city: data.city,
-          country: data.country,
-          phone_mobile: data.phone_mobile,
-          website: data.website,
-          tagName: 'Sentinel', // Auto-assign "Sentinel" tag
-        })
-
-        // Speichere KlickTipp ID
-        await supabase
-          .from('contacts')
-          .update({
-            klicktipp_id: klicktippResult.id,
-            klicktipp_tags: klicktippResult.tags || [],
-            klicktipp_last_sync: new Date().toISOString(),
-          })
-          .eq('id', data.id)
-
-        console.log(`✅ [KlickTipp] Kontakt synced: ${data.email} (KlickTipp ID: ${klicktippResult.id})`)
-        await logActivity(null, data.id, 'klicktipp_synced', `KlickTipp synced mit Tag "Sentinel"`)
-      } catch (err) {
-        console.error(`[KlickTipp] Sync failed für ${data.email}:`, err)
-        await logActivity(null, data.id, 'klicktipp_sync_failed', `KlickTipp sync failed: ${String(err)}`)
-      }
-    }
-
-    // Dialfire Sync: Nur wenn Dialfire-Daten vorhanden
-    // Lade aktualisierte Daten nach Automation um dialfire_campaign_id zu checken
+    // Aktualisierte Daten nach der Automation laden. Diese enthalten sowohl
+    // die ermittelten KlickTipp-Tags als auch die Dialfire-Zuordnung.
     let updatedContact: any = null
     if (data?.id) {
       const { data: contactData } = await supabase
@@ -368,6 +332,14 @@ export async function POST(request: NextRequest) {
         .single()
       updatedContact = contactData
     }
+
+    // Jeder reguläre Kontakt mit E-Mail wird an KlickTipp übertragen.
+    // Der Kontakt bleibt auch bei einem externen Fehler erfolgreich angelegt.
+    if (updatedContact) {
+      await syncStoredContactToKlickTipp(supabase, updatedContact)
+    }
+
+    // Dialfire Sync: Nur wenn Dialfire-Daten vorhanden
 
     // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
     if (data?.id && updatedContact?.dialfire_campaign_id && !testContact.isTestData) {

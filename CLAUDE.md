@@ -83,7 +83,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Release Notes** | ✅ Done | In-App Release-History mit Banners |
 | **Automation Rules** | ✅ Done | Trigger auf source (Facebook, Calendly, CSV, Email, Manuell); Auto-Feld-Befüllung (Dialfire Campaign/Task, KlickTipp Tags); Manuelle Batch-Ausführung |
 | **Automation Engine** | ✅ Done | Läuft automatisch bei Kontakt-Erstellung; matched Regel → setzt Felder → triggt Sync |
-| **KlickTipp Sync** | ✅ Done | Auto-Sync bei Kontakt-Erstellung mit Tag "Sentinel"; Activity Logging |
+| **KlickTipp Sync** | ⚠️ API-Freigabe offen | Direkter Management-API-Client, Partner-HMAC, Kontakt-/Tag-Sync und Bestandsabgleich implementiert; Live-Test endet noch mit HTTP 403 |
 | **Dialfire Sync** | ✅ Done | Create-Pfad + Batch-Pfad; Edge Function mit per-Rule Task-Name; Payload: Alle Felder (Adresse, Industrie, Mitarbeiterzahl, etc.) |
 | **Google Drive Dokumentenablage** | ✅ Done | Zentrale System-Ablage (nicht per-User); OAuth mit Auto-Refresh; Kompression (sharp für Bilder/75%, gzip Docs); Statistik-Tracking; Globales `/dokumente` + Kontakt-Tabs; bei Refresh-Token-Fehlern automatischer Admin-Alarm per Mail (Cooldown 6h, `src/lib/drive-token-alert.ts`) statt stillem Fehlschlag beim nächsten Mitarbeiter-Upload |
 | **E-Mail-Benachrichtigungen** | ✅ Done | Resend API; Auto-Pfad (pro Kontakt) + Manuell-Pfad (Summary pro Lauf); Versendet wenn send_notification=true in Regel |
@@ -117,7 +117,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Automation-/Sync-Control-Center UI** | Hoch | 🟡 Regeln- und Integrationsseiten teilweise vorhanden | Jobs, letzte Läufe, Fehler, Wiederholungen, Pausieren/Aktivieren und Health-Status zentral anzeigen |
 | **Mitarbeiterdashboard** | Hoch | 🟢 `/dashboard` personalisiert: Heute im Fokus, Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter für Admins | Stabil halten; ggf. „Abschlussquote" um echten 30-Tage-Zeitverlauf ergänzen sobald historische Snapshots existieren |
 | **Facebook Lead-Import produktiv abnehmen** | Mittel | 🟢 Webhook und manueller Sync implementiert | Echten Lead-End-to-End-Lauf inklusive Dubletten, Automation und Downstream-Sync durchführen |
-| **KlickTipp-Synchronisation vervollständigen** | Mittel | 🟢 Kontakt-/Tag-Sync vorhanden | Statusänderung → Tag-Rücksynchronisation und Fehlerwiederholung vereinheitlichen |
+| **KlickTipp-API-Freigabe erneuern** | Hoch | 🟡 Client fertig, HTTP 403 | Customer Key für `bosydadaq-api2` neu autorisieren, Vercel-Secret aktualisieren und Pilot ausführen |
 | **Gewerbedaten-Recherche** | Mittel | 🔴 Nur Datenmodell/Mock-Bausteine vorhanden | Zulässige Datenquellen und einen realistischen Recherche-MVP festlegen |
 | **KI-Gesprächsvorbereitung** | Mittel | 🟢 v1 live (v0.19.0): Button „Anruf vorbereiten", Claude Sonnet, strukturierte Ausgabe, manuelle Prüfung im Panel | Phase 2+: automatischer Trigger bei eingehendem Anruf/Kalendertermin, automatisches Gesprächsprotokoll |
 | **Dialfire-Synchronisation** | Niedrig | 🟢 Create-/Pull-Pfade vorhanden | Nur stabil halten; kein größerer Ausbau, wenn Placetel den operativen Bedarf ersetzt |
@@ -332,6 +332,22 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.22.1 (2026-08-04) — KlickTipp-Direktsync vereinheitlicht
+
+- ✅ Make.com-/alte Edge-Webhook-Strecke entfernt; Kontaktanlage, Kontaktänderung, Regeln und
+  Bestandsabgleich verwenden jetzt denselben Management-API-Client
+- ✅ Partner-Authentifizierung gemäß offiziellem KlickTipp-Connector umgesetzt: `X-Un` mit
+  `bosydadaq-api2`, HMAC-basierter `X-Ci` aus Developer Key und Customer Key
+- ✅ Stammdaten werden korrekt unter `fields` übertragen; Tags werden gebündelt über
+  `POST /subscriber/tag` gesetzt; KlickTipp-ID und letzter erfolgreicher Sync bleiben am Kontakt
+- ✅ Jeder reguläre Kontakt mit E-Mail wird übertragen, auch wenn Regeln deaktiviert sind;
+  technisch markierte Testkontakte bleiben vom automatischen Live-Sync ausgeschlossen
+- ✅ Geschützter Bestandsabgleich unter `POST /api/kontakte/klicktipp-sync` ergänzt
+- ✅ Personenbezogene KlickTipp-Logs entfernt und Regel-Historie auf echten Sync-Status umgestellt
+- ⚠️ Read-only-Live-Test von `/tag` und `/tag.json` erreicht KlickTipp, wird aber weiterhin mit
+  HTTP 403 abgewiesen. Verbleibend: API-Zugriff für den Unteraccount neu freigeben, neuen
+  Customer Key als Secret hinterlegen und danach markierten Kontakt-Pilot durchführen
 
 ### v0.22.0 (2026-08-04) — Termin-Änderungen werden per E-Mail an Teilnehmer gesendet
 

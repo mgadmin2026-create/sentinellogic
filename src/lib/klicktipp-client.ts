@@ -1,265 +1,287 @@
-/**
- * KlickTipp Management API Client
- * Handles contacts, tags, and opt-in processes
- */
+import { createHmac } from 'node:crypto'
 
-const KLICKTIPP_API_URL = 'https://api.klicktipp.com'
+const DEFAULT_KLICKTIPP_API_URL = 'https://api.klicktipp.com'
+const DEFAULT_PARTNER_USERNAME = 'bosydadaq-api2'
 
 interface KlickTippConfig {
+  apiUrl: string
+  partnerUsername: string
   developerKey: string
   customerKey: string
 }
 
-interface SubscriberData {
-  email: string
-  fieldFirstName?: string
-  fieldLastName?: string
-  fieldCompanyName?: string
-  fieldCity?: string
-  fieldCountry?: string
-  fieldMobilePhone?: string
-  fieldWebsite?: string
-  tagid?: number
-  listid?: number
-  fields?: Record<string, any>
-}
-
-interface TagResponse {
-  id: number
-  name: string
-  system: boolean
-  type: string
-  [key: string]: any
-}
-
-interface SubscriberResponse {
+export interface KlickTippContactData {
   id: string
   email: string
-  status: string
-  tags: string[]
-  [key: string]: any
+  first_name?: string | null
+  last_name?: string | null
+  company_name?: string | null
+  city?: string | null
+  country?: string | null
+  phone_mobile?: string | null
+  website?: string | null
+  tagIds?: number[]
+  tagNames?: string[]
 }
 
-/**
- * Get KlickTipp credentials from environment
- */
+export interface KlickTippSyncResult {
+  id: string
+  tagIds: number[]
+}
+
+type JsonRecord = Record<string, unknown>
+
 function getConfig(): KlickTippConfig {
-  const developerKey = process.env.KLICKTIPP_DEVELOPER_KEY
-  const customerKey = process.env.KLICKTIPP_CUSTOMER_KEY
+  const developerKey = process.env.KLICKTIPP_DEVELOPER_KEY?.trim()
+  const customerKey = process.env.KLICKTIPP_CUSTOMER_KEY?.trim()
+  const partnerUsername =
+    process.env.KLICKTIPP_PARTNER_USERNAME?.trim() || DEFAULT_PARTNER_USERNAME
+  const configuredApiUrl =
+    process.env.KLICKTIPP_API_URL?.trim() || DEFAULT_KLICKTIPP_API_URL
 
   if (!developerKey || !customerKey) {
-    throw new Error('Missing KlickTipp credentials: KLICKTIPP_DEVELOPER_KEY and KLICKTIPP_CUSTOMER_KEY required')
+    throw new Error(
+      'KlickTipp-Zugangsdaten fehlen: KLICKTIPP_DEVELOPER_KEY und KLICKTIPP_CUSTOMER_KEY sind erforderlich'
+    )
   }
 
-  return { developerKey, customerKey }
+  if (!/^[a-fA-F0-9]+$/.test(developerKey) || developerKey.length % 2 !== 0) {
+    throw new Error('KLICKTIPP_DEVELOPER_KEY hat nicht das erwartete Hexadezimalformat')
+  }
+
+  let apiUrl: string
+  try {
+    const parsedUrl = new URL(configuredApiUrl)
+    if (parsedUrl.protocol !== 'https:' || parsedUrl.hostname !== 'api.klicktipp.com') {
+      throw new Error('Nicht erlaubte KlickTipp-API-URL')
+    }
+    apiUrl = parsedUrl.origin
+  } catch {
+    throw new Error('KLICKTIPP_API_URL muss https://api.klicktipp.com sein')
+  }
+
+  return { apiUrl, partnerUsername, developerKey, customerKey }
 }
 
 /**
- * Build Authorization header for KlickTipp API
+ * KlickTipp erwartet für Partnerzugriffe einen HMAC-basierten X-Ci-Header.
+ * Das Verfahren entspricht dem offiziellen KlickTipp-Partner-Connector.
  */
-function getAuthHeader(config: KlickTippConfig): string {
-  const credentials = `${config.developerKey}:${config.customerKey}`
-  const encoded = Buffer.from(credentials).toString('base64')
-  return `Basic ${encoded}`
+function createPartnerCiphertext(developerKey: string, customerKey: string): string {
+  const hmac = createHmac('sha256', Buffer.from(developerKey, 'hex'))
+    .update(customerKey, 'utf8')
+    .digest()
+
+  return Buffer.concat([hmac, Buffer.from(customerKey, 'utf8')]).toString('base64')
 }
 
-/**
- * Make authenticated request to KlickTipp API
- */
+function getAuthenticationHeaders(config: KlickTippConfig): Record<string, string> {
+  return {
+    'X-Un': config.partnerUsername,
+    'X-Ci': createPartnerCiphertext(config.developerKey, config.customerKey),
+  }
+}
+
+async function readResponseBody(response: Response): Promise<unknown> {
+  const text = await response.text()
+  if (!text) return null
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+function describeApiError(status: number, body: unknown): string {
+  if (status === 401 || status === 403) {
+    return 'KlickTipp hat den API-Zugriff abgelehnt. Partner-Benutzer und API-Freigabe prüfen.'
+  }
+
+  if (status === 406) {
+    return 'KlickTipp hat die Kontaktdaten abgelehnt (HTTP 406). Opt-in-Status und Feldformate prüfen.'
+  }
+
+  return `KlickTipp API-Fehler ${status}`
+}
+
 async function makeRequest<T>(
-  method: string,
+  method: 'GET' | 'POST' | 'PUT',
   endpoint: string,
-  config: KlickTippConfig,
-  body?: Record<string, any>
+  body?: JsonRecord
 ): Promise<T> {
-  const url = `${KLICKTIPP_API_URL}${endpoint}`
-  const headers: Record<string, string> = {
-    Authorization: getAuthHeader(config),
-    'Content-Type': 'application/json',
-  }
-
-  const options: RequestInit = {
-    method,
-    headers,
-  }
-
-  if (body) {
-    options.body = JSON.stringify(body)
-  }
+  const config = getConfig()
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10_000)
 
   try {
-    const response = await fetch(url, options)
+    const response = await fetch(`${config.apiUrl}${endpoint}`, {
+      method,
+      headers: {
+        ...getAuthenticationHeaders(config),
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    })
 
+    const responseBody = await readResponseBody(response)
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`[KlickTipp] ${method} ${endpoint} failed:`, {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText,
-      })
+      throw new Error(describeApiError(response.status, responseBody))
+    }
 
-      if (response.status === 406) {
-        throw new Error(`KlickTipp validation error: ${errorText}`)
+    return responseBody as T
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('KlickTipp API-Zeitüberschreitung nach 10 Sekunden')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function extractSubscriberId(response: unknown): string | null {
+  if (typeof response === 'string' || typeof response === 'number') {
+    return String(response)
+  }
+
+  if (!response || typeof response !== 'object') return null
+
+  const record = response as JsonRecord
+  const nestedData = record.data
+  const candidates = [
+    record.id,
+    record.subscriber_id,
+    record.subscriberId,
+    nestedData && typeof nestedData === 'object'
+      ? (nestedData as JsonRecord).id
+      : undefined,
+  ]
+
+  const id = candidates.find(
+    (candidate) => typeof candidate === 'string' || typeof candidate === 'number'
+  )
+  return id == null ? null : String(id)
+}
+
+function buildContactFields(contact: KlickTippContactData): JsonRecord {
+  const fields: JsonRecord = {}
+
+  if (contact.first_name) fields.fieldFirstName = contact.first_name
+  if (contact.last_name) fields.fieldLastName = contact.last_name
+  if (contact.company_name) fields.fieldCompanyName = contact.company_name
+  if (contact.city) fields.fieldCity = contact.city
+  if (contact.country) fields.fieldCountry = contact.country
+  if (contact.phone_mobile) fields.fieldMobilePhone = contact.phone_mobile
+  if (contact.website) fields.fieldWebsite = contact.website
+
+  return fields
+}
+
+/**
+ * Legt einen Kontakt anhand seiner E-Mail-Adresse an oder aktualisiert ihn.
+ * Die Operation ist damit bei Wiederholungen duplikatsicher.
+ */
+export async function addOrUpdateKlickTippContact(
+  contact: KlickTippContactData
+): Promise<string> {
+  const email = contact.email.trim().toLowerCase()
+  if (!email) throw new Error('Für die KlickTipp-Übertragung ist eine E-Mail-Adresse erforderlich')
+
+  const response = await makeRequest<unknown>('POST', '/subscriber.json', {
+    email,
+    fields: buildContactFields(contact),
+  })
+
+  const subscriberId = extractSubscriberId(response)
+  if (!subscriberId) {
+    throw new Error('KlickTipp hat keine Kontakt-ID zurückgegeben')
+  }
+
+  return subscriberId
+}
+
+/** Setzt alle von Sentimental Logic ermittelten Tags in einem API-Aufruf. */
+export async function tagKlickTippContact(email: string, tagIds: number[]): Promise<void> {
+  const uniqueTagIds = Array.from(
+    new Set(tagIds.filter((tagId) => Number.isInteger(tagId) && tagId > 0))
+  )
+  if (uniqueTagIds.length === 0) return
+
+  await makeRequest<unknown>('POST', '/subscriber/tag.json', {
+    email: email.trim().toLowerCase(),
+    tagids: uniqueTagIds,
+  })
+}
+
+function normalizeTagMap(response: unknown): Map<string, number> {
+  const tagsByName = new Map<string, number>()
+
+  const addTag = (id: unknown, name: unknown) => {
+    const numericId = Number(id)
+    if (Number.isInteger(numericId) && numericId > 0 && typeof name === 'string') {
+      tagsByName.set(name.trim().toLowerCase(), numericId)
+    }
+  }
+
+  const parseCollection = (collection: unknown) => {
+    if (Array.isArray(collection)) {
+      for (const tag of collection) {
+        if (tag && typeof tag === 'object') {
+          const record = tag as JsonRecord
+          addTag(record.id ?? record.tag_id, record.name ?? record.label ?? record.tag_name)
+        }
       }
-
-      throw new Error(`KlickTipp API error ${response.status}: ${errorText}`)
-    }
-
-    return await response.json() as T
-  } catch (err) {
-    console.error(`[KlickTipp] Request failed:`, err)
-    throw err
-  }
-}
-
-/**
- * List all tags and find by name
- */
-export async function findTagByName(tagName: string): Promise<TagResponse | null> {
-  try {
-    const config = getConfig()
-    const tags = await makeRequest<{ tags: TagResponse[] }>('GET', '/tag', config)
-
-    if (!tags.tags || !Array.isArray(tags.tags)) {
-      console.warn('[KlickTipp] No tags found in response')
-      return null
-    }
-
-    const tag = tags.tags.find((t) => t.name.toLowerCase() === tagName.toLowerCase())
-    return tag || null
-  } catch (err) {
-    console.error(`[KlickTipp] Failed to find tag "${tagName}":`, err)
-    throw err
-  }
-}
-
-/**
- * Add or update a subscriber contact
- * If email exists, updates; otherwise creates new
- */
-export async function addOrUpdateSubscriber(data: SubscriberData): Promise<SubscriberResponse> {
-  try {
-    const config = getConfig()
-
-    // Validate required fields
-    if (!data.email) {
-      throw new Error('Email is required for KlickTipp subscriber')
-    }
-
-    const payload: Record<string, any> = {
-      email: data.email,
-    }
-
-    // Map optional fields
-    if (data.fieldFirstName) payload.fieldFirstName = data.fieldFirstName
-    if (data.fieldLastName) payload.fieldLastName = data.fieldLastName
-    if (data.fieldCompanyName) payload.fieldCompanyName = data.fieldCompanyName
-    if (data.fieldCity) payload.fieldCity = data.fieldCity
-    if (data.fieldCountry) payload.fieldCountry = data.fieldCountry
-    if (data.fieldMobilePhone) payload.fieldMobilePhone = data.fieldMobilePhone
-    if (data.fieldWebsite) payload.fieldWebsite = data.fieldWebsite
-
-    // Tag ID (optional, triggers automations)
-    if (data.tagid) {
-      payload.tagid = data.tagid
-    }
-
-    // Opt-in list ID (optional, defaults to double opt-in)
-    if (data.listid) {
-      payload.listid = data.listid
-    }
-
-    // Custom fields (optional)
-    if (data.fields) {
-      payload.fields = data.fields
-    }
-
-    console.log(`[KlickTipp] Adding/updating subscriber: ${data.email}`)
-
-    const response = await makeRequest<SubscriberResponse>('POST', '/subscriber', config, payload)
-
-    console.log(`✅ [KlickTipp] Subscriber ${data.email} synced (ID: ${response.id})`)
-
-    return response
-  } catch (err) {
-    console.error(`[KlickTipp] Failed to add/update subscriber:`, err)
-    throw err
-  }
-}
-
-/**
- * Add one or more tags to a subscriber
- */
-export async function tagSubscriber(email: string, tagIds: number[]): Promise<void> {
-  try {
-    if (!tagIds.length) {
-      console.warn('[KlickTipp] No tag IDs provided for tagging')
       return
     }
 
-    const config = getConfig()
-
-    // KlickTipp expects a single tagid, so we call it for each tag
-    // Or use the subscriber ID if available - but we'll use email for now
-    for (const tagid of tagIds) {
-      await makeRequest<void>('POST', `/subscriber/${email}/tag/${tagid}`, config)
-    }
-
-    console.log(`✅ [KlickTipp] Tagged ${email} with ${tagIds.length} tag(s)`)
-  } catch (err) {
-    console.error(`[KlickTipp] Failed to tag subscriber:`, err)
-    throw err
-  }
-}
-
-/**
- * Sync a Sentinel contact to KlickTipp
- * Handles finding tag by name and creating/updating subscriber
- */
-export async function syncContactToKlickTipp(contact: {
-  id: string
-  email: string
-  first_name?: string
-  last_name?: string
-  company_name?: string
-  city?: string
-  country?: string
-  phone_mobile?: string
-  website?: string
-  tagName?: string // e.g., "Sentinel"
-}): Promise<SubscriberResponse> {
-  try {
-    console.log(`[KlickTipp] Syncing contact: ${contact.email}`)
-
-    // Find tag ID if tag name is provided
-    let tagid: number | undefined
-    if (contact.tagName) {
-      const tag = await findTagByName(contact.tagName)
-      if (tag) {
-        tagid = tag.id
-        console.log(`[KlickTipp] Found tag "${contact.tagName}" with ID ${tagid}`)
-      } else {
-        console.warn(`[KlickTipp] Tag "${contact.tagName}" not found - subscriber will be created without tag`)
+    if (collection && typeof collection === 'object') {
+      for (const [id, value] of Object.entries(collection as JsonRecord)) {
+        if (typeof value === 'string') addTag(id, value)
+        else if (value && typeof value === 'object') {
+          const record = value as JsonRecord
+          addTag(record.id ?? record.tag_id ?? id, record.name ?? record.label ?? record.tag_name)
+        }
       }
     }
-
-    // Prepare subscriber data
-    const subscriberData: SubscriberData = {
-      email: contact.email,
-      fieldFirstName: contact.first_name,
-      fieldLastName: contact.last_name,
-      fieldCompanyName: contact.company_name,
-      fieldCity: contact.city,
-      fieldCountry: contact.country,
-      fieldMobilePhone: contact.phone_mobile,
-      fieldWebsite: contact.website,
-      tagid,
-    }
-
-    // Add or update subscriber
-    return await addOrUpdateSubscriber(subscriberData)
-  } catch (err) {
-    console.error(`[KlickTipp] Failed to sync contact ${contact.email}:`, err)
-    throw err
   }
+
+  if (response && typeof response === 'object' && !Array.isArray(response)) {
+    const record = response as JsonRecord
+    parseCollection(record.tags ?? record.data ?? response)
+  } else {
+    parseCollection(response)
+  }
+
+  return tagsByName
+}
+
+async function resolveTagIds(tagNames: string[]): Promise<number[]> {
+  if (tagNames.length === 0) return []
+
+  const response = await makeRequest<unknown>('GET', '/tag.json')
+  const tagMap = normalizeTagMap(response)
+
+  return tagNames
+    .map((tagName) => tagMap.get(tagName.trim().toLowerCase()))
+    .filter((tagId): tagId is number => tagId != null)
+}
+
+/** Überträgt die Stammdaten und anschließend die gewünschten KlickTipp-Tags. */
+export async function syncContactToKlickTipp(
+  contact: KlickTippContactData
+): Promise<KlickTippSyncResult> {
+  const subscriberId = await addOrUpdateKlickTippContact(contact)
+  const resolvedTagIds = await resolveTagIds(contact.tagNames ?? [])
+  const tagIds = Array.from(new Set([...(contact.tagIds ?? []), ...resolvedTagIds]))
+  await tagKlickTippContact(contact.email, tagIds)
+
+  return { id: subscriberId, tagIds }
+}
+
+/** Read-only-Verbindungstest ohne Übertragung von Kontaktdaten. */
+export async function testKlickTippConnection(): Promise<void> {
+  await makeRequest<unknown>('GET', '/tag.json')
 }

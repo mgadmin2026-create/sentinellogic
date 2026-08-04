@@ -95,7 +95,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
         <div className="flex items-start justify-between gap-4">
           <div>
             <h4 className="font-semibold text-[#1A1A1A] text-sm">Automation deaktivieren</h4>
-            <p className="text-xs text-gray-500 mt-1">Wenn aktiviert: keine Syncs zu KlickTipp/Dialfire, keine Regeln-Ausführung</p>
+            <p className="text-xs text-gray-500 mt-1">Wenn aktiviert: keine Regeln und kein Dialfire-Sync. Der grundlegende KlickTipp-Kontaktsync bleibt aktiv.</p>
           </div>
           <button
             onClick={() => handleUpdate({ automation_disabled: !data.automation_disabled })}

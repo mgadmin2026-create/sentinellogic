@@ -497,7 +497,7 @@ export function KontaktEditModal({ kontakt, isOpen, onClose, onSave }: Props) {
             <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
               <div>
                 <p className="text-sm font-medium text-gray-900">Automation deaktivieren</p>
-                <p className="text-xs text-gray-500 mt-1">Keine automatischen Syncs zu KlickTipp und Dialfire</p>
+                <p className="text-xs text-gray-500 mt-1">Keine Regeln und kein Dialfire-Sync; der KlickTipp-Kontaktsync bleibt aktiv</p>
               </div>
               <button
                 type="button"

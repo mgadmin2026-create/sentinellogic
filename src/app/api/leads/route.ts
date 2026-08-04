@@ -3,7 +3,7 @@
 // POST /api/leads — neuen Lead anlegen (mit Regelausführung + Duplikatprüfung)
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { syncLeadToKlicktipp, type LeadSyncData } from '@/lib/integrations/klicktipp'
+import { syncContactToKlickTipp } from '@/lib/klicktipp-client'
 import { getFirstStageKey } from '@/lib/pipeline'
 import { Resend } from 'resend'
 
@@ -30,6 +30,13 @@ interface RuleActions {
   set_status?: string
   send_notification?: boolean
   notification_email?: string
+}
+
+interface LeadSyncData {
+  email: string
+  first_name?: string | null
+  last_name?: string | null
+  phone_mobile?: string | null
 }
 
 // Benachrichtigungs-E-Mail via Resend senden
@@ -100,29 +107,29 @@ async function executeRules(
     const actions = rule.actions as RuleActions
     const resultParts: string[] = []
 
-    // ── KlickTipp Tag via Make.com setzen ─────────────────────
+    // ── KlickTipp-Kontakt direkt übertragen und taggen ────────
     if (actions.klicktipp_tag) {
       if (!leadData.email) {
         resultParts.push(`⚠️ KlickTipp übersprungen: Kein E-Mail beim Lead`)
-      } else if (!process.env.MAKE_WEBHOOK_URL) {
-        resultParts.push(`⚠️ KlickTipp übersprungen: MAKE_WEBHOOK_URL nicht gesetzt`)
       } else {
-        // Lead an Make.com-Webhook senden → trägt ihn in KlickTipp ein
-        const syncResult = await syncLeadToKlicktipp(
-          leadData,
-          actions.klicktipp_tag,
-          process.env.KLICKTIPP_LIST_ID
-        )
-        if (syncResult.success) {
-          resultParts.push(`✅ KlickTipp (via Make.com): ${syncResult.message}`)
-          if (syncResult.subscriberId) {
-            await supabase
-              .from('leads')
-              .update({ klicktipp_id: syncResult.subscriberId })
-              .eq('id', leadId)
-          }
-        } else {
-          resultParts.push(`⚠️ KlickTipp Fehler: ${syncResult.message}`)
+        try {
+          const syncResult = await syncContactToKlickTipp({
+            id: leadId,
+            email: leadData.email,
+            first_name: leadData.first_name,
+            last_name: leadData.last_name,
+            phone_mobile: leadData.phone_mobile,
+            tagNames: [actions.klicktipp_tag],
+          })
+          await supabase
+            .from('leads')
+            .update({ klicktipp_id: syncResult.id })
+            .eq('id', leadId)
+          resultParts.push('✅ KlickTipp: Kontakt direkt übertragen')
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unbekannter Fehler'
+          console.error('[KlickTipp] Lead-Übertragung fehlgeschlagen:', message)
+          resultParts.push(`⚠️ KlickTipp Fehler: ${message}`)
         }
       }
     }

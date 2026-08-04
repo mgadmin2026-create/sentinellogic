@@ -6,6 +6,7 @@ import { NextRequest } from 'next/server'
 import { logContactUpdated, logContactArchived, logPipelineStageChanged, logStatusChanged } from '@/lib/activities-logger'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
+import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
 
 const ALLOWED_UPDATE_FIELDS = new Set([
   'first_name', 'last_name', 'email', 'phone_mobile', 'phone_office',
@@ -40,6 +41,10 @@ const ALLOWED_UPDATE_FIELDS = new Set([
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
+const KLICKTIPP_SYNC_FIELDS = new Set([
+  'first_name', 'last_name', 'email', 'phone_mobile', 'company_name',
+  'city', 'country', 'website', 'klicktipp_tags', 'klicktipp_tag_ids',
+])
 
 // Pipeline-Schritte und ihre Status-Ableitung
 const PIPELINE_STEPS_DEF = [
@@ -233,6 +238,13 @@ export async function PATCH(
         if (stage) {
           await logPipelineStageChanged(id, kontaktName, "", String(raw.pipeline_stage), stage.label, currentUser?.id)
         }
+      }
+
+      const klicktippRelevantChange = Object.keys(raw).some((field) =>
+        KLICKTIPP_SYNC_FIELDS.has(field)
+      )
+      if (data.email && (!data.klicktipp_id || klicktippRelevantChange)) {
+        await syncStoredContactToKlickTipp(supabase, data)
       }
     }
     return Response.json({ success: true, data })
