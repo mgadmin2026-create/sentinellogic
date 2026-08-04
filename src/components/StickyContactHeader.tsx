@@ -160,15 +160,6 @@ export function StickyContactHeader({
                 />
               )}
 
-              <button
-                onClick={onCallPrepClick}
-                disabled={isArchived}
-                title="KI-Zusammenfassung zur Gesprächsvorbereitung generieren"
-                className="px-3 py-2 text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white rounded-lg transition-colors"
-              >
-                🧠 Vorbereiten
-              </button>
-
               {email && (
                 <button
                   onClick={onEmailClick}
@@ -255,6 +246,14 @@ export function StickyContactHeader({
                   ⋯
                 </button>
                 <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <button
+                    onClick={onCallPrepClick}
+                    disabled={isArchived}
+                    title="KI-Zusammenfassung zur Gesprächsvorbereitung generieren"
+                    className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-40 border-b border-gray-100"
+                  >
+                    🧠 Vorbereiten
+                  </button>
                   <button
                     onClick={onHistoryClick}
                     className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
