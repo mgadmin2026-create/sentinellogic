@@ -4,6 +4,7 @@ import { kontakteListeArticles } from './kontakte-liste'
 import { kontaktDetailArticles } from './kontakt-detail'
 import { aufgabenArticles } from './aufgaben'
 import { kalenderArticles } from './kalender'
+import { postfachArticles } from './postfach'
 import { dokumenteArticles } from './dokumente'
 import { kiUploadArticles } from './ki-upload'
 import { syncArticles } from './sync'
@@ -18,6 +19,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   ...kontaktDetailArticles,
   ...aufgabenArticles,
   ...kalenderArticles,
+  ...postfachArticles,
   ...dokumenteArticles,
   ...kiUploadArticles,
   ...syncArticles,

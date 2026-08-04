@@ -1,5 +1,7 @@
-// E-Mail an einen Kontakt senden (Resend)
+// E-Mail an einen Kontakt senden: bevorzugt über das konfigurierte STRATO-Postfach,
+// mit Resend als Rückfall für Installationen ohne Postfach-Konfiguration.
 import { Resend } from 'resend'
+import { isStratoMailboxConfigured, sendStratoMail } from '@/lib/strato-mail'
 
 // Absender-Anzeigename "Allianz Generalvertretung Gün".
 // E-Mail-Adresse auf der eigenen, in Resend verifizierten Domain guen-versicherung.de
@@ -56,6 +58,24 @@ export async function sendContactEmail(params: {
   body: string
   attachments?: ContactEmailAttachment[]
 }): Promise<SendContactEmailResult> {
+  if (isStratoMailboxConfigured()) {
+    try {
+      await sendStratoMail({
+        to: params.to,
+        cc: params.cc,
+        bcc: params.bcc,
+        subject: params.subject,
+        text: buildText(params.body),
+        html: buildHtml(params.body),
+        attachments: params.attachments,
+      })
+      return { ok: true }
+    } catch (err) {
+      console.error('[Contact-Email] STRATO-Versand fehlgeschlagen:', err instanceof Error ? err.name : 'Unbekannter Fehler')
+      return { ok: false, error: 'Versand über das STRATO-Postfach fehlgeschlagen' }
+    }
+  }
+
   if (!process.env.RESEND_API_KEY) {
     console.warn('[Contact-Email] RESEND_API_KEY nicht gesetzt — E-Mail nicht gesendet')
     return { ok: false, error: 'RESEND_API_KEY nicht konfiguriert' }
@@ -86,7 +106,7 @@ export async function sendContactEmail(params: {
 
     return { ok: true }
   } catch (err) {
-    console.error('[Contact-Email] Fehler beim Senden:', err)
+    console.error('[Contact-Email] Fehler beim Senden:', err instanceof Error ? err.name : 'Unbekannter Fehler')
     return { ok: false, error: err instanceof Error ? err.message : String(err) }
   }
 }

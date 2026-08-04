@@ -21,6 +21,44 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.11.0',
+    date: '2026-08-04',
+    title: 'STRATO E-Mail-Postfach',
+    summary:
+      'Der echte STRATO-Posteingang ist jetzt direkt in Sentimental Logic verfügbar – inklusive Lesen, Kontaktzuordnung, Antworten und Versand.',
+    features: [
+      {
+        title: 'Posteingang im CRM',
+        description:
+          'E-Mails aus dem STRATO-Postfach lassen sich direkt in Sentimental Logic lesen. Ungelesene Nachrichten werden markiert und beim Öffnen als gelesen gesetzt.',
+        category: 'feature',
+        icon: '📥',
+      },
+      {
+        title: 'Antworten und Versenden über STRATO',
+        description:
+          'Neue Nachrichten und Antworten werden verschlüsselt über den STRATO-SMTP-Server versendet. Auch der bestehende Kontakt-E-Mail-Dialog nutzt STRATO, sobald das Postfach konfiguriert ist.',
+        category: 'feature',
+        icon: '✉️',
+      },
+      {
+        title: 'Automatische Kontaktzuordnung',
+        description:
+          'Bei einer bekannten Absenderadresse führt die E-Mail direkt zum passenden Kontakt. Ausgehende Nachrichten an bekannte Kontakte werden als Aktivität dokumentiert.',
+        category: 'feature',
+        icon: '👤',
+      },
+      {
+        title: 'Geschützte Zugangsdaten',
+        description:
+          'Postfach-Passwort und Serverdaten bleiben ausschließlich in serverseitigen Umgebungsvariablen; HTML-Inhalte und externe Bilder werden im Posteingang nicht ausgeführt.',
+        category: 'security',
+        icon: '🔒',
+      },
+    ],
+    known_issues: ['E-Mail-Anhänge werden angezeigt, können im ersten MVP aber noch nicht heruntergeladen werden.'],
+  },
+  {
     version: '0.10.0',
     date: '2026-07-26',
     title: 'Eingebaute Hilfe & Kundendokumentation',

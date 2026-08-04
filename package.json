@@ -20,8 +20,11 @@
     "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.10.1",
     "googleapis": "^173.0.0",
+    "imapflow": "^1.6.5",
+    "mailparser": "^3.9.14",
     "next": "14.2.35",
     "node-ical": "^0.27.1",
+    "nodemailer": "^9.0.3",
     "pdf-lib": "^1.17.1",
     "pm2": "^7.0.1",
     "react": "^18",
@@ -31,11 +34,16 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "overrides": {
+    "ip-address": "10.4.0"
   }
 }
