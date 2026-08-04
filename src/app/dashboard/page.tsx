@@ -14,6 +14,7 @@ import { getActivityIcon, getActivityColor } from '@/components/kontakt/Aktivita
 import { PIPELINE_STEPS } from '@/components/kontakt/ProzessPanel'
 import { HelpButton } from '@/components/help/HelpButton'
 import { isAdmin } from '@/lib/roles'
+import { isOverdue as istUeberfaellig, isDueToday as istHeuteFaellig, heutigesDatumBerlin } from '@/lib/pipeline'
 
 interface CurrentUser {
   id: string
@@ -60,17 +61,14 @@ const PRIORITÄT_CHIP: Record<string, string> = {
 }
 const PRIORITÄT_LABELS: Record<string, string> = { hoch: 'Hoch', mittel: 'Mittel', niedrig: 'Niedrig' }
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
 function isOverdue(a: Aufgabe) {
-  return a.status !== 'erledigt' && a.fällig < todayStr()
+  return a.status !== 'erledigt' && istUeberfaellig(a.fällig)
 }
 function isDueToday(a: Aufgabe) {
-  return a.status !== 'erledigt' && a.fällig === todayStr()
+  return a.status !== 'erledigt' && istHeuteFaellig(a.fällig)
 }
 function daysOverdue(fällig: string) {
-  const diff = Math.floor((new Date(todayStr()).getTime() - new Date(fällig).getTime()) / 86_400_000)
+  const diff = Math.floor((new Date(heutigesDatumBerlin()).getTime() - new Date(fällig).getTime()) / 86_400_000)
   return Math.max(1, diff)
 }
 

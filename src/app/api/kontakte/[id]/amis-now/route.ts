@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { heutigesDatumBerlin } from '@/lib/pipeline'
 
 type Params = { params: { id: string } }
 type AmisTaskType = 'person_create' | 'person_create_quote'
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       ? 'AMIS NOW: Person anlegen'
       : 'AMIS NOW: Person anlegen + Angebot berechnen'
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = heutigesDatumBerlin()
     const { data: task, error: taskError } = await supabase
       .from('tasks')
       .insert({

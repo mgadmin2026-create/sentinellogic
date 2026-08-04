@@ -114,12 +114,35 @@ export function getStageLabelByKey(stageKey: string, stages: PipelineStage[] = D
 }
 
 /**
+ * Heutiges Kalenderdatum als YYYY-MM-DD, über die explizite Zeitzone
+ * Europe/Berlin -- NICHT über new Date().toISOString() (UTC) oder lokale
+ * Date-Getter. Server-Code (API-Routen, Edge Functions) läuft auf
+ * Vercel/Supabase in UTC, unabhängig vom deutschen Nutzer; diese Funktion
+ * liefert daher unabhängig vom Aufrufer (Browser oder Server) denselben,
+ * korrekten deutschen Kalendertag.
+ */
+export function heutigesDatumBerlin(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' })
+}
+
+/**
  * Hilfsfunktion: Ist ein Fälligkeitsdatum überfällig? (vor heute)
+ * Vergleich rein über den Kalendertag (YYYY-MM-DD-Anteil), damit ein
+ * heute fälliger Eintrag den ganzen Tag über nicht als überfällig gilt --
+ * einzige, gemeinsam genutzte Implementierung (vorher gab es 4 vonein-
+ * ander abweichende Versionen in dashboard/opportunities/aufgaben/pipeline).
  */
 export function isOverdue(dueDate: string | null | undefined): boolean {
   if (!dueDate) return false
-  const today = new Date().toISOString().split('T')[0]
-  return dueDate < today
+  return dueDate.slice(0, 10) < heutigesDatumBerlin()
+}
+
+/**
+ * Hilfsfunktion: Ist ein Fälligkeitsdatum heute fällig?
+ */
+export function isDueToday(dueDate: string | null | undefined): boolean {
+  if (!dueDate) return false
+  return dueDate.slice(0, 10) === heutigesDatumBerlin()
 }
 
 /**

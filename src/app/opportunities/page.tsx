@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { OpportunityEditModal } from '@/components/OpportunityEditModal'
+import { isOverdue as istUeberfaellig } from '@/lib/pipeline'
 
 interface Opportunity {
   id: string
@@ -135,7 +136,7 @@ export default function OpportunitiesPage() {
     }
   }
 
-  const isOverdue = (dueDate?: string) => dueDate && new Date(dueDate) < new Date()
+  const isOverdue = (dueDate?: string) => istUeberfaellig(dueDate)
 
   const filtered = opportunities.filter((o) => {
     if (statusFilter !== 'all' && o.status !== statusFilter) return false

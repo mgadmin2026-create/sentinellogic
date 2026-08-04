@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { HelpButton } from '@/components/help/HelpButton'
+import { isOverdue as istUeberfaellig } from '@/lib/pipeline'
 
 interface Aufgabe {
   id: string
@@ -187,7 +188,7 @@ export default function AufgabenPage() {
     }
   }
 
-  const isOverdue = (dueDate: string, status: string) => status !== 'erledigt' && new Date(dueDate) < new Date() && !!dueDate
+  const isOverdue = (dueDate: string, status: string) => status !== 'erledigt' && !!dueDate && istUeberfaellig(dueDate)
 
   const filtered = aufgaben.filter((a) => {
     if (statusFilter !== 'all' && a.status !== statusFilter) return false
