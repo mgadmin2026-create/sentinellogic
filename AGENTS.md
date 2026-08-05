@@ -115,6 +115,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [ ] Infrastruktur Setup (Supabase, Vercel)
 - [ ] Regressionstest-Katalog nach jedem neuen Feature erweitern
 - [ ] Placetel-MVP: Echten Callback-Pilot mit Gesprächsdauer und Abschlussstatus durchführen
+- [ ] KlickTipp-Rücksync ausrollen: Migration anwenden, Secret setzen und Pilot für Öffnung/Klick/Abmeldung durchführen
 - [ ] KlickTipp-API-Freigabe für `bosydadaq-api2` erneuern und Direkt-Sync-Pilot durchführen
 
 **Abgeschlossen:**
@@ -150,6 +151,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] STRATO-E-Mail-Postfach als IMAP-/SMTP-MVP mit Posteingang, Lesen, Antworten, Versand und Kontaktzuordnung integriert
 - [x] Eingehende STRATO-E-Mails bekannter Kontakte idempotent in der Aktivitäten-Timeline ergänzt und Migration `0061_strato_incoming_email_activities.sql` live angewendet
 - [x] Regel-Sammelausführung zeigt KlickTipp-Erfolge, Fehler und übersprungene Übertragungen; archivierte Kontakte werden ausgeschlossen
+- [x] Abgesicherten, idempotenten KlickTipp-Rückkanal für Ereignisse sowie additiven E-Mail-Statusabgleich technisch implementiert
 - [x] KlickTipp-Direktsynchronisation um Anmeldung mit dediziertem API User und Partner-Schlüssel-Fallback erweitert
 - [x] KlickTipp-Feldmapping um Geburtstag (Unix-Zeitstempel), Straße, PLZ und optionales Geschlechtsfeld erweitert
 - [x] KlickTipp-Integration auf direkten Management-API-Client mit Partner-HMAC, Kontakt-/Tag-Sync und Bestandsabgleich vereinheitlicht; alten Make-/Edge-Webhook-Weg entfernt

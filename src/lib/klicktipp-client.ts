@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto'
+import { normalizeKlickTippEmailStatus, type KlickTippEmailStatus } from '@/lib/klicktipp-webhook'
 
 const DEFAULT_KLICKTIPP_API_URL = 'https://api.klicktipp.com'
 const DEFAULT_PARTNER_USERNAME = 'bosydadaq-api2'
@@ -31,6 +32,10 @@ export interface KlickTippContactData {
 export interface KlickTippSyncResult {
   id: string
   tagIds: number[]
+}
+
+export interface KlickTippContactStatusResult {
+  status: KlickTippEmailStatus
 }
 
 type JsonRecord = Record<string, unknown>
@@ -523,4 +528,33 @@ export async function syncContactToKlickTipp(
 /** Read-only-Verbindungstest ohne Übertragung von Kontaktdaten. */
 export async function testKlickTippConnection(): Promise<void> {
   await makeRequest<unknown>('GET', '/tag.json')
+}
+
+/** Liest ausschließlich den aktuellen Versand-/Einwilligungsstatus eines Kontakts. */
+export async function getKlickTippContactStatus(subscriberId: string): Promise<KlickTippContactStatusResult> {
+  if (!subscriberId.trim()) throw new Error('KlickTipp-Kontakt-ID fehlt')
+  const response = await makeRequest<unknown>('GET', `/subscriber/${encodeURIComponent(subscriberId.trim())}.json`)
+
+  const findStatus = (value: unknown, depth = 0): KlickTippEmailStatus | null => {
+    if (depth > 4 || !value || typeof value !== 'object') return null
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const status = findStatus(item, depth + 1)
+        if (status) return status
+      }
+      return null
+    }
+    const record = value as JsonRecord
+    for (const key of ['status', 'email_status', 'emailStatus', 'subscription_status', 'subscriptionStatus']) {
+      const status = normalizeKlickTippEmailStatus(record[key])
+      if (status) return status
+    }
+    for (const nested of Object.values(record)) {
+      const status = findStatus(nested, depth + 1)
+      if (status) return status
+    }
+    return null
+  }
+
+  return { status: findStatus(response) ?? 'unknown' }
 }

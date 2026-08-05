@@ -66,6 +66,8 @@ interface Kontakt {
   klicktipp_id?: string
   klicktipp_tags?: string[]
   klicktipp_last_sync?: string
+  klicktipp_email_status?: string | null
+  klicktipp_status_updated_at?: string | null
   dialfire_id?: string
   dialfire_campaign?: string
   dialfire_last_sync?: string

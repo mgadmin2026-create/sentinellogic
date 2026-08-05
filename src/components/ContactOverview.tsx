@@ -39,6 +39,8 @@ interface Kontakt {
   facebook_phase?: string
   klicktipp_tags?: string[]
   klicktipp_tag_ids?: number[]
+  klicktipp_email_status?: string | null
+  klicktipp_status_updated_at?: string | null
   dialfire_campaign_id?: string
   dialfire_task_name_field?: string
   bemerkung?: string
@@ -579,7 +581,17 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
           )}
 
           {/* KlickTipp */}
-          <div>
+          <div className="p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <h4 className="text-sm font-semibold text-blue-900">✉️ KlickTipp</h4>
+              <span className="px-2 py-1 rounded-full bg-white border border-blue-200 text-xs font-semibold text-blue-800">
+                {kontakt.klicktipp_email_status === 'subscribed' ? 'Angemeldet' :
+                  kontakt.klicktipp_email_status === 'opt_in_pending' ? 'Opt-in ausstehend' :
+                  kontakt.klicktipp_email_status === 'unsubscribed' ? 'Abgemeldet' :
+                  kontakt.klicktipp_email_status === 'soft_bounce' ? 'Soft-Bounce' :
+                  kontakt.klicktipp_email_status === 'hard_bounce' ? 'Hard-Bounce' : 'Status noch nicht abgeglichen'}
+              </span>
+            </div>
             <p className="text-xs text-gray-500 font-semibold mb-2">KlickTipp Tags</p>
             <div className="flex flex-wrap gap-2">
               {kontakt.klicktipp_tags && kontakt.klicktipp_tags.length > 0 ? (
@@ -595,6 +607,11 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
                 <p className="text-sm text-gray-500">—</p>
               )}
             </div>
+            {kontakt.klicktipp_status_updated_at && (
+              <p className="text-xs text-blue-600 mt-3">
+                Status aktualisiert: {new Date(kontakt.klicktipp_status_updated_at).toLocaleString('de-DE')}
+              </p>
+            )}
           </div>
 
           {/* Dialfire */}
