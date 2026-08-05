@@ -16,10 +16,14 @@ export interface KlickTippContactData {
   first_name?: string | null
   last_name?: string | null
   company_name?: string | null
+  street?: string | null
+  postal_code?: string | null
   city?: string | null
   country?: string | null
   phone_mobile?: string | null
   website?: string | null
+  geburtstag?: string | null
+  geschlecht?: string | null
   tagIds?: number[]
   tagNames?: string[]
 }
@@ -38,6 +42,7 @@ interface KlickTippSession {
 
 let cachedSession: KlickTippSession | null = null
 let sessionLoginPromise: Promise<Record<string, string>> | null = null
+let cachedGenderField: { key: string | null; expiresAt: number } | null = null
 
 function getConfig(): KlickTippConfig {
   const apiUsername = process.env.KLICKTIPP_API_USERNAME?.trim()
@@ -279,12 +284,133 @@ function buildContactFields(contact: KlickTippContactData): JsonRecord {
   if (contact.first_name) fields.fieldFirstName = contact.first_name
   if (contact.last_name) fields.fieldLastName = contact.last_name
   if (contact.company_name) fields.fieldCompanyName = contact.company_name
+  if (contact.street) fields.fieldStreet1 = contact.street
+  if (contact.postal_code) fields.fieldZip = contact.postal_code
   if (contact.city) fields.fieldCity = contact.city
   if (contact.country) fields.fieldCountry = contact.country
   if (contact.phone_mobile) fields.fieldMobilePhone = contact.phone_mobile
   if (contact.website) fields.fieldWebsite = contact.website
 
+  const birthday = toBirthdayTimestamp(contact.geburtstag)
+  if (birthday != null) fields.fieldBirthday = birthday
+
   return fields
+}
+
+/** KlickTipp erwartet Datumsfelder als Unix-Zeitstempel in Sekunden. */
+function toBirthdayTimestamp(value?: string | null): number | null {
+  if (!value) return null
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim())
+  if (!match) return null
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const milliseconds = Date.UTC(year, month - 1, day)
+  const date = new Date(milliseconds)
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null
+  }
+
+  return Math.floor(milliseconds / 1000)
+}
+
+function normalizeFieldLabel(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function findGenderFieldKey(response: unknown): string | null {
+  const visited = new Set<object>()
+  const genderLabels = new Set(['geschlecht', 'gender', 'sex'])
+
+  const inspect = (value: unknown, keyHint?: string, depth = 0): string | null => {
+    if (depth > 5 || value == null) return null
+
+    if (typeof value === 'string') {
+      if (
+        keyHint?.startsWith('field') &&
+        genderLabels.has(normalizeFieldLabel(value))
+      ) {
+        return keyHint
+      }
+      return null
+    }
+
+    if (typeof value !== 'object' || visited.has(value)) return null
+    visited.add(value)
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const result = inspect(item, undefined, depth + 1)
+        if (result) return result
+      }
+      return null
+    }
+
+    const record = value as JsonRecord
+    const fieldKeyCandidate = record.key ?? record.field_key ?? record.fieldKey ?? record.id
+    const labelCandidate = record.label ?? record.name ?? record.title ?? record.field_name
+    if (
+      typeof fieldKeyCandidate === 'string' &&
+      fieldKeyCandidate.startsWith('field') &&
+      typeof labelCandidate === 'string' &&
+      genderLabels.has(normalizeFieldLabel(labelCandidate))
+    ) {
+      return fieldKeyCandidate
+    }
+
+    for (const [key, nested] of Object.entries(record)) {
+      const result = inspect(nested, key, depth + 1)
+      if (result) return result
+    }
+    return null
+  }
+
+  return inspect(response)
+}
+
+async function resolveGenderFieldKey(): Promise<string | null> {
+  const configuredKey = process.env.KLICKTIPP_GENDER_FIELD_KEY?.trim()
+  if (configuredKey) {
+    if (!/^field[A-Za-z0-9_]+$/.test(configuredKey)) {
+      throw new Error('KLICKTIPP_GENDER_FIELD_KEY hat kein gültiges KlickTipp-Feldformat')
+    }
+    return configuredKey
+  }
+
+  if (cachedGenderField && cachedGenderField.expiresAt > Date.now()) {
+    return cachedGenderField.key
+  }
+
+  try {
+    const response = await makeRequest<unknown>('GET', '/field.json')
+    const key = findGenderFieldKey(response)
+    cachedGenderField = { key, expiresAt: Date.now() + 15 * 60_000 }
+    return key
+  } catch {
+    // Ein optionales Geschlechtsfeld darf den grundlegenden Kontaktsync nicht blockieren.
+    console.warn('[KlickTipp] Optionales Datenfeld Geschlecht konnte nicht ermittelt werden')
+    cachedGenderField = { key: null, expiresAt: Date.now() + 5 * 60_000 }
+    return null
+  }
+}
+
+function normalizeGender(value: string): string {
+  const normalized = normalizeFieldLabel(value)
+  if (['mannlich', 'male', 'm'].includes(normalized)) return 'männlich'
+  if (['weiblich', 'female', 'w', 'f'].includes(normalized)) return 'weiblich'
+  if (['divers', 'diverse', 'nonbinary'].includes(normalized)) return 'divers'
+  return value.trim()
 }
 
 /**
@@ -297,9 +423,15 @@ export async function addOrUpdateKlickTippContact(
   const email = contact.email.trim().toLowerCase()
   if (!email) throw new Error('Für die KlickTipp-Übertragung ist eine E-Mail-Adresse erforderlich')
 
+  const fields = buildContactFields(contact)
+  if (contact.geschlecht?.trim()) {
+    const genderFieldKey = await resolveGenderFieldKey()
+    if (genderFieldKey) fields[genderFieldKey] = normalizeGender(contact.geschlecht)
+  }
+
   const response = await makeRequest<unknown>('POST', '/subscriber.json', {
     email,
-    fields: buildContactFields(contact),
+    fields,
   })
 
   const subscriberId = extractSubscriberId(response)

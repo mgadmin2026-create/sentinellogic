@@ -43,7 +43,8 @@ const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_intere
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 const KLICKTIPP_SYNC_FIELDS = new Set([
   'first_name', 'last_name', 'email', 'phone_mobile', 'company_name',
-  'city', 'country', 'website', 'klicktipp_tags', 'klicktipp_tag_ids',
+  'street', 'postal_code', 'city', 'country', 'website', 'geburtstag', 'geschlecht',
+  'klicktipp_tags', 'klicktipp_tag_ids',
 ])
 
 // Pipeline-Schritte und ihre Status-Ableitung

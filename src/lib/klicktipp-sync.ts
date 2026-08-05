@@ -10,10 +10,14 @@ export interface StoredKlickTippContact {
   first_name?: string | null
   last_name?: string | null
   company_name?: string | null
+  street?: string | null
+  postal_code?: string | null
   city?: string | null
   country?: string | null
   phone_mobile?: string | null
   website?: string | null
+  geburtstag?: string | null
+  geschlecht?: string | null
   klicktipp_tags?: string[] | null
   klicktipp_tag_ids?: number[] | null
   is_test_data?: boolean | null
@@ -43,10 +47,14 @@ export async function syncStoredContactToKlickTipp(
       first_name: contact.first_name,
       last_name: contact.last_name,
       company_name: contact.company_name,
+      street: contact.street,
+      postal_code: contact.postal_code,
       city: contact.city,
       country: contact.country,
       phone_mobile: contact.phone_mobile,
       website: contact.website,
+      geburtstag: contact.geburtstag,
+      geschlecht: contact.geschlecht,
       tagIds: contact.klicktipp_tag_ids ?? [],
       tagNames: contact.klicktipp_tags ?? [],
     })
