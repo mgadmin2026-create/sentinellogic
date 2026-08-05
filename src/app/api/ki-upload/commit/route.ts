@@ -76,6 +76,10 @@ export async function POST(request: NextRequest) {
     }
     const daten = JSON.parse(datenRaw) as CommitDaten
     const origin = request.nextUrl.origin
+    // Die Auth-Middleware prüft die Session-Cookie auf jeder /api/*-Route —
+    // ohne Weiterleitung würden die folgenden internen Fetches als
+    // nicht angemeldet abgelehnt (401 "Nicht angemeldet").
+    const cookie = request.headers.get('cookie') || ''
     const notes = buildNotes(daten)
 
     // ── 1. Kontakt bestimmen ─────────────────────────────────────
@@ -85,7 +89,7 @@ export async function POST(request: NextRequest) {
     if (!kontaktId) {
       const createRes = await fetch(`${origin}/api/kontakte`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', cookie },
         body: JSON.stringify({
           first_name: daten.first_name,
           last_name: daten.last_name,
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
     if (Object.keys(patchFelder).length > 0) {
       const patchRes = await fetch(`${origin}/api/kontakte/${kontaktId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', cookie },
         body: JSON.stringify(patchFelder),
       })
       if (!patchRes.ok) {
@@ -142,6 +146,7 @@ export async function POST(request: NextRequest) {
 
     const uploadRes = await fetch(`${origin}/api/kontakte/${kontaktId}/dokumente`, {
       method: 'POST',
+      headers: { cookie },
       body: uploadForm,
     })
     const uploadData = await uploadRes.json()
