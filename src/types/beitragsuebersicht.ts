@@ -10,6 +10,9 @@ export interface BeitragsPosition {
   bemerkung: string
   /** true nur für die Zeile "Kfz-Flotte / Firmenfahrzeuge" im Gewerbe-Set */
   ist_flotte_zeile?: boolean
+  /** true, wenn diese Zeile automatisch aus einem per KI erkannten Vertrags-
+   * Upload übernommen wurde (statt manuell im Panel eingetragen). */
+  automatisch_uebernommen?: boolean
 }
 
 export interface FlottenFahrzeug {

@@ -14,6 +14,14 @@ interface BeitragsuebersichtPanelProps {
   initialData?: Beitragsuebersicht | null
   onSave: (changes: Record<string, unknown>) => Promise<void>
   onClose: () => void
+  /** Öffnet den E-Mail-Versand mit dem übergebenen PDF bereits als Anhang. */
+  onSendMail?: (file: File) => void
+}
+
+function zeitstempelDateiname(): string {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`
 }
 
 function buildInitial(kontaktTyp: 'privat' | 'gewerbe'): Beitragsuebersicht {
@@ -43,9 +51,11 @@ function DifferenzCell({ position, data }: { position: BeitragsPosition; data: B
   )
 }
 
-export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, onSave, onClose }: BeitragsuebersichtPanelProps) {
+export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, onSave, onClose, onSendMail }: BeitragsuebersichtPanelProps) {
   const [data, setData] = useState<Beitragsuebersicht>(initialData ?? buildInitial(kontaktTyp))
   const [saving, setSaving] = useState(false)
+  const [mailLoading, setMailLoading] = useState(false)
+  const [mailError, setMailError] = useState<string | null>(null)
 
   useEffect(() => {
     setData(initialData ?? buildInitial(kontaktTyp))
@@ -93,6 +103,23 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
     window.open(`/api/kontakte/${kontaktId}/beitragsuebersicht/pdf`, '_blank')
   }
 
+  async function handleSendMail() {
+    if (!onSendMail) return
+    setMailError(null)
+    setMailLoading(true)
+    try {
+      const res = await fetch(`/api/kontakte/${kontaktId}/beitragsuebersicht/pdf`)
+      if (!res.ok) throw new Error('PDF konnte nicht erzeugt werden')
+      const blob = await res.blob()
+      const file = new File([blob], `Beitragsuebersicht_${zeitstempelDateiname()}.pdf`, { type: 'application/pdf' })
+      onSendMail(file)
+    } catch (err) {
+      setMailError(err instanceof Error ? err.message : 'PDF konnte nicht erzeugt werden')
+    } finally {
+      setMailLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-gray-500">
@@ -129,6 +156,14 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                       placeholder="Sparte…"
                     />
                     {isFlotteZeile && <span className="text-gray-400 text-[10px] ml-1">(Flotte)</span>}
+                    {p.automatisch_uebernommen && (
+                      <span
+                        title={`Automatisch aus Vertragsupload übernommen${p.bemerkung ? ` — ${p.bemerkung}` : ''}`}
+                        className="inline-flex items-center justify-center w-4 h-4 ml-1 text-[10px] rounded-full bg-blue-100 text-blue-600 align-middle cursor-help"
+                      >
+                        📄
+                      </span>
+                    )}
                   </td>
                   <td className="px-2 py-1.5">
                     <input
@@ -358,6 +393,10 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
         </div>
       </div>
 
+      {mailError && (
+        <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{mailError}</div>
+      )}
+
       <div className="flex gap-2 pt-2">
         <button
           onClick={handleSubmit}
@@ -372,6 +411,15 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
         >
           PDF herunterladen
         </button>
+        {onSendMail && (
+          <button
+            onClick={handleSendMail}
+            disabled={mailLoading}
+            className="border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+          >
+            {mailLoading ? 'Erzeuge PDF…' : '📧 Per E-Mail senden'}
+          </button>
+        )}
       </div>
     </div>
   )

@@ -333,6 +333,40 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.23.0 (2026-08-05) — Beitragsübersicht: Vertrags-Übernahme, Mailversand, neue Vorlage
+
+- ✅ Beiträge aus per KI erkannten Vertrags-Uploads werden jetzt automatisch als neue Zeile in die
+  Beitragsübersicht des Kontakts übernommen (`src/lib/beitragsuebersicht-uebernahme.ts`,
+  `uebernehmeVertragInBeitragsuebersicht()`) — eingehängt in beide bestehenden Commit-Pfade
+  (`api/ki-upload/commit`, `api/kontakte/[id]/dokumente` POST). `contract_type: 'eigen'` (Allianz-
+  Neuvertrag) landet in „Neu", `'fremd'`/`'unknown'` (Bestandsvertrag) in „Alt" + Versicherer.
+  Mehrere Policen zur selben Sparte erzeugen bewusst mehrere Zeilen, keine Zusammenführung. Neues
+  Flag `BeitragsPosition.automatisch_uebernommen` (kein Migrations-Bedarf, lebt in der bestehenden
+  JSONB-Spalte) zeigt in `BeitragsuebersichtPanel.tsx` ein 📄-Badge mit Tooltip (Original-Beitragstext
+  aus der Extraktion, da die KI nur einen Freitext liefert, keine Zahl mit Periode)
+- ✅ Neuer Button „📧 Per E-Mail senden" neben „PDF herunterladen" — erzeugt das PDF frisch
+  (Dateiname mit Zeitstempel), öffnet `ContactEmailModal` mit PDF vorab angehängt und der neuen
+  Vorlage „Beitragsübersicht" automatisch ausgewählt. Nutzt dafür denselben bereits bestehenden
+  Versand-Pfad wie normale Kontakt-Mails (`POST /api/kontakte/[id]/email`) — Dokumenten-Ablage
+  (Google Drive) und Aktivitäten-Log (`email_sent`) passieren dadurch automatisch mit, ohne
+  zusätzlichen Code. `ContactEmailModal` bekam dafür drei neue optionale Props
+  (`initialAttachments`, `initialTemplateName`, `attachmentCategory`); die Email-Route akzeptiert
+  jetzt ein `category`-Feld (Standard weiterhin `Sonstiges`) statt es hart zu verdrahten
+- 🐛 Beim Verdrahten in `kontakte/[id]/page.tsx` zunächst ein Bug eingebaut und in derselben Sitzung
+  gefunden: `onSent` hat `beitragsMailFile` sofort zurückgesetzt, wodurch das Modal auch bei einer
+  bloßen Ablage-Warnung (`filingWarning`) sofort schloss, statt die Warnung anzuzeigen. Fix: das
+  Zurücksetzen passiert nur noch in `onClose`
+- ✅ Neue Mail-Vorlage „Beitragsübersicht" (Migration `0065_mail_template_beitragsuebersicht.sql`)
+- ✅ Live verifiziert: Vertrags-Übernahme direkt gegen die Funktion getestet (eigen→Neu, fremd→Alt+
+  Versicherer, gleiche Sparte zweimal→zwei Zeilen, unparsbarer Beitrag→keine Zeile — alle 4 Fälle
+  korrekt); Mailversand-UI zeigt PDF-Anhang + Vorlage automatisch vorbelegt, Versand an eine
+  `.invalid`-Testadresse (garantiert unzustellbar, kein Risiko eines echten Versands) bestätigt
+  `email_sent`-Aktivität korrekt geloggt. Google-Drive-Ablage selbst konnte lokal nicht
+  durchgetestet werden (System-Konto in dieser Dev-Umgebung nicht verbunden — bestehende
+  Einschränkung, nicht durch diese Änderung verursacht), Code-Pfad ist aber strukturident mit dem
+  bereits produktiv laufenden `kategorie`-Parameter aus dem KI-Upload/Dokumente-Upload
+- 🆕 Dateien: `src/lib/beitragsuebersicht-uebernahme.ts`, `supabase/migrations/0065_mail_template_beitragsuebersicht.sql`
+
 ### v0.22.1 (2026-08-04) — KlickTipp-Direktsync vereinheitlicht
 
 - ✅ Make.com-/alte Edge-Webhook-Strecke entfernt; Kontaktanlage, Kontaktänderung, Regeln und

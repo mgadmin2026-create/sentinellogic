@@ -202,6 +202,7 @@ export default function KontaktDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [archiveTasksToo, setArchiveTasksToo] = useState(false)
   const [emailModalOpen, setEmailModalOpen] = useState(false)
+  const [beitragsMailFile, setBeitragsMailFile] = useState<File | null>(null)
   const [pipelineSaving, setPipelineSaving] = useState(false)
   const [dialfireResponse, setDialfireResponse] = useState<Record<string, any> | null>(null)
   const [dialfireSnapshot, setDialfireSnapshot] = useState<any>(null)
@@ -557,7 +558,7 @@ export default function KontaktDetailPage() {
       />
 
       <ContactEmailModal
-        open={emailModalOpen}
+        open={emailModalOpen || beitragsMailFile !== null}
         contactId={kontaktId}
         defaultTo={kontakt.email}
         contactName={fullName}
@@ -571,7 +572,10 @@ export default function KontaktDetailPage() {
           versicherungsgesellschaft: kontakt.versicherungsgesellschaft,
           sparte: kontakt.sparte,
         }}
-        onClose={() => setEmailModalOpen(false)}
+        initialAttachments={beitragsMailFile ? [beitragsMailFile] : undefined}
+        initialTemplateName={beitragsMailFile ? 'Beitragsübersicht' : undefined}
+        attachmentCategory={beitragsMailFile ? 'Beitragsübersicht' : undefined}
+        onClose={() => { setEmailModalOpen(false); setBeitragsMailFile(null) }}
         onSent={() => loadKontakt()}
       />
 
@@ -1092,6 +1096,7 @@ export default function KontaktDetailPage() {
           initialData={kontakt.beitragsuebersicht}
           onSave={handleSaveOverview}
           onClose={() => setOpenDrawer(null)}
+          onSendMail={(file) => { setBeitragsMailFile(file); setOpenDrawer(null) }}
         />
       </Drawer>
 

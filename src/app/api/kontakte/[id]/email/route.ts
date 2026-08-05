@@ -39,6 +39,7 @@ export async function POST(
     const to = String(formData.get('to') || '').trim()
     const subject = String(formData.get('subject') || '').trim()
     const text = String(formData.get('body') || '').trim()
+    const category = String(formData.get('category') || '').trim() || 'Sonstiges'
 
     if (!EMAIL_RE.test(to)) {
       return Response.json({ success: false, error: 'Ungültige Empfänger-Adresse' }, { status: 400 })
@@ -122,7 +123,7 @@ export async function POST(
           id,
           contact.first_name || '',
           contact.last_name || '',
-          'Sonstiges'
+          category
         )
 
         if (contact.google_drive_ordner_id !== uploadResult.kontaktOrdnerId) {

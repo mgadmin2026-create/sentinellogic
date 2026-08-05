@@ -4,6 +4,7 @@ import { uploadDocumentToGoogleDrive, getOrdnerstruktur, renameFileInGoogleDrive
 import { logFileUploaded } from '@/lib/activities-logger'
 import { getCurrentUser } from '@/lib/auth'
 import { analysiereVersicherungsdokument } from '@/lib/ki-upload'
+import { uebernehmeVertragInBeitragsuebersicht } from '@/lib/beitragsuebersicht-uebernahme'
 
 function flatten(nodes: OrdnerstrukturNode[]): string[] {
   const paths: string[] = []
@@ -260,6 +261,16 @@ export async function POST(
       } catch (err) {
         console.error('[Dokumente] Vertrags-Speicherung fehlgeschlagen:', err)
       }
+
+      // Beitrag zusätzlich als Zeile in die Beitragsübersicht übernehmen
+      await uebernehmeVertragInBeitragsuebersicht(supabase, kontaktId, {
+        sparte: extraktion.sparte,
+        beitrag: extraktion.beitrag,
+        contract_type: extraktion.contract_type,
+        versicherungsgesellschaft: extraktion.versicherungsgesellschaft,
+        vertragsbeginn: extraktion.vertragsbeginn,
+        vertragsende: extraktion.vertragsende,
+      })
     }
 
     // Aktivität loggen

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
+import { uebernehmeVertragInBeitragsuebersicht } from '@/lib/beitragsuebersicht-uebernahme'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -177,6 +178,16 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.warn('[KI-Upload] Contracts-Speicherung fehlgeschlagen (nicht blockierend):', err)
       }
+
+      // Beitrag zusätzlich als Zeile in die Beitragsübersicht übernehmen
+      await uebernehmeVertragInBeitragsuebersicht(supabase, kontaktId!, {
+        sparte: daten.sparte,
+        beitrag: daten.beitrag,
+        contract_type: daten.contract_type,
+        versicherungsgesellschaft: daten.versicherungsgesellschaft,
+        vertragsbeginn: daten.vertragsbeginn,
+        vertragsende: daten.vertragsende,
+      })
     }
 
     // Activity: KI-Upload dokumentieren

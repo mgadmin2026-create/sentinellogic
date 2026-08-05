@@ -16,6 +16,14 @@ interface ContactEmailModalProps {
   defaultTo?: string
   contactName?: string
   contact?: PlaceholderContact
+  /** Dateien, die beim Öffnen bereits als Anhang vorbelegt sind (z.B. ein
+   * generiertes PDF) — der Nutzer kann sie wie jeden anderen Anhang entfernen. */
+  initialAttachments?: File[]
+  /** Name einer Mail-Vorlage, die beim Öffnen automatisch ausgewählt wird
+   * (exakter Match gegen mail_templates.name), statt der leeren Auswahl. */
+  initialTemplateName?: string
+  /** Kategorie, unter der Anhänge in Dokumente abgelegt werden (Standard: Sonstiges). */
+  attachmentCategory?: string
   onClose: () => void
   onSent?: () => void
 }
@@ -34,6 +42,9 @@ export function ContactEmailModal({
   defaultTo,
   contactName,
   contact,
+  initialAttachments,
+  initialTemplateName,
+  attachmentCategory,
   onClose,
   onSent,
 }: ContactEmailModalProps) {
@@ -59,7 +70,7 @@ export function ContactEmailModal({
       setShowCcBcc(false)
       setSubject('')
       setBody('')
-      setFiles([])
+      setFiles(initialAttachments ?? [])
       setError(null)
       setNotice(null)
       setSending(false)
@@ -67,10 +78,22 @@ export function ContactEmailModal({
 
       fetch('/api/mail-templates')
         .then((r) => r.json())
-        .then((res) => { if (res.success) setTemplates(res.data) })
+        .then((res) => {
+          if (!res.success) return
+          setTemplates(res.data)
+          if (initialTemplateName) {
+            const match = res.data.find((t: MailTemplate) => t.name === initialTemplateName)
+            if (match) {
+              setSelectedTemplateId(match.id)
+              setSubject(fillTemplatePlaceholders(match.subject, contact || {}))
+              setBody(fillTemplatePlaceholders(match.body, contact || {}))
+            }
+          }
+        })
         .catch(() => {})
     }
-  }, [open, defaultTo])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultTo, initialTemplateName])
 
   if (!open) return null
 
@@ -112,6 +135,7 @@ export function ContactEmailModal({
       formData.set('bcc', bcc.trim())
       formData.set('subject', subject.trim())
       formData.set('body', body)
+      if (attachmentCategory) formData.set('category', attachmentCategory)
       for (const file of files) {
         formData.append('attachments', file)
       }
