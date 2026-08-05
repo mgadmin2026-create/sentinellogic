@@ -22,8 +22,9 @@ export async function POST(request: NextRequest) {
     let query = supabase
       .from('contacts')
       .select([
-        'id', 'email', 'first_name', 'last_name', 'company_name', 'city',
-        'country', 'phone_mobile', 'website', 'klicktipp_tags',
+        'id', 'email', 'first_name', 'last_name', 'company_name', 'street',
+        'postal_code', 'city', 'country', 'phone_mobile', 'website',
+        'geburtstag', 'geschlecht', 'klicktipp_tags',
         'klicktipp_tag_ids', 'klicktipp_id', 'is_test_data',
       ].join(','))
       .is('archived_at', null)
