@@ -267,6 +267,15 @@ export default function RegelnPage() {
                 {applyResult.dialfireFailed > 0 && (
                   <span className="px-2 py-1 rounded bg-orange-100 text-orange-800">⚠️ {applyResult.dialfireFailed} Dialfire-Fehler</span>
                 )}
+                {applyResult.klicktippRequested && (
+                  <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">🏷️ {applyResult.klicktippSynced ?? 0} zu KlickTipp</span>
+                )}
+                {applyResult.klicktippFailed > 0 && (
+                  <span className="px-2 py-1 rounded bg-red-100 text-red-800">⚠️ {applyResult.klicktippFailed} KlickTipp-Fehler</span>
+                )}
+                {applyResult.klicktippSkipped > 0 && (
+                  <span className="px-2 py-1 rounded bg-gray-100 text-gray-600">⏭️ {applyResult.klicktippSkipped} KlickTipp übersprungen</span>
+                )}
               </div>
 
               {/* Was die Regel tut */}

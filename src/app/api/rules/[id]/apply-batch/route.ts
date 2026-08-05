@@ -79,11 +79,12 @@ export async function POST(
       .eq('id', ruleId)
 
     // 2. Find contacts matching rule source AND insurance type (if specified)
-    // Skip: automation_disabled=true, status='customer'
+    // Skip: archiviert, automation_disabled=true, status='customer'
     let query = supabase
       .from('contacts')
       .select('*')
       .eq('source', rule.condition_source)
+      .is('archived_at', null)
       .eq('automation_disabled', false)
       .neq('status', 'customer')
 
@@ -114,6 +115,7 @@ export async function POST(
     let dialfireFailed = 0
     let klicktippSynced = 0
     let klicktippFailed = 0
+    let klicktippSkipped = 0
     const errors: string[] = []
     const affectedContacts: { email: string; name: string; dialfire: 'synced' | 'failed' | 'none' }[] = []
 
@@ -189,6 +191,7 @@ export async function POST(
           })
           if (klicktippResult.status === 'synced') klicktippSynced++
           if (klicktippResult.status === 'failed') klicktippFailed++
+          if (klicktippResult.status === 'skipped') klicktippSkipped++
         }
 
         // Dialfire Sync: Only if campaign or task is set
@@ -328,8 +331,10 @@ export async function POST(
       total: contactList.length,
       dialfireSynced,
       dialfireFailed,
+      klicktippRequested: ruleKlicktippTagList.length > 0,
       klicktippSynced,
       klicktippFailed,
+      klicktippSkipped,
       actionsSummary,
       affectedContacts,
       errors: errors.length > 0 ? errors : undefined,
