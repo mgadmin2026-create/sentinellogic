@@ -149,6 +149,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] SuperChat-Feldmapping um Firma, Adresse und Geburtsdatum sowie direkten Kontaktlink erweitert
 - [x] STRATO-E-Mail-Postfach als IMAP-/SMTP-MVP mit Posteingang, Lesen, Antworten, Versand und Kontaktzuordnung integriert
 - [x] Eingehende STRATO-E-Mails bekannter Kontakte idempotent in der Aktivitäten-Timeline ergänzt und Migration `0061_strato_incoming_email_activities.sql` live angewendet
+- [x] KlickTipp-Direktsynchronisation um Anmeldung mit dediziertem API User und Partner-Schlüssel-Fallback erweitert
 - [x] KlickTipp-Integration auf direkten Management-API-Client mit Partner-HMAC, Kontakt-/Tag-Sync und Bestandsabgleich vereinheitlicht; alten Make-/Edge-Webhook-Weg entfernt
 
 **Nächste Aufgabe:**

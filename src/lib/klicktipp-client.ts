@@ -5,9 +5,9 @@ const DEFAULT_PARTNER_USERNAME = 'bosydadaq-api2'
 
 interface KlickTippConfig {
   apiUrl: string
-  partnerUsername: string
-  developerKey: string
-  customerKey: string
+  auth:
+    | { mode: 'session'; username: string; password: string }
+    | { mode: 'partner'; partnerUsername: string; developerKey: string; customerKey: string }
 }
 
 export interface KlickTippContactData {
@@ -31,23 +31,23 @@ export interface KlickTippSyncResult {
 
 type JsonRecord = Record<string, unknown>
 
+interface KlickTippSession {
+  headers: Record<string, string>
+  expiresAt: number
+}
+
+let cachedSession: KlickTippSession | null = null
+let sessionLoginPromise: Promise<Record<string, string>> | null = null
+
 function getConfig(): KlickTippConfig {
+  const apiUsername = process.env.KLICKTIPP_API_USERNAME?.trim()
+  const apiPassword = process.env.KLICKTIPP_API_PASSWORD?.trim()
   const developerKey = process.env.KLICKTIPP_DEVELOPER_KEY?.trim()
   const customerKey = process.env.KLICKTIPP_CUSTOMER_KEY?.trim()
   const partnerUsername =
     process.env.KLICKTIPP_PARTNER_USERNAME?.trim() || DEFAULT_PARTNER_USERNAME
   const configuredApiUrl =
     process.env.KLICKTIPP_API_URL?.trim() || DEFAULT_KLICKTIPP_API_URL
-
-  if (!developerKey || !customerKey) {
-    throw new Error(
-      'KlickTipp-Zugangsdaten fehlen: KLICKTIPP_DEVELOPER_KEY und KLICKTIPP_CUSTOMER_KEY sind erforderlich'
-    )
-  }
-
-  if (!/^[a-fA-F0-9]+$/.test(developerKey) || developerKey.length % 2 !== 0) {
-    throw new Error('KLICKTIPP_DEVELOPER_KEY hat nicht das erwartete Hexadezimalformat')
-  }
 
   let apiUrl: string
   try {
@@ -60,7 +60,26 @@ function getConfig(): KlickTippConfig {
     throw new Error('KLICKTIPP_API_URL muss https://api.klicktipp.com sein')
   }
 
-  return { apiUrl, partnerUsername, developerKey, customerKey }
+  // Der dedizierte API User ist für die interne Einzelkonto-Integration der
+  // direkteste Weg. Partner-Schlüssel bleiben als kompatibler Fallback erhalten.
+  if (apiUsername && apiPassword) {
+    return { apiUrl, auth: { mode: 'session', username: apiUsername, password: apiPassword } }
+  }
+
+  if (!developerKey || !customerKey) {
+    throw new Error(
+      'KlickTipp-Zugangsdaten fehlen: API-User/Passwort oder Developer-/Customer-Key sind erforderlich'
+    )
+  }
+
+  if (!/^[a-fA-F0-9]+$/.test(developerKey) || developerKey.length % 2 !== 0) {
+    throw new Error('KLICKTIPP_DEVELOPER_KEY hat nicht das erwartete Hexadezimalformat')
+  }
+
+  return {
+    apiUrl,
+    auth: { mode: 'partner', partnerUsername, developerKey, customerKey },
+  }
 }
 
 /**
@@ -75,7 +94,9 @@ function createPartnerCiphertext(developerKey: string, customerKey: string): str
   return Buffer.concat([hmac, Buffer.from(customerKey, 'utf8')]).toString('base64')
 }
 
-function getAuthenticationHeaders(config: KlickTippConfig): Record<string, string> {
+function getPartnerAuthenticationHeaders(
+  config: Extract<KlickTippConfig['auth'], { mode: 'partner' }>
+): Record<string, string> {
   return {
     'X-Un': config.partnerUsername,
     'X-Ci': createPartnerCiphertext(config.developerKey, config.customerKey),
@@ -95,7 +116,7 @@ async function readResponseBody(response: Response): Promise<unknown> {
 
 function describeApiError(status: number, body: unknown): string {
   if (status === 401 || status === 403) {
-    return 'KlickTipp hat den API-Zugriff abgelehnt. Partner-Benutzer und API-Freigabe prüfen.'
+    return 'KlickTipp hat den API-Zugriff abgelehnt. API-Benutzer, Rolle und Zugangsdaten prüfen.'
   }
 
   if (status === 406) {
@@ -103,6 +124,92 @@ function describeApiError(status: number, body: unknown): string {
   }
 
   return `KlickTipp API-Fehler ${status}`
+}
+
+function extractSessionAuthentication(
+  response: unknown,
+  setCookie: string | null
+): Record<string, string> | null {
+  if (!response || typeof response !== 'object') return null
+
+  const record = response as JsonRecord
+  const data = record.data && typeof record.data === 'object'
+    ? record.data as JsonRecord
+    : null
+  const candidate = record.session_id ?? record.sessid ?? data?.session_id ?? data?.sessid
+  if (typeof candidate !== 'string' || !candidate.trim()) return null
+
+  const sessionId = candidate.trim()
+  const headers: Record<string, string> = { 'X-Session-Id': sessionId }
+  const sessionNameCandidate = record.session_name ?? data?.session_name
+  const sessionName = typeof sessionNameCandidate === 'string'
+    ? sessionNameCandidate.trim()
+    : ''
+
+  // Ältere Management-API-Versionen erwarten zusätzlich das Sitzungscookie.
+  if (/^[A-Za-z0-9_-]+$/.test(sessionName) && !/[\r\n;]/.test(sessionId)) {
+    headers.Cookie = `${sessionName}=${sessionId}`
+  } else if (setCookie) {
+    const cookie = setCookie.split(';', 1)[0]?.trim()
+    if (cookie && !/[\r\n]/.test(cookie)) headers.Cookie = cookie
+  }
+
+  return headers
+}
+
+async function loginWithApiUser(
+  config: KlickTippConfig,
+  auth: Extract<KlickTippConfig['auth'], { mode: 'session' }>
+): Promise<Record<string, string>> {
+  if (cachedSession && cachedSession.expiresAt > Date.now()) return cachedSession.headers
+  if (sessionLoginPromise) return sessionLoginPromise
+
+  sessionLoginPromise = (async () => {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10_000)
+
+    try {
+      const response = await fetch(`${config.apiUrl}/account/login`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username: auth.username, password: auth.password }),
+        signal: controller.signal,
+      })
+      const responseBody = await readResponseBody(response)
+      if (!response.ok) throw new Error(describeApiError(response.status, responseBody))
+
+      const sessionHeaders = extractSessionAuthentication(
+        responseBody,
+        response.headers.get('set-cookie')
+      )
+      if (!sessionHeaders) throw new Error('KlickTipp hat keine Sitzungs-ID zurückgegeben')
+
+      // Kurzer Cache vermeidet mehrere Logins innerhalb eines Sync-Ablaufs.
+      cachedSession = { headers: sessionHeaders, expiresAt: Date.now() + 5 * 60_000 }
+      return sessionHeaders
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('KlickTipp-Login hat nach 10 Sekunden nicht geantwortet')
+      }
+      throw error
+    } finally {
+      clearTimeout(timeout)
+      sessionLoginPromise = null
+    }
+  })()
+
+  return sessionLoginPromise
+}
+
+async function getAuthenticationHeaders(config: KlickTippConfig): Promise<Record<string, string>> {
+  if (config.auth.mode === 'partner') {
+    return getPartnerAuthenticationHeaders(config.auth)
+  }
+
+  return loginWithApiUser(config, config.auth)
 }
 
 async function makeRequest<T>(
@@ -118,7 +225,7 @@ async function makeRequest<T>(
     const response = await fetch(`${config.apiUrl}${endpoint}`, {
       method,
       headers: {
-        ...getAuthenticationHeaders(config),
+        ...await getAuthenticationHeaders(config),
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
