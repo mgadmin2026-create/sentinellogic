@@ -1,0 +1,15 @@
+name: KlickTipp Statusabgleich (Pilot)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  statusabgleich:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Geschützten KlickTipp-Statusabgleich ausführen
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -X GET "https://sentinellogic.vercel.app/api/cron/klicktipp-status" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

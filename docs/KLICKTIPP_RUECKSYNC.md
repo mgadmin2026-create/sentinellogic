@@ -85,6 +85,10 @@ arbeitet die am längsten nicht geprüften Kontakte zuerst ab und verändert kei
 Stammdaten oder Tags. Ein regelmäßiger Scheduler wird bewusst erst nach dem
 Pilot aktiviert.
 
+Der Workflow `KlickTipp Statusabgleich (Pilot)` ist ausschließlich manuell per
+`workflow_dispatch` startbar und nutzt das bereits geschützte GitHub-Secret
+`CRON_SECRET`. Er enthält absichtlich noch keinen Zeitplan.
+
 ## Fehler- und Duplikatverhalten
 
 - Identische Ereignisse werden über Fingerprints nur einmal verarbeitet.
