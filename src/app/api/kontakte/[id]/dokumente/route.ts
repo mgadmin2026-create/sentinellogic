@@ -105,6 +105,11 @@ export async function POST(
     const overrideFirstName = String(formData.get('overrideFirstName') || '').trim() || null
     const overrideLastName = String(formData.get('overrideLastName') || '').trim() || null
     const confirmed = overrideFirstName !== null && overrideLastName !== null
+    // Der KI-Upload-Commit-Flow hat Duplikat-Prüfung und Vertrags-Extraktion
+    // bereits selbst (mit vom User geprüften/korrigierten Daten) erledigt —
+    // ohne dieses Flag würde hier ein zweiter, unabhängiger KI-Durchlauf
+    // denselben Vertrag nochmal anlegen (doppelte contracts-/Beitragsübersicht-Zeilen).
+    const skipVertragsanalyse = formData.get('skipVertragsanalyse') === 'true'
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -120,7 +125,7 @@ export async function POST(
     let extraktion: any = null
     let analyseFehler: string | null = null
 
-    if (!confirmed) {
+    if (!confirmed && !skipVertragsanalyse) {
       try {
         const struktur = await getOrdnerstruktur()
         extraktion = await analysiereVersicherungsdokument(
@@ -227,7 +232,7 @@ export async function POST(
 
     // Falls der User im Duplikat-Modal bestätigt hat: KI-Analyse wurde oben übersprungen,
     // jetzt nachholen (für Vertrags-Erkennung), aber ohne erneute Duplikat-Prüfung/Blockierung.
-    if (confirmed && !extraktion) {
+    if (confirmed && !extraktion && !skipVertragsanalyse) {
       try {
         const struktur = await getOrdnerstruktur()
         extraktion = await analysiereVersicherungsdokument(

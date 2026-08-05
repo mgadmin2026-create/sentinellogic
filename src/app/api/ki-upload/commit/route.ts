@@ -143,6 +143,11 @@ export async function POST(request: NextRequest) {
     const uploadForm = new FormData()
     uploadForm.append('file', file)
     uploadForm.append('kategorie', daten.kategorie || 'Sonstiges')
+    // Verhindert, dass /dokumente das Dokument ein zweites Mal analysiert und
+    // bei erkanntem Vertrag einen doppelten contracts-/Beitragsübersicht-Eintrag anlegt —
+    // Analyse + Vertrags-Übernahme sind hier (Schritt 3.5) bereits mit den vom
+    // User geprüften Daten erledigt.
+    uploadForm.append('skipVertragsanalyse', 'true')
 
     const uploadRes = await fetch(`${origin}/api/kontakte/${kontaktId}/dokumente`, {
       method: 'POST',
