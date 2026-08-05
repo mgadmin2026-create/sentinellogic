@@ -93,7 +93,8 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
 | **Kommentare & @-Erwähnungen** | ✅ Done | Wiederverwendbare `CommentThread`-Komponente in Kontaktdetail-Kachel und Aufgaben-Bearbeiten-Modal; Einzel- und Gruppen-Erwähnung (`@Alle` → Einzel-Erwähnung pro aktivem User bei Erstellung), Datei-Anhang (nur wenn Kontakt auflösbar, sonst HTTP 400), E-Mail-Benachrichtigung pro Erwähnung, `/erwaehnungen`-Seite + Sidebar-Badge mit Ungelesen-Zähler |
 | **Eingebaute Hilfe & Kundendokumentation** | ✅ Done | Rein statisches, im Code gepflegtes Hilfe-System (kein DB-Table, keine API-Route) — `~62` Artikel über `src/data/help/*.ts`. Kachel-genaue Hilfe per ❓-Symbol (`<HelpButton articleId="...">`, ~39 Einfügestellen) öffnet den passenden Artikel im globalen Drawer (`HelpProvider`); Taste `?` öffnet die Seiten-Standardhilfe (Prefix-Match für `/kontakte/[id]`, sonst Exact-Match), unterdrückt in Eingabefeldern und bei bereits offenem anderen Drawer/Modal; vollständiges durchsuchbares Handbuch unter `/hilfe` mit Bereichs-Gruppierung, Volltextsuche und Deep-Linking (`#<articleId>`, Scroll + Highlight) |
-| **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar; Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage |
+| **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar; Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden automatisch als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht" |
+| **Sparten-Verwaltung & Erstgespräch-Leitfäden** | ✅ Done | Sparten sind eine feste, admin-gepflegte Liste (`/einstellungen/sparten`) statt Freitext; Kontakte können mehreren Sparten zugeordnet werden (n:m über `contact_sparte_map`, primäre Sparte hält die alte `contacts.sparte`-Spalte automatisch synchron, damit Dialfire/KlickTipp/Regeln unverändert weiterlaufen). Jede Sparte trägt ihren eigenen Erstgespräch-Leitfaden (Fragen + Felder), von Melih selbst pflegbar; die Erstgespräch-Kachel im Kontakt rendert bei mehreren zugeordneten Sparten jeden hinterlegten Leitfaden in einem eigenen Abschnitt |
 
 ## Konsolidierte Feature-Roadmap (Stand 2026-07-21)
 
@@ -143,13 +144,13 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot kontrolliert in einen Vertrag überführen |
 | **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
 | **E-Mail-Vorlagen** | Hoch | 🟢 `/einstellungen/mail-vorlagen` (CRUD) + Vorlage-Dropdown in `ContactEmailModal` mit Platzhalter-Ersetzung, manuelle Freigabe (Vorlage befüllt nur, sendet nicht automatisch) | Stabil halten; ggf. weitere Platzhalter ergänzen wenn Bedarf entsteht |
-| **Vorlagen: Datenanfrage, Kündigung, Termin** | Hoch | 🟢 Alle drei als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
+| **Vorlagen: Datenanfrage, Kündigung, Termin, Beitragsübersicht** | Hoch | 🟢 Alle vier als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
 | **Eigene minimale Kommunikationslösung** | Hoch | 🟢 Kommentare mit @-Erwähnung (Einzel + „Alle") an Kontakten und Aufgaben, Datei-Anhang, E-Mail-Benachrichtigung, `/erwaehnungen`-Übersicht + Sidebar-Badge | Stabil halten; bei Bedarf Kontakt-Kommentare auf weitere Entitäten ausweiten |
 | **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
-| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟢 Beidseitige Sync live verifiziert (v0.18.1); Timezone-Bug bei ganztägigen Terminen behoben (v0.18.2) | Stabil halten; bei Bedarf Pull von manuellem Button auf Cron/Edge Function umstellen, damit STRATO-seitige Änderungen automatisch ohne Klick ankommen |
+| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟢 Beidseitige Sync live verifiziert (v0.18.1); Timezone-Bug bei ganztägigen Terminen behoben (v0.18.2); mehrtägige Termine erscheinen jetzt in allen Ansichten korrekt an jedem berührten Tag statt nur am Starttag (v0.21.0); Teilnehmer per E-Mail einladbar, Verschieben/Ort/Inhalt-Änderungen und Stornierung lösen automatisch Einladungs-/Update-/Absage-Mails mit ICS-Anhang aus (v0.21.0–v0.22.0) | Stabil halten; bei Bedarf Pull von manuellem Button auf Cron/Edge Function umstellen, damit STRATO-seitige Änderungen automatisch ohne Klick ankommen |
 | **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
 | **SuperChat-Datenmigration** | Niedrig | 🔴 Nicht umgesetzt | Erst nach strategischer SuperChat-Entscheidung betrachten |
-| **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🔴 Nicht umgesetzt | Als separates Ausbauprojekt behandeln |
+| **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🟢 `/postfach` + `/api/postfach`: Posteingang über das STRATO-Postfach lesen/versenden (IMAP/SMTP, `strato-mail.ts`), E-Mail-Eingänge werden in der Kontakt-Timeline protokolliert — Status aus Code-Review, nicht in dieser Session selbst live abgenommen | Kurze manuelle Abnahme (Anhänge, Threading, Fehlerfälle) nachholen, dann als erledigt markieren |
 | **Kundenportal** | Niedrig | 🔴 Nicht umgesetzt | Nach der minimalen Kommunikation als eigenständiges MVP neu definieren |
 
 ### Phase C — Dokumente, Gemini-Umbau, zeitgesteuerte Prozesse und Reporting
@@ -1011,9 +1012,11 @@ tatsächlich angelegt und ob die Übertragung an Dialfire/KlickTipp funktioniert
 
 ## Known Issues & Open Tasks
 
-### Kritisch — sofort handeln
-
-- [ ] **Google Drive Verbindung unterbrochen:** Token-Refresh schlägt seit 2026-07-22 fehl (`refresh_token` abgelaufen/widerrufen); blockiert aktuell alle Drive-Uploads (Dokumente, E-Mail-Anhänge, Kommentar-Anhänge) mit stillem Fallback-Fehler pro Upload. Admin-Alarm-Mail wurde ausgelöst. **Fix:** unter `Einstellungen → Dokumente` neu verbinden.
+> Diese Liste stammt aus einer frühen Projektphase (v0.4–v0.6) und ist deutlich weniger aktuell
+> gepflegt als die „Konsolidierte Feature-Roadmap" weiter oben — bei Widersprüchen gilt die
+> Roadmap. Am 2026-08-05 gegen den aktuellen Code-Stand geprüft: der komplette „Kritisch"-Block
+> (Google-Drive-Verbindung) sowie mehrere Medium-Priority-Punkte (Task-API, Auth, Team-Rollen,
+> `assigned_user_name`) waren bereits gelöst und wurden entfernt.
 
 ### High Priority (v0.4+)
 
@@ -1024,12 +1027,8 @@ tatsächlich angelegt und ob die Übertragung an Dialfire/KlickTipp funktioniert
 
 ### Medium Priority (v0.5+)
 
-- [ ] Task-API Routes (vollständiges CRUD)
-- [ ] User Authentication & Sessions
-- [ ] Team Permissions & Rollen
 - [ ] Advanced Search & Filtering
 - [ ] Regression-Tests für Automation-Engine
-- [ ] **`assigned_user_name` kaputt:** Feld in `ALLOWED_UPDATE_FIELDS` und im „Verantwortlicher"-Input von `KontaktEditModal` referenziert, Spalte existiert aber nicht in `contacts` — jedes Speichern mit gesetztem Wert schlägt mit 500 fehl (gefunden v0.6.0, noch nicht behoben)
 
 ---
 
