@@ -23,7 +23,7 @@
 |Frontend         |Next.js 14 (App Router) + TypeScript|
 |Datenbank        |Supabase (PostgreSQL + pgvector)    |
 |Deployment       |Vercel                              |
-|Automatisierung  |Make.com / GitHub Actions           |
+|Automatisierung  |GitHub Actions / Vercel Cron        |
 |KI               |Claude API (Anthropic)              |
 |Authentifizierung|Supabase Auth                       |
 
@@ -111,12 +111,12 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 
 **Gerade in Arbeit:**
 
-- [ ] Lead-Synchronisation (Klicktipp + Dialfire + Sentimental Logic)
+- [ ] Lead-Synchronisation (Dialfire + Sentimental Logic) weiter stabilisieren; KlickTipp-Outbound ist live
 - [ ] Infrastruktur Setup (Supabase, Vercel)
 - [ ] Regressionstest-Katalog nach jedem neuen Feature erweitern
 - [ ] Placetel-MVP: Echten Callback-Pilot mit Gesprächsdauer und Abschlussstatus durchführen
-- [ ] KlickTipp-Rücksync ausrollen: Migration anwenden, Secret setzen und Pilot für Öffnung/Klick/Abmeldung durchführen
-- [ ] KlickTipp-API-Freigabe für `bosydadaq-api2` erneuern und Direkt-Sync-Pilot durchführen
+- [ ] KlickTipp-Rücksync mit echten Öffnungs-, Klick- und Abmeldeereignissen abnehmen; danach regelmäßigen Statusabgleich aktivieren
+- [ ] Vollständigen Export der 719 KlickTipp-Tags klassifizieren und Kampagnen-/Webhook-Abhängigkeiten vor einer Bereinigung prüfen
 
 **Abgeschlossen:**
 
@@ -155,9 +155,15 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] KlickTipp-Direktsynchronisation um Anmeldung mit dediziertem API User und Partner-Schlüssel-Fallback erweitert
 - [x] KlickTipp-Feldmapping um Geburtstag (Unix-Zeitstempel), Straße, PLZ und optionales Geschlechtsfeld erweitert
 - [x] KlickTipp-Integration auf direkten Management-API-Client mit Partner-HMAC, Kontakt-/Tag-Sync und Bestandsabgleich vereinheitlicht; alten Make-/Edge-Webhook-Weg entfernt
+- [x] KlickTipp-API-Zugriff für den dedizierten API-User `bosydadaq-api2` vom Hauptkonto freigegeben, in Vercel konfiguriert und erfolgreich deployed
+- [x] Direkten Kontakt-/Tag-Sync mit markiertem Pilotkontakt live bestätigt; jeder reguläre aktive Kontakt mit E-Mail wird übertragen
+- [x] KlickTipp-Rücksync-Migration `0064_klicktipp_reverse_sync.sql`, Webhook-Secret und manuellen Statusabgleich ausgerollt; Opt-in-Statuswechsel live erkannt
+- [x] Aktiven, abgesicherten KlickTipp-JSON-Webhook `Sentimental Logic – Sentinel-Tag` (ID `176539`) für das Tag `Sentinel` eingerichtet
+- [x] KlickTipp-Tag-Bestand geprüft: 719 manuelle Tags und sechs ausgehende Webhooks; Alt-Webhook `Sentinel Logic Sync` (ID `169322`) bis zum kontrollierten Vergleich geschützt
+- [x] Vierseitige KlickTipp-Tag-Bestandsaufnahme unter `output/pdf/klicktipp-tag-bestandsaufnahme-2026-08-05.pdf` erstellt
 
 **Nächste Aufgabe:**
-→ KlickTipp-API-Zugriff (aktuell HTTP 403) im KlickTipp-Konto neu freigeben, Customer Key aktualisieren und markierten Kontakt-Pilot ausführen
+→ Echte KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal abnehmen; anschließend den vollständigen Export aller 719 Tags klassifizieren und den Alt-Webhook erst nach kontrolliertem Vergleich bereinigen
 
 -----
 

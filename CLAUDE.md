@@ -83,7 +83,8 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Release Notes** | ✅ Done | In-App Release-History mit Banners |
 | **Automation Rules** | ✅ Done | Trigger auf source (Facebook, Calendly, CSV, Email, Manuell); Auto-Feld-Befüllung (Dialfire Campaign/Task, KlickTipp Tags); Manuelle Batch-Ausführung |
 | **Automation Engine** | ✅ Done | Läuft automatisch bei Kontakt-Erstellung; matched Regel → setzt Felder → triggt Sync |
-| **KlickTipp Sync** | ⚠️ API-Freigabe offen | Direkter Management-API-Client, Partner-HMAC, Kontakt-/Tag-Sync und Bestandsabgleich implementiert; Live-Test endet noch mit HTTP 403 |
+| **KlickTipp Outbound-Sync** | ✅ Live | Direkter Management-API-Client mit dediziertem API-User und Partner-HMAC-Fallback; Kontaktanlage, Änderungen, Regeln und Bestandsabgleich übertragen alle aktiven Kontakte mit E-Mail. Archivierte sowie technisch markierte Testkontakte werden automatisch ausgeschlossen. Regel-Läufe zeigen Erfolge, Fehler und übersprungene Übertragungen. Feldmapping inklusive Vor-/Nachname, Firma, Anschrift, Geburtstag (Unix-Zeitstempel) und optionalem Geschlechtsfeld (`field157376`). Der frühere Make-/Edge-Webhook-Weg wurde entfernt; ein markierter Kontakt-Pilot war erfolgreich. |
+| **KlickTipp Rücksync** | 🧪 Pilot aktiv | Abgesicherter, idempotenter Rückkanal für Einwilligungs-/Zustellstatus und E-Mail-, Kampagnen- sowie Tag-Ereignisse; Migration `0064_klicktipp_reverse_sync.sql`, geschützter Statusabgleich und manueller GitHub-Pilot sind ausgerollt. Ein Statuswechsel nach bestätigtem Opt-in wurde live erkannt. Der aktive Webhook `Sentimental Logic – Sentinel-Tag` (ID `176539`) protokolliert das Tag-Ereignis additiv und überschreibt keine ausgehenden Sentinel-Tags. Reale Öffnungs-, Klick- und Abmeldeereignisse müssen noch als End-to-End-Pilot geprüft werden. |
 | **Dialfire Sync** | ✅ Done | Create-Pfad + Batch-Pfad; Edge Function mit per-Rule Task-Name; Payload: Alle Felder (Adresse, Industrie, Mitarbeiterzahl, etc.) |
 | **Google Drive Dokumentenablage** | ✅ Done | Zentrale System-Ablage (nicht per-User); OAuth mit Auto-Refresh; Kompression (sharp für Bilder/75%, gzip Docs); Statistik-Tracking; Globales `/dokumente` + Kontakt-Tabs; bei Refresh-Token-Fehlern automatischer Admin-Alarm per Mail (Cooldown 6h, `src/lib/drive-token-alert.ts`) statt stillem Fehlschlag beim nächsten Mitarbeiter-Upload |
 | **E-Mail-Benachrichtigungen** | ✅ Done | Resend API; Auto-Pfad (pro Kontakt) + Manuell-Pfad (Summary pro Lauf); Versendet wenn send_notification=true in Regel |
@@ -96,7 +97,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar; Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden automatisch als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht" |
 | **Sparten-Verwaltung & Erstgespräch-Leitfäden** | ✅ Done | Sparten sind eine feste, admin-gepflegte Liste (`/einstellungen/sparten`) statt Freitext; Kontakte können mehreren Sparten zugeordnet werden (n:m über `contact_sparte_map`, primäre Sparte hält die alte `contacts.sparte`-Spalte automatisch synchron, damit Dialfire/KlickTipp/Regeln unverändert weiterlaufen). Jede Sparte trägt ihren eigenen Erstgespräch-Leitfaden (Fragen + Felder), von Melih selbst pflegbar; die Erstgespräch-Kachel im Kontakt rendert bei mehreren zugeordneten Sparten jeden hinterlegten Leitfaden in einem eigenen Abschnitt |
 
-## Konsolidierte Feature-Roadmap (Stand 2026-07-21)
+## Konsolidierte Feature-Roadmap (Stand 2026-08-05)
 
 Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert alle aktuell bekannten Produktanforderungen. Bereits implementierte Grundlagen bleiben im Abschnitt `Feature-Status` dokumentiert.
 
@@ -118,7 +119,9 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **Automation-/Sync-Control-Center UI** | Hoch | 🟡 Regeln- und Integrationsseiten teilweise vorhanden | Jobs, letzte Läufe, Fehler, Wiederholungen, Pausieren/Aktivieren und Health-Status zentral anzeigen |
 | **Mitarbeiterdashboard** | Hoch | 🟢 `/dashboard` personalisiert: Heute im Fokus, Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter für Admins | Stabil halten; ggf. „Abschlussquote" um echten 30-Tage-Zeitverlauf ergänzen sobald historische Snapshots existieren |
 | **Facebook Lead-Import produktiv abnehmen** | Mittel | 🟢 Webhook und manueller Sync implementiert | Echten Lead-End-to-End-Lauf inklusive Dubletten, Automation und Downstream-Sync durchführen |
-| **KlickTipp-API-Freigabe erneuern** | Hoch | 🟡 Client fertig, HTTP 403 | Customer Key für `bosydadaq-api2` neu autorisieren, Vercel-Secret aktualisieren und Pilot ausführen |
+| **KlickTipp-Direktsynchronisation** | Hoch | 🟢 API-User freigeschaltet, deployed und Pilot erfolgreich | Produktiv beobachten; API-Zugang und Mapping per Regression absichern. Der direkte Management-API-Weg bleibt der verbindliche Outbound-Pfad, Make.com ist entfernt. |
+| **KlickTipp-Rücksynchronisation** | Hoch | 🧪 Migration, Secret, Statusabgleich und erster Tag-Webhook live | Reale Öffnung, Klick und Abmeldung End-to-End prüfen; danach den Statusabgleich zeitgesteuert aktivieren und Rückkanal-Monitoring im Control Center ergänzen. |
+| **KlickTipp-Tag-Bestand bereinigen** | Mittel | 🟡 Erste Bestandsaufnahme: 719 manuelle Tags, sechs ausgehende Webhooks | Vollständigen Tag-Export klassifizieren, Kampagnen-/Webhook-Abhängigkeiten prüfen und erst danach Dubletten bzw. Alt-Tags kontrolliert archivieren. Den älteren Webhook `Sentinel Logic Sync` (ID `169322`) bis zum Vergleich mit dem abgesicherten Webhook nicht löschen. |
 | **Gewerbedaten-Recherche** | Mittel | 🔴 Nur Datenmodell/Mock-Bausteine vorhanden | Zulässige Datenquellen und einen realistischen Recherche-MVP festlegen |
 | **KI-Gesprächsvorbereitung** | Mittel | 🟢 v1 live (v0.19.0): Button „Anruf vorbereiten", Claude Sonnet, strukturierte Ausgabe, manuelle Prüfung im Panel | Phase 2+: automatischer Trigger bei eingehendem Anruf/Kalendertermin, automatisches Gesprächsprotokoll |
 | **Dialfire-Synchronisation** | Niedrig | 🟢 Create-/Pull-Pfade vorhanden | Nur stabil halten; kein größerer Ausbau, wenn Placetel den operativen Bedarf ersetzt |
@@ -190,6 +193,7 @@ Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert
 | **SaaS-/Mandantenfähigkeit** | Niedrig | 🟡 Auth/Rollen vorhanden, Mandantenmodell fehlt | Organisationen, Datenisolation und mandantenbezogene Konfiguration als separates Ausbauprojekt planen |
 | **Kundenportal-Ausbau** | Niedrig | 🔴 Nicht implementiert | Nur nach eigener Minimallösung und konkretem Portal-MVP priorisieren |
 | **DSGVO-Auskunfts- und Löschprozess** | Niedrig / zuletzt | 🟡 Archivierung vorhanden, vollständiger Prozess fehlt | Ganz am Ende von Phase D Aufbewahrung, Export, Freigabe und endgültige Löschung definieren |
+| **Strategische KlickTipp-Ablösung** | Mittel | ⚪ Zielrichtung bestätigt, endgültige Entscheidung noch offen | Zuerst Tag-/Kampagnenabhängigkeiten, Einwilligungshistorie, Zustellung, Automationen und Reporting vollständig inventarisieren. Funktionen schrittweise in Sentimental Logic aufbauen und erst nach Parallelbetrieb sowie Datenmigration über die Abschaltung entscheiden. |
 
 ### Phasenübergreifend — iterativ einplanen
 
@@ -333,6 +337,51 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### Sitzung 2026-08-05 — KlickTipp live angebunden, Rückkanal pilotiert und Tag-Bestand geprüft
+
+- ✅ Make.com als zwischenzeitliche Idee verworfen und den alten Make-/Edge-Webhook-Pfad entfernt.
+  Kontaktanlage, Kontaktänderung, Regel-Ausführung und Bestandsabgleich verwenden jetzt einheitlich
+  den direkten KlickTipp-Management-API-Client.
+- ✅ KlickTipp-Zugang über den dedizierten API-User `bosydadaq-api2` mit Benutzername/Passwort
+  produktiv konfiguriert; Partner-Schlüssel-Authentifizierung bleibt als technischer Fallback
+  erhalten. Die erforderliche Freigabe wurde vom Hauptkonto erteilt, die Vercel-Variablen wurden
+  gesetzt und erfolgreich neu deployed. Keine Schlüssel oder Passwörter sind in der Dokumentation
+  oder im Repository abgelegt.
+- ✅ Der markierte Kontakt-Pilot für den direkten Kontakt-/Tag-Sync war erfolgreich. Jeder reguläre,
+  nicht archivierte Kontakt mit E-Mail wird übertragen. Aktive Regeln laufen bei der Kontaktanlage
+  automatisch; eine manuelle Regel-Ausführung synchronisiert nur die passenden Kontakte. Die
+  Ausführungsanzeige weist KlickTipp-Erfolge, Fehler und übersprungene Kontakte separat aus.
+- ✅ Feldmapping erweitert: Geburtstag als Unix-Zeitstempel, Straße, PLZ und optional das in
+  KlickTipp vorhandene Geschlechtsfeld über den API-Parameter `field157376`.
+- ✅ Der bestehende Outbound-Sync blieb beim Ausbau des Rückkanals unverändert. Der Rückkanal nimmt
+  E-Mail-/Kampagnen-/Tag-Ereignisse sowie `subscribed`, `opt_in_pending`, `unsubscribed`,
+  `soft_bounce` und `hard_bounce` datensparsam und idempotent entgegen. Er legt keine Kontakte an
+  und überschreibt keine von Sentimental Logic gesetzten Tags.
+- ✅ Migration `0064_klicktipp_reverse_sync.sql`, `KLICKTIPP_WEBHOOK_SECRET`, geschützter
+  Statusabgleich und manueller GitHub-Workflow wurden ausgerollt. Nach Bestätigung der
+  Newsletter-Eintragung erkannte der Live-Pilot einen Statuswechsel (`checked: 1`, `changed: 1`,
+  `failed: 0`).
+- ✅ In KlickTipp ist der aktive JSON-Webhook `Sentimental Logic – Sentinel-Tag` (ID `176539`) für
+  das manuelle Tag `Sentinel` mit festem `event_type=tag_added` und Secret-Token eingerichtet.
+  Der KlickTipp-Testdialog bot den vorgesehenen Pilotkontakt nicht zur Auswahl an; deshalb wurde
+  kein beliebiger echter Kontakt verwendet. Ein realer End-to-End-Pilot für Öffnung, Klick und
+  Abmeldung bleibt offen.
+- 🔎 Tag-Bestandsaufnahme: 719 manuelle Tags und sechs ausgehende Webhooks wurden festgestellt.
+  In der per Lazy Loading erreichbaren Stichprobe waren 373 Tags sichtbar, davon 210 ohne Kontakte,
+  163 in Verwendung, 94 mit „Action", 31 mit „STOP", 75 Import-/Upload-/Datums-Tags und 20
+  Test-/Demo-/Probe-/Zapier-Tags. Schutzwürdig sind insbesondere alle aktuell von Webhooks
+  referenzierten Tags. Der ältere Form-Data-Webhook `Sentinel Logic Sync` (ID `169322`) zeigt auf
+  denselben Endpoint, besitzt aber keinen Secret-Token und ist daher wahrscheinlich überholt; er
+  darf erst nach einem kontrollierten Vergleich entfernt werden. Ein Make.com-Webhook wurde nicht
+  gefunden.
+- 📄 Die vollständige, nicht verändernde Bestandsaufnahme liegt lokal als
+  `output/pdf/klicktipp-tag-bestandsaufnahme-2026-08-05.pdf`. Für eine belastbare Klassifikation
+  aller 719 Tags wird noch ein vollständiger CSV-Export aus KlickTipp benötigt.
+- 🧭 Langfristig soll eine mögliche Ablösung von KlickTipp vorbereitet werden; die endgültige
+  Produktentscheidung ist noch offen. Der sichere Weg bleibt ein schrittweiser Parallelbetrieb:
+  Abhängigkeiten inventarisieren, Einwilligungen und Ereignisse in Sentimental Logic konsolidieren,
+  fehlende E-Mail-/Automation-Funktionen ergänzen und erst danach Migration und Abschaltung bewerten.
 
 ### v0.23.0 (2026-08-05) — Beitragsübersicht: Vertrags-Übernahme, Mailversand, neue Vorlage
 
