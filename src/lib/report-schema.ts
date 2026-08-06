@@ -19,7 +19,9 @@ TABELLE contacts  — Kontakte/Leads (Haupttabelle, jeder Kunde/Interessent)
                          --   calc_offers, download_offers, contract_overview, send_offers,
                          --   offer_meeting, sales_talk, contracts_store, aftercare
   kontakt_typ text       -- 'privat' | 'gewerbe'
-  sparte text            -- Versicherungssparte: 'PKV' oder 'Unternehmerschutz' (NULL möglich)
+  sparte text            -- primäre Versicherungssparte (Freitext, per Sparten-Verwaltung gepflegt,
+                         --   z.B. 'PKV','Unternehmerschutz','Auslandsreiseversicherung',
+                         --   'Auslandskrankenversicherung'; NULL möglich)
   "prüfung_grund" text   -- Prüfgrund: bei PKV z.B. Freitext; bei Unternehmerschutz:
                          --   'betriebshaftpflicht','strafrechtsschutz','unternehmerschutz_paket','d&o'
   "krankenversicherung_status" text, situation text  -- PKV-Felder
@@ -27,6 +29,10 @@ TABELLE contacts  — Kontakte/Leads (Haupttabelle, jeder Kunde/Interessent)
   mitarbeitanzahl int, jahresumsatz numeric, jahreseinkommen numeric
   dialfire_id text, dialfire_campaign_id text
   dialfire_last_call_at timestamptz, dialfire_last_call_status text, dialfire_disposition text
+  klicktipp_id text          -- Subscriber-ID in KlickTipp; NULL = noch nicht synchronisiert
+  klicktipp_tags text[], klicktipp_tag_ids bigint[]
+  klicktipp_last_sync timestamptz
+  klicktipp_email_status text  -- 'subscribed','opt_in_pending','unsubscribed','soft_bounce','hard_bounce'
   assigned_user_id uuid  -- Verantwortlicher Mitarbeiter (Join: contacts.assigned_user_id = users.id)
   archived_at timestamptz    -- NULL = aktiv, sonst Zeitpunkt der Archivierung (Soft-Delete)
   created_at timestamptz, updated_at timestamptz
