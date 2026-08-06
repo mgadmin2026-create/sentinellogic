@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.13.0 — Lauf-Historie der Automatisierungsregeln | Aktiv in Entwicklung |
+| **Version** | 0.24.0 — KI-Upload-/Regel-Ausführung-Bugfixes, KlickTipp-ID in UI + Reporting sichtbar | Aktiv in Entwicklung |
 
 ---
 
@@ -83,15 +83,15 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Release Notes** | ✅ Done | In-App Release-History mit Banners |
 | **Automation Rules** | ✅ Done | Trigger auf source (Facebook, Calendly, CSV, Email, Manuell); Auto-Feld-Befüllung (Dialfire Campaign/Task, KlickTipp Tags); Manuelle Batch-Ausführung |
 | **Automation Engine** | ✅ Done | Läuft automatisch bei Kontakt-Erstellung; matched Regel → setzt Felder → triggt Sync |
-| **KlickTipp Outbound-Sync** | ✅ Live | Direkter Management-API-Client mit dediziertem API-User und Partner-HMAC-Fallback; Kontaktanlage, Änderungen, Regeln und Bestandsabgleich übertragen alle aktiven Kontakte mit E-Mail. Archivierte sowie technisch markierte Testkontakte werden automatisch ausgeschlossen. Regel-Läufe zeigen Erfolge, Fehler und übersprungene Übertragungen. Feldmapping inklusive Vor-/Nachname, Firma, Anschrift, Geburtstag (Unix-Zeitstempel) und optionalem Geschlechtsfeld (`field157376`). Der frühere Make-/Edge-Webhook-Weg wurde entfernt; ein markierter Kontakt-Pilot war erfolgreich. |
+| **KlickTipp Outbound-Sync** | ✅ Live | Direkter Management-API-Client mit dediziertem API-User und Partner-HMAC-Fallback; Kontaktanlage, Änderungen, Regeln und Bestandsabgleich übertragen alle aktiven Kontakte mit E-Mail. Archivierte sowie technisch markierte Testkontakte werden automatisch ausgeschlossen. Regel-Läufe zeigen Erfolge, Fehler und übersprungene Übertragungen. Feldmapping inklusive Vor-/Nachname, Firma, Anschrift, Geburtstag (Unix-Zeitstempel) und optionalem Geschlechtsfeld (`field157376`). Der frühere Make-/Edge-Webhook-Weg wurde entfernt; ein markierter Kontakt-Pilot war erfolgreich. Seit v0.24.0: `klicktipp_id` ist jetzt in der Kontakt-UI sichtbar (Integrations-Sektion, Automation-Drawer, Aktivitäten-Timeline) statt nur in der DB gespeichert; das NL→SQL-Reporting-Schema kannte die KlickTipp-Spalten bis dahin nicht und lehnte entsprechende Abfragen fälschlich ab (behoben). |
 | **KlickTipp Rücksync** | 🧪 Pilot aktiv | Abgesicherter, idempotenter Rückkanal für Einwilligungs-/Zustellstatus und E-Mail-, Kampagnen- sowie Tag-Ereignisse; Migration `0064_klicktipp_reverse_sync.sql`, geschützter Statusabgleich und manueller GitHub-Pilot sind ausgerollt. Ein Statuswechsel nach bestätigtem Opt-in wurde live erkannt. Der aktive Webhook `Sentimental Logic – Sentinel-Tag` (ID `176539`) protokolliert das Tag-Ereignis additiv und überschreibt keine ausgehenden Sentinel-Tags. Reale Öffnungs-, Klick- und Abmeldeereignisse müssen noch als End-to-End-Pilot geprüft werden. |
 | **Dialfire Sync** | ✅ Done | Create-Pfad + Batch-Pfad; Edge Function mit per-Rule Task-Name; Payload: Alle Felder (Adresse, Industrie, Mitarbeiterzahl, etc.) |
 | **Google Drive Dokumentenablage** | ✅ Done | Zentrale System-Ablage (nicht per-User); OAuth mit Auto-Refresh; Kompression (sharp für Bilder/75%, gzip Docs); Statistik-Tracking; Globales `/dokumente` + Kontakt-Tabs; bei Refresh-Token-Fehlern automatischer Admin-Alarm per Mail (Cooldown 6h, `src/lib/drive-token-alert.ts`) statt stillem Fehlschlag beim nächsten Mitarbeiter-Upload |
 | **E-Mail-Benachrichtigungen** | ✅ Done | Resend API; Auto-Pfad (pro Kontakt) + Manuell-Pfad (Summary pro Lauf); Versendet wenn send_notification=true in Regel |
 | **Kontakt-E-Mail (manuell)** | ✅ Done | `ContactEmailModal` + `POST /api/kontakte/[id]/email`: freier Compose mit optionalem Cc/Bcc (mehrere Adressen, Komma-getrennt), Datei-Anhängen (Resend-Limit 35MB) und Vorlagen-Dropdown (Platzhalter-Ersetzung, bleibt frei editierbar); Anhänge werden zusätzlich automatisch als Dokument (Kategorie „Sonstiges", `created_by=email`) beim Kontakt abgelegt — Ablage-Fehler blockieren den Versand nicht |
-| **Regeln-Management** | ✅ Done | `/regeln` Page: Anlegen, Bearbeiten, Löschen, Manuelle Ausführung, Counter (runs), Benachrichtigungen |
+| **Regeln-Management** | ✅ Done | `/regeln` Page: Anlegen, Bearbeiten, Löschen, Manuelle Ausführung, Counter (runs), Benachrichtigungen. Seit v0.24.0: manuelle Ausführung bei großen Regeln (100+ passende Kontakte) brach mangels `maxDuration` am Vercel-Funktions-Timeout ab, ohne Fehler anzuzeigen, und begann bei jedem erneuten Klick wieder von vorne — behoben durch `maxDuration=300` + Skip-Logik für bereits synchronisierte Kontakte, sodass jeder Lauf tatsächlich Fortschritt macht. Zusätzlich zeigte die Lauf-Historie „KlickTipp nicht erfolgt" für längst erfolgreich synchronisierte Kontakte (implizites 1000-Zeilen-Limit einer unsortierten Abfrage, von Dialfire-Sync-Rauschen verdrängt) — ebenfalls behoben |
 | **Dokumenten-Ordnerstruktur** | ✅ Done | Konfigurierbar je Kontakt-Typ (privat/gewerbe) in `/einstellungen/dokumente`; max. 2 Ebenen; Rename propagiert auf bestehende Drive-Ordner (drive_ordner_map); Kategorie-Dropdown + Filter beim Upload |
-| **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert |
+| **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert. Seit v0.24.0: zwei Regressionen behoben — Kontaktanlage schlug nach Einführung des Login-Systems mit „Nicht angemeldet" fehl (interne Server-zu-Server-Fetches leiteten die Session-Cookie nicht weiter), und ein erkannter Vertrag wurde doppelt in `contracts`/Beitragsübersicht angelegt (zwei unabhängige Analyse-Läufe für dasselbe Dokument) |
 | **Kommentare & @-Erwähnungen** | ✅ Done | Wiederverwendbare `CommentThread`-Komponente in Kontaktdetail-Kachel und Aufgaben-Bearbeiten-Modal; Einzel- und Gruppen-Erwähnung (`@Alle` → Einzel-Erwähnung pro aktivem User bei Erstellung), Datei-Anhang (nur wenn Kontakt auflösbar, sonst HTTP 400), E-Mail-Benachrichtigung pro Erwähnung, `/erwaehnungen`-Seite + Sidebar-Badge mit Ungelesen-Zähler |
 | **Eingebaute Hilfe & Kundendokumentation** | ✅ Done | Rein statisches, im Code gepflegtes Hilfe-System (kein DB-Table, keine API-Route) — `~62` Artikel über `src/data/help/*.ts`. Kachel-genaue Hilfe per ❓-Symbol (`<HelpButton articleId="...">`, ~39 Einfügestellen) öffnet den passenden Artikel im globalen Drawer (`HelpProvider`); Taste `?` öffnet die Seiten-Standardhilfe (Prefix-Match für `/kontakte/[id]`, sonst Exact-Match), unterdrückt in Eingabefeldern und bei bereits offenem anderen Drawer/Modal; vollständiges durchsuchbares Handbuch unter `/hilfe` mit Bereichs-Gruppierung, Volltextsuche und Deep-Linking (`#<articleId>`, Scroll + Highlight) |
 | **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar; Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden automatisch als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht" |
@@ -337,6 +337,55 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.24.0 (2026-08-06) — KI-Upload-Regressionen, robuste Regel-Ausführung, KlickTipp-ID sichtbar
+
+- 🐛 **KI-Upload: Kontaktanlage schlug mit „Nicht angemeldet" fehl.** `POST /api/ki-upload/commit`
+  ruft intern `/api/kontakte`, `/api/kontakte/[id]` und `/api/kontakte/[id]/dokumente` per
+  Server-zu-Server-`fetch()` auf — ohne die Session-Cookie der eingehenden Anfrage weiterzuleiten.
+  Die Auth-Middleware (nach dem Login-System später eingeführt als das KI-Upload-Feature) blockte
+  diese internen Calls deshalb konsequent mit 401. Fix: Cookie-Header wird jetzt an alle drei
+  internen Fetches durchgereicht. Live verifiziert: `POST /api/kontakte` liefert jetzt 201 statt 401.
+- 🐛 **KI-Upload: erkannter Vertrag wurde doppelt angelegt.** `/api/kontakte/[id]/dokumente` führt
+  bei jedem Upload eine eigene KI-Analyse durch und legt bei erkanntem Vertrag selbstständig einen
+  `contracts`-Eintrag + Beitragsübersicht-Zeile an. Da der KI-Upload-Commit-Flow diese Route für die
+  Drive-Ablage aufruft und danach selbst nochmal (mit den vom Nutzer geprüften Daten) einen Vertrag
+  einträgt, entstand pro Upload ein doppelter Datensatz. Neues Flag `skipVertragsanalyse` unterdrückt
+  die redundante Zweitanalyse, wenn der Commit-Flow die Dokumente-Route aufruft; der eigenständige
+  Upload-Weg über die Dokumente-Kachel bleibt unverändert. An zwei produktiv betroffenen Kontakten
+  bereinigt.
+- 🐛 **Regel-Ausführung brach bei großen Kontaktmengen ab.** `apply-batch` verarbeitet Kontakte streng
+  sequentiell (2-3 externe API-Calls pro Kontakt) und hatte kein `maxDuration`-Flag gesetzt — bei
+  Regeln mit vielen passenden Kontakten (z.B. Facebook + Unternehmerschutz: 203 Kontakte) griff
+  Vercels Standard-Timeout mitten im Lauf, ohne Fehlermeldung, und jeder erneute Klick begann wieder
+  von vorne. Fix: `maxDuration=300` + bereits korrekt zu KlickTipp/Dialfire synchronisierte Kontakte
+  werden beim erneuten Ausführen übersprungen, sodass jeder Lauf tatsächlich Fortschritt macht statt
+  sich zu wiederholen. Separat beobachtet, kein Code-Bug: vereinzelte Kontakte werden von KlickTipp
+  selbst mit HTTP 406 abgelehnt (Opt-in/Feldformat, u.a. ein klarer Spam-Lead).
+- 🐛 **Regel-Verlauf zeigte „KlickTipp nicht erfolgt" trotz erfolgreicher Sync.** Die Lauf-Historie
+  lud Dialfire- und KlickTipp-Aktivitäten in einer gemeinsamen, unsortierten Abfrage — ein separater
+  Hintergrundprozess erzeugt pro Kontakt mehrfach täglich `dialfire_synced`-Einträge, die bei 50
+  angezeigten Kontakten das implizite 1000-Zeilen-Limit von PostgREST vollständig füllten und die
+  viel selteneren `klicktipp_synced`-Einträge verdrängten. Fix: getrennte, absteigend sortierte
+  Abfragen pro Sync-Typ. Verifiziert: zuvor 1/50, danach 47/50 Kontakte korrekt als „ok" erkannt.
+- ✨ **KlickTipp-Kontakt-ID in der UI sichtbar gemacht.** `klicktipp_id` wurde zwar seit jeher
+  zuverlässig gespeichert (0 Fälle von erfolgreicher Sync ohne gespeicherte ID, gegen 337
+  Sync-Aktivitäten geprüft), aber nirgends angezeigt. Ergänzt in der Integrations-Sektion
+  (`ContactOverview.tsx`), im Automation-Drawer (`AutomationControls.tsx`, neuer Status-Block mit
+  ID + letztem Sync-Zeitpunkt) und in der Kontakthistorie (`AktivitaetenPanel.tsx`, ID direkt in der
+  `klicktipp_synced`-Beschreibung).
+- 🐛 **Reporting/Selektion kannte die KlickTipp-Spalten nicht.** `report-schema.ts` ist eine manuell
+  gepflegte Schema-Beschreibung für die NL→SQL-Generierung (Claude) und war seit der
+  KlickTipp-Integration nie um deren Spalten ergänzt worden — die KI lehnte Anfragen wie „Kontakte
+  ohne KlickTipp-Kontakt-ID" fälschlich mit „Schema enthält keine solche Spalte" ab. Ergänzt:
+  `klicktipp_id`, `klicktipp_tags`, `klicktipp_tag_ids` (`bigint[]`), `klicktipp_last_sync`,
+  `klicktipp_email_status`; veralteten `sparte`-Kommentar korrigiert (nannte nur 2 von 4 aktiven
+  Sparten).
+- 🔧 **Vercel-GitHub-Integration war getrennt.** Die automatische Deploy-Verbindung stand während
+  eines Teils dieser Session, wodurch mehrere der obigen Fixes erst verzögert live gingen — nach
+  dem Wiederverbinden per leerem Trigger-Commit nachgeholt. Bei zukünftigen Verifikations-Problemen
+  ("Fix ist committed, aber Fehler bleibt live bestehen") die Vercel-Deployment-Liste gegen den
+  neuesten Commit-Hash prüfen.
 
 ### Sitzung 2026-08-05 — KlickTipp live angebunden, Rückkanal pilotiert und Tag-Bestand geprüft
 
@@ -1065,12 +1114,13 @@ tatsächlich angelegt und ob die Übertragung an Dialfire/KlickTipp funktioniert
 > gepflegt als die „Konsolidierte Feature-Roadmap" weiter oben — bei Widersprüchen gilt die
 > Roadmap. Am 2026-08-05 gegen den aktuellen Code-Stand geprüft: der komplette „Kritisch"-Block
 > (Google-Drive-Verbindung) sowie mehrere Medium-Priority-Punkte (Task-API, Auth, Team-Rollen,
-> `assigned_user_name`) waren bereits gelöst und wurden entfernt.
+> `assigned_user_name`) waren bereits gelöst und wurden entfernt. Am 2026-08-06 zusätzlich
+> „Auto/Manuell Toggles" entfernt — in `AutomationControls.tsx` bereits vollständig vorhanden
+> (Dialfire-Kampagne/-Task, KlickTipp-Tags je mit eigenem Auto-Toggle).
 
 ### High Priority (v0.4+)
 
 - [ ] **Dialfire Kampagnen-Flexibilität:** Nur 2 IDs hartcodiert in Edge-Function (GENS85UE5SU4SSC7, SFU6DSEG4RU2Z6HX); sollte via system_config konfigurierbar sein
-- [ ] **Auto/Manuell Toggles:** Kontakt-Detail braucht Pro-Feld Toggles (dialfire_campaign_auto, dialfire_task_auto, etc.)
 - [ ] **Automation Settings UI:** `/einstellungen` neue Sektion für Kampagnen/Tasks/Tags config (Textareas → system_config)
 - [ ] **Dialfire Test-Kontakt:** YWAY4QBKJVWG69PQ noch manuell in Dialfire UI löschen
 
