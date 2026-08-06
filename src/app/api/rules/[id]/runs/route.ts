@@ -81,8 +81,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const kontaktIds = Array.from(new Set(laeufe.map((l) => l.lead_id).filter(Boolean))) as string[]
 
-    // Kontakte und deren Sync-/Anlage-Aktivitäten in je einer Abfrage nachladen.
-    const [{ data: kontakte }, { data: begleitend }] = await Promise.all([
+    // Kontakte und deren Sync-/Anlage-Aktivitäten nachladen. Dialfire- und
+    // KlickTipp-Aktivitäten werden in getrennten Abfragen geholt: ein anderer
+    // Hintergrundprozess erzeugt pro Kontakt sehr viele dialfire_synced-Einträge
+    // (mehrfach täglich), die in einer gemeinsamen Abfrage das implizite
+    // 1000-Zeilen-Limit von PostgREST auffressen und die viel selteneren
+    // klicktipp_synced-Einträge verdrängen würden — mit der Folge, dass die
+    // Historie fälschlich "KlickTipp nicht erfolgt" anzeigt, obwohl der Kontakt
+    // tatsächlich synchronisiert wurde. Je Typ absteigend sortiert, damit im
+    // Zweifel die neuesten (relevantesten) Einträge erhalten bleiben.
+    const [{ data: kontakte }, { data: dialfireActs }, { data: klicktippActs }] = await Promise.all([
       supabase
         .from('contacts')
         .select('id, first_name, last_name, company_name, created_at, dialfire_id, archived_at')
@@ -91,16 +99,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         .from('activities')
         .select('lead_id, type, description, created_at')
         .in('lead_id', kontaktIds)
-        .in('type', [
-          'contact_created',
-          'dialfire_synced', 'dialfire_sync', 'dialfire_sync_failed',
-          'klicktipp_sync', 'klicktipp_synced', 'klicktipp_sync_failed',
-        ]),
+        .in('type', ['dialfire_synced', 'dialfire_sync', 'dialfire_sync_failed'])
+        .order('created_at', { ascending: false })
+        .limit(1000),
+      supabase
+        .from('activities')
+        .select('lead_id, type, description, created_at')
+        .in('lead_id', kontaktIds)
+        .in('type', ['contact_created', 'klicktipp_sync', 'klicktipp_synced', 'klicktipp_sync_failed'])
+        .order('created_at', { ascending: false })
+        .limit(1000),
     ])
 
     const kontaktById = new Map((kontakte ?? []).map((k) => [k.id, k]))
     const proKontakt = new Map<string, Array<{ type: string; description: string | null; created_at: string }>>()
-    for (const a of begleitend ?? []) {
+    for (const a of [...(dialfireActs ?? []), ...(klicktippActs ?? [])]) {
       if (!a.lead_id) continue
       const liste = proKontakt.get(a.lead_id) ?? []
       liste.push({ type: a.type, description: a.description, created_at: a.created_at })
