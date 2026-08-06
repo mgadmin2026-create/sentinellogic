@@ -126,7 +126,7 @@ async function readResponseBody(response: Response): Promise<unknown> {
 
 function describeApiError(status: number, body: unknown): string {
   if (status === 401 || status === 403) {
-    return 'KlickTipp hat den API-Zugriff abgelehnt. API-Benutzer, Rolle und Zugangsdaten prüfen.'
+    return `KlickTipp hat den API-Zugriff abgelehnt (HTTP ${status}). API-Benutzer, Rolle und Zugangsdaten prüfen.`
   }
 
   if (status === 406) {

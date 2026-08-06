@@ -27,6 +27,7 @@ export function getActivityIcon(type: string) {
   if (type.includes('klicktipp')) return '🔗'
   if (type.includes('dialfire')) return '📞'
   if (type.includes('superchat')) return '💬'
+  if (type.includes('strato_calendar')) return '📅'
   if (type.includes('task')) return '✓'
   return '📝'
 }
@@ -36,6 +37,7 @@ export function getActivityColor(type: string) {
   if (type.includes('klicktipp')) return 'bg-blue-100 text-blue-600'
   if (type.includes('dialfire')) return 'bg-purple-100 text-purple-600'
   if (type.includes('superchat')) return 'bg-emerald-100 text-emerald-600'
+  if (type.includes('strato_calendar')) return 'bg-orange-100 text-orange-600'
   if (type.includes('task')) return 'bg-emerald-100 text-emerald-600'
   return 'bg-yellow-100 text-yellow-600'
 }

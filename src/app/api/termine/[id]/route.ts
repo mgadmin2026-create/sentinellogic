@@ -7,6 +7,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getStratoConfig, pushStratoEvent, deleteStratoEvent } from '@/lib/strato-caldav'
 import { sanitizeTeilnehmer } from '@/lib/kalender-helpers'
 import { sendTerminBenachrichtigung, buildAenderungen } from '@/lib/termin-email'
+import { logActivity } from '@/lib/activities-logger'
 
 interface TerminTeilnehmer {
   email: string
@@ -152,6 +153,15 @@ export async function PATCH(
           .eq('id', params.id)
       } catch (err) {
         console.error('[PATCH /api/termine/[id]] STRATO-Push fehlgeschlagen (Änderung bleibt lokal gespeichert):', err)
+        if (data.contact_id) {
+          await logActivity(
+            null,
+            data.contact_id,
+            'strato_calendar_sync_failed',
+            `STRATO-Kalender-Sync fehlgeschlagen für Termin "${data.titel}": ${err instanceof Error ? err.message : String(err)}`,
+            { termin_id: data.id }
+          )
+        }
       }
     }
 
@@ -231,6 +241,15 @@ export async function DELETE(
         await deleteStratoEvent(stratoConfig, bestehend.external_href)
       } catch (err) {
         console.error('[DELETE /api/termine/[id]] STRATO-Löschung fehlgeschlagen (lokal wird trotzdem gelöscht):', err)
+        if (bestehend.contact_id) {
+          await logActivity(
+            null,
+            bestehend.contact_id,
+            'strato_calendar_sync_failed',
+            `STRATO-Kalender-Löschung fehlgeschlagen für Termin "${bestehend.titel}": ${err instanceof Error ? err.message : String(err)}`,
+            { termin_id: bestehend.id }
+          )
+        }
       }
     }
 

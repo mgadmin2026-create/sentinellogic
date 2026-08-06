@@ -7,6 +7,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getStratoConfig, pushStratoEvent } from '@/lib/strato-caldav'
 import { sanitizeTeilnehmer, mitStandardTeilnehmer } from '@/lib/kalender-helpers'
 import { sendTerminBenachrichtigung } from '@/lib/termin-email'
+import { logActivity } from '@/lib/activities-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -119,6 +120,15 @@ export async function POST(request: NextRequest) {
           .eq('id', data.id)
       } catch (err) {
         console.error('[POST /api/termine] STRATO-Push fehlgeschlagen (Termin bleibt lokal gespeichert):', err)
+        if (data.contact_id) {
+          await logActivity(
+            null,
+            data.contact_id,
+            'strato_calendar_sync_failed',
+            `STRATO-Kalender-Sync fehlgeschlagen für Termin "${data.titel}": ${err instanceof Error ? err.message : String(err)}`,
+            { termin_id: data.id }
+          )
+        }
       }
     }
 

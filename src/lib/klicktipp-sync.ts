@@ -1,6 +1,7 @@
 import { logActivity } from '@/lib/activities-logger'
 import { syncContactToKlickTipp } from '@/lib/klicktipp-client'
 import { createServerClient } from '@/lib/supabase/server'
+import { runWithTracking } from '@/lib/sync-runs/retry-runner'
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
@@ -41,35 +42,52 @@ export async function syncStoredContactToKlickTipp(
   if (!contact.email?.trim()) return { status: 'skipped' }
 
   try {
-    const result = await syncContactToKlickTipp({
-      id: contact.id,
-      email: contact.email,
-      first_name: contact.first_name,
-      last_name: contact.last_name,
-      company_name: contact.company_name,
-      street: contact.street,
-      postal_code: contact.postal_code,
-      city: contact.city,
-      country: contact.country,
-      phone_mobile: contact.phone_mobile,
-      website: contact.website,
-      geburtstag: contact.geburtstag,
-      geschlecht: contact.geschlecht,
-      tagIds: contact.klicktipp_tag_ids ?? [],
-      tagNames: contact.klicktipp_tags ?? [],
-    })
+    const result = await runWithTracking(
+      supabase,
+      {
+        runKind: 'item',
+        integration: 'klicktipp',
+        // Alle drei bestehenden Aufrufer (Kontaktanlage, Regel-Batch, manueller
+        // Katch-up-Button) sind direkte Nutzer-/API-Aktionen, keine automatische
+        // Regel-Ausführung im Hintergrund — daher pauschal 'manual'. Feinere
+        // Unterscheidung (z.B. rule_id durchreichen) ist Phase-2-Scope.
+        triggerType: 'manual',
+        contactId: contact.id,
+      },
+      async () => {
+        const syncResult = await syncContactToKlickTipp({
+          id: contact.id,
+          email: contact.email!,
+          first_name: contact.first_name,
+          last_name: contact.last_name,
+          company_name: contact.company_name,
+          street: contact.street,
+          postal_code: contact.postal_code,
+          city: contact.city,
+          country: contact.country,
+          phone_mobile: contact.phone_mobile,
+          website: contact.website,
+          geburtstag: contact.geburtstag,
+          geschlecht: contact.geschlecht,
+          tagIds: contact.klicktipp_tag_ids ?? [],
+          tagNames: contact.klicktipp_tags ?? [],
+        })
 
-    const { error: updateError } = await supabase
-      .from('contacts')
-      .update({
-        klicktipp_id: result.id,
-        klicktipp_last_sync: new Date().toISOString(),
-      })
-      .eq('id', contact.id)
+        const { error: updateError } = await supabase
+          .from('contacts')
+          .update({
+            klicktipp_id: syncResult.id,
+            klicktipp_last_sync: new Date().toISOString(),
+          })
+          .eq('id', contact.id)
 
-    if (updateError) {
-      throw new Error('KlickTipp-ID konnte nach erfolgreicher Übertragung nicht gespeichert werden')
-    }
+        if (updateError) {
+          throw new Error('KlickTipp-ID konnte nach erfolgreicher Übertragung nicht gespeichert werden')
+        }
+
+        return syncResult
+      }
+    )
 
     await logActivity(
       null,
