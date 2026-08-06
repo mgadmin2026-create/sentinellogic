@@ -1156,6 +1156,8 @@ export default function KontaktDetailPage() {
             dialfire_task_name_field: kontakt.dialfire_task_name_field,
             klicktipp_tags_auto: kontakt.klicktipp_tags_auto ?? true,
             klicktipp_tags_field: kontakt.klicktipp_tags_field,
+            klicktipp_id: kontakt.klicktipp_id,
+            klicktipp_last_sync: kontakt.klicktipp_last_sync,
           }}
         />
       </Drawer>

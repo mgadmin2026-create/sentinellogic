@@ -13,8 +13,14 @@ interface AutomationControlsProps {
     klicktipp_tags_auto: boolean
     klicktipp_tags_field?: string[]
     klicktipp_tag_ids?: number[]
+    klicktipp_id?: string
+    klicktipp_last_sync?: string
   }
   onUpdate?: (data: any) => void
+}
+
+function formatZeitpunkt(iso: string): string {
+  return new Date(iso).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
 }
 
 interface IntegrationConfig {
@@ -205,6 +211,25 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
             </select>
           )}
         </div>
+      </div>
+
+      {/* KlickTipp Status */}
+      <div className="border-t pt-6">
+        <h4 className="font-semibold text-[#1A1A1A] text-sm mb-3">KlickTipp-Status</h4>
+        {data.klicktipp_id ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-700">
+            ✓ Synchronisiert — KlickTipp-ID: <span className="font-mono">{data.klicktipp_id}</span>
+            {data.klicktipp_last_sync && (
+              <span className="block text-xs text-emerald-600 mt-1">
+                Zuletzt übertragen: {formatZeitpunkt(data.klicktipp_last_sync)}
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-500">
+            ○ Noch nicht mit KlickTipp synchronisiert
+          </div>
+        )}
       </div>
 
       {/* KlickTipp Tags */}

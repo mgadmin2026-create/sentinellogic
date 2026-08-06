@@ -39,6 +39,8 @@ interface Kontakt {
   facebook_phase?: string
   klicktipp_tags?: string[]
   klicktipp_tag_ids?: number[]
+  klicktipp_id?: string
+  klicktipp_last_sync?: string
   klicktipp_email_status?: string | null
   klicktipp_status_updated_at?: string | null
   dialfire_campaign_id?: string
@@ -592,6 +594,10 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
                   kontakt.klicktipp_email_status === 'hard_bounce' ? 'Hard-Bounce' : 'Status noch nicht abgeglichen'}
               </span>
             </div>
+            <p className="text-xs text-gray-500 font-semibold mb-2">KlickTipp-Kontakt-ID</p>
+            <p className="text-sm text-blue-900 font-mono mb-3">
+              {kontakt.klicktipp_id || 'Noch nicht synchronisiert'}
+            </p>
             <p className="text-xs text-gray-500 font-semibold mb-2">KlickTipp Tags</p>
             <div className="flex flex-wrap gap-2">
               {kontakt.klicktipp_tags && kontakt.klicktipp_tags.length > 0 ? (

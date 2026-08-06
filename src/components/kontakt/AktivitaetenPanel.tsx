@@ -82,7 +82,12 @@ export function AktivitaetenPanel({ aktivitäten }: { aktivitäten: Aktivität[]
                 {i < sichtbar.length - 1 && <div className="w-0.5 h-8 bg-gray-200 mt-2" />}
               </div>
               <div className="flex-1 pt-1">
-                <p className="text-sm font-medium text-gray-900">{akt.description}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {akt.description}
+                  {akt.type === 'klicktipp_synced' && akt.data?.klicktipp_id && (
+                    <span className="ml-1.5 text-xs font-mono text-gray-400">(ID: {akt.data.klicktipp_id})</span>
+                  )}
+                </p>
                 {akt.type === 'email_received' && Number.isInteger(Number(akt.data?.mailbox_uid)) && Number(akt.data?.mailbox_uid) > 0 && akt.data?.uid_validity && (
                   <Link
                     href={`/postfach?uid=${Number(akt.data?.mailbox_uid)}&uidValidity=${encodeURIComponent(String(akt.data.uid_validity))}`}
