@@ -5,6 +5,13 @@ import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
 import { NextRequest, NextResponse } from 'next/server'
 
+// Ohne dieses Flag greift Vercels Standard-Timeout (deutlich unter einer Minute).
+// Bei Regeln mit vielen passenden Kontakten (z.B. große Facebook-Sparten mit
+// >100 Leads, je Kontakt 2-3 externe API-Calls an KlickTipp/Dialfire) reichte
+// das nicht annähernd — der Lauf brach nach ~35-60 Kontakten ab, ohne Fehler
+// anzuzeigen, und ein erneuter Klick fing wieder von vorne an.
+export const maxDuration = 300
+
 interface Rule {
   id: string
   name?: string
@@ -18,6 +25,14 @@ interface Rule {
     send_notification?: boolean
     notification_email?: string
   }
+}
+
+// Vergleicht Tag-Listen unabhängig von der Reihenfolge — genutzt, um bei
+// wiederholter Ausführung bereits korrekt getaggte Kontakte zu überspringen.
+function sameTags(a: string[] | null | undefined, b: string[]): boolean {
+  const as = [...(a ?? [])].sort()
+  const bs = [...b].sort()
+  return as.length === bs.length && as.every((tag, i) => tag === bs[i])
 }
 
 async function invokeEdgeFunction(functionName: string, payload: any) {
@@ -93,7 +108,11 @@ export async function POST(
       query = query.eq('sparte', rule.condition_sparte)
     }
 
-    const { data: contacts, error: contactsError } = await query
+    // Stabile Reihenfolge: ohne .order() ist die DB-Reihenfolge nicht garantiert.
+    // Wichtig bei großen Regeln, deren Lauf durch das Funktions-Timeout abbrechen
+    // kann — mit fester Reihenfolge + Skip-Logik oben macht jeder erneute Klick
+    // beim ältesten noch offenen Kontakt weiter statt wieder von vorne zu beginnen.
+    const { data: contacts, error: contactsError } = await query.order('created_at', { ascending: true })
 
     if (contactsError) {
       return NextResponse.json(
@@ -184,7 +203,16 @@ export async function POST(
           { rule_id: rule.id, trigger: 'batch', ...fieldsSummary }
         )
 
-        if (ruleKlicktippTagList.length > 0) {
+        // Bereits mit denselben Tags synchronisierte Kontakte nicht erneut an die
+        // KlickTipp-API schicken — bei großen Regeln (>100 Kontakte) ist das der
+        // Hauptkostenfaktor pro Kontakt und verhindert, dass ein durch das
+        // Timeout abgebrochener Lauf beim nächsten Klick wieder von vorne beginnt.
+        const alreadyKlicktippSynced =
+          ruleKlicktippTagList.length > 0 &&
+          !!contact.klicktipp_id &&
+          sameTags(contact.klicktipp_tags, ruleKlicktippTagList)
+
+        if (ruleKlicktippTagList.length > 0 && !alreadyKlicktippSynced) {
           const klicktippResult = await syncStoredContactToKlickTipp(supabase, {
             ...contact,
             ...fieldsToSet,
@@ -192,11 +220,20 @@ export async function POST(
           if (klicktippResult.status === 'synced') klicktippSynced++
           if (klicktippResult.status === 'failed') klicktippFailed++
           if (klicktippResult.status === 'skipped') klicktippSkipped++
+        } else if (alreadyKlicktippSynced) {
+          klicktippSkipped++
         }
 
         // Dialfire Sync: Only if campaign or task is set
-        // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
-        if (fieldsToSet.dialfire_campaign_id) {
+        // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen.
+        // Bereits unter derselben Kampagne synchronisierte Kontakte überspringen
+        // (gleicher Grund wie beim KlickTipp-Skip oben).
+        const alreadyDialfireSynced =
+          !!fieldsToSet.dialfire_campaign_id &&
+          !!contact.dialfire_id &&
+          contact.dialfire_campaign_id === fieldsToSet.dialfire_campaign_id
+
+        if (fieldsToSet.dialfire_campaign_id && !alreadyDialfireSynced) {
           try {
             const dialfireResult = await invokeEdgeFunction('send-to-dialfire', {
               contact: {
@@ -298,6 +335,8 @@ export async function POST(
             dialfireOutcome = 'failed'
             console.error(`[Dialfire Batch] Error for ${contact.email}:`, err)
           }
+        } else if (alreadyDialfireSynced) {
+          dialfireOutcome = 'synced'
         }
 
         affectedContacts.push({ email: contact.email, name: contactName, dialfire: dialfireOutcome })
