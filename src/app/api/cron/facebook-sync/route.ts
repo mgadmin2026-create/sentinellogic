@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { runFacebookLeadSync } from '@/lib/facebook-sync'
 import { berechneNaechstenSync } from '@/lib/facebook-sync-schedule'
+import { processRetries } from '@/lib/sync-runs/retry-handlers'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +21,19 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Piggyback: dieser Trigger läuft alle 15 Min über GitHub Actions und ist
+  // damit der einzige verlässliche wiederkehrende Heartbeat, den es aktuell
+  // gibt — genutzt, um fällige sync_runs-Retries zu verarbeiten, unabhängig
+  // davon, ob Facebook selbst gerade fällig ist. Kein eigener Scheduler-
+  // Baustein (das bleibt Phase 3); Fehler dürfen den Facebook-Sync nicht
+  // blockieren.
+  try {
+    await processRetries(supabase, 'klicktipp')
+    await processRetries(supabase, 'dialfire')
+  } catch (err) {
+    console.error('[cron/facebook-sync] Retry-Processing fehlgeschlagen:', err)
   }
 
   const { data: config, error: configError } = await supabase

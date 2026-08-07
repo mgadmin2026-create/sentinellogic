@@ -1,7 +1,7 @@
 import { logActivity } from '@/lib/activities-logger'
 import { syncContactToKlickTipp } from '@/lib/klicktipp-client'
 import { createServerClient } from '@/lib/supabase/server'
-import { runWithTracking } from '@/lib/sync-runs/retry-runner'
+import { runWithTracking, type ResumeRun } from '@/lib/sync-runs/retry-runner'
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
@@ -30,13 +30,21 @@ export interface StoredKlickTippSyncResult {
   error?: string
 }
 
+export interface KlickTippSyncMeta {
+  /** Regel, deren Ausführung diesen Sync ausgelöst hat — für die Regel-Verlauf-Ansicht. */
+  ruleId?: string | null
+  /** Bei Retry-Ausführung: die fortzuführende sync_runs-Zeile statt einer neuen. */
+  resumeFrom?: ResumeRun
+}
+
 /**
  * Zentraler Sync-Ablauf inklusive CRM-Status und Aktivitätsprotokoll.
  * Technisch markierte Testkontakte werden niemals automatisch übertragen.
  */
 export async function syncStoredContactToKlickTipp(
   supabase: SupabaseClient,
-  contact: StoredKlickTippContact
+  contact: StoredKlickTippContact,
+  meta: KlickTippSyncMeta = {}
 ): Promise<StoredKlickTippSyncResult> {
   if (contact.is_test_data) return { status: 'skipped' }
   if (!contact.email?.trim()) return { status: 'skipped' }
@@ -49,10 +57,10 @@ export async function syncStoredContactToKlickTipp(
         integration: 'klicktipp',
         // Alle drei bestehenden Aufrufer (Kontaktanlage, Regel-Batch, manueller
         // Katch-up-Button) sind direkte Nutzer-/API-Aktionen, keine automatische
-        // Regel-Ausführung im Hintergrund — daher pauschal 'manual'. Feinere
-        // Unterscheidung (z.B. rule_id durchreichen) ist Phase-2-Scope.
+        // Regel-Ausführung im Hintergrund — daher pauschal 'manual'.
         triggerType: 'manual',
         contactId: contact.id,
+        ruleId: meta.ruleId,
       },
       async () => {
         const syncResult = await syncContactToKlickTipp({
@@ -86,7 +94,8 @@ export async function syncStoredContactToKlickTipp(
         }
 
         return syncResult
-      }
+      },
+      meta.resumeFrom
     )
 
     await logActivity(

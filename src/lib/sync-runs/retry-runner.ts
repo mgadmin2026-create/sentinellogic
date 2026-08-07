@@ -25,6 +25,12 @@ interface StartedRun {
   max_attempts: number
 }
 
+/** Referenz auf eine bestehende sync_runs-Zeile, die als Retry fortgesetzt wird. */
+export interface ResumeRun {
+  id: string
+  attempt_count: number
+}
+
 // Backoff-Stufen in Minuten, indiziert nach attempt_count (1-basiert); letzter
 // Wert wiederholt sich für weitere Versuche, falls max_attempts höher gesetzt wird.
 const BACKOFF_MINUTES = [2, 10, 60]
@@ -34,7 +40,34 @@ function computeNextRetryAt(attemptCount: number): string {
   return new Date(Date.now() + BACKOFF_MINUTES[idx] * 60_000).toISOString()
 }
 
-export async function recordRunStart(supabase: SupabaseClient, meta: RunMeta): Promise<StartedRun | null> {
+export async function recordRunStart(
+  supabase: SupabaseClient,
+  meta: RunMeta,
+  resumeFrom?: ResumeRun
+): Promise<StartedRun | null> {
+  // Retry: dieselbe Zeile weiterführen (attempt_count++) statt eine neue
+  // anzulegen — parent_run_id bleibt ausschließlich für Batch/Item-
+  // Verschachtelung reserviert, keine separate Retry-Kette.
+  if (resumeFrom) {
+    const { data, error } = await supabase
+      .from('sync_runs')
+      .update({
+        status: 'running',
+        attempt_count: resumeFrom.attempt_count + 1,
+        next_retry_at: null,
+        ...(meta.data ? { data: meta.data } : {}),
+      })
+      .eq('id', resumeFrom.id)
+      .select('id, attempt_count, max_attempts')
+      .single()
+
+    if (error) {
+      console.error('[sync-runs] recordRunStart (resume) fehlgeschlagen:', error)
+      return null
+    }
+    return data
+  }
+
   const { data, error } = await supabase
     .from('sync_runs')
     .insert({
@@ -98,9 +131,10 @@ export async function recordRunOutcome(supabase: SupabaseClient, run: StartedRun
 export async function runWithTracking<T>(
   supabase: SupabaseClient,
   meta: RunMeta,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
+  resumeFrom?: ResumeRun
 ): Promise<T> {
-  const run = await recordRunStart(supabase, meta)
+  const run = await recordRunStart(supabase, meta, resumeFrom)
 
   try {
     const result = await fn()

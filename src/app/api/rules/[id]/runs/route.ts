@@ -49,6 +49,28 @@ function bewerteSync(
   }
 }
 
+/**
+ * Wie bewerteSync(), aber aus sync_runs statt activities — präziser, weil
+ * direkt an diese Regel gebunden (rule_id) statt nur zeitlich/über den
+ * Kontakt zugeordnet. `pending`/`running`/`retrying` gelten hier bewusst
+ * noch als 'offen' (kein 4. UI-Zustand in dieser Phase, das ist Phase-4-
+ * Control-Center-Scope); `failed`/`dead_letter` gelten als 'failed'.
+ */
+function bewerteSyncFromRuns(
+  runs: Array<{ status: string; error_detail: string | null; started_at: string }>
+): SyncInfo | null {
+  if (runs.length === 0) return null
+  const neuester = [...runs].sort((a, b) => b.started_at.localeCompare(a.started_at))[0]
+
+  if (neuester.status === 'success') {
+    return { status: 'ok', detail: null, at: neuester.started_at }
+  }
+  if (neuester.status === 'failed' || neuester.status === 'dead_letter') {
+    return { status: 'failed', detail: neuester.error_detail, at: neuester.started_at }
+  }
+  return { status: 'offen', detail: null, at: neuester.started_at }
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const currentUser = await getCurrentUser()
   if (!currentUser) {
@@ -90,7 +112,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Historie fälschlich "KlickTipp nicht erfolgt" anzeigt, obwohl der Kontakt
     // tatsächlich synchronisiert wurde. Je Typ absteigend sortiert, damit im
     // Zweifel die neuesten (relevantesten) Einträge erhalten bleiben.
-    const [{ data: kontakte }, { data: dialfireActs }, { data: klicktippActs }] = await Promise.all([
+    const [{ data: kontakte }, { data: dialfireActs }, { data: klicktippActs }, { data: syncRuns }] = await Promise.all([
       supabase
         .from('contacts')
         .select('id, first_name, last_name, company_name, created_at, dialfire_id, archived_at')
@@ -109,6 +131,19 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         .in('type', ['contact_created', 'klicktipp_sync', 'klicktipp_synced', 'klicktipp_sync_failed'])
         .order('created_at', { ascending: false })
         .limit(1000),
+      // Präzisere, an diese Regel gebundene Sync-Historie (seit Phase 2 der
+      // Sync-Architektur-Vereinheitlichung). Läufe von vor der Umstellung
+      // haben kein rule_id gesetzt — für die fällt die Anzeige unten auf die
+      // activities-Abfragen oben zurück, damit alte Historie nicht plötzlich
+      // "offen" zeigt.
+      supabase
+        .from('sync_runs')
+        .select('contact_id, integration, status, error_detail, started_at')
+        .eq('rule_id', params.id)
+        .eq('run_kind', 'item')
+        .in('integration', ['klicktipp', 'dialfire'])
+        .order('started_at', { ascending: false })
+        .limit(1000),
     ])
 
     const kontaktById = new Map((kontakte ?? []).map((k) => [k.id, k]))
@@ -118,6 +153,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       const liste = proKontakt.get(a.lead_id) ?? []
       liste.push({ type: a.type, description: a.description, created_at: a.created_at })
       proKontakt.set(a.lead_id, liste)
+    }
+
+    // sync_runs gruppiert nach Kontakt + Integration.
+    const syncRunsByContact = new Map<string, Array<{ status: string; error_detail: string | null; started_at: string }>>()
+    for (const r of syncRuns ?? []) {
+      if (!r.contact_id) continue
+      const key = `${r.contact_id}:${r.integration}`
+      const liste = syncRunsByContact.get(key) ?? []
+      liste.push({ status: r.status, error_detail: r.error_detail, started_at: r.started_at })
+      syncRunsByContact.set(key, liste)
     }
 
     const runs = laeufe.map((lauf) => {
@@ -151,8 +196,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         // ob sie diesem Lauf zeitlich unmittelbar vorausging.
         kontakt_neu_angelegt: eintraege.some((a) => a.type === 'contact_created'),
         gesetzte_felder: gesetzteFelder,
-        dialfire: bewerteSync(eintraege, ['dialfire_synced', 'dialfire_sync'], ['dialfire_sync_failed']),
-        klicktipp: bewerteSync(eintraege, ['klicktipp_sync', 'klicktipp_synced'], ['klicktipp_sync_failed']),
+        dialfire:
+          bewerteSyncFromRuns(syncRunsByContact.get(`${lauf.lead_id}:dialfire`) ?? []) ??
+          bewerteSync(eintraege, ['dialfire_synced', 'dialfire_sync'], ['dialfire_sync_failed']),
+        klicktipp:
+          bewerteSyncFromRuns(syncRunsByContact.get(`${lauf.lead_id}:klicktipp`) ?? []) ??
+          bewerteSync(eintraege, ['klicktipp_sync', 'klicktipp_synced'], ['klicktipp_sync_failed']),
         dialfire_id_vorhanden: Boolean(kontakt?.dialfire_id),
       }
     })
