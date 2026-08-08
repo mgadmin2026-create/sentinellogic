@@ -15,7 +15,8 @@ const FORBIDDEN_KEYWORDS = [
 // Geheim-/Token-Tabellen, die niemals abgefragt werden dürfen
 const FORBIDDEN_TABLES = [
   'google_oauth_tokens', 'google_drive_system_token', 'system_config',
-  'facebook_sync_config', 'token', 'secret', 'oauth', 'pg_',
+  'facebook_sync_config', 'dialfire_sync_config', 'sync_config',
+  'token', 'secret', 'oauth', 'pg_',
 ]
 
 export interface SqlValidation {

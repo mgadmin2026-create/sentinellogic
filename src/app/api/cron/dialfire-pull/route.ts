@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { runDialfirePullSync } from '@/lib/dialfire-pull-sync'
-import { berechneNaechstenSync } from '@/lib/facebook-sync-schedule'
+import { getSyncConfig, isSyncDue, markSyncCompleted } from '@/lib/sync-runs/sync-config'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,41 +14,31 @@ const supabase = createClient(
 // .github/workflows/dialfire-sync-cron.yml) -- Vercel Hobby erlaubt nur eine
 // Cron-Ausführung pro Tag, das reicht für die Intervall-Optionen im
 // "Auto"-Toggle auf /sync nicht aus. Der GitHub-Actions-Takt tickt daher
-// häufiger (alle 30 Min); diese Route prüft dialfire_sync_config und führt
+// häufiger (alle 30 Min); diese Route prüft sync_config und führt
 // den Sync nur aus, wenn "Auto" aktiviert und der Zyklus fällig ist --
-// exakt dasselbe Muster wie /api/cron/facebook-sync.
+// exakt dasselbe Muster wie /api/cron/facebook-sync. Retry-Processing für
+// alle Integrationen läuft bereits im facebook-sync-Cron (häufigerer Takt),
+// deshalb kein zusätzliches Piggyback hier.
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: config, error: configError } = await supabase
-    .from('dialfire_sync_config')
-    .select('*')
-    .single()
-
-  if (configError || !config || !config.enabled) {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'disabled' })
+  const config = await getSyncConfig(supabase, 'dialfire_pull')
+  if (!isSyncDue(config)) {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: config.enabled ? 'not_due' : 'disabled',
+      next_sync_at: config.next_sync_at,
+    })
   }
 
   const now = new Date()
-  if (config.next_sync_at && new Date(config.next_sync_at) > now) {
-    return NextResponse.json({ ok: true, skipped: true, reason: 'not_due', next_sync_at: config.next_sync_at })
-  }
-
   try {
-    const result = await runDialfirePullSync()
-
-    const nextSyncAt = berechneNaechstenSync(config.interval_type, now)
-    await supabase
-      .from('dialfire_sync_config')
-      .update({
-        last_sync_at: now.toISOString(),
-        next_sync_at: nextSyncAt.toISOString(),
-        updated_at: now.toISOString(),
-      })
-      .eq('id', config.id)
+    const result = await runDialfirePullSync('cron')
+    const nextSyncAt = await markSyncCompleted(supabase, 'dialfire_pull', config.interval_type, now)
 
     return NextResponse.json({ ok: true, skipped: false, next_sync_at: nextSyncAt.toISOString(), result })
   } catch (err) {
