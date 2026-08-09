@@ -8,6 +8,8 @@ import { retryFacebookLead, type FacebookLeadRaw } from '@/lib/facebook-sync'
 import { retryDialfirePullContact } from '@/lib/dialfire-pull-sync'
 import { syncContactToSuperchat } from '@/lib/superchat-sync'
 import { pushTerminToStrato, deleteTerminFromStrato } from '@/lib/strato-sync'
+import { processEvent as processKlickTippWebhookEvent, type KlickTippWebhookEventCore } from '@/lib/klicktipp-webhook'
+import { runWithTracking } from '@/lib/sync-runs/retry-runner'
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
@@ -68,6 +70,51 @@ const RETRY_HANDLERS: Record<string, RetryHandler> = {
     await syncContactToSuperchat(supabase, contact, {
       resumeFrom: { id: run.id, attempt_count: run.attempt_count },
     })
+  },
+  klicktipp_webhook: async (supabase, run) => {
+    const fingerprint = run.data?.fingerprint as string | undefined
+    if (!fingerprint || !run.contact_id) return
+
+    const { data: storedEvent } = await supabase
+      .from('klicktipp_webhook_events')
+      .select('*')
+      .eq('event_fingerprint', fingerprint)
+      .single()
+    if (!storedEvent) return
+
+    const { data: contact } = await supabase.from('contacts').select('id').eq('id', run.contact_id).single()
+    if (!contact) return
+
+    const event: KlickTippWebhookEventCore = {
+      eventType: storedEvent.event_type,
+      occurredAt: storedEvent.occurred_at,
+      emailStatus: storedEvent.email_status,
+      klicktippId: storedEvent.klicktipp_id,
+      campaignName: storedEvent.campaign_name,
+      messageName: storedEvent.message_name,
+      tagName: storedEvent.tag_name,
+      linkLabel: storedEvent.link_label,
+    }
+
+    try {
+      await runWithTracking(
+        supabase,
+        { runKind: 'item', integration: 'klicktipp_webhook', triggerType: 'webhook', contactId: contact.id, data: { fingerprint } },
+        () => processKlickTippWebhookEvent(event, contact, fingerprint),
+        { id: run.id, attempt_count: run.attempt_count }
+      )
+      await supabase
+        .from('klicktipp_webhook_events')
+        .update({ processing_status: 'processed', processed_at: new Date().toISOString() })
+        .eq('event_fingerprint', fingerprint)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      await supabase
+        .from('klicktipp_webhook_events')
+        .update({ processing_status: 'failed', processing_error: message.slice(0, 500), processed_at: new Date().toISOString() })
+        .eq('event_fingerprint', fingerprint)
+      throw err
+    }
   },
   strato_calendar: async (supabase, run) => {
     const resumeFrom = { id: run.id, attempt_count: run.attempt_count }

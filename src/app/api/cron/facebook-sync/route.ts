@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     await processRetries(supabase, 'dialfire_pull')
     await processRetries(supabase, 'superchat')
     await processRetries(supabase, 'strato_calendar')
+    await processRetries(supabase, 'klicktipp_webhook')
   } catch (err) {
     console.error('[cron/facebook-sync] Retry-Processing fehlgeschlagen:', err)
   }

@@ -6,10 +6,11 @@
 // Seit Phase 3 der Sync-Architektur-Vereinheitlichung zusätzlich an
 // sync_runs angebunden: ein run_kind='batch'-Eintrag für den gesamten Lauf,
 // je ein run_kind='item'-Eintrag pro Lead darunter (parent_run_id). Das
-// bestehende sync_log/activities-Logging bleibt unverändert (additiv) --
-// sync_runs kommt zusätzlich dazu und ermöglicht Fehlerklassifikation +
-// automatischen Retry pro Lead (das rohe Lead-Objekt steckt dafür im
-// sync_runs.data-Feld).
+// bestehende activities-Logging bleibt unverändert (additiv) -- sync_runs
+// ermöglicht Fehlerklassifikation + automatischen Retry pro Lead (das rohe
+// Lead-Objekt steckt dafür im sync_runs.data-Feld). Seit Phase 5 ist
+// sync_runs auch die alleinige Quelle für das Sync-Protokoll auf /sync
+// (kein direktes sync_log-Schreiben mehr, siehe sync-log-adapter.ts).
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { recordRunStart, recordRunOutcome, runWithTracking, type ResumeRun } from '@/lib/sync-runs/retry-runner'
@@ -36,7 +37,7 @@ export interface FacebookLeadProcessResult {
   email: string | null
 }
 
-/** Trägt die zum Zeitpunkt des Fehlers bekannte E-Mail mit, damit sync_log.error_details wie bisher befüllt wird. */
+/** Trägt die zum Zeitpunkt des Fehlers bekannte E-Mail mit, damit die Fehlerliste im Sync-Protokoll wie bisher befüllt wird. */
 class FacebookLeadError extends Error {
   email: string | null
   constructor(message: string, email: string | null = null) {
@@ -309,28 +310,10 @@ export async function runFacebookLeadSync(triggerType: 'cron' | 'manual' = 'manu
       }
     }
 
-    // Log sync to sync_log table
-    const syncStatus = errors > 0 ? (synced > 0 ? 'partial' : 'error') : 'success'
-    const { error: syncLogError } = await supabase
-      .from('sync_log')
-      .insert([
-        {
-          source: 'facebook',
-          count: synced + updated,
-          duplicates_skipped: skipped,
-          status: syncStatus,
-          message: `Synced: ${synced}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`,
-          lead_ids: [],
-          lead_names: [],
-          error_details: errorDetails,
-          duplicate_details: duplicateDetails,
-        },
-      ])
-
-    if (syncLogError) {
-      console.error('Error logging sync to sync_log:', syncLogError)
-    }
-
+    // sync_log wird seit Phase 5 nicht mehr direkt beschrieben -- das
+    // Sync-Protokoll auf /sync liest diese Zahlen jetzt aus der bereits
+    // gesetzten sync_runs-Batch-Zeile (siehe recordRunOutcome unten) via
+    // src/lib/sync-runs/sync-log-adapter.ts.
     console.log(
       `✅ Sync completed! Synced: ${synced}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`
     )

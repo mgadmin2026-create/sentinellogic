@@ -6,8 +6,11 @@
 // Seit Phase 3 der Sync-Architektur-Vereinheitlichung zusätzlich an
 // sync_runs angebunden: ein run_kind='batch'-Eintrag für den gesamten Lauf,
 // je ein run_kind='item'-Eintrag pro Kontakt darunter (parent_run_id). Das
-// bestehende sync_log-Logging und das per-Kontakt-Audit-Log der Edge
-// Function (dialfire_sync_log) bleiben unverändert (additiv).
+// per-Kontakt-Audit-Log der Edge Function (dialfire_sync_log) bleibt
+// unverändert (additiv, andere Zuständigkeit -- Feld-Diff statt Lauf-
+// Protokoll). Seit Phase 5 ist sync_runs die alleinige Quelle für das
+// Sync-Protokoll auf /sync (kein direktes sync_log-Schreiben mehr, siehe
+// sync-log-adapter.ts).
 import { createServerClient } from '@/lib/supabase/server'
 import { recordRunStart, recordRunOutcome, runWithTracking, type ResumeRun } from '@/lib/sync-runs/retry-runner'
 import { classifyError } from '@/lib/sync-runs/error-classification'
@@ -137,7 +140,6 @@ export async function runDialfirePullSync(triggerType: 'cron' | 'manual' = 'manu
     let updated = 0
     let unchanged = 0
     let errors = 0
-    const leadNames: string[] = []
     const errorDetails: Array<{ lead_id: string; email: string | null; error_message: string }> = []
 
     await runWithConcurrency(contacts ?? [], CONCURRENCY, async (contact) => {
@@ -156,7 +158,6 @@ export async function runDialfirePullSync(triggerType: 'cron' | 'manual' = 'manu
 
         if (result.changed) {
           updated++
-          leadNames.push(`${contact.first_name} ${contact.last_name}`)
         } else {
           unchanged++
         }
@@ -171,26 +172,10 @@ export async function runDialfirePullSync(triggerType: 'cron' | 'manual' = 'manu
     })
 
     const total = contacts?.length ?? 0
-    const status = errors > 0 ? (updated + unchanged > 0 ? 'warning' : 'error') : 'success'
 
-    const { error: syncLogError } = await supabase.from('sync_log').insert([
-      {
-        source: 'dialfire',
-        count: updated,
-        duplicates_skipped: 0,
-        status,
-        message: `${total} verbundene Kontakte geprüft — Aktualisiert: ${updated}, Unverändert: ${unchanged}, Fehler: ${errors}`,
-        lead_ids: [],
-        lead_names: leadNames,
-        error_details: errorDetails,
-        duplicate_details: [],
-      },
-    ])
-
-    if (syncLogError) {
-      console.error('[runDialfirePullSync] sync_log insert failed:', syncLogError)
-    }
-
+    // sync_log wird seit Phase 5 nicht mehr direkt beschrieben -- das
+    // Sync-Protokoll auf /sync liest diese Zahlen jetzt aus der
+    // sync_runs-Batch-Zeile unten via src/lib/sync-runs/sync-log-adapter.ts.
     if (batchRun) {
       await recordRunOutcome(supabase, batchRun, {
         success: true,

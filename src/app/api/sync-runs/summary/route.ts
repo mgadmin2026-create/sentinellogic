@@ -9,7 +9,10 @@ import { getCurrentUser } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 export const fetchCache = 'force-no-store'
 
-const INTEGRATIONS = ['klicktipp', 'dialfire', 'facebook', 'dialfire_pull', 'superchat', 'strato_calendar'] as const
+const INTEGRATIONS = [
+  'klicktipp', 'dialfire', 'facebook', 'dialfire_pull', 'superchat', 'strato_calendar',
+  'strato_mail', 'klicktipp_webhook',
+] as const
 
 // Je Integration nur die 50 jüngsten Läufe zählen (analog zum bestehenden
 // Muster in RegelLaufHistorie/runs-Route) — sonst würde eine Integration

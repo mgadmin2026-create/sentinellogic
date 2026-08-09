@@ -15,6 +15,10 @@ interface SyncSource {
   count: string
   lastSync: string
   autoInterval: number
+  // Kein echtes Backend vorhanden (siehe INITIAL_SOURCES) -- Kachel wird
+  // abgeblendet dargestellt statt eine funktionierende Integration
+  // vorzutäuschen.
+  disabled?: boolean
 }
 
 interface SyncLogEntry {
@@ -95,6 +99,8 @@ const INTEGRATION_KEY: Record<string, string> = {
   dialfire_push: 'dialfire',
   superchat: 'superchat',
   strato_calendar: 'strato_calendar',
+  strato_mail: 'strato_mail',
+  klicktipp_webhook: 'klicktipp_webhook',
 }
 
 const INTEGRATION_LABELS: Record<string, string> = {
@@ -104,7 +110,15 @@ const INTEGRATION_LABELS: Record<string, string> = {
   klicktipp: 'KlickTipp',
   superchat: 'SuperChat',
   strato_calendar: 'STRATO-Kalender',
+  strato_mail: 'STRATO-Mail',
+  klicktipp_webhook: 'KlickTipp-Webhook',
 }
+
+// Integrationen ohne Retry-Handler (retry-handlers.ts) -- "Retry jetzt" wird
+// für diese in der Lauf-Tabelle nicht angeboten, sonst würde der Klick nur
+// mit "kein Retry-Handler" fehlschlagen. STRATO-Mail bewusst ohne Auto-Retry
+// (E-Mail-Versand ist nicht idempotent, siehe strato-mail-sync.ts).
+const NON_RETRYABLE_INTEGRATIONS = new Set(['strato_mail'])
 
 interface ReactiveIntegration {
   id: string
@@ -117,6 +131,8 @@ const REACTIVE_INTEGRATIONS: ReactiveIntegration[] = [
   { id: 'dialfire_push', name: 'Dialfire (Push)', description: 'Kontakte aus Regeln an Dialfire-Kampagnen übertragen' },
   { id: 'superchat', name: 'SuperChat', description: 'Kontakte manuell an SuperChat übertragen' },
   { id: 'strato_calendar', name: 'STRATO-Kalender', description: 'Termine beidseitig mit STRATO synchronisieren' },
+  { id: 'strato_mail', name: 'STRATO-Mail', description: 'E-Mail-Versand über das STRATO-Postfach (Kontakt-Mails, Termin-Einladungen)' },
+  { id: 'klicktipp_webhook', name: 'KlickTipp-Webhook', description: 'Eingehende KlickTipp-Ereignisse (Tags, Bounces, Kampagnen) verarbeiten' },
 ]
 
 function healthStatus(health: IntegrationHealth | undefined): SyncStatus {
@@ -139,8 +155,8 @@ function healthLastSyncText(health: IntegrationHealth | undefined): string {
 
 const INITIAL_SOURCES: SyncSource[] = [
   { id: 'facebook', name: 'Facebook Lead Ads', description: 'Leads direkt aus Facebook-Kampagnen', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 15 },
-  { id: 'calendly', name: 'Calendly', description: 'Terminbuchungen automatisch als Leads', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 30 },
-  { id: 'email', name: 'E-Mail (IMAP)', description: 'Eingehende Anfragen als Leads erkennen', status: 'warning', count: 'Konfiguration ausstehend', lastSync: '—', autoInterval: 60 },
+  { id: 'calendly', name: 'Calendly', description: 'Terminbuchungen automatisch als Leads', status: 'inactive', count: 'Nicht angebunden', lastSync: '—', autoInterval: 0, disabled: true },
+  { id: 'email', name: 'E-Mail (IMAP)', description: 'Eingehende Anfragen als Leads erkennen', status: 'inactive', count: 'Nicht angebunden', lastSync: '—', autoInterval: 0, disabled: true },
   { id: 'csv', name: 'CSV-Import', description: 'Manuelle Datei-Importe', status: 'inactive', count: 'Manuell', lastSync: '—', autoInterval: 0 },
   { id: 'dialfire', name: 'Dialfire', description: 'Anruf-Ergebnisse aus dem Callcenter in verbundene Kontakte übernehmen', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 0 },
 ]
@@ -454,7 +470,7 @@ export default function SyncPage() {
           const displayInterval = isFacebook ? facebookInterval : isDialfire ? dialfireInterval : (['15min', '30min', '60min', 'daily', 'weekly'].includes(String(source.autoInterval)) ? String(source.autoInterval) as IntervalType : '15min')
 
           return (
-            <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div key={source.id} className={`bg-white rounded-xl border border-gray-200 shadow-sm p-5 ${source.disabled ? 'opacity-50' : ''}`}>
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -474,12 +490,12 @@ export default function SyncPage() {
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <button onClick={() => toggleAuto(source.id)}
-                      className={`relative w-9 h-5 rounded-full transition-colors ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
+                    <button onClick={() => toggleAuto(source.id)} disabled={source.disabled}
+                      className={`relative w-9 h-5 rounded-full transition-colors disabled:cursor-not-allowed ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
                       <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                     </button>
                     <span className="text-xs text-gray-500">Auto</span>
-                    {autoEnabled && (
+                    {autoEnabled && !source.disabled && (
                       <select value={displayInterval} onChange={e => setIntervalVal(source.id, e.target.value as IntervalType)}
                         className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none">
                         <option value="15min">alle 15 Min</option>
@@ -490,8 +506,8 @@ export default function SyncPage() {
                       </select>
                     )}
                   </div>
-                  <button onClick={() => handleSync(source.id)} disabled={isSyncing}
-                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50">
+                  <button onClick={() => handleSync(source.id)} disabled={isSyncing || source.disabled}
+                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
                       strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'animate-spin' : ''}>
                       <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
@@ -750,6 +766,8 @@ export default function SyncPage() {
               <option value="klicktipp">KlickTipp</option>
               <option value="superchat">SuperChat</option>
               <option value="strato_calendar">STRATO-Kalender</option>
+              <option value="strato_mail">STRATO-Mail</option>
+              <option value="klicktipp_webhook">KlickTipp-Webhook</option>
             </select>
             <select
               value={runsFilter.status}
@@ -814,13 +832,15 @@ export default function SyncPage() {
                     <td className="px-5 py-3">
                       {run.run_kind === 'item' && (run.status === 'retrying' || run.status === 'dead_letter') && (
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleRetry(run.id)}
-                            disabled={actionLoading === run.id}
-                            className="text-xs font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-1 rounded transition-all disabled:opacity-50"
-                          >
-                            {actionLoading === run.id ? '…' : 'Retry jetzt'}
-                          </button>
+                          {!NON_RETRYABLE_INTEGRATIONS.has(run.integration) && (
+                            <button
+                              onClick={() => handleRetry(run.id)}
+                              disabled={actionLoading === run.id}
+                              className="text-xs font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-1 rounded transition-all disabled:opacity-50"
+                            >
+                              {actionLoading === run.id ? '…' : 'Retry jetzt'}
+                            </button>
+                          )}
                           {run.status === 'retrying' && (
                             <button
                               onClick={() => handlePause(run.id)}

@@ -1,20 +1,17 @@
 // API Route: Sync-Protokoll
-// GET  /api/sync-log — letzte Einträge laden
+// GET  /api/sync-log — letzte Einträge laden (sync_log + aus sync_runs
+//      synthetisierte Facebook-/Dialfire-Pull-Läufe, siehe sync-log-adapter.ts)
 // POST /api/sync-log — neuen Eintrag anlegen (nach CSV-Import / Webhook)
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getSyncLogEntries } from '@/lib/sync-runs/sync-log-adapter'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient()
     const limit = parseInt(new URL(request.url).searchParams.get('limit') ?? '20', 10)
-    const { data, error } = await supabase
-      .from('sync_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit)
-    if (error) throw new Error(error.message)
-    return Response.json({ success: true, data: data ?? [] })
+    const data = await getSyncLogEntries(supabase, limit)
+    return Response.json({ success: true, data })
   } catch (error) {
     console.error('[GET /api/sync-log]', error)
     return Response.json({ success: false, error: 'Sync-Log konnte nicht geladen werden' }, { status: 500 })

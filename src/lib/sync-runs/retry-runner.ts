@@ -140,7 +140,14 @@ export async function runWithTracking<T>(
     const result = await fn()
     if (run) {
       try {
-        await recordRunOutcome(supabase, run, { success: true })
+        // Rückgabewert additiv mitschreiben -- ermöglicht z.B. dem
+        // sync_log-Adapter, aus Item-Zeilen Details zu rekonstruieren
+        // (Facebook: linked/created-Ergebnis, Dialfire-Pull: changed_fields),
+        // die vorher nur als lokale JS-Variable existierten.
+        await recordRunOutcome(supabase, run, {
+          success: true,
+          data: result !== undefined ? { result } : undefined,
+        })
       } catch (trackErr) {
         console.error('[sync-runs] recordRunOutcome (success) fehlgeschlagen:', trackErr)
       }

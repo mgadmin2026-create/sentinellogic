@@ -2,6 +2,8 @@
 // mit Resend als Rückfall für Installationen ohne Postfach-Konfiguration.
 import { Resend } from 'resend'
 import { isStratoMailboxConfigured, sendStratoMail } from '@/lib/strato-mail'
+import { createServerClient } from '@/lib/supabase/server'
+import { trackStratoMailSend } from '@/lib/strato-mail-sync'
 
 // Absender-Anzeigename "Allianz Generalvertretung Gün".
 // E-Mail-Adresse auf der eigenen, in Resend verifizierten Domain guen-versicherung.de
@@ -57,18 +59,25 @@ export async function sendContactEmail(params: {
   subject: string
   body: string
   attachments?: ContactEmailAttachment[]
+  contactId?: string | null
 }): Promise<SendContactEmailResult> {
   if (isStratoMailboxConfigured()) {
     try {
-      await sendStratoMail({
-        to: params.to,
-        cc: params.cc,
-        bcc: params.bcc,
-        subject: params.subject,
-        text: buildText(params.body),
-        html: buildHtml(params.body),
-        attachments: params.attachments,
-      })
+      const supabase = createServerClient()
+      await trackStratoMailSend(
+        supabase,
+        { contactId: params.contactId, triggerType: 'manual', data: { subject: params.subject } },
+        () =>
+          sendStratoMail({
+            to: params.to,
+            cc: params.cc,
+            bcc: params.bcc,
+            subject: params.subject,
+            text: buildText(params.body),
+            html: buildHtml(params.body),
+            attachments: params.attachments,
+          })
+      )
       return { ok: true }
     } catch (err) {
       console.error('[Contact-Email] STRATO-Versand fehlgeschlagen:', err instanceof Error ? err.name : 'Unbekannter Fehler')

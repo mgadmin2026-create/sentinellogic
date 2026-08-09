@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { syncIncomingMailActivities } from '@/lib/strato-incoming-activities'
+import { trackStratoMailSend } from '@/lib/strato-mail-sync'
 import {
   listInbox,
   sendStratoMail,
@@ -54,17 +55,23 @@ export async function POST(request: NextRequest) {
     if (!subject) return Response.json({ success: false, error: 'Betreff fehlt' }, { status: 400 })
     if (!text) return Response.json({ success: false, error: 'Nachricht fehlt' }, { status: 400 })
 
-    await sendStratoMail({
-      to,
-      subject,
-      text,
-      inReplyTo: body.inReplyTo,
-      references: body.references,
-    })
-
     // Nur bei eindeutigem E-Mail-Treffer protokollieren. Inhalt wird nicht gespeichert.
     const supabase = createServerClient()
     const { data: contact } = await supabase.from('contacts').select('id').eq('email', to.toLowerCase()).maybeSingle()
+
+    await trackStratoMailSend(
+      supabase,
+      { contactId: contact?.id ?? null, triggerType: 'manual', data: { subject } },
+      () =>
+        sendStratoMail({
+          to,
+          subject,
+          text,
+          inReplyTo: body.inReplyTo,
+          references: body.references,
+        })
+    )
+
     if (contact) {
       await logActivity(null, contact.id, 'email_sent', `E-Mail aus dem STRATO-Postfach gesendet: ${subject}`, {
         subject,
