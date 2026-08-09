@@ -277,9 +277,9 @@ async function superchatRequest(
     if (!response.ok) {
       const message =
         response.status === 401 || response.status === 403
-          ? 'SuperChat hat den API-Zugriff abgelehnt'
+          ? `SuperChat hat den API-Zugriff abgelehnt (HTTP ${response.status})`
           : response.status === 429
-            ? 'SuperChat-Anfragelimit erreicht. Bitte später erneut versuchen'
+            ? `SuperChat-Anfragelimit erreicht (HTTP ${response.status}). Bitte später erneut versuchen`
             : `SuperChat-Anfrage fehlgeschlagen (HTTP ${response.status})`
       throw new SuperchatApiError(message, response.status)
     }

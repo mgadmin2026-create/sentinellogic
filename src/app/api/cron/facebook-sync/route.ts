@@ -27,13 +27,15 @@ export async function GET(request: NextRequest) {
   // damit der einzige verlässliche wiederkehrende Heartbeat, den es aktuell
   // gibt — genutzt, um fällige sync_runs-Retries für alle Integrationen zu
   // verarbeiten, unabhängig davon, ob Facebook selbst gerade fällig ist.
-  // Kein eigener Scheduler-Baustein (das bleibt Phase 4); Fehler dürfen den
-  // Facebook-Sync nicht blockieren.
+  // Kein eigener Scheduler-Baustein (das bleibt Fahrplan, offene Phase 5);
+  // Fehler dürfen den Facebook-Sync nicht blockieren.
   try {
     await processRetries(supabase, 'klicktipp')
     await processRetries(supabase, 'dialfire')
     await processRetries(supabase, 'facebook')
     await processRetries(supabase, 'dialfire_pull')
+    await processRetries(supabase, 'superchat')
+    await processRetries(supabase, 'strato_calendar')
   } catch (err) {
     console.error('[cron/facebook-sync] Retry-Processing fehlgeschlagen:', err)
   }

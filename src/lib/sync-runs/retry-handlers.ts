@@ -6,6 +6,8 @@ import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
 import { syncContactToDialfire } from '@/lib/dialfire-sync'
 import { retryFacebookLead, type FacebookLeadRaw } from '@/lib/facebook-sync'
 import { retryDialfirePullContact } from '@/lib/dialfire-pull-sync'
+import { syncContactToSuperchat } from '@/lib/superchat-sync'
+import { pushTerminToStrato, deleteTerminFromStrato } from '@/lib/strato-sync'
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
@@ -53,13 +55,49 @@ const RETRY_HANDLERS: Record<string, RetryHandler> = {
     if (!contact || !contact.dialfire_id || !contact.dialfire_campaign_id) return
     await retryDialfirePullContact(contact, { id: run.id, attempt_count: run.attempt_count })
   },
+  superchat: async (supabase, run) => {
+    if (!run.contact_id) return
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select(
+        'id, first_name, last_name, email, phone_mobile, phone_office, anrede, company_name, street, hausnummer, postal_code, city, country, geburtstag, superchat_id'
+      )
+      .eq('id', run.contact_id)
+      .single()
+    if (!contact) return
+    await syncContactToSuperchat(supabase, contact, {
+      resumeFrom: { id: run.id, attempt_count: run.attempt_count },
+    })
+  },
+  strato_calendar: async (supabase, run) => {
+    const resumeFrom = { id: run.id, attempt_count: run.attempt_count }
+    const action = run.data?.action
+    if (action === 'push') {
+      const terminId = run.data?.terminId as string | undefined
+      if (!terminId) return
+      await pushTerminToStrato(supabase, terminId, { triggerType: 'auto', resumeFrom })
+    } else if (action === 'delete') {
+      const href = run.data?.href as string | undefined
+      if (!href) return
+      await deleteTerminFromStrato(
+        supabase,
+        {
+          href,
+          terminId: (run.data?.terminId as string) ?? '',
+          terminTitel: (run.data?.terminTitel as string) ?? '',
+          contactId: run.contact_id,
+        },
+        { triggerType: 'auto', resumeFrom }
+      )
+    }
+  },
 }
 
 /**
  * Verarbeitet fällige Retries für eine Integration (sync_runs mit
  * status='retrying' und next_retry_at in der Vergangenheit). Wird von
  * bestehenden Cron-Routen mit-aufgerufen (Piggyback), kein eigener
- * Scheduler-Baustein — das bleibt Phase 4. Fehler einzelner Retries
+ * Scheduler-Baustein — das bleibt Fahrplan (offene Phase 5). Fehler einzelner Retries
  * blockieren nicht die übrigen (jeder Handler loggt selbst über
  * activities/sync_runs, hier nur grob abgefangen). Nur run_kind='item'
  * wird verarbeitet — Batch-Zeilen bekommen nie status='retrying' und dürfen
@@ -95,4 +133,60 @@ export async function processRetries(supabase: SupabaseClient, integration: stri
   }
 
   return { processed: dueRuns.length }
+}
+
+/**
+ * Führt den Retry-Handler für EINE Zeile sofort aus (statt auf den nächsten
+ * Cron-Tick / next_retry_at zu warten) — genutzt vom "Retry jetzt"-Button im
+ * Control Center. Funktioniert für `retrying`- UND `dead_letter`-Zeilen (der
+ * Handler ruft intern mit resumeFrom auf, was unabhängig vom aktuellen
+ * Status dieselbe Zeile weiterführt).
+ */
+export async function retryRunNow(supabase: SupabaseClient, runId: string): Promise<{ success: boolean; error?: string }> {
+  const { data: run, error } = await supabase
+    .from('sync_runs')
+    .select('id, integration, contact_id, rule_id, attempt_count, data, run_kind')
+    .eq('id', runId)
+    .single()
+
+  if (error || !run) return { success: false, error: 'Lauf nicht gefunden' }
+  if (run.run_kind !== 'item') {
+    return { success: false, error: 'Nur einzelne Läufe können erneut ausgeführt werden' }
+  }
+
+  const handler = RETRY_HANDLERS[run.integration]
+  if (!handler) return { success: false, error: `Kein Retry-Handler für Integration "${run.integration}"` }
+
+  try {
+    await handler(supabase, run)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+/**
+ * Stoppt den automatischen Retry einer Zeile manuell (Nutzer-Aktion) —
+ * setzt status='skipped', wodurch processRetries() sie danach nicht mehr
+ * aufgreift. Nur für `retrying`-Zeilen sinnvoll.
+ */
+export async function pauseRun(supabase: SupabaseClient, runId: string): Promise<{ success: boolean; error?: string }> {
+  const { data: run, error: fetchError } = await supabase
+    .from('sync_runs')
+    .select('status')
+    .eq('id', runId)
+    .single()
+
+  if (fetchError || !run) return { success: false, error: 'Lauf nicht gefunden' }
+  if (run.status !== 'retrying') {
+    return { success: false, error: 'Nur wiederholende Läufe können pausiert werden' }
+  }
+
+  const { error } = await supabase
+    .from('sync_runs')
+    .update({ status: 'skipped', next_retry_at: null })
+    .eq('id', runId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
 }

@@ -1,10 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import {
-  createSuperchatContact,
-  SuperchatApiError,
-  updateSuperchatContact,
-} from '@/lib/integrations/superchat'
+import { SuperchatApiError } from '@/lib/integrations/superchat'
+import { syncContactToSuperchat } from '@/lib/superchat-sync'
 import { createServerClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -46,91 +43,14 @@ export async function POST(
     )
   }
 
-  const providerInput = {
-    firstName: contact.first_name,
-    lastName: contact.last_name,
-    email: contact.email,
-    phoneMobile: contact.phone_mobile,
-    phoneOffice: contact.phone_office,
-    gender: contact.anrede,
-    companyName: contact.company_name,
-    street: contact.street,
-    houseNumber: contact.hausnummer,
-    postalCode: contact.postal_code,
-    city: contact.city,
-    country: contact.country,
-    birthDate: contact.geburtstag,
-  }
-
   try {
-    const wasUpdate = Boolean(contact.superchat_id)
-    const result = contact.superchat_id
-      ? await updateSuperchatContact(contact.superchat_id, providerInput)
-      : await createSuperchatContact(providerInput)
-    const synchronizedAt = new Date().toISOString()
-
-    const { error: updateError } = await supabase
-      .from('contacts')
-      .update({
-        superchat_id: result.id,
-        superchat_last_sync: synchronizedAt,
-        superchat_sync_error: null,
-      })
-      .eq('id', contact.id)
-
-    if (updateError) {
-      console.error('[SuperChat Sync] Synchronisationsstatus konnte nicht gespeichert werden')
-      return Response.json(
-        {
-          success: false,
-          error: wasUpdate
-            ? 'Kontakt wurde übertragen, der lokale Status konnte aber nicht gespeichert werden'
-            : 'Kontakt wurde in SuperChat angelegt, die Verknüpfung konnte aber nicht gespeichert werden',
-        },
-        { status: 500 }
-      )
-    }
-
-    await supabase.from('activities').insert({
-      lead_id: contact.id,
-      type: 'superchat_synced',
-      description: wasUpdate
-        ? 'Kontakt in SuperChat aktualisiert'
-        : 'Kontakt an SuperChat übertragen',
-      data: { operation: wasUpdate ? 'updated' : 'created' },
-      user_id: currentUser.id,
-    })
-
-    return Response.json({
-      success: true,
-      data: {
-        superchatId: result.id,
-        synchronizedAt,
-        operation: wasUpdate ? 'updated' : 'created',
-      },
-    })
+    const result = await syncContactToSuperchat(supabase, contact, { userId: currentUser.id })
+    return Response.json({ success: true, data: result })
   } catch (error) {
     const message =
       error instanceof SuperchatApiError
         ? error.message
         : 'Kontakt konnte nicht an SuperChat übertragen werden'
-
-    console.error('[SuperChat Sync] Übertragung fehlgeschlagen', {
-      status: error instanceof SuperchatApiError ? error.status : null,
-    })
-
-    await supabase
-      .from('contacts')
-      .update({ superchat_sync_error: message })
-      .eq('id', contact.id)
-
-    await supabase.from('activities').insert({
-      lead_id: contact.id,
-      type: 'superchat_sync_failed',
-      description: 'SuperChat-Übertragung fehlgeschlagen',
-      data: { reason: message },
-      user_id: currentUser.id,
-    })
 
     const status =
       error instanceof SuperchatApiError && error.status === 429

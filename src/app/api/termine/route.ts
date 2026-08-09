@@ -4,10 +4,9 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
-import { getStratoConfig, pushStratoEvent } from '@/lib/strato-caldav'
+import { pushTerminToStrato } from '@/lib/strato-sync'
 import { sanitizeTeilnehmer, mitStandardTeilnehmer } from '@/lib/kalender-helpers'
 import { sendTerminBenachrichtigung } from '@/lib/termin-email'
-import { logActivity } from '@/lib/activities-logger'
 
 export async function GET(request: NextRequest) {
   try {
@@ -92,44 +91,12 @@ export async function POST(request: NextRequest) {
 
     // Sofort zu STRATO pushen (beidseitige Sync) — best effort: schlägt der
     // Push fehl, bleibt der Termin trotzdem im CRM gespeichert, nur eben
-    // (noch) nicht synchronisiert. Nächster manueller Sync-Lauf holt ihn nicht
-    // erneut rein (kein external_uid gesetzt bei Fehler), Nutzer kann bei
-    // Bedarf erneut speichern.
-    const stratoConfig = getStratoConfig()
-    if (stratoConfig) {
-      try {
-        const gepusht = await pushStratoEvent(stratoConfig, {
-          titel: data.titel,
-          beschreibung: data.beschreibung,
-          ort: data.ort,
-          start: new Date(data.start_zeit),
-          end: new Date(data.end_zeit),
-          ganztaegig: data.ganztaegig,
-          teilnehmer: data.teilnehmer,
-          sequence: data.sequence,
-        })
-        await supabase
-          .from('termine')
-          .update({
-            external_uid: gepusht.uid,
-            external_href: gepusht.href,
-            external_etag: gepusht.etag,
-            external_source: 'strato_caldav',
-            last_synced_at: new Date().toISOString(),
-          })
-          .eq('id', data.id)
-      } catch (err) {
-        console.error('[POST /api/termine] STRATO-Push fehlgeschlagen (Termin bleibt lokal gespeichert):', err)
-        if (data.contact_id) {
-          await logActivity(
-            null,
-            data.contact_id,
-            'strato_calendar_sync_failed',
-            `STRATO-Kalender-Sync fehlgeschlagen für Termin "${data.titel}": ${err instanceof Error ? err.message : String(err)}`,
-            { termin_id: data.id }
-          )
-        }
-      }
+    // (noch) nicht synchronisiert. sync_runs verfolgt den Versuch und
+    // erlaubt einen automatischen Retry, unabhängig von dieser Antwort.
+    try {
+      await pushTerminToStrato(supabase, data.id, { triggerType: 'manual' })
+    } catch (err) {
+      console.error('[POST /api/termine] STRATO-Push fehlgeschlagen (Termin bleibt lokal gespeichert):', err)
     }
 
     // Einladungs-Mail an alle Teilnehmer (inkl. dem automatisch ergänzten

@@ -4,10 +4,9 @@
 // DELETE /api/termine/[id] — Termin löschen
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { getStratoConfig, pushStratoEvent, deleteStratoEvent } from '@/lib/strato-caldav'
+import { pushTerminToStrato, deleteTerminFromStrato } from '@/lib/strato-sync'
 import { sanitizeTeilnehmer } from '@/lib/kalender-helpers'
 import { sendTerminBenachrichtigung, buildAenderungen } from '@/lib/termin-email'
-import { logActivity } from '@/lib/activities-logger'
 
 interface TerminTeilnehmer {
   email: string
@@ -125,44 +124,12 @@ export async function PATCH(
 
     // Änderung zu STRATO pushen (beidseitige Sync) — best effort, wie beim
     // Anlegen. Bereits verknüpfte Termine (external_href gesetzt) werden
-    // aktualisiert statt dupliziert.
-    const stratoConfig = getStratoConfig()
-    if (stratoConfig) {
-      try {
-        const gepusht = await pushStratoEvent(stratoConfig, {
-          uid: data.external_uid,
-          href: data.external_href,
-          titel: data.titel,
-          beschreibung: data.beschreibung,
-          ort: data.ort,
-          start: new Date(data.start_zeit),
-          end: new Date(data.end_zeit),
-          ganztaegig: data.ganztaegig,
-          teilnehmer: data.teilnehmer,
-          sequence: data.sequence,
-        })
-        await supabase
-          .from('termine')
-          .update({
-            external_uid: gepusht.uid,
-            external_href: gepusht.href,
-            external_etag: gepusht.etag,
-            external_source: 'strato_caldav',
-            last_synced_at: new Date().toISOString(),
-          })
-          .eq('id', params.id)
-      } catch (err) {
-        console.error('[PATCH /api/termine/[id]] STRATO-Push fehlgeschlagen (Änderung bleibt lokal gespeichert):', err)
-        if (data.contact_id) {
-          await logActivity(
-            null,
-            data.contact_id,
-            'strato_calendar_sync_failed',
-            `STRATO-Kalender-Sync fehlgeschlagen für Termin "${data.titel}": ${err instanceof Error ? err.message : String(err)}`,
-            { termin_id: data.id }
-          )
-        }
-      }
+    // aktualisiert statt dupliziert. sync_runs verfolgt den Versuch und
+    // erlaubt einen automatischen Retry, unabhängig von dieser Antwort.
+    try {
+      await pushTerminToStrato(supabase, params.id, { triggerType: 'manual' })
+    } catch (err) {
+      console.error('[PATCH /api/termine/[id]] STRATO-Push fehlgeschlagen (Änderung bleibt lokal gespeichert):', err)
     }
 
     // Teilnehmer benachrichtigen — best effort, wie der STRATO-Push oben.
@@ -235,21 +202,23 @@ export async function DELETE(
     // Verknüpften STRATO-Termin löschen (beidseitige Sync) — best effort:
     // schlägt es fehl (z.B. STRATO nicht erreichbar), wird trotzdem lokal
     // gelöscht, damit ein STRATO-Ausfall die CRM-Nutzung nicht blockiert.
-    const stratoConfig = getStratoConfig()
-    if (stratoConfig && bestehend?.external_href) {
+    // sync_runs verfolgt den Versuch und erlaubt einen automatischen Retry
+    // trotz der bereits gelöschten lokalen Zeile (href wird hier VOR dem
+    // lokalen Delete übergeben, danach ist er nicht mehr nachladbar).
+    if (bestehend?.external_href) {
       try {
-        await deleteStratoEvent(stratoConfig, bestehend.external_href)
+        await deleteTerminFromStrato(
+          supabase,
+          {
+            href: bestehend.external_href,
+            terminId: bestehend.id,
+            terminTitel: bestehend.titel,
+            contactId: bestehend.contact_id ?? null,
+          },
+          { triggerType: 'manual' }
+        )
       } catch (err) {
         console.error('[DELETE /api/termine/[id]] STRATO-Löschung fehlgeschlagen (lokal wird trotzdem gelöscht):', err)
-        if (bestehend.contact_id) {
-          await logActivity(
-            null,
-            bestehend.contact_id,
-            'strato_calendar_sync_failed',
-            `STRATO-Kalender-Löschung fehlgeschlagen für Termin "${bestehend.titel}": ${err instanceof Error ? err.message : String(err)}`,
-            { termin_id: bestehend.id }
-          )
-        }
       }
     }
 

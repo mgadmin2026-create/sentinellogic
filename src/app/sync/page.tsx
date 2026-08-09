@@ -1,6 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { HelpButton } from '@/components/help/HelpButton'
+import { SyncStatusBadge } from '@/components/SyncStatusBadge'
 
 type SyncStatus = 'connected' | 'warning' | 'inactive'
 type IntervalType = '15min' | '30min' | '60min' | 'daily' | 'weekly'
@@ -52,6 +54,89 @@ interface PreviewResult {
   }>
 }
 
+// sync_runs-gestützte Gesundheitsdaten (Phase 4 der Sync-Architektur-
+// Vereinheitlichung) — ersetzen die vorher rein hartcodierten status/count-
+// Werte für Facebook/Dialfire-Pull und speisen die 4 neuen reaktiven
+// Kacheln (KlickTipp, Dialfire-Push, SuperChat, STRATO-Kalender).
+interface IntegrationHealth {
+  total: number
+  success: number
+  failed: number
+  retrying: number
+  lastRun: string | null
+  lastStatus: string | null
+}
+
+interface SyncRun {
+  id: string
+  run_kind: 'batch' | 'item'
+  integration: string
+  trigger_type: string
+  status: string
+  attempt_count: number
+  max_attempts: number
+  error_class: string | null
+  error_detail: string | null
+  started_at: string
+  finished_at: string | null
+  next_retry_at: string | null
+  contact: { id: string; first_name: string | null; last_name: string | null } | null
+}
+
+// UI-Kachel-ID → sync_runs.integration-Schlüssel. Getrennt gehalten, weil
+// die bestehende "Dialfire"-Kachel (id 'dialfire') den Pull meint
+// (integration 'dialfire_pull'), während 'dialfire' als integration-Wert
+// bereits für den Push (KlickTipp-Regel → Dialfire-Kampagne) vergeben ist —
+// die neue reaktive Push-Kachel bekommt deshalb die UI-ID 'dialfire_push'.
+const INTEGRATION_KEY: Record<string, string> = {
+  facebook: 'facebook',
+  dialfire: 'dialfire_pull',
+  klicktipp: 'klicktipp',
+  dialfire_push: 'dialfire',
+  superchat: 'superchat',
+  strato_calendar: 'strato_calendar',
+}
+
+const INTEGRATION_LABELS: Record<string, string> = {
+  facebook: 'Facebook',
+  dialfire_pull: 'Dialfire (Pull)',
+  dialfire: 'Dialfire (Push)',
+  klicktipp: 'KlickTipp',
+  superchat: 'SuperChat',
+  strato_calendar: 'STRATO-Kalender',
+}
+
+interface ReactiveIntegration {
+  id: string
+  name: string
+  description: string
+}
+
+const REACTIVE_INTEGRATIONS: ReactiveIntegration[] = [
+  { id: 'klicktipp', name: 'KlickTipp', description: 'Kontakte und Tags aus Regeln automatisch übertragen' },
+  { id: 'dialfire_push', name: 'Dialfire (Push)', description: 'Kontakte aus Regeln an Dialfire-Kampagnen übertragen' },
+  { id: 'superchat', name: 'SuperChat', description: 'Kontakte manuell an SuperChat übertragen' },
+  { id: 'strato_calendar', name: 'STRATO-Kalender', description: 'Termine beidseitig mit STRATO synchronisieren' },
+]
+
+function healthStatus(health: IntegrationHealth | undefined): SyncStatus {
+  if (!health || health.total === 0) return 'connected'
+  return health.failed > 0 ? 'warning' : 'connected'
+}
+
+function healthCountText(health: IntegrationHealth | undefined): string {
+  if (!health || health.total === 0) return 'Verbunden'
+  return health.failed > 0
+    ? `${health.failed} Fehler in den letzten ${health.total} Läufen`
+    : `${health.success} von ${health.total} Läufen erfolgreich`
+}
+
+function healthLastSyncText(health: IntegrationHealth | undefined): string {
+  if (!health?.lastRun) return '—'
+  const d = new Date(health.lastRun)
+  return `${d.toLocaleDateString('de-DE')}, ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
+}
+
 const INITIAL_SOURCES: SyncSource[] = [
   { id: 'facebook', name: 'Facebook Lead Ads', description: 'Leads direkt aus Facebook-Kampagnen', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 15 },
   { id: 'calendly', name: 'Calendly', description: 'Terminbuchungen automatisch als Leads', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 30 },
@@ -86,6 +171,14 @@ export default function SyncPage() {
   const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
 
+  const [health, setHealth] = useState<Record<string, IntegrationHealth>>({})
+  const [runs, setRuns] = useState<SyncRun[]>([])
+  const [runsLoading, setRunsLoading] = useState(true)
+  const [runsFilter, setRunsFilter] = useState<{ integration: string; status: string }>({ integration: '', status: '' })
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [runsToast, setRunsToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const runsSectionRef = useRef<HTMLDivElement | null>(null)
+
   // Load sync config for Facebook + Dialfire
   useEffect(() => {
     fetch('/api/sync-config')
@@ -108,6 +201,70 @@ export default function SyncPage() {
   }
 
   useEffect(() => { loadSyncLog() }, [])
+
+  // Gesundheitsdaten für die Kacheln (einmalig beim Laden)
+  useEffect(() => {
+    fetch('/api/sync-runs/summary')
+      .then(r => r.json())
+      .then(res => { if (res.success) setHealth(res.data) })
+      .catch(console.error)
+  }, [])
+
+  // Automatisierungs-Läufe (neu laden, sobald sich die Filter ändern)
+  function loadRuns() {
+    setRunsLoading(true)
+    const params = new URLSearchParams()
+    if (runsFilter.integration) params.set('integration', runsFilter.integration)
+    if (runsFilter.status) params.set('status', runsFilter.status)
+    params.set('limit', '50')
+    fetch(`/api/sync-runs?${params.toString()}`)
+      .then(r => r.json())
+      .then(res => { if (res.success) setRuns(res.data.runs) })
+      .catch(console.error)
+      .finally(() => setRunsLoading(false))
+  }
+
+  useEffect(() => { loadRuns() }, [runsFilter.integration, runsFilter.status])
+
+  function zeigeLaeufeFuer(integration: string) {
+    setRunsFilter({ integration, status: '' })
+    runsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function zeigeToast(type: 'success' | 'error', msg: string) {
+    setRunsToast({ type, msg })
+    setTimeout(() => setRunsToast(null), 3000)
+  }
+
+  async function handleRetry(runId: string) {
+    setActionLoading(runId)
+    try {
+      const res = await fetch(`/api/sync-runs/${runId}/retry`, { method: 'POST' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Retry fehlgeschlagen')
+      zeigeToast('success', 'Erneut ausgeführt')
+      loadRuns()
+    } catch (err) {
+      zeigeToast('error', err instanceof Error ? err.message : 'Retry fehlgeschlagen')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handlePause(runId: string) {
+    setActionLoading(runId)
+    try {
+      const res = await fetch(`/api/sync-runs/${runId}/pause`, { method: 'POST' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Pausieren fehlgeschlagen')
+      zeigeToast('success', 'Wiederholung pausiert')
+      loadRuns()
+    } catch (err) {
+      zeigeToast('error', err instanceof Error ? err.message : 'Pausieren fehlgeschlagen')
+    } finally {
+      setActionLoading(null)
+    }
+  }
 
   function handleSync(id: string, preview: boolean = false) {
     if (id === 'facebook') {
@@ -284,10 +441,15 @@ export default function SyncPage() {
       {/* Quellen-Kacheln */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {sources.map(source => {
-          const cfg = STATUS_CFG[source.status]
-          const isSyncing = syncing === source.id
           const isFacebook = source.id === 'facebook'
           const isDialfire = source.id === 'dialfire'
+          const isHealthBacked = isFacebook || isDialfire
+          const sourceHealth = isHealthBacked ? health[INTEGRATION_KEY[source.id]] : undefined
+          const isSyncing = syncing === source.id
+          const effectiveStatus = isHealthBacked && !isSyncing ? healthStatus(sourceHealth) : source.status
+          const cfg = STATUS_CFG[effectiveStatus]
+          const countText = isHealthBacked ? healthCountText(sourceHealth) : source.count
+          const lastSyncText = isHealthBacked ? healthLastSyncText(sourceHealth) : source.lastSync
           const autoEnabled = isFacebook ? facebookEnabled : isDialfire ? dialfireEnabled : source.autoInterval > 0
           const displayInterval = isFacebook ? facebookInterval : isDialfire ? dialfireInterval : (['15min', '30min', '60min', 'daily', 'weekly'].includes(String(source.autoInterval)) ? String(source.autoInterval) as IntervalType : '15min')
 
@@ -306,8 +468,8 @@ export default function SyncPage() {
                 </span>
               </div>
               <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
-                <p className="text-sm font-semibold text-[#1A1A1A]">{source.count}</p>
-                <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {source.lastSync}</p>
+                <p className="text-sm font-semibold text-[#1A1A1A]">{countText}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {lastSyncText}</p>
               </div>
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
@@ -358,6 +520,14 @@ export default function SyncPage() {
                     )}
                   </p>
                 )}
+                {isHealthBacked && (
+                  <button
+                    onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
+                    className="self-start text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
+                  >
+                    Läufe ansehen
+                  </button>
+                )}
                 {isFacebook && (
                   <div className="flex items-center gap-2.5 pt-2 border-t border-gray-100">
                     <button onClick={() => setFacebookPreviewEnabled(!facebookPreviewEnabled)}
@@ -383,6 +553,43 @@ export default function SyncPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Reaktive Integrationen — kein Zeitplan, nur ereignisgetriggert (Regel-Anwendung, Button-Klick, Kalenderänderung) */}
+      <div className="mb-2">
+        <h2 className="font-semibold text-[#1A1A1A] text-sm">Weitere Integrationen</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Werden nicht zeitgesteuert ausgeführt, sondern durch Regeln, Klicks oder Kalenderänderungen</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {REACTIVE_INTEGRATIONS.map(source => {
+          const sourceHealth = health[INTEGRATION_KEY[source.id]]
+          const status = healthStatus(sourceHealth)
+          const cfg = STATUS_CFG[status]
+          return (
+            <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                    <h3 className="font-semibold text-[#1A1A1A] text-sm">{source.name}</h3>
+                  </div>
+                  <p className="text-xs text-gray-400">{source.description}</p>
+                </div>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+              </div>
+              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
+                <p className="text-sm font-semibold text-[#1A1A1A]">{healthCountText(sourceHealth)}</p>
+                <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {healthLastSyncText(sourceHealth)}</p>
+              </div>
+              <button
+                onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
+                className="text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all"
+              >
+                Läufe ansehen
+              </button>
             </div>
           )
         })}
@@ -519,6 +726,132 @@ export default function SyncPage() {
           </div>
         )}
       </div>
+
+      {/* Automatisierungs-Läufe — vereinheitlichte sync_runs-Tabelle über alle
+          Integrationen, additiv neben dem bestehenden Sync-Protokoll (das
+          weiterhin die reichhaltigeren Batch-Zusammenfassungen für Facebook/
+          Dialfire-Pull zeigt und unverändert bleibt). */}
+      <div ref={runsSectionRef} className="bg-white rounded-xl border border-gray-200 shadow-sm mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-semibold text-[#1A1A1A]">Automatisierungs-Läufe</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Einzelne Sync-Versuche über alle Integrationen, mit Fehlerdetail und Wiederholung</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={runsFilter.integration}
+              onChange={e => setRunsFilter(f => ({ ...f, integration: e.target.value }))}
+              className="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none"
+            >
+              <option value="">Alle Integrationen</option>
+              <option value="facebook">Facebook</option>
+              <option value="dialfire_pull">Dialfire (Pull)</option>
+              <option value="dialfire">Dialfire (Push)</option>
+              <option value="klicktipp">KlickTipp</option>
+              <option value="superchat">SuperChat</option>
+              <option value="strato_calendar">STRATO-Kalender</option>
+            </select>
+            <select
+              value={runsFilter.status}
+              onChange={e => setRunsFilter(f => ({ ...f, status: e.target.value }))}
+              className="text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none"
+            >
+              <option value="">Alle Status</option>
+              <option value="success">Erfolgreich</option>
+              <option value="failed">Fehlgeschlagen</option>
+              <option value="dead_letter">Fehlgeschlagen (kein Retry)</option>
+              <option value="retrying">Wird wiederholt</option>
+              <option value="skipped">Pausiert</option>
+            </select>
+            <button onClick={loadRuns} className="text-xs text-gray-400 hover:text-[#1A1A1A] flex items-center gap-1 transition-colors">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </svg>
+              Aktualisieren
+            </button>
+          </div>
+        </div>
+
+        {runsLoading ? (
+          <div className="text-center py-12 text-gray-400 text-sm">Läufe werden geladen…</div>
+        ) : runs.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-sm">Keine Läufe für diese Filter.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/60">
+                  {['Zeitpunkt', 'Integration', 'Typ', 'Kontakt', 'Status', 'Versuch', 'Aktionen'].map(h => (
+                    <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map(run => (
+                  <tr key={run.id} className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors">
+                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
+                      {new Date(run.started_at).toLocaleDateString('de-DE')},{' '}
+                      {new Date(run.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                    </td>
+                    <td className="px-5 py-3 font-medium text-[#1A1A1A] text-xs whitespace-nowrap">
+                      {INTEGRATION_LABELS[run.integration] ?? run.integration}
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 text-xs">{run.run_kind === 'batch' ? 'Batch' : 'Einzelvorgang'}</td>
+                    <td className="px-5 py-3 text-xs">
+                      {run.contact ? (
+                        <Link href={`/kontakte/${run.contact.id}`} className="text-gray-700 hover:text-yellow-600">
+                          {[run.contact.first_name, run.contact.last_name].filter(Boolean).join(' ') || 'Ohne Namen'}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <SyncStatusBadge status={run.status} detail={run.error_detail} />
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{run.attempt_count}/{run.max_attempts}</td>
+                    <td className="px-5 py-3">
+                      {run.run_kind === 'item' && (run.status === 'retrying' || run.status === 'dead_letter') && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleRetry(run.id)}
+                            disabled={actionLoading === run.id}
+                            className="text-xs font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-1 rounded transition-all disabled:opacity-50"
+                          >
+                            {actionLoading === run.id ? '…' : 'Retry jetzt'}
+                          </button>
+                          {run.status === 'retrying' && (
+                            <button
+                              onClick={() => handlePause(run.id)}
+                              disabled={actionLoading === run.id}
+                              className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-50"
+                            >
+                              Pause
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {runsToast && (
+        <div
+          className={`fixed top-4 right-4 z-50 rounded-lg border px-4 py-2.5 text-sm shadow-lg ${
+            runsToast.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}
+        >
+          {runsToast.msg}
+        </div>
+      )}
     </div>
   )
 }
