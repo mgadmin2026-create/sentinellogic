@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { toDatetimeLocalValue, toDateKey, STANDARD_TEILNEHMER } from '@/lib/kalender-helpers'
+import { ContactSearchSelect } from '@/components/ContactSearchSelect'
 
 export interface TerminTeilnehmer {
   email: string
@@ -24,6 +25,7 @@ interface Kontakt {
   id: string
   first_name: string
   last_name: string
+  email?: string | null
 }
 
 interface TeamMember {
@@ -274,16 +276,20 @@ export function TerminEditModal({ termin, initialStart, isOpen, onClose, onSave,
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Kontakt (optional)</label>
-            <select
-              value={form.contact_id || ''}
-              onChange={(e) => setForm({ ...form, contact_id: e.target.value || undefined })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
-            >
-              <option value="">Kein Kontakt</option>
-              {kontakte.map((k) => (
-                <option key={k.id} value={k.id}>{k.first_name} {k.last_name}</option>
-              ))}
-            </select>
+            <ContactSearchSelect
+              testId="termin-contact-select"
+              kontakte={kontakte}
+              value={form.contact_id}
+              onChange={(id, kontakt) => {
+                setForm({ ...form, contact_id: id })
+                // E-Mail-Feld vorbelegen, um doppelte Erfassung zu vermeiden — nur wenn
+                // das Feld noch leer ist, damit ein bereits getippter Wert nicht überschrieben wird.
+                if (kontakt?.email && !teilnehmerEingabe.trim()) {
+                  setTeilnehmerEingabe(kontakt.email)
+                  setTeilnehmerFehler('')
+                }
+              }}
+            />
           </div>
 
           <div>
