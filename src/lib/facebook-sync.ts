@@ -9,8 +9,9 @@
 // bestehende activities-Logging bleibt unverändert (additiv) -- sync_runs
 // ermöglicht Fehlerklassifikation + automatischen Retry pro Lead (das rohe
 // Lead-Objekt steckt dafür im sync_runs.data-Feld). Seit Phase 5 ist
-// sync_runs auch die alleinige Quelle für das Sync-Protokoll auf /sync
-// (kein direktes sync_log-Schreiben mehr, siehe sync-log-adapter.ts).
+// sync_runs auch die alleinige Quelle für die Automatisierungs-Läufe-
+// Tabelle auf /sync (kein direktes sync_log-Schreiben mehr, Detailansicht
+// siehe src/lib/sync-runs/batch-detail.ts).
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { recordRunStart, recordRunOutcome, runWithTracking, type ResumeRun } from '@/lib/sync-runs/retry-runner'
@@ -310,10 +311,10 @@ export async function runFacebookLeadSync(triggerType: 'cron' | 'manual' = 'manu
       }
     }
 
-    // sync_log wird seit Phase 5 nicht mehr direkt beschrieben -- das
-    // Sync-Protokoll auf /sync liest diese Zahlen jetzt aus der bereits
-    // gesetzten sync_runs-Batch-Zeile (siehe recordRunOutcome unten) via
-    // src/lib/sync-runs/sync-log-adapter.ts.
+    // sync_log wird seit Phase 5 nicht mehr direkt beschrieben -- die
+    // Automatisierungs-Läufe-Tabelle auf /sync liest diese Zahlen jetzt aus
+    // der bereits gesetzten sync_runs-Batch-Zeile (siehe recordRunOutcome
+    // unten) via src/lib/sync-runs/batch-detail.ts.
     console.log(
       `✅ Sync completed! Synced: ${synced}, Updated: ${updated}, Skipped: ${skipped}, Errors: ${errors}`
     )

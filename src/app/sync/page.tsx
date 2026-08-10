@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import Link from 'next/link'
 import { HelpButton } from '@/components/help/HelpButton'
 import { SyncStatusBadge } from '@/components/SyncStatusBadge'
@@ -20,19 +20,6 @@ interface SyncSource {
   // abgeblendet dargestellt statt eine funktionierende Integration
   // vorzutäuschen.
   disabled?: boolean
-}
-
-interface SyncLogEntry {
-  id: string
-  created_at: string
-  source: string
-  count: number
-  duplicates_skipped: number
-  status: 'success' | 'warning' | 'error'
-  message: string
-  lead_names: string[]
-  error_details?: Array<{ lead_id: string; email: string | null; error_message: string }>
-  duplicate_details?: Array<{ facebook_id: string; email: string | null; existing_contact_id: string | null; action: string; reason: string }>
 }
 
 interface SourceSyncConfig {
@@ -113,6 +100,16 @@ const INTEGRATION_LABELS: Record<string, string> = {
   strato_calendar: 'STRATO-Kalender',
   strato_mail: 'STRATO-Mail',
   klicktipp_webhook: 'KlickTipp-Webhook',
+  csv_import: 'CSV-Import',
+}
+
+// Detailaufschlüsselung für eine Batch-Zeile (Facebook, Dialfire-Pull,
+// CSV-Import) — lazy nachgeladen beim Aufklappen, siehe batch-detail.ts.
+interface BatchDetail {
+  summary: string
+  importedNames: string[]
+  duplicates: Array<{ label: string; reason: string }>
+  errors: Array<{ label: string; message: string }>
 }
 
 // Integrationen ohne Retry-Handler (retry-handlers.ts) -- "Retry jetzt" wird
@@ -187,9 +184,6 @@ const INTERVAL_LABELS: Record<IntervalType, string> = {
 export default function SyncPage() {
   const [sources, setSources] = useState<SyncSource[]>(INITIAL_SOURCES)
   const [syncing, setSyncing] = useState<string | null>(null)
-  const [syncLog, setSyncLog] = useState<SyncLogEntry[]>([])
-  const [loadingLog, setLoadingLog] = useState(true)
-  const [expandedEntry, setExpandedEntry] = useState<string | null>(null)
   const [facebookConfig, setFacebookConfig] = useState<SourceSyncConfig | null>(null)
   const [dialfireConfig, setDialfireConfig] = useState<SourceSyncConfig | null>(null)
   const [facebookPreviewEnabled, setFacebookPreviewEnabled] = useState(false)
@@ -203,6 +197,9 @@ export default function SyncPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [runsToast, setRunsToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [retryAllLoading, setRetryAllLoading] = useState<string | null>(null)
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
+  const [runDetails, setRunDetails] = useState<Record<string, BatchDetail | null>>({})
+  const [detailLoading, setDetailLoading] = useState<string | null>(null)
   const runsSectionRef = useRef<HTMLDivElement | null>(null)
 
   // Load sync config for Facebook + Dialfire
@@ -216,20 +213,6 @@ export default function SyncPage() {
       .then(cfg => setDialfireConfig(cfg))
       .catch(console.error)
   }, [])
-
-  // Load sync log from DB — sync_runs-synthetisierte Facebook/Dialfire-Pull-
-  // Einträge (ID-Präfix "sync_runs:") werden herausgefiltert, die erscheinen
-  // bereits vollständig in der Automatisierungs-Läufe-Tabelle unten; diese
-  // Tabelle zeigt danach nur noch echte sync_log-Zeilen (CSV-Import).
-  function loadSyncLog() {
-    fetch('/api/sync-log?limit=20')
-      .then(r => r.json())
-      .then(res => { if (res.success) setSyncLog(res.data.filter((e: SyncLogEntry) => !e.id.startsWith('sync_runs:'))) })
-      .catch(console.error)
-      .finally(() => setLoadingLog(false))
-  }
-
-  useEffect(() => { loadSyncLog() }, [])
 
   // Gesundheitsdaten für die Kacheln
   function loadHealth() {
@@ -290,6 +273,25 @@ export default function SyncPage() {
     }
   }
 
+  // Klick auf eine Batch-Zeile in der Automatisierungs-Läufe-Tabelle —
+  // lädt die Detailaufschlüsselung (importierte Kontakte, Duplikate,
+  // Fehler) einmalig nach und cached sie für erneutes Auf-/Zuklappen.
+  function toggleExpand(run: SyncRun) {
+    if (run.run_kind !== 'batch') return
+    if (expandedRunId === run.id) {
+      setExpandedRunId(null)
+      return
+    }
+    setExpandedRunId(run.id)
+    if (run.id in runDetails) return
+    setDetailLoading(run.id)
+    fetch(`/api/sync-runs/${run.id}/detail`)
+      .then(r => r.json())
+      .then(res => setRunDetails(prev => ({ ...prev, [run.id]: res.success ? res.data : null })))
+      .catch(() => setRunDetails(prev => ({ ...prev, [run.id]: null })))
+      .finally(() => setDetailLoading(null))
+  }
+
   function zeigeToast(type: 'success' | 'error', msg: string) {
     setRunsToast({ type, msg })
     setTimeout(() => setRunsToast(null), 3000)
@@ -341,7 +343,8 @@ export default function SyncPage() {
           .then(r => r.json())
           .then((data) => {
             setSources(prev => prev.map(s => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
-            loadSyncLog()
+            loadHealth()
+            loadRuns()
             return data
           })
           .catch(console.error)
@@ -359,7 +362,8 @@ export default function SyncPage() {
         .then(r => r.json())
         .then((data) => {
           setSources(prev => prev.map(s => s.id === id ? { ...s, lastSync: 'Gerade eben' } : s))
-          loadSyncLog()
+          loadHealth()
+          loadRuns()
           return data
         })
         .catch(console.error)
@@ -446,8 +450,8 @@ export default function SyncPage() {
             <HelpButton articleId="sync.overview" />
           </div>
           <p className="text-gray-500 text-sm mt-0.5">
-            {syncLog.length > 0
-              ? `Letzter Eintrag: ${new Date(syncLog[0].created_at).toLocaleDateString('de-DE')}, ${new Date(syncLog[0].created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
+            {runs.length > 0
+              ? `Letzter Eintrag: ${new Date(runs[0].started_at).toLocaleDateString('de-DE')}, ${new Date(runs[0].started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
               : 'Noch keine Synchronisation'}
           </p>
         </div>
@@ -689,142 +693,11 @@ export default function SyncPage() {
         })}
       </div>
 
-      {/* Sync-Protokoll */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div>
-            <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-              Manuelle Importe
-              <HelpButton articleId="sync.protokoll" />
-            </h2>
-            <p className="text-xs text-gray-400 mt-0.5">CSV-Importe — Details zu importierten Kontakten, Duplikaten und Fehlern</p>
-          </div>
-          <button onClick={loadSyncLog} className="text-xs text-gray-400 hover:text-[#1A1A1A] flex items-center gap-1 transition-colors">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-            </svg>
-            Aktualisieren
-          </button>
-        </div>
-
-        {loadingLog ? (
-          <div className="text-center py-12 text-gray-400 text-sm">Protokoll wird geladen…</div>
-        ) : syncLog.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 text-sm">Noch keine manuellen Importe protokolliert.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/60">
-                  {['Datum & Uhrzeit', 'Quelle', 'Importiert', 'Duplikate', 'Fehler', 'Status', 'Meldung'].map(h => (
-                    <th key={h} className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide px-5 py-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {syncLog.map(entry => (
-                  <div key={entry.id}>
-                    <tr
-                      onClick={() => setExpandedEntry(expandedEntry === entry.id ? null : entry.id)}
-                      className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors cursor-pointer">
-                      <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
-                        {new Date(entry.created_at).toLocaleDateString('de-DE')},{' '}
-                        {new Date(entry.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
-                      </td>
-                      <td className="px-5 py-3 font-medium text-[#1A1A1A]">{entry.source}</td>
-                      <td className="px-5 py-3 font-bold text-[#1A1A1A]">{entry.count}</td>
-                      <td className="px-5 py-3">
-                        {entry.duplicates_skipped > 0 ? (
-                          <span className="text-xs font-medium text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded-full">
-                            {entry.duplicates_skipped}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        {entry.error_details && entry.error_details.length > 0 ? (
-                          <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded-full">
-                            {entry.error_details.length}
-                          </span>
-                        ) : (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
-                          entry.status === 'success' ? 'bg-emerald-50 text-emerald-700' :
-                          entry.status === 'warning' ? 'bg-yellow-50 text-yellow-700' :
-                          'bg-red-50 text-red-700'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${
-                            entry.status === 'success' ? 'bg-emerald-500' :
-                            entry.status === 'warning' ? 'bg-yellow-400' : 'bg-red-500'}`} />
-                          {entry.status === 'success' ? '✓' : entry.status === 'warning' ? '⚠' : '✕'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-gray-500 text-xs">{entry.message}</td>
-                    </tr>
-                    {/* Expandable Details */}
-                    {expandedEntry === entry.id && (
-                      <tr className="bg-gray-50/60 border-b border-gray-100">
-                        <td colSpan={7} className="px-5 py-4">
-                          <div className="space-y-3">
-                            {/* Imported Names */}
-                            {entry.lead_names && entry.lead_names.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-emerald-700 mb-2">✅ Importierte Kontakte ({entry.lead_names.length})</p>
-                                <div className="flex flex-wrap gap-1.5 pl-4">
-                                  {entry.lead_names.map((name, i) => (
-                                    <span key={i} className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                      {name}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {/* Duplicate Details */}
-                            {entry.duplicate_details && entry.duplicate_details.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-gray-600 mb-2">📋 Duplikate ({entry.duplicate_details.length})</p>
-                                <div className="space-y-1 pl-4">
-                                  {entry.duplicate_details.map((dup, i) => (
-                                    <p key={i} className="text-xs text-gray-600">
-                                      {dup.action === 'linked' ? '⟳' : '⊘'} {dup.email || dup.facebook_id} — {dup.reason}
-                                    </p>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {/* Error Details */}
-                            {entry.error_details && entry.error_details.length > 0 && (
-                              <div>
-                                <p className="text-xs font-semibold text-red-600 mb-2">❌ Fehler ({entry.error_details.length})</p>
-                                <div className="space-y-1 pl-4">
-                                  {entry.error_details.map((err, i) => (
-                                    <p key={i} className="text-xs text-red-600">
-                                      {err.email || err.lead_id}: {err.error_message}
-                                    </p>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </div>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Automatisierungs-Läufe — vereinheitlichte sync_runs-Tabelle über alle
-          Integrationen, additiv neben dem bestehenden Sync-Protokoll (das
-          weiterhin die reichhaltigeren Batch-Zusammenfassungen für Facebook/
-          Dialfire-Pull zeigt und unverändert bleibt). */}
+      {/* Automatisierungs-Läufe — die eine, vereinheitlichte sync_runs-Tabelle
+          über alle Integrationen inkl. CSV-Import. Batch-Zeilen (Facebook,
+          Dialfire-Pull, CSV-Import) sind aufklappbar und zeigen dieselbe
+          Aufschlüsselung wie früher das separate Sync-Protokoll (importierte
+          Kontakte, Duplikate, Fehler), siehe batch-detail.ts. */}
       <div ref={runsSectionRef} className="bg-white rounded-xl border border-gray-200 shadow-sm mt-8">
         <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
           <div>
@@ -846,6 +719,7 @@ export default function SyncPage() {
               <option value="strato_calendar">STRATO-Kalender</option>
               <option value="strato_mail">STRATO-Mail</option>
               <option value="klicktipp_webhook">KlickTipp-Webhook</option>
+              <option value="csv_import">CSV-Import</option>
             </select>
             <select
               value={runsFilter.status}
@@ -884,55 +758,132 @@ export default function SyncPage() {
                 </tr>
               </thead>
               <tbody>
-                {runs.map(run => (
-                  <tr key={run.id} className="border-b border-gray-50 hover:bg-gray-50/40 transition-colors">
-                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
-                      {new Date(run.started_at).toLocaleDateString('de-DE')},{' '}
-                      {new Date(run.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
-                    </td>
-                    <td className="px-5 py-3 font-medium text-[#1A1A1A] text-xs whitespace-nowrap">
-                      {INTEGRATION_LABELS[run.integration] ?? run.integration}
-                    </td>
-                    <td className="px-5 py-3 text-gray-500 text-xs">{run.run_kind === 'batch' ? 'Batch' : 'Einzelvorgang'}</td>
-                    <td className="px-5 py-3 text-xs">
-                      {run.contact ? (
-                        <Link href={`/kontakte/${run.contact.id}`} className="text-gray-700 hover:text-yellow-600">
-                          {[run.contact.first_name, run.contact.last_name].filter(Boolean).join(' ') || 'Ohne Namen'}
-                        </Link>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <SyncStatusBadge status={run.status} detail={run.error_detail} />
-                    </td>
-                    <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{run.attempt_count}/{run.max_attempts}</td>
-                    <td className="px-5 py-3">
-                      {run.run_kind === 'item' && (run.status === 'retrying' || run.status === 'dead_letter') && (
-                        <div className="flex items-center gap-2">
-                          {!NON_RETRYABLE_INTEGRATIONS.has(run.integration) && (
-                            <button
-                              onClick={() => handleRetry(run.id)}
-                              disabled={actionLoading === run.id}
-                              className="text-xs font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-1 rounded transition-all disabled:opacity-50"
-                            >
-                              {actionLoading === run.id ? '…' : 'Retry jetzt'}
-                            </button>
+                {runs.map(run => {
+                  const isBatch = run.run_kind === 'batch'
+                  const isExpanded = expandedRunId === run.id
+                  const detail = runDetails[run.id]
+                  return (
+                    <Fragment key={run.id}>
+                      <tr
+                        onClick={() => toggleExpand(run)}
+                        className={`border-b border-gray-50 transition-colors ${isBatch ? 'cursor-pointer hover:bg-gray-50/60' : 'hover:bg-gray-50/40'}`}
+                      >
+                        <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">
+                          {new Date(run.started_at).toLocaleDateString('de-DE')},{' '}
+                          {new Date(run.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                        </td>
+                        <td className="px-5 py-3 font-medium text-[#1A1A1A] text-xs whitespace-nowrap">
+                          {INTEGRATION_LABELS[run.integration] ?? run.integration}
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">
+                          {isBatch ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span className={`inline-block transition-transform ${isExpanded ? 'rotate-90' : ''}`}>▸</span>
+                              Batch
+                            </span>
+                          ) : (
+                            'Einzelvorgang'
                           )}
-                          {run.status === 'retrying' && (
-                            <button
-                              onClick={() => handlePause(run.id)}
-                              disabled={actionLoading === run.id}
-                              className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-50"
+                        </td>
+                        <td className="px-5 py-3 text-xs">
+                          {run.contact ? (
+                            <Link
+                              href={`/kontakte/${run.contact.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-gray-700 hover:text-yellow-600"
                             >
-                              Pause
-                            </button>
+                              {[run.contact.first_name, run.contact.last_name].filter(Boolean).join(' ') || 'Ohne Namen'}
+                            </Link>
+                          ) : (
+                            <span className="text-gray-300">—</span>
                           )}
-                        </div>
+                        </td>
+                        <td className="px-5 py-3">
+                          <SyncStatusBadge status={run.status} detail={run.error_detail} />
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 text-xs whitespace-nowrap">{run.attempt_count}/{run.max_attempts}</td>
+                        <td className="px-5 py-3">
+                          {run.run_kind === 'item' && (run.status === 'retrying' || run.status === 'dead_letter') && (
+                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              {!NON_RETRYABLE_INTEGRATIONS.has(run.integration) && (
+                                <button
+                                  onClick={() => handleRetry(run.id)}
+                                  disabled={actionLoading === run.id}
+                                  className="text-xs font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-1 rounded transition-all disabled:opacity-50"
+                                >
+                                  {actionLoading === run.id ? '…' : 'Retry jetzt'}
+                                </button>
+                              )}
+                              {run.status === 'retrying' && (
+                                <button
+                                  onClick={() => handlePause(run.id)}
+                                  disabled={actionLoading === run.id}
+                                  className="text-xs text-gray-500 hover:text-gray-800 disabled:opacity-50"
+                                >
+                                  Pause
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                      {isBatch && isExpanded && (
+                        <tr className="bg-gray-50/60 border-b border-gray-100">
+                          <td colSpan={7} className="px-5 py-4">
+                            {detailLoading === run.id ? (
+                              <p className="text-xs text-gray-400">Details werden geladen…</p>
+                            ) : !detail ? (
+                              <p className="text-xs text-gray-400">Keine weiteren Details verfügbar.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {detail.summary && (
+                                  <p className="text-xs text-gray-600">{detail.summary}</p>
+                                )}
+                                {detail.importedNames.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-emerald-700 mb-2">
+                                      ✅ Importierte Kontakte ({detail.importedNames.length})
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5 pl-4">
+                                      {detail.importedNames.map((name, i) => (
+                                        <span key={i} className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                          {name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {detail.duplicates.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-600 mb-2">📋 Duplikate ({detail.duplicates.length})</p>
+                                    <div className="space-y-1 pl-4">
+                                      {detail.duplicates.map((dup, i) => (
+                                        <p key={i} className="text-xs text-gray-600">⟳ {dup.label} — {dup.reason}</p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {detail.errors.length > 0 && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-red-600 mb-2">❌ Fehler ({detail.errors.length})</p>
+                                    <div className="space-y-1 pl-4">
+                                      {detail.errors.map((err, i) => (
+                                        <p key={i} className="text-xs text-red-600">{err.label}: {err.message}</p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {!detail.summary && detail.importedNames.length === 0 && detail.duplicates.length === 0 && detail.errors.length === 0 && (
+                                  <p className="text-xs text-gray-400">Keine weiteren Details verfügbar.</p>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>

@@ -8,9 +8,9 @@
 // je ein run_kind='item'-Eintrag pro Kontakt darunter (parent_run_id). Das
 // per-Kontakt-Audit-Log der Edge Function (dialfire_sync_log) bleibt
 // unverändert (additiv, andere Zuständigkeit -- Feld-Diff statt Lauf-
-// Protokoll). Seit Phase 5 ist sync_runs die alleinige Quelle für das
-// Sync-Protokoll auf /sync (kein direktes sync_log-Schreiben mehr, siehe
-// sync-log-adapter.ts).
+// Protokoll). Seit Phase 5 ist sync_runs die alleinige Quelle für die
+// Automatisierungs-Läufe-Tabelle auf /sync (kein direktes sync_log-
+// Schreiben mehr, Detailansicht siehe src/lib/sync-runs/batch-detail.ts).
 import { createServerClient } from '@/lib/supabase/server'
 import { recordRunStart, recordRunOutcome, runWithTracking, type ResumeRun } from '@/lib/sync-runs/retry-runner'
 import { classifyError } from '@/lib/sync-runs/error-classification'
@@ -173,9 +173,9 @@ export async function runDialfirePullSync(triggerType: 'cron' | 'manual' = 'manu
 
     const total = contacts?.length ?? 0
 
-    // sync_log wird seit Phase 5 nicht mehr direkt beschrieben -- das
-    // Sync-Protokoll auf /sync liest diese Zahlen jetzt aus der
-    // sync_runs-Batch-Zeile unten via src/lib/sync-runs/sync-log-adapter.ts.
+    // sync_log wird seit Phase 5 nicht mehr direkt beschrieben -- die
+    // Automatisierungs-Läufe-Tabelle auf /sync liest diese Zahlen jetzt aus
+    // der sync_runs-Batch-Zeile unten via src/lib/sync-runs/batch-detail.ts.
     if (batchRun) {
       await recordRunOutcome(supabase, batchRun, {
         success: true,
