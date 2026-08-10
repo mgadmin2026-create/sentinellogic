@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { CommentThread } from '@/components/kontakt/CommentThread'
+import { ContactSearchSelect } from '@/components/ContactSearchSelect'
 
 interface Aufgabe {
   id?: string
@@ -187,18 +188,12 @@ export function AufgabenEditModal({ kontaktId, aufgabe, isOpen, onClose, onSave 
 
           <div>
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">Kontakt (optional)</label>
-            <select
-              value={form.contact_id || ''}
-              onChange={(e) => setForm({ ...form, contact_id: e.target.value || undefined })}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40 text-sm"
-            >
-              <option value="">Kein Kontakt</option>
-              {kontakte.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.first_name} {k.last_name}
-                </option>
-              ))}
-            </select>
+            <ContactSearchSelect
+              testId="task-contact-select"
+              kontakte={kontakte}
+              value={form.contact_id}
+              onChange={(id) => setForm({ ...form, contact_id: id })}
+            />
           </div>
 
           <div>
