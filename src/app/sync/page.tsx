@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { HelpButton } from '@/components/help/HelpButton'
 import { SyncStatusBadge } from '@/components/SyncStatusBadge'
+import { AutomatisierungenTabs } from '@/components/automatisierungen/AutomatisierungenTabs'
 
 type SyncStatus = 'connected' | 'warning' | 'inactive'
 type IntervalType = '15min' | '30min' | '60min' | 'daily' | 'weekly'
@@ -153,6 +154,14 @@ function healthLastSyncText(health: IntegrationHealth | undefined): string {
   return `${d.toLocaleDateString('de-DE')}, ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
 }
 
+// Ableitung für die Kachel-Badges — nutzt dasselbe Status-Vokabular wie die
+// Automatisierungs-Läufe-Tabelle (SyncStatusBadge/classifyRunStatus) statt
+// des separaten STATUS_CFG, um die Kacheln optisch konsistent zu machen.
+function tileRunStatus(health: IntegrationHealth | undefined): 'success' | 'failed' | null {
+  if (!health || health.total === 0) return null
+  return health.failed > 0 ? 'failed' : 'success'
+}
+
 const INITIAL_SOURCES: SyncSource[] = [
   { id: 'facebook', name: 'Facebook Lead Ads', description: 'Leads direkt aus Facebook-Kampagnen', status: 'connected', count: 'Verbunden', lastSync: '—', autoInterval: 15 },
   { id: 'calendly', name: 'Calendly', description: 'Terminbuchungen automatisch als Leads', status: 'inactive', count: 'Nicht angebunden', lastSync: '—', autoInterval: 0, disabled: true },
@@ -193,6 +202,7 @@ export default function SyncPage() {
   const [runsFilter, setRunsFilter] = useState<{ integration: string; status: string }>({ integration: '', status: '' })
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [runsToast, setRunsToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [retryAllLoading, setRetryAllLoading] = useState<string | null>(null)
   const runsSectionRef = useRef<HTMLDivElement | null>(null)
 
   // Load sync config for Facebook + Dialfire
@@ -207,24 +217,29 @@ export default function SyncPage() {
       .catch(console.error)
   }, [])
 
-  // Load sync log from DB
+  // Load sync log from DB — sync_runs-synthetisierte Facebook/Dialfire-Pull-
+  // Einträge (ID-Präfix "sync_runs:") werden herausgefiltert, die erscheinen
+  // bereits vollständig in der Automatisierungs-Läufe-Tabelle unten; diese
+  // Tabelle zeigt danach nur noch echte sync_log-Zeilen (CSV-Import).
   function loadSyncLog() {
     fetch('/api/sync-log?limit=20')
       .then(r => r.json())
-      .then(res => { if (res.success) setSyncLog(res.data) })
+      .then(res => { if (res.success) setSyncLog(res.data.filter((e: SyncLogEntry) => !e.id.startsWith('sync_runs:'))) })
       .catch(console.error)
       .finally(() => setLoadingLog(false))
   }
 
   useEffect(() => { loadSyncLog() }, [])
 
-  // Gesundheitsdaten für die Kacheln (einmalig beim Laden)
-  useEffect(() => {
+  // Gesundheitsdaten für die Kacheln
+  function loadHealth() {
     fetch('/api/sync-runs/summary')
       .then(r => r.json())
       .then(res => { if (res.success) setHealth(res.data) })
       .catch(console.error)
-  }, [])
+  }
+
+  useEffect(() => { loadHealth() }, [])
 
   // Automatisierungs-Läufe (neu laden, sobald sich die Filter ändern)
   function loadRuns() {
@@ -245,6 +260,34 @@ export default function SyncPage() {
   function zeigeLaeufeFuer(integration: string) {
     setRunsFilter({ integration, status: '' })
     runsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // "Jetzt synchronisieren" für ereignisgetriggerte Integrationen: führt alle
+  // aktuell wartenden Wiederholungen sofort aus, statt auf den nächsten
+  // Cron-Tick zu warten (siehe processRetries() in retry-handlers.ts).
+  async function handleRetryAll(integrationKey: string) {
+    setRetryAllLoading(integrationKey)
+    try {
+      const res = await fetch('/api/sync-runs/retry-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ integration: integrationKey }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Fehlgeschlagen')
+      zeigeToast(
+        'success',
+        json.processed > 0
+          ? `${json.processed} wartende${json.processed === 1 ? 'r Lauf wurde' : ' Läufe wurden'} erneut ausgeführt`
+          : 'Keine wartenden Läufe zum Wiederholen gefunden'
+      )
+      loadHealth()
+      loadRuns()
+    } catch (err) {
+      zeigeToast('error', err instanceof Error ? err.message : 'Fehlgeschlagen')
+    } finally {
+      setRetryAllLoading(null)
+    }
   }
 
   function zeigeToast(type: 'success' | 'error', msg: string) {
@@ -394,6 +437,7 @@ export default function SyncPage() {
 
   return (
     <div className="p-8">
+      <AutomatisierungenTabs />
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -455,6 +499,10 @@ export default function SyncPage() {
       )}
 
       {/* Quellen-Kacheln */}
+      <div className="mb-2">
+        <h2 className="font-semibold text-[#1A1A1A] text-sm">Zeitgesteuerte Verbindungen</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Laufen automatisch nach Zeitplan, zusätzlich manuell auslösbar</p>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {sources.map(source => {
           const isFacebook = source.id === 'facebook'
@@ -474,14 +522,22 @@ export default function SyncPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${cfg.dot} ${isSyncing ? 'animate-pulse' : ''}`} />
+                    {!isHealthBacked && <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />}
                     <h3 className="font-semibold text-[#1A1A1A] text-sm">{source.name}</h3>
                   </div>
                   <p className="text-xs text-gray-400">{source.description}</p>
                 </div>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.badge}`}>
-                  {isSyncing ? 'Synchronisiere…' : cfg.label}
-                </span>
+                {isHealthBacked ? (
+                  isSyncing ? (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">Synchronisiere…</span>
+                  ) : tileRunStatus(sourceHealth) === null ? (
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Noch keine Läufe</span>
+                  ) : (
+                    <SyncStatusBadge status={tileRunStatus(sourceHealth)!} />
+                  )
+                ) : (
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+                )}
               </div>
               <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
                 <p className="text-sm font-semibold text-[#1A1A1A]">{countText}</p>
@@ -574,38 +630,60 @@ export default function SyncPage() {
         })}
       </div>
 
-      {/* Reaktive Integrationen — kein Zeitplan, nur ereignisgetriggert (Regel-Anwendung, Button-Klick, Kalenderänderung) */}
+      {/* Ereignisgetriggerte Integrationen — kein Zeitplan, ausgelöst durch Regel-Anwendung, Button-Klick oder Kalenderänderung */}
       <div className="mb-2">
-        <h2 className="font-semibold text-[#1A1A1A] text-sm">Weitere Integrationen</h2>
+        <h2 className="font-semibold text-[#1A1A1A] text-sm">Ereignisgetriggerte Integrationen</h2>
         <p className="text-xs text-gray-400 mt-0.5">Werden nicht zeitgesteuert ausgeführt, sondern durch Regeln, Klicks oder Kalenderänderungen</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {REACTIVE_INTEGRATIONS.map(source => {
           const sourceHealth = health[INTEGRATION_KEY[source.id]]
-          const status = healthStatus(sourceHealth)
-          const cfg = STATUS_CFG[status]
+          const runStatus = tileRunStatus(sourceHealth)
+          const isRetrying = retryAllLoading === source.id
+          const isNonRetryable = NON_RETRYABLE_INTEGRATIONS.has(INTEGRATION_KEY[source.id])
           return (
             <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-                    <h3 className="font-semibold text-[#1A1A1A] text-sm">{source.name}</h3>
-                  </div>
+                  <h3 className="font-semibold text-[#1A1A1A] text-sm mb-1">{source.name}</h3>
                   <p className="text-xs text-gray-400">{source.description}</p>
                 </div>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+                {runStatus === null ? (
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Noch keine Läufe</span>
+                ) : (
+                  <SyncStatusBadge status={runStatus} />
+                )}
               </div>
               <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
                 <p className="text-sm font-semibold text-[#1A1A1A]">{healthCountText(sourceHealth)}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {healthLastSyncText(sourceHealth)}</p>
               </div>
-              <button
-                onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
-                className="text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all"
-              >
-                Läufe ansehen
-              </button>
+              <div className="flex items-center gap-2.5">
+                {isNonRetryable ? (
+                  <button
+                    disabled
+                    title="E-Mail-Versand kann nicht automatisch wiederholt werden — nicht idempotent. Bitte betroffenen Kontakt manuell prüfen."
+                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 text-gray-300 px-3 py-1.5 rounded-lg cursor-not-allowed"
+                  >
+                    Jetzt synchronisieren
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleRetryAll(INTEGRATION_KEY[source.id])}
+                    disabled={isRetrying}
+                    title="Führt alle aktuell wartenden Wiederholungen sofort aus (löst keinen neuen Abgleich für bereits erfolgreiche Kontakte aus)"
+                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent"
+                  >
+                    {isRetrying ? 'Läuft…' : 'Jetzt synchronisieren'}
+                  </button>
+                )}
+                <button
+                  onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
+                  className="text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
+                >
+                  Läufe ansehen
+                </button>
+              </div>
             </div>
           )
         })}
@@ -616,10 +694,10 @@ export default function SyncPage() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-1.5">
-              Sync-Protokoll
+              Manuelle Importe
               <HelpButton articleId="sync.protokoll" />
             </h2>
-            <p className="text-xs text-gray-400 mt-0.5">Jeder Eintrag zeigt Details zu Importen, Duplikaten und Fehlern</p>
+            <p className="text-xs text-gray-400 mt-0.5">CSV-Importe — Details zu importierten Kontakten, Duplikaten und Fehlern</p>
           </div>
           <button onClick={loadSyncLog} className="text-xs text-gray-400 hover:text-[#1A1A1A] flex items-center gap-1 transition-colors">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -633,7 +711,7 @@ export default function SyncPage() {
         {loadingLog ? (
           <div className="text-center py-12 text-gray-400 text-sm">Protokoll wird geladen…</div>
         ) : syncLog.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 text-sm">Noch keine Synchronisationen protokolliert.</div>
+          <div className="text-center py-12 text-gray-400 text-sm">Noch keine manuellen Importe protokolliert.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

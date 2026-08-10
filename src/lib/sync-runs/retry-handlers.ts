@@ -141,6 +141,16 @@ const RETRY_HANDLERS: Record<string, RetryHandler> = {
 }
 
 /**
+ * Ob für eine Integration ein Retry-Handler existiert — genutzt von der
+ * /api/sync-runs/retry-all-Route und vom "Jetzt synchronisieren"-Button der
+ * ereignisgetriggerten Integrationen im Control Center, um z.B. strato_mail
+ * (nicht sicher wiederholbar) sauber auszuschließen.
+ */
+export function hasRetryHandler(integration: string): boolean {
+  return integration in RETRY_HANDLERS
+}
+
+/**
  * Verarbeitet fällige Retries für eine Integration (sync_runs mit
  * status='retrying' und next_retry_at in der Vergangenheit). Wird von
  * bestehenden Cron-Routen mit-aufgerufen (Piggyback), kein eigener

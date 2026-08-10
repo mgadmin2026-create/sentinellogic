@@ -4,6 +4,7 @@ import { SOURCE_LABELS, type LeadStatus, type LeadSource } from '@/data/mock'
 import { HelpButton } from '@/components/help/HelpButton'
 import { RegelLaufHistorie } from '@/components/RegelLaufHistorie'
 import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
+import { AutomatisierungenTabs } from '@/components/automatisierungen/AutomatisierungenTabs'
 
 interface Rule {
   id: string; created_at: string; name: string
@@ -202,6 +203,7 @@ export default function RegelnPage() {
 
   return (
     <div className="p-8">
+      <AutomatisierungenTabs />
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-1.5">
