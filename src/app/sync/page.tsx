@@ -105,11 +105,19 @@ const INTEGRATION_LABELS: Record<string, string> = {
 
 // Detailaufschlüsselung für eine Batch-Zeile (Facebook, Dialfire-Pull,
 // CSV-Import) — lazy nachgeladen beim Aufklappen, siehe batch-detail.ts.
+interface BatchDetailItem {
+  id: string
+  label: string
+  status: string
+  attemptCount: number
+  maxAttempts: number
+  note?: string
+  errorMessage?: string
+}
+
 interface BatchDetail {
   summary: string
-  importedNames: string[]
-  duplicates: Array<{ label: string; reason: string }>
-  errors: Array<{ label: string; message: string }>
+  items: BatchDetailItem[]
 }
 
 // Integrationen ohne Retry-Handler (retry-handlers.ts) -- "Retry jetzt" wird
@@ -230,7 +238,7 @@ export default function SyncPage() {
     const params = new URLSearchParams()
     if (runsFilter.integration) params.set('integration', runsFilter.integration)
     if (runsFilter.status) params.set('status', runsFilter.status)
-    params.set('limit', '50')
+    params.set('limit', '500')
     fetch(`/api/sync-runs?${params.toString()}`)
       .then(r => r.json())
       .then(res => { if (res.success) setRuns(res.data.runs) })
@@ -507,7 +515,7 @@ export default function SyncPage() {
         <h2 className="font-semibold text-[#1A1A1A] text-sm">Zeitgesteuerte Verbindungen</h2>
         <p className="text-xs text-gray-400 mt-0.5">Laufen automatisch nach Zeitplan, zusätzlich manuell auslösbar</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
         {sources.map(source => {
           const isFacebook = source.id === 'facebook'
           const isDialfire = source.id === 'dialfire'
@@ -522,112 +530,96 @@ export default function SyncPage() {
           const displayInterval = isFacebook ? facebookInterval : isDialfire ? dialfireInterval : (['15min', '30min', '60min', 'daily', 'weekly'].includes(String(source.autoInterval)) ? String(source.autoInterval) as IntervalType : '15min')
 
           return (
-            <div key={source.id} className={`bg-white rounded-xl border border-gray-200 shadow-sm p-5 ${source.disabled ? 'opacity-50' : ''}`}>
-              <div className="flex items-start justify-between mb-4">
-                <div>
+            <div key={source.id} className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 h-full flex flex-col ${source.disabled ? 'opacity-50' : ''}`}>
+              <div className="flex items-start justify-between mb-3">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    {!isHealthBacked && <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />}
-                    <h3 className="font-semibold text-[#1A1A1A] text-sm">{source.name}</h3>
+                    {!isHealthBacked && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />}
+                    <h3 className="font-semibold text-[#1A1A1A] text-sm truncate">{source.name}</h3>
                   </div>
-                  <p className="text-xs text-gray-400">{source.description}</p>
+                  <p className="text-xs text-gray-400 line-clamp-2">{source.description}</p>
                 </div>
                 {isHealthBacked ? (
                   isSyncing ? (
-                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">Synchronisiere…</span>
+                    <span className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">Synchronisiere…</span>
                   ) : tileRunStatus(sourceHealth) === null ? (
-                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Noch keine Läufe</span>
+                    <span className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Noch keine Läufe</span>
                   ) : (
-                    <SyncStatusBadge status={tileRunStatus(sourceHealth)!} />
+                    <span className="flex-shrink-0"><SyncStatusBadge status={tileRunStatus(sourceHealth)!} /></span>
                   )
                 ) : (
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+                  <span className={`flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${cfg.badge}`}>{cfg.label}</span>
                 )}
               </div>
-              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
-                <p className="text-sm font-semibold text-[#1A1A1A]">{countText}</p>
+              <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
+                <p className="text-sm font-semibold text-[#1A1A1A] truncate">{countText}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {lastSyncText}</p>
               </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <button onClick={() => toggleAuto(source.id)} disabled={source.disabled}
-                      className={`relative w-9 h-5 rounded-full transition-colors disabled:cursor-not-allowed ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
-                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                    </button>
-                    <span className="text-xs text-gray-500">Auto</span>
-                    {autoEnabled && !source.disabled && (
-                      <select value={displayInterval} onChange={e => setIntervalVal(source.id, e.target.value as IntervalType)}
-                        className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none">
-                        <option value="15min">alle 15 Min</option>
-                        <option value="30min">alle 30 Min</option>
-                        <option value="60min">alle 60 Min</option>
-                        <option value="daily">täglich um 08:00 Uhr</option>
-                        <option value="weekly">montags um 08:00 Uhr</option>
-                      </select>
-                    )}
-                  </div>
-                  <button onClick={() => handleSync(source.id)} disabled={isSyncing || source.disabled}
-                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                      strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'animate-spin' : ''}>
-                      <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                    </svg>
-                    {isSyncing ? 'Läuft…' : 'Jetzt synchronisieren'}
+              <div className="flex flex-col gap-2 mt-auto">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={() => toggleAuto(source.id)} disabled={source.disabled}
+                    className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 disabled:cursor-not-allowed ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </button>
+                  <span className="text-xs text-gray-500 flex-shrink-0">Auto</span>
+                  {autoEnabled && !source.disabled && (
+                    <select value={displayInterval} onChange={e => setIntervalVal(source.id, e.target.value as IntervalType)}
+                      className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none min-w-0">
+                      <option value="15min">alle 15 Min</option>
+                      <option value="30min">alle 30 Min</option>
+                      <option value="60min">alle 60 Min</option>
+                      <option value="daily">täglich um 08:00 Uhr</option>
+                      <option value="weekly">montags um 08:00 Uhr</option>
+                    </select>
+                  )}
                 </div>
+                <button onClick={() => handleSync(source.id)} disabled={isSyncing || source.disabled}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                    strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'animate-spin' : ''}>
+                    <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  </svg>
+                  {isSyncing ? 'Läuft…' : 'Jetzt synchronisieren'}
+                </button>
                 {isFacebook && facebookEnabled && facebookConfig?.next_sync_at && (
-                  <p className="text-xs text-gray-400">
-                    Nächster automatischer Sync: {new Date(facebookConfig.next_sync_at).toLocaleDateString('de-DE')},{' '}
+                  <p className="text-xs text-gray-400 truncate">
+                    Nächster Sync: {new Date(facebookConfig.next_sync_at).toLocaleDateString('de-DE')},{' '}
                     {new Date(facebookConfig.next_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
-                    {facebookConfig.last_sync_at && (
-                      <> · Letzter Auto-Sync: {new Date(facebookConfig.last_sync_at).toLocaleDateString('de-DE')},{' '}
-                      {new Date(facebookConfig.last_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</>
-                    )}
                   </p>
                 )}
                 {isDialfire && dialfireEnabled && dialfireConfig?.next_sync_at && (
-                  <p className="text-xs text-gray-400">
-                    Nächster automatischer Sync: {new Date(dialfireConfig.next_sync_at).toLocaleDateString('de-DE')},{' '}
+                  <p className="text-xs text-gray-400 truncate">
+                    Nächster Sync: {new Date(dialfireConfig.next_sync_at).toLocaleDateString('de-DE')},{' '}
                     {new Date(dialfireConfig.next_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
-                    {dialfireConfig.last_sync_at && (
-                      <> · Letzter Auto-Sync: {new Date(dialfireConfig.last_sync_at).toLocaleDateString('de-DE')},{' '}
-                      {new Date(dialfireConfig.last_sync_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</>
-                    )}
                   </p>
                 )}
-                {isHealthBacked && (
-                  <button
-                    onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
-                    className="self-start text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
-                  >
-                    Läufe ansehen
-                  </button>
-                )}
-                {isFacebook && (
-                  <div className="flex items-center gap-2.5 pt-2 border-t border-gray-100">
-                    <button onClick={() => setFacebookPreviewEnabled(!facebookPreviewEnabled)}
-                      className={`relative w-9 h-5 rounded-full transition-colors ${facebookPreviewEnabled ? 'bg-blue-400' : 'bg-gray-200'}`}>
-                      <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${facebookPreviewEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                <div className="flex items-center justify-between gap-2">
+                  {isHealthBacked ? (
+                    <button
+                      onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
+                      className="text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
+                    >
+                      Läufe ansehen
                     </button>
-                    <span className="text-xs text-gray-500">Preview</span>
-                    {facebookPreviewEnabled && (
-                      <button onClick={() => handleSync(source.id, true)} disabled={previewLoading}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50">
-                        {previewLoading ? (
-                          <>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin">
-                              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                            </svg>
-                            Lädt…
-                          </>
-                        ) : (
-                          <>👁 Preview laden</>
-                        )}
+                  ) : <span />}
+                  {isFacebook && (
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setFacebookPreviewEnabled(!facebookPreviewEnabled)}
+                        className={`relative w-7 h-4 rounded-full transition-colors ${facebookPreviewEnabled ? 'bg-blue-400' : 'bg-gray-200'}`}>
+                        <span className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${facebookPreviewEnabled ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                       </button>
-                    )}
-                  </div>
-                )}
+                      {facebookPreviewEnabled ? (
+                        <button onClick={() => handleSync(source.id, true)} disabled={previewLoading}
+                          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50">
+                          {previewLoading ? 'Lädt…' : '👁 Vorschau'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">Preview</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )
@@ -639,35 +631,35 @@ export default function SyncPage() {
         <h2 className="font-semibold text-[#1A1A1A] text-sm">Ereignisgetriggerte Integrationen</h2>
         <p className="text-xs text-gray-400 mt-0.5">Werden nicht zeitgesteuert ausgeführt, sondern durch Regeln, Klicks oder Kalenderänderungen</p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
         {REACTIVE_INTEGRATIONS.map(source => {
           const sourceHealth = health[INTEGRATION_KEY[source.id]]
           const runStatus = tileRunStatus(sourceHealth)
           const isRetrying = retryAllLoading === source.id
           const isNonRetryable = NON_RETRYABLE_INTEGRATIONS.has(INTEGRATION_KEY[source.id])
           return (
-            <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-[#1A1A1A] text-sm mb-1">{source.name}</h3>
-                  <p className="text-xs text-gray-400">{source.description}</p>
+            <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 h-full flex flex-col">
+              <div className="flex items-start justify-between mb-3">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-[#1A1A1A] text-sm mb-1 truncate">{source.name}</h3>
+                  <p className="text-xs text-gray-400 line-clamp-2">{source.description}</p>
                 </div>
                 {runStatus === null ? (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Noch keine Läufe</span>
+                  <span className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Noch keine Läufe</span>
                 ) : (
-                  <SyncStatusBadge status={runStatus} />
+                  <span className="flex-shrink-0"><SyncStatusBadge status={runStatus} /></span>
                 )}
               </div>
-              <div className="bg-gray-50 rounded-lg px-4 py-3 mb-4">
-                <p className="text-sm font-semibold text-[#1A1A1A]">{healthCountText(sourceHealth)}</p>
+              <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
+                <p className="text-sm font-semibold text-[#1A1A1A] truncate">{healthCountText(sourceHealth)}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {healthLastSyncText(sourceHealth)}</p>
               </div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-col gap-2 mt-auto">
                 {isNonRetryable ? (
                   <button
                     disabled
                     title="E-Mail-Versand kann nicht automatisch wiederholt werden — nicht idempotent. Bitte betroffenen Kontakt manuell prüfen."
-                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 text-gray-300 px-3 py-1.5 rounded-lg cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 text-gray-300 px-3 py-1.5 rounded-lg cursor-not-allowed"
                   >
                     Jetzt synchronisieren
                   </button>
@@ -676,14 +668,14 @@ export default function SyncPage() {
                     onClick={() => handleRetryAll(INTEGRATION_KEY[source.id])}
                     disabled={isRetrying}
                     title="Führt alle aktuell wartenden Wiederholungen sofort aus (löst keinen neuen Abgleich für bereits erfolgreiche Kontakte aus)"
-                    className="flex items-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent"
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent"
                   >
                     {isRetrying ? 'Läuft…' : 'Jetzt synchronisieren'}
                   </button>
                 )}
                 <button
                   onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
-                  className="text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
+                  className="self-center text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
                 >
                   Läufe ansehen
                 </button>
@@ -835,46 +827,43 @@ export default function SyncPage() {
                             ) : !detail ? (
                               <p className="text-xs text-gray-400">Keine weiteren Details verfügbar.</p>
                             ) : (
-                              <div className="space-y-3">
+                              <div className="space-y-2">
                                 {detail.summary && (
                                   <p className="text-xs text-gray-600">{detail.summary}</p>
                                 )}
-                                {detail.importedNames.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-semibold text-emerald-700 mb-2">
-                                      ✅ Importierte Kontakte ({detail.importedNames.length})
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5 pl-4">
-                                      {detail.importedNames.map((name, i) => (
-                                        <span key={i} className="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                          {name}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {detail.duplicates.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-semibold text-gray-600 mb-2">📋 Duplikate ({detail.duplicates.length})</p>
-                                    <div className="space-y-1 pl-4">
-                                      {detail.duplicates.map((dup, i) => (
-                                        <p key={i} className="text-xs text-gray-600">⟳ {dup.label} — {dup.reason}</p>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {detail.errors.length > 0 && (
-                                  <div>
-                                    <p className="text-xs font-semibold text-red-600 mb-2">❌ Fehler ({detail.errors.length})</p>
-                                    <div className="space-y-1 pl-4">
-                                      {detail.errors.map((err, i) => (
-                                        <p key={i} className="text-xs text-red-600">{err.label}: {err.message}</p>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                {!detail.summary && detail.importedNames.length === 0 && detail.duplicates.length === 0 && detail.errors.length === 0 && (
+                                {detail.items.length === 0 ? (
                                   <p className="text-xs text-gray-400">Keine weiteren Details verfügbar.</p>
+                                ) : (
+                                  <div className="max-h-72 overflow-y-auto space-y-1 pr-1">
+                                    {detail.items.map((item, i) => (
+                                      <div
+                                        key={item.id || i}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="flex items-center justify-between gap-3 py-1.5 border-b border-gray-100 last:border-0"
+                                      >
+                                        <div className="min-w-0 flex-1">
+                                          <span className="text-xs text-gray-700 truncate block">{item.label}</span>
+                                          {(item.note || item.errorMessage) && (
+                                            <span className={`text-[11px] ${item.errorMessage ? 'text-red-500' : 'text-gray-400'}`}>
+                                              {item.errorMessage || item.note}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                          <SyncStatusBadge status={item.status} detail={item.errorMessage} />
+                                          {item.id && (item.status === 'retrying' || item.status === 'dead_letter') && !NON_RETRYABLE_INTEGRATIONS.has(run.integration) && (
+                                            <button
+                                              onClick={() => handleRetry(item.id)}
+                                              disabled={actionLoading === item.id}
+                                              className="text-[11px] font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-0.5 rounded transition-all disabled:opacity-50"
+                                            >
+                                              {actionLoading === item.id ? '…' : 'Retry'}
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             )}

@@ -1,18 +1,25 @@
 // Detailansicht für einen einzelnen sync_runs-Batch-Lauf (Facebook,
-// Dialfire-Pull, CSV-Import) — liefert dieselbe Art von Aufschlüsselung, die
-// früher im (jetzt entfernten) Sync-Protokoll beim Aufklappen einer Zeile
-// zu sehen war: importierte Kontakte, Duplikate, Fehler. Wird von der
-// Automatisierungs-Läufe-Tabelle auf /sync lazy nachgeladen, wenn eine
-// Batch-Zeile aufgeklappt wird (siehe /api/sync-runs/[id]/detail).
+// Dialfire-Pull, CSV-Import) — liefert eine Aufschlüsselung pro Kontakt
+// (Status, Fehlerdetail) statt der einen aggregierten Batch-Zeile in der
+// Automatisierungs-Läufe-Tabelle auf /sync. Wird lazy nachgeladen, wenn
+// eine Batch-Zeile aufgeklappt wird (siehe /api/sync-runs/[id]/detail).
 import { createServerClient } from '@/lib/supabase/server'
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
+export interface BatchDetailItem {
+  id: string
+  label: string
+  status: string
+  attemptCount: number
+  maxAttempts: number
+  note?: string
+  errorMessage?: string
+}
+
 export interface BatchDetail {
   summary: string
-  importedNames: string[]
-  duplicates: Array<{ label: string; reason: string }>
-  errors: Array<{ label: string; message: string }>
+  items: BatchDetailItem[]
 }
 
 interface BatchRun {
@@ -24,6 +31,8 @@ interface BatchRun {
 interface ItemRow {
   id: string
   status: string
+  attempt_count: number
+  max_attempts: number
   error_detail: string | null
   data: Record<string, unknown> | null
   contact: { first_name: string | null; last_name: string | null } | null
@@ -32,7 +41,7 @@ interface ItemRow {
 async function loadItems(supabase: SupabaseClient, batchId: string): Promise<ItemRow[]> {
   const { data } = await supabase
     .from('sync_runs')
-    .select('id, status, error_detail, data, contact:contact_id(first_name, last_name)')
+    .select('id, status, attempt_count, max_attempts, error_detail, data, contact:contact_id(first_name, last_name)')
     .eq('run_kind', 'item')
     .eq('parent_run_id', batchId)
   return (data ?? []) as unknown as ItemRow[]
@@ -44,11 +53,10 @@ function contactLabel(contact: ItemRow['contact']): string {
 
 function csvDetail(run: BatchRun): BatchDetail {
   const d = run.data ?? {}
+  const names = Array.isArray(d.lead_names) ? (d.lead_names as string[]) : []
   return {
     summary: String(d.message ?? ''),
-    importedNames: Array.isArray(d.lead_names) ? (d.lead_names as string[]) : [],
-    duplicates: [],
-    errors: [],
+    items: names.map((name) => ({ id: '', label: name, status: 'success', attemptCount: 1, maxAttempts: 1 })),
   }
 }
 
@@ -56,26 +64,33 @@ async function facebookDetail(supabase: SupabaseClient, run: BatchRun): Promise<
   const d = run.data ?? {}
   const items = await loadItems(supabase, run.id)
 
-  const errors = items
-    .filter((i) => i.status === 'failed' || i.status === 'dead_letter')
-    .map((i) => {
-      const lead = (i.data?.lead ?? {}) as Record<string, unknown>
-      return { label: String(lead.id ?? 'Unbekannt'), message: i.error_detail ?? '' }
-    })
-
-  const duplicates = items
-    .filter((i) => i.status === 'success')
-    .flatMap((i) => {
-      const result = (i.data?.result ?? {}) as Record<string, unknown>
-      if (result.outcome !== 'linked') return []
-      return [{ label: typeof result.email === 'string' ? result.email : 'Unbekannt', reason: 'E-Mail entspricht bestehendem Kontakt' }]
-    })
+  const detailItems: BatchDetailItem[] = items.map((i) => {
+    const lead = (i.data?.lead ?? {}) as Record<string, unknown>
+    const result = (i.data?.result ?? {}) as Record<string, unknown>
+    const label =
+      (typeof lead.email === 'string' && lead.email) ||
+      [lead.first_name, lead.last_name].filter(Boolean).join(' ') ||
+      String(lead.id ?? 'Unbekannt')
+    const note =
+      result.outcome === 'linked'
+        ? 'Verknüpft mit bestehendem Kontakt'
+        : result.outcome === 'created'
+          ? 'Neu angelegt'
+          : undefined
+    return {
+      id: i.id,
+      label,
+      status: i.status,
+      attemptCount: i.attempt_count,
+      maxAttempts: i.max_attempts,
+      note,
+      errorMessage: i.error_detail ?? undefined,
+    }
+  })
 
   return {
     summary: `Synced: ${d.synced ?? 0}, Updated: ${d.updated ?? 0}, Skipped: ${d.skipped ?? 0}, Errors: ${d.errors ?? 0}`,
-    importedNames: [],
-    duplicates,
-    errors,
+    items: detailItems,
   }
 }
 
@@ -83,22 +98,23 @@ async function dialfirePullDetail(supabase: SupabaseClient, run: BatchRun): Prom
   const d = run.data ?? {}
   const items = await loadItems(supabase, run.id)
 
-  const errors = items
-    .filter((i) => i.status === 'failed' || i.status === 'dead_letter')
-    .map((i) => ({ label: contactLabel(i.contact), message: i.error_detail ?? '' }))
-
-  const importedNames = items
-    .filter((i) => {
-      const result = (i.data?.result ?? {}) as Record<string, unknown>
-      return i.status === 'success' && result.changed === true
-    })
-    .map((i) => contactLabel(i.contact))
+  const detailItems: BatchDetailItem[] = items.map((i) => {
+    const result = (i.data?.result ?? {}) as Record<string, unknown>
+    const changed = result.changed === true
+    return {
+      id: i.id,
+      label: contactLabel(i.contact),
+      status: i.status,
+      attemptCount: i.attempt_count,
+      maxAttempts: i.max_attempts,
+      note: i.status === 'success' ? (changed ? 'Aktualisiert' : 'Unverändert') : undefined,
+      errorMessage: i.error_detail ?? undefined,
+    }
+  })
 
   return {
     summary: `${d.total ?? 0} verbundene Kontakte geprüft — Aktualisiert: ${d.updated ?? 0}, Unverändert: ${d.unchanged ?? 0}, Fehler: ${d.errors ?? 0}`,
-    importedNames,
-    duplicates: [],
-    errors,
+    items: detailItems,
   }
 }
 
