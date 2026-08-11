@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { replaceKlickTippContactTags } from '@/lib/klicktipp-client'
+import { ensureKlickTippTags, replaceKlickTippContactTags } from '@/lib/klicktipp-client'
 
 export const maxDuration = 300
 
@@ -30,6 +30,18 @@ export async function POST(request: NextRequest) {
   const batchSize = Number.isFinite(requestedBatchSize)
     ? Math.min(50, Math.max(1, Math.trunc(requestedBatchSize)))
     : 25
+
+  try {
+    await ensureKlickTippTags(['AZ Kunden', 'AZ Firmen Kunden', 'Kinderprofis'])
+  } catch (tagError) {
+    return Response.json(
+      {
+        success: false,
+        error: tagError instanceof Error ? tagError.message : 'KlickTipp-Tags konnten nicht vorbereitet werden',
+      },
+      { status: 502 }
+    )
+  }
 
   const supabase = createServerClient()
   const { data: contacts, error } = await supabase

@@ -504,19 +504,48 @@ function normalizeTagMap(response: unknown): Map<string, number> {
 
 let cachedTagMap: { expiresAt: number; value: Map<string, number> } | null = null
 
+async function loadTagMap(forceRefresh = false): Promise<Map<string, number>> {
+  if (!forceRefresh && cachedTagMap && cachedTagMap.expiresAt > Date.now()) {
+    return cachedTagMap.value
+  }
+  const response = await makeRequest<unknown>('GET', '/tag.json')
+  const tagMap = normalizeTagMap(response)
+  cachedTagMap = { expiresAt: Date.now() + 5 * 60_000, value: tagMap }
+  return tagMap
+}
+
 async function resolveTagIds(tagNames: string[]): Promise<number[]> {
   if (tagNames.length === 0) return []
-
-  let tagMap = cachedTagMap && cachedTagMap.expiresAt > Date.now() ? cachedTagMap.value : null
-  if (!tagMap) {
-    const response = await makeRequest<unknown>('GET', '/tag.json')
-    tagMap = normalizeTagMap(response)
-    cachedTagMap = { expiresAt: Date.now() + 5 * 60_000, value: tagMap }
-  }
+  const tagMap = await loadTagMap()
 
   return tagNames
     .map((tagName) => tagMap.get(tagName.trim().toLowerCase()))
     .filter((tagId): tagId is number => tagId != null)
+}
+
+/** Legt ausschließlich ausdrücklich freigegebene, noch fehlende manuelle Tags an. */
+export async function ensureKlickTippTags(tagNames: string[]): Promise<number[]> {
+  const uniqueNames = Array.from(
+    new Map(
+      tagNames
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .map((name) => [name.toLowerCase(), name])
+    ).values()
+  )
+  let tagMap = await loadTagMap()
+
+  for (const tagName of uniqueNames) {
+    if (tagMap.has(tagName.toLowerCase())) continue
+    await makeRequest<unknown>('POST', '/tag.json', { name: tagName })
+  }
+
+  tagMap = await loadTagMap(true)
+  const unresolved = uniqueNames.filter((name) => !tagMap.has(name.toLowerCase()))
+  if (unresolved.length > 0) {
+    throw new Error(`KlickTipp-Tag konnte nicht angelegt werden: ${unresolved.join(', ')}`)
+  }
+  return uniqueNames.map((name) => tagMap.get(name.toLowerCase()) as number)
 }
 
 /** Entfernt gezielt Tags; andere, nur in KlickTipp gepflegte Tags bleiben erhalten. */
