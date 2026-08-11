@@ -148,6 +148,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Geschützten Zugriff der Regressionstest-Pipeline auf `/api/test-cases` über das Cleanup-Token ergänzt und den bisherigen HTTP-401-Blocker behoben
 - [x] Fehlerlauf mit 23/30 grünen Tests analysiert, SuperChat-Test E2E-019 deaktiviert und Testfehler bei Kommentaren, Kontaktdetail sowie Profil-Sitzung korrigiert
 - [x] Kontaktarchiv-Ansicht gegen überholende API-Antworten bei schnellen Filterwechseln abgesichert
+- [x] Testdaten-Bereinigung um polymorphe Kommentare und Dokument-Anhänge erweitert, damit ausschließlich markierte Testkontakte wieder vollständig vorbereitet werden können
 - [x] Idempotente Einzelkontakt-Synchronisation zu SuperChat mit Status, Aktivitätsprotokoll und E2E-019 implementiert
 - [x] Migration `0054_superchat_contact_sync.sql` auf Live-Supabase verifiziert
 - [x] SuperChat-Live-Pilot mit technisch markiertem `TESTKONTAKT` erfolgreich durchgeführt

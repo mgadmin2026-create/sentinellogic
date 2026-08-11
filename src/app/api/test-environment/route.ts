@@ -15,6 +15,61 @@ interface DatabaseGuardStatus {
   last_run_id: string | null
 }
 
+/**
+ * Entfernt polymorphe Kommentare markierter Testkontakte vor dem eigentlichen
+ * Kontakt-Cascade. Kommentare besitzen bewusst keinen Foreign Key auf Kontakte
+ * oder Aufgaben; ihre Dokument-Anhänge würden sonst das Löschen blockieren.
+ */
+async function cleanupTestCommentDependencies(supabase: ReturnType<typeof createServerClient>) {
+  const { data: testContacts, error: contactError } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('is_test_data', true)
+    .not('test_run_id', 'is', null)
+
+  if (contactError) throw contactError
+  const contactIds = (testContacts ?? []).map((contact) => contact.id)
+  if (contactIds.length === 0) return
+
+  const { data: testTasks, error: taskError } = await supabase
+    .from('tasks')
+    .select('id')
+    .in('contact_id', contactIds)
+
+  if (taskError) throw taskError
+  const taskIds = (testTasks ?? []).map((task) => task.id)
+
+  const commentIds = new Set<string>()
+  const { data: contactComments, error: contactCommentError } = await supabase
+    .from('comments')
+    .select('id')
+    .eq('entity_type', 'contact')
+    .in('entity_id', contactIds)
+
+  if (contactCommentError) throw contactCommentError
+  for (const comment of contactComments ?? []) commentIds.add(comment.id)
+
+  if (taskIds.length > 0) {
+    const { data: taskComments, error: taskCommentError } = await supabase
+      .from('comments')
+      .select('id')
+      .eq('entity_type', 'task')
+      .in('entity_id', taskIds)
+
+    if (taskCommentError) throw taskCommentError
+    for (const comment of taskComments ?? []) commentIds.add(comment.id)
+  }
+
+  if (commentIds.size > 0) {
+    const { error: deleteError } = await supabase
+      .from('comments')
+      .delete()
+      .in('id', Array.from(commentIds))
+
+    if (deleteError) throw deleteError
+  }
+}
+
 /** Liefert nur nicht-sensible Statusinformationen für das Testdashboard. */
 export async function GET() {
   const configuration = getTestEnvironmentConfiguration()
@@ -98,6 +153,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = createServerClient()
+    await cleanupTestCommentDependencies(supabase)
     const { data, error } = await supabase.rpc('prepare_test_run', {
       p_expected_guard_id: configuration.config.guardId,
       p_run_id: runId,
