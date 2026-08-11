@@ -167,6 +167,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Aktiven, abgesicherten KlickTipp-JSON-Webhook `Sentimental Logic – Sentinel-Tag` (ID `176539`) für das Tag `Sentinel` eingerichtet
 - [x] KlickTipp-Tag-Bestand geprüft: 719 manuelle Tags und sechs ausgehende Webhooks; Alt-Webhook `Sentinel Logic Sync` (ID `169322`) bis zum kontrollierten Vergleich geschützt
 - [x] Vierseitige KlickTipp-Tag-Bestandsaufnahme unter `output/pdf/klicktipp-tag-bestandsaufnahme-2026-08-05.pdf` erstellt
+- [x] Kontaktübersicht auf vier sichtbare Ansichtsbuttons, eine einzeilige Suche-/Sparte-Filterleiste und eine gemeinsame Kopf-Aktionsleiste umgestellt; Standardspalten entsprechen der Key-User-Vorgabe und sind nach neuestem Kontakt sortiert
 - [x] Kontaktübersicht um persistente Filter-/Sortierrückkehr, vier Fachansichten und Statusfarben auf der gesamten Zeile erweitert
 - [x] Kontaktdetail aufgeräumt: Prozess und Kommentare ins Drei-Punkte-Menü verschoben; Erstgespräch-PDF mit optionalen Leerfeldern ergänzt
 - [x] SuperChat-Direktlink präzisiert und Statusregel `Kunde` → Gesprächslabel `Kunde AZ` implementiert

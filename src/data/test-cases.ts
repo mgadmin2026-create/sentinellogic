@@ -477,7 +477,8 @@ export const TEST_CASES: TestCaseDefinition[] = [
       'Einen markierten Testkontakt anlegen und die Lead-Ansicht mit Suche und Sortierung öffnen.',
       'Den Treffer sowie die statusabhängige Zeilenfarbe prüfen und das Kontaktdetail öffnen.',
       'Über „Zurück zur Übersicht“ zurückkehren und alle gesetzten Werte in URL und Oberfläche vergleichen.',
-      'Die vier Ansichten Alle, Leads, Kunden und Nicht interessierte sowie den Wegfall der alten Filter prüfen.',
+      'Die vier sichtbaren Ansichtsbuttons Alle Kontakte, Leads, Kunden und Nicht interessierte sowie den Wegfall des Status-Auswahlfelds prüfen.',
+      'Die einzeilige Filterleiste mit Suche und Sparte sowie die Standardspalten und Standardsortierung nach dem neuesten Kontakt prüfen.',
     ],
     area: 'Kontaktverwaltung',
     priority: 'Kritisch',
@@ -485,7 +486,7 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: [
       'behält Ansicht, Suche und Sortierung beim Rücksprung aus dem Kontakt',
-      'bietet genau Alle, Leads, Kunden und Nicht interessierte als Ansichten an',
+      'zeigt vier Ansichtsbuttons, die reduzierte Filterleiste und die neue Standardansicht',
     ],
   },
   {

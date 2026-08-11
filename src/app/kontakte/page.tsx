@@ -225,11 +225,14 @@ const SOURCE_COLORS: Record<string, string> = {
 }
 
 const KONTAKT_FILTER = [
-  { label: 'Alle', value: 'all' },
+  { label: 'Alle Kontakte', value: 'all' },
   { label: 'Leads', value: 'leads' },
   { label: 'Kunden', value: 'customer' },
   { label: 'Nicht interessierte', value: 'not_interested' },
 ]
+
+const DEFAULT_SORT_BY: keyof Kontakt = 'created_at'
+const DEFAULT_SORT_ORDER: 'asc' | 'desc' = 'desc'
 
 const PIPELINE_STEPS = [
   { key: 'lead_in', label: 'Lead kommt rein' },
@@ -279,7 +282,7 @@ const DEFAULT_COLUMNS: ColumnVisibility = {
   // Pipeline & Status — KERN
   status: true,
   qualität: false,
-  pipeline_stage: true,
+  pipeline_stage: false,
   assigned_user: false,
   // Integration — KERN
   source: true,
@@ -289,13 +292,13 @@ const DEFAULT_COLUMNS: ColumnVisibility = {
   dialfire_task: false,
   klicktipp_tags: false,
   // Metadaten
-  created_at: false,
+  created_at: true,
   updated_at: false,
   notes: false,
   bestandskunde: false,
   sparte: false,
   // UI
-  progress: true,
+  progress: false,
   actions: true,
 }
 
@@ -331,8 +334,12 @@ export default function KontaktePage() {
   const latestContactRequestId = useRef(0)
 
   // Sortierung - erweitert für alle Spalten
-  const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>(() => (searchParams.get('sort') as keyof Kontakt | 'name' | 'progress') || 'name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => searchParams.get('order') === 'desc' ? 'desc' : 'asc')
+  const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>(() => (searchParams.get('sort') as keyof Kontakt | 'name' | 'progress') || DEFAULT_SORT_BY)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+    const requestedOrder = searchParams.get('order')
+    if (requestedOrder === 'asc' || requestedOrder === 'desc') return requestedOrder
+    return DEFAULT_SORT_ORDER
+  })
 
   // Spalten-Customization
   const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>(DEFAULT_COLUMNS)
@@ -582,8 +589,8 @@ export default function KontaktePage() {
     if (activeFilter !== 'all') params.set('view', activeFilter)
     if (search) params.set('search', search)
     if (sparteFilter !== 'all') params.set('sparte', sparteFilter)
-    if (sortBy !== 'name') params.set('sort', String(sortBy))
-    if (sortOrder !== 'asc') params.set('order', sortOrder)
+    if (sortBy !== DEFAULT_SORT_BY) params.set('sort', String(sortBy))
+    if (sortOrder !== DEFAULT_SORT_ORDER) params.set('order', sortOrder)
     const query = params.toString()
     window.history.replaceState(null, '', query ? `/kontakte?${query}` : '/kontakte')
   }, [activeFilter, search, sparteFilter, sortBy, sortOrder])
@@ -792,8 +799,8 @@ export default function KontaktePage() {
     if (activeFilter !== 'all') params.set('view', activeFilter)
     if (search) params.set('search', search)
     if (sparteFilter !== 'all') params.set('sparte', sparteFilter)
-    if (sortBy !== 'name') params.set('sort', String(sortBy))
-    if (sortOrder !== 'asc') params.set('order', sortOrder)
+    if (sortBy !== DEFAULT_SORT_BY) params.set('sort', String(sortBy))
+    if (sortOrder !== DEFAULT_SORT_ORDER) params.set('order', sortOrder)
     const returnTo = params.toString() ? `/kontakte?${params.toString()}` : '/kontakte'
     return `/kontakte/${contactId}?returnTo=${encodeURIComponent(returnTo)}`
   }
@@ -836,7 +843,7 @@ export default function KontaktePage() {
           </div>
           <p className="text-gray-500 text-sm mt-0.5">{loading ? 'Lädt…' : `${kontakte.length} Kontakte gesamt`}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div data-testid="kontakte-header-actions" className="flex items-center justify-end gap-2 flex-wrap">
           <button
             onClick={() => setImportModalOpen(true)}
             className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
@@ -847,6 +854,41 @@ export default function KontaktePage() {
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
             Importieren
+          </button>
+          <div className="relative">
+            <button
+              onClick={() => setExportMenuOpen((v) => !v)}
+              disabled={exporting !== null}
+              className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap disabled:opacity-50"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {exporting ? `${exporting.toUpperCase()}…` : 'Exportieren'}
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 z-30 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                {(['csv', 'xlsx', 'pdf'] as const).map((fmt) => (
+                  <button
+                    key={fmt}
+                    onClick={() => handleExport(fmt)}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-yellow-50 transition-colors"
+                  >
+                    Als {fmt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setShowColumnModal(true)}
+            className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+            title="Spalten anpassen"
+          >
+            <span aria-hidden="true">⚙️</span>
+            Spalten
           </button>
           <button
             onClick={() => {
@@ -864,10 +906,42 @@ export default function KontaktePage() {
         </div>
       </div>
 
-      {/* Suche + Filter + Spalten Toggle */}
-      <div className="mb-6 space-y-3">
-        <div className="flex gap-3 flex-wrap sm:flex-nowrap">
-          <div className="relative flex-1 min-w-64">
+      {/* Die vier fachlichen Sichten sind bewusst kein Filterfeld mehr. */}
+      <div
+        data-testid="kontakte-ansichten"
+        className="grid grid-cols-2 lg:grid-cols-4 gap-2 rounded-xl border border-gray-200 bg-white p-1.5 mb-3"
+        role="group"
+        aria-label="Kontaktansicht wählen"
+      >
+        {KONTAKT_FILTER.map((view) => {
+          const count = view.value === 'all'
+            ? kontakte.length
+            : view.value === 'leads'
+              ? kontakte.filter((kontakt) => kontakt.status !== 'customer' && kontakt.status !== 'not_interested').length
+              : kontakte.filter((kontakt) => kontakt.status === view.value).length
+          const isActive = activeFilter === view.value
+
+          return (
+            <button
+              key={view.value}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => setActiveFilter(view.value)}
+              className={`min-h-11 rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
+                isActive
+                  ? 'bg-yellow-400 text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              {view.label} <span className={isActive ? 'text-gray-700' : 'text-gray-400'}>({count})</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Einzeilige Filterleiste: Suche + Sparte */}
+      <div data-testid="kontakte-filterleiste" className="mb-6 grid grid-cols-[minmax(0,1fr)_minmax(9rem,16rem)] gap-3">
+          <div className="relative min-w-0">
             <svg width="16" height="16" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="11" cy="11" r="8" />
               <path d="m21 21-4.35-4.35" />
@@ -880,69 +954,10 @@ export default function KontaktePage() {
               className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 focus:border-yellow-400"
             />
           </div>
-          <HelpButton articleId="kontakte-liste.suche-filter" className="text-gray-300 hover:text-yellow-600 transition-colors flex-shrink-0 self-center" />
-
-          <button
-            onClick={() => setShowColumnModal(true)}
-            className="px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
-            title="Spalten anpassen"
-          >
-            ⚙️ Spalten
-          </button>
-          <HelpButton articleId="kontakte-liste.spalten-anpassen" className="text-gray-300 hover:text-yellow-600 transition-colors flex-shrink-0 self-center" />
-
-          <div className="relative">
-            <button
-              onClick={() => setExportMenuOpen((v) => !v)}
-              disabled={exporting !== null}
-              className="px-3 py-2.5 text-sm font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap disabled:opacity-50"
-            >
-              {exporting ? `⏳ ${exporting.toUpperCase()}…` : '⬇ Exportieren'}
-            </button>
-            {exportMenuOpen && (
-              <div className="absolute right-0 z-20 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                {(['csv', 'xlsx', 'pdf'] as const).map((fmt) => (
-                  <button
-                    key={fmt}
-                    onClick={() => handleExport(fmt)}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-yellow-50 transition-colors"
-                  >
-                    Als {fmt.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Status + weitere Filter */}
-        <div className="flex gap-2 flex-wrap items-center">
-          <select
-            value={activeFilter}
-            onChange={(e) => setActiveFilter(e.target.value)}
-            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-              activeFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
-            }`}
-            title="Nach Status filtern"
-          >
-            {KONTAKT_FILTER.map((f) => {
-              const count = f.value === 'all'
-                ? kontakte.length
-                : f.value === 'leads'
-                  ? kontakte.filter((k) => k.status !== 'customer' && k.status !== 'not_interested').length
-                  : kontakte.filter((k) => k.status === f.value).length
-              return (
-                <option key={f.value} value={f.value}>
-                  {f.label} ({count})
-                </option>
-              )
-            })}
-          </select>
-
           <select
             value={sparteFilter}
             onChange={(e) => setSparteFilter(e.target.value)}
-            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
+            className={`w-full min-w-0 px-3 py-2.5 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
               sparteFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
             }`}
             title="Nach Sparte filtern"
@@ -952,20 +967,6 @@ export default function KontaktePage() {
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
-
-          {(sparteFilter !== 'all' || activeFilter !== 'all' || search) && (
-            <button
-              onClick={() => {
-                setActiveFilter('all')
-                setSparteFilter('all')
-                setSearch('')
-              }}
-              className="text-xs text-gray-500 hover:text-gray-900 font-medium underline-offset-2 hover:underline"
-            >
-              ✕ Filter zurücksetzen
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}

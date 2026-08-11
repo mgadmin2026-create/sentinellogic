@@ -11,7 +11,8 @@ export const kontakteListeArticles: HelpArticle[] = [
     keywords: ['kontaktliste', 'kundenliste'],
     body:
       'Die Kontaktliste zeigt alle Kontakte mit Suche, Filtern, anpassbaren Spalten und Export. Ein Klick auf eine Zeile öffnet die vollständige Kontaktdetailseite.\n\n' +
-      '- Suche + Filter (Status, Quelle, Tags, Verantwortlicher)\n' +
+      '- Vier Ansichten: Alle Kontakte, Leads, Kunden und Nicht interessierte\n' +
+      '- Einzeilige Suche mit zusätzlicher Auswahl der Sparte\n' +
       '- Spalten anpassen: welche Felder in der Tabelle sichtbar sind\n' +
       '- Export als CSV, Excel oder PDF (berücksichtigt die aktiven Filter)\n' +
       '- Import neuer Kontakte per CSV\n' +
@@ -23,8 +24,8 @@ export const kontakteListeArticles: HelpArticle[] = [
     title: 'Suche & Filter',
     keywords: ['status filter', 'quelle', 'tags filter', 'archiviert anzeigen'],
     body:
-      'Die Suche durchsucht Name, E-Mail und Firma. Zusätzlich lässt sich nach Status, Quelle und Tags filtern (mehrere Tags gleichzeitig = UND-Verknüpfung).\n\n' +
-      'Archivierte Kontakte sind standardmäßig ausgeblendet — über den Schalter "Archivierte anzeigen" werden sie sichtbar.',
+      'Die Suche durchsucht Name, E-Mail und Firma. Daneben kann die Kontaktliste nach Sparte eingeschränkt werden.\n\n' +
+      'Die vier Schaltflächen oberhalb der Suche wechseln zwischen allen Kontakten, Leads, Kunden und nicht interessierten Kontakten.',
   },
   {
     id: 'kontakte-liste.spalten-anpassen',
