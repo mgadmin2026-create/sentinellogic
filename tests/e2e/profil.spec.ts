@@ -67,6 +67,10 @@ test.describe('Profil: Eigene Daten und Passwort', () => {
     await page.getByRole('button', { name: 'Speichern' }).click()
     expect((await changeNameResponsePromise).ok()).toBe(true)
     await expect(page.getByText('Gespeichert.')).toBeVisible()
+    // Der Speichervorgang lädt das Profil anschließend noch einmal nach.
+    // Erst wenn der Button wieder aktiv ist, darf die Rücksetz-Eingabe beginnen,
+    // sonst kann die späte GET-Antwort den gerade eingetragenen Namen überschreiben.
+    await expect(page.getByRole('button', { name: 'Speichern' })).toBeEnabled()
 
     const afterChangeRes = await page.request.get('/api/me')
     const afterChangeJson = await afterChangeRes.json()
