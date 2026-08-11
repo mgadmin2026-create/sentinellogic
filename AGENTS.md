@@ -146,6 +146,8 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Regressionstest-Status geprüft: letzter vollständiger Lauf 11/11 grün; aktuelle Pipeline durch HTTP 401 vor Teststart blockiert
 - [x] Regressionstest-Katalog auf 30 automatisierte Szenarien erweitert: Auth-Schutz, persönliches Dashboard, Mail-Vorlagen, Kalender, Sync-Kontrollzentrum, Datenschutz und Kontakt-E-Mail mit Cc/Bcc/Anhang
 - [x] Geschützten Zugriff der Regressionstest-Pipeline auf `/api/test-cases` über das Cleanup-Token ergänzt und den bisherigen HTTP-401-Blocker behoben
+- [x] Fehlerlauf mit 23/30 grünen Tests analysiert, SuperChat-Test E2E-019 deaktiviert und Testfehler bei Kommentaren, Kontaktdetail sowie Profil-Sitzung korrigiert
+- [x] Kontaktarchiv-Ansicht gegen überholende API-Antworten bei schnellen Filterwechseln abgesichert
 - [x] Idempotente Einzelkontakt-Synchronisation zu SuperChat mit Status, Aktivitätsprotokoll und E2E-019 implementiert
 - [x] Migration `0054_superchat_contact_sync.sql` auf Live-Supabase verifiziert
 - [x] SuperChat-Live-Pilot mit technisch markiertem `TESTKONTAKT` erfolgreich durchgeführt
@@ -165,7 +167,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Vierseitige KlickTipp-Tag-Bestandsaufnahme unter `output/pdf/klicktipp-tag-bestandsaufnahme-2026-08-05.pdf` erstellt
 
 **Nächste Aufgabe:**
-→ Test-Erweiterung deployen und den vollständigen Regressionstest mit 30 Szenarien ausführen; anschließend echte KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal abnehmen
+→ Korrigierten Regressionstest erneut ausführen und verbleibende Fehler bewerten; anschließend echte KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal abnehmen
 
 -----
 

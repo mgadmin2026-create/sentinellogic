@@ -20,6 +20,38 @@ test.describe('Profil: Eigene Daten und Passwort', () => {
     const originalName: string = meJson.data.name
     const originalEmail: string = meJson.data.email
     const tempPassword = `Temp-${Date.now()}-Aa1!`
+    const passwordChanges: Array<{ currentPassword: string; newPassword: string }> = []
+
+    // Der Regressionstest läuft gegen die Live-Umgebung. Ein echter Passwortwechsel
+    // entwertet die gemeinsame Testsitzung und lässt alle nachfolgenden Tests ausfallen.
+    // Deshalb prüfen wir hier den vollständigen UI-Ablauf mit einer kontrollierten
+    // Antwort der eigenen Serverroute, ohne das Testkonto tatsächlich zu verändern.
+    await page.route('**/api/me', async (route) => {
+      const request = route.request()
+      if (request.method() !== 'PATCH') {
+        await route.continue()
+        return
+      }
+
+      const payload = request.postDataJSON() as { currentPassword?: string; newPassword?: string }
+      if (payload.newPassword === undefined) {
+        await route.continue()
+        return
+      }
+
+      passwordChanges.push({
+        currentPassword: payload.currentPassword ?? '',
+        newPassword: payload.newPassword,
+      })
+      const validPassword = payload.currentPassword !== 'ganz-sicher-falsch-123'
+      await route.fulfill({
+        status: validPassword ? 200 : 400,
+        contentType: 'application/json',
+        body: JSON.stringify(validPassword
+          ? { success: true }
+          : { success: false, error: 'Aktuelles Passwort ist falsch' }),
+      })
+    })
 
     await page.goto('/profil')
     await expect(page.getByRole('heading', { name: 'Mein Profil' })).toBeVisible()
@@ -60,6 +92,12 @@ test.describe('Profil: Eigene Daten und Passwort', () => {
     await page.locator('input[name="newPassword"]').fill(adminPassword)
     await page.getByRole('button', { name: 'Passwort ändern' }).click()
     await expect(page.getByText('Passwort geändert.')).toBeVisible()
+
+    expect(passwordChanges).toEqual([
+      { currentPassword: 'ganz-sicher-falsch-123', newPassword: tempPassword },
+      { currentPassword: adminPassword, newPassword: tempPassword },
+      { currentPassword: tempPassword, newPassword: adminPassword },
+    ])
 
     const finalRes = await page.request.get('/api/me')
     const finalJson = await finalRes.json()

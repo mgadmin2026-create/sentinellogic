@@ -52,9 +52,9 @@ test.describe('Kontaktverwaltung: Detailnavigation', () => {
     await expect(page.getByText(contact.company_name).first()).toBeVisible()
     await expect(page.getByTitle(`E-Mail an ${contact.email}`)).toBeVisible()
     // Zentrale Kacheln sichtbar
-    await expect(page.getByText('✓ Nächste Aufgabe')).toBeVisible()
-    await expect(page.getByText('📝 Aktivitäten')).toBeVisible()
-    await expect(page.getByText('🛡️ Versicherung & Verträge')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '✓ Nächste Aufgabe' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '💬 Kommentare' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '🛡️ Versicherung & Verträge' })).toBeVisible()
   })
 })
 

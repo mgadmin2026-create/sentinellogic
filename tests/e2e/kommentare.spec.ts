@@ -106,7 +106,7 @@ test.describe('Kommentare & Erwähnungen', () => {
 
     await page.goto(`/kontakte/${createdContact.id}`)
     await page.getByRole('button', { name: /Historie \(\d+\) →/ }).click()
-    await page.getByText(task.titel, { exact: true }).click()
+    await page.getByRole('button', { name: task.titel, exact: true }).click()
 
     const modal = page.getByTestId('aufgaben-edit-modal')
     await expect(modal.getByRole('heading', { name: 'Aufgabe bearbeiten' })).toBeVisible()

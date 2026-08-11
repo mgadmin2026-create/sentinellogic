@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
@@ -329,6 +329,7 @@ export default function KontaktePage() {
   const [archiveTasksToo, setArchiveTasksToo] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  const latestContactRequestId = useRef(0)
 
   // Sortierung - erweitert für alle Spalten
   const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>('name')
@@ -584,6 +585,7 @@ export default function KontaktePage() {
   }, [activeFilter, search, showArchived])
 
   async function loadKontakte() {
+    const requestId = ++latestContactRequestId.current
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -594,13 +596,17 @@ export default function KontaktePage() {
 
       const res = await fetch(`/api/kontakte?${params.toString()}`)
       const json = await res.json()
-      if (json.success) {
+      // Bei schnellen Filterwechseln können Antworten in umgekehrter Reihenfolge
+      // eintreffen. Nur die neueste Anfrage darf die sichtbare Liste ersetzen.
+      if (json.success && requestId === latestContactRequestId.current) {
         setKontakte(json.data)
       }
     } catch (err) {
       console.error('Fehler beim Laden der Kontakte:', err)
     } finally {
-      setLoading(false)
+      if (requestId === latestContactRequestId.current) {
+        setLoading(false)
+      }
     }
   }
 
