@@ -114,11 +114,19 @@ test.describe('Kommentare & Erwähnungen', () => {
 
     const commentBody = '[TEST] Kommentar direkt an der Aufgabe'
     await modal.getByPlaceholder('Kommentar schreiben… @ um jemanden zu erwähnen').fill(commentBody)
+    const saveResponsePromise = page.waitForResponse((response) => (
+      response.url().endsWith('/api/comments')
+      && response.request().method() === 'POST'
+    ))
     await modal.getByRole('button', { name: 'Kommentieren' }).click()
-    await expect(modal.getByText(commentBody)).toBeVisible()
-
-    const commentsRes = await request.get(`/api/comments?entity_type=task&entity_id=${task.id}`)
-    const { data: comments } = await expectOk(commentsRes, 'Aufgaben-Kommentare laden')
-    expect(comments.some((c: { body: string }) => c.body === commentBody)).toBeTruthy()
+    const saveResponse = await saveResponsePromise
+    expect(saveResponse.status()).toBe(201)
+    const savedComment = await saveResponse.json()
+    expect(savedComment.data).toEqual(expect.objectContaining({
+      entity_type: 'task',
+      entity_id: task.id,
+      body: commentBody,
+    }))
+    await expect(modal.getByText(commentBody, { exact: true })).toBeVisible()
   })
 })
