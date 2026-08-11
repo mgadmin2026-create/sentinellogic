@@ -11,6 +11,7 @@ interface TeamMember {
   active: boolean
   created_at: string
   placetel_sipuid: string | null
+  show_test_data: boolean
 }
 
 interface SipUser {
@@ -191,6 +192,21 @@ export default function TeamPage() {
     }
   }
 
+  async function toggleTestDataVisibility(member: TeamMember) {
+    try {
+      const res = await fetch(`/api/team/${member.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show_test_data: !member.show_test_data }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Fehler')
+      await loadMembers()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Testdaten-Sichtbarkeit konnte nicht geändert werden')
+    }
+  }
+
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault()
     if (!resetPasswordFor) return
@@ -336,6 +352,22 @@ export default function TeamPage() {
                     telefoniert über die gemeinsame Standard-Nebenstelle
                   </span>
                 )}
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-700">Testdaten sehen</p>
+                  <p className="text-[11px] text-gray-400">Markierte Testkontakte und zugehörige Aufgaben anzeigen</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={member.show_test_data}
+                  onClick={() => toggleTestDataVisibility(member)}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${member.show_test_data ? 'bg-yellow-400' : 'bg-gray-200'}`}
+                  title={member.show_test_data ? 'Testdaten ausblenden' : 'Testdaten anzeigen'}
+                >
+                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${member.show_test_data ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
               </div>
             </div>
           ))}

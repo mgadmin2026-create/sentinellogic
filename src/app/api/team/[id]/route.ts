@@ -35,6 +35,7 @@ export async function PATCH(
   const updates: Record<string, unknown> = {}
   if (body.role !== undefined) updates.role = String(body.role).trim()
   if (body.active !== undefined) updates.active = body.active === true
+  if (body.show_test_data !== undefined) updates.show_test_data = body.show_test_data === true
   // Leerer Wert = Zuordnung entfernen (Rückfall auf den Standard-SIP-Benutzer)
   if (body.placetel_sipuid !== undefined) {
     const sipuid = String(body.placetel_sipuid ?? '').trim()

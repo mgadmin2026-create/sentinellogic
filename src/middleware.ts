@@ -5,6 +5,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 // - /login: der Login selbst
 // - /api/webhooks/*: externe Dienste (Dialfire, KlickTipp, Facebook) rufen diese direkt auf
 // - /api/test-environment, /api/test-runs, /api/test-cases: eigene Token-/Session-Absicherung für CI/Playwright
+// - /api/maintenance/klicktipp-tag-cleanup: einmalige, durch Cleanup-Token geschützte Wartung
 // - /api/auth/google/*: bestehender Google-Drive-System-OAuth-Flow, separates Thema
 // - /datenschutz: Datenschutzerklärung, u.a. als Pflicht-URL in den Facebook-App-Einstellungen hinterlegt
 // - /api/cron/*: externer Scheduler (GitHub Actions) ruft diese ohne Login-Session auf,
@@ -15,6 +16,7 @@ const PUBLIC_PATH_PREFIXES = [
   '/api/test-environment',
   '/api/test-runs',
   '/api/test-cases',
+  '/api/maintenance/klicktipp-tag-cleanup',
   '/api/auth/google/',
   '/datenschutz',
   '/api/cron/',

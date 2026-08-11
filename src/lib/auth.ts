@@ -11,6 +11,7 @@ export interface CurrentUser {
   name: string
   role: string
   active: boolean
+  showTestData: boolean
 }
 
 /** Liefert null, wenn niemand eingeloggt ist oder das Profil fehlt. */
@@ -25,7 +26,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const supabase = createServerClient()
   const { data: profile } = await supabase
     .from('users')
-    .select('name, role, active')
+    .select('name, role, active, show_test_data')
     .eq('id', user.id)
     .single()
 
@@ -37,5 +38,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name: profile.name,
     role: profile.role,
     active: profile.active,
+    showTestData: profile.show_test_data === true,
   }
 }

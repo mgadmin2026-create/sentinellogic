@@ -5,6 +5,9 @@ import { createServerClient } from '@/lib/supabase/server'
 import { applyKontakteFilters } from '@/lib/kontakte-filters'
 import { buildContactsPdfBuffer, type ExportRow } from '@/lib/kontakte-export-pdf'
 import ExcelJS from 'exceljs'
+import { getCurrentUser } from '@/lib/auth'
+
+export const dynamic = 'force-dynamic'
 
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 
@@ -37,6 +40,10 @@ function toCsv(rows: Record<string, any>[]): string {
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient()
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+      return Response.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
+    }
     const url = new URL(request.url)
     const format = url.searchParams.get('format')
     if (!format || !['csv', 'xlsx', 'pdf'].includes(format)) {
@@ -44,6 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     const status = url.searchParams.get('status')
+    const view = url.searchParams.get('view')
     const search = url.searchParams.get('search')
     const includeArchived = url.searchParams.get('includeArchived') === 'true'
     const source = url.searchParams.get('source')
@@ -54,8 +62,10 @@ export async function GET(request: NextRequest) {
     const tagIds = (url.searchParams.get('tags') || '').split(',').filter(Boolean)
 
     let query = supabase.from('contacts').select('*').order('created_at', { ascending: false })
+    if (!currentUser.showTestData) query = query.eq('is_test_data', false)
     if (!includeArchived) query = query.is('archived_at', null)
     if (status && VALID_STATUSES.includes(status)) query = query.eq('status', status)
+    if (view === 'leads') query = query.not('status', 'in', '(customer,not_interested)')
     if (search) {
       const q = `%${search}%`
       query = query.or(`first_name.ilike.${q},last_name.ilike.${q},email.ilike.${q},company_name.ilike.${q}`)

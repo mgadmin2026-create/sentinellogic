@@ -46,15 +46,17 @@ test.describe('Kontaktverwaltung: Detailnavigation', () => {
     await expect(contactRow).toBeVisible()
     await contactRow.click()
 
-    await expect(page).toHaveURL(`/kontakte/${created.id}`)
+    await expect(page).toHaveURL(new RegExp(`/kontakte/${created.id}\\?returnTo=`))
     await expect(page.getByRole('heading', { name: `${contact.first_name} ${contact.last_name}` })).toBeVisible()
     // Firma erscheint in der Kopfzeilen-Meta
     await expect(page.getByText(contact.company_name).first()).toBeVisible()
     await expect(page.getByTitle(`E-Mail an ${contact.email}`)).toBeVisible()
     // Zentrale Kacheln sichtbar
     await expect(page.getByRole('heading', { name: '✓ Nächste Aufgabe' })).toBeVisible()
-    await expect(page.getByRole('heading', { name: '💬 Kommentare' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '🛡️ Versicherung & Verträge' })).toBeVisible()
+    await page.getByTitle('Weitere Aktionen').hover()
+    await page.getByRole('button', { name: '💬 Kommentare' }).click()
+    await expect(page.getByRole('dialog').getByText('Kommentare', { exact: true })).toBeVisible()
   })
 })
 
@@ -152,7 +154,7 @@ test.describe('Kontaktdetail: SuperChat-Übertragung', () => {
 
     await page.goto(`/kontakte/${created.id}`)
 
-    const link = page.getByRole('link', { name: 'Kontakt in SuperChat öffnen' })
+    const link = page.getByRole('link', { name: 'Nachrichtenfeld in SuperChat öffnen' })
     await expect(link).toHaveAttribute(
       'href',
       /https:\/\/app\.superchat\.de\/inbox\/find\/\?wa=4915123456789/

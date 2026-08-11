@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { KontaktImportModal } from '@/components/KontaktImportModal'
@@ -196,6 +196,14 @@ const STATUS_COLORS: Record<string, string> = {
   not_interested: 'bg-red-100 text-red-800',
 }
 
+const STATUS_ROW_COLORS: Record<string, string> = {
+  new: 'bg-gray-50 hover:bg-gray-100',
+  contacted: 'bg-blue-50 hover:bg-blue-100',
+  qualified: 'bg-yellow-50 hover:bg-yellow-100',
+  customer: 'bg-emerald-50 hover:bg-emerald-100',
+  not_interested: 'bg-red-50 hover:bg-red-100',
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   manuell: 'Manuell',
   csv: 'CSV',
@@ -218,11 +226,9 @@ const SOURCE_COLORS: Record<string, string> = {
 
 const KONTAKT_FILTER = [
   { label: 'Alle', value: 'all' },
-  { label: 'Neu', value: 'new' },
-  { label: 'Kontaktiert', value: 'contacted' },
-  { label: 'Qualifiziert', value: 'qualified' },
-  { label: 'Kunde', value: 'customer' },
-  { label: 'Nicht interessiert', value: 'not_interested' },
+  { label: 'Leads', value: 'leads' },
+  { label: 'Kunden', value: 'customer' },
+  { label: 'Nicht interessierte', value: 'not_interested' },
 ]
 
 const PIPELINE_STEPS = [
@@ -308,18 +314,12 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
 
 export default function KontaktePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [kontakte, setKontakte] = useState<Kontakt[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [activeFilter, setActiveFilter] = useState<string>('all')
-  const [sourceFilter, setSourceFilter] = useState<string>('all')
-  const [typFilter, setTypFilter] = useState<string>('all')
-  const [stageFilter, setStageFilter] = useState<string>('all')
-  const [sparteFilter, setSparteFilter] = useState<string>('all')
-  const [pruefungFilter, setPruefungFilter] = useState<string>('all')
-  const [tagFilter, setTagFilter] = useState<string[]>([])
-  const [allTags, setAllTags] = useState<{ id: string; name: string }[]>([])
-  const [tagFilterOpen, setTagFilterOpen] = useState(false)
+  const [search, setSearch] = useState(() => searchParams.get('search') || '')
+  const [activeFilter, setActiveFilter] = useState<string>(() => searchParams.get('view') || 'all')
+  const [sparteFilter, setSparteFilter] = useState<string>(() => searchParams.get('sparte') || 'all')
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [exporting, setExporting] = useState<'csv' | 'xlsx' | 'pdf' | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
@@ -327,13 +327,12 @@ export default function KontaktePage() {
   const [editingKontakt, setEditingKontakt] = useState<Kontakt | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [archiveTasksToo, setArchiveTasksToo] = useState(false)
-  const [showArchived, setShowArchived] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const latestContactRequestId = useRef(0)
 
   // Sortierung - erweitert für alle Spalten
-  const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>('name')
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>(() => (searchParams.get('sort') as keyof Kontakt | 'name' | 'progress') || 'name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => searchParams.get('order') === 'desc' ? 'desc' : 'asc')
 
   // Spalten-Customization
   const [visibleColumns, setVisibleColumns] = useState<ColumnVisibility>(DEFAULT_COLUMNS)
@@ -348,14 +347,6 @@ export default function KontaktePage() {
   const [quickNoteText, setQuickNoteText] = useState('')
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
   const [teamMembersById, setTeamMembersById] = useState<Record<string, string>>({})
-
-  // Alle Tags für den Filter laden
-  useEffect(() => {
-    fetch('/api/kontakt-tags')
-      .then((r) => r.json())
-      .then((res) => { if (res.success) setAllTags(res.data) })
-      .catch(() => {})
-  }, [])
 
   // Team-Mitglieder für die Verantwortlicher-Spalte laden
   useEffect(() => {
@@ -380,7 +371,7 @@ export default function KontaktePage() {
     const savedSortBy = localStorage.getItem('kontakte-sort-by')
     const savedSortOrder = localStorage.getItem('kontakte-sort-order')
 
-    if (savedSortBy) {
+    if (savedSortBy && !searchParams.has('sort')) {
       try {
         setSortBy(JSON.parse(savedSortBy))
       } catch (err) {
@@ -388,7 +379,7 @@ export default function KontaktePage() {
       }
     }
 
-    if (savedSortOrder) {
+    if (savedSortOrder && !searchParams.has('order')) {
       try {
         setSortOrder(JSON.parse(savedSortOrder))
       } catch (err) {
@@ -582,7 +573,20 @@ export default function KontaktePage() {
 
   useEffect(() => {
     loadKontakte()
-  }, [activeFilter, search, showArchived])
+  }, [activeFilter, search])
+
+  // Listenansicht vollständig in der URL halten. Dadurch funktionieren sowohl
+  // Browser-Zurück als auch der Rücksprung aus einem Kontaktdetail zuverlässig.
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (activeFilter !== 'all') params.set('view', activeFilter)
+    if (search) params.set('search', search)
+    if (sparteFilter !== 'all') params.set('sparte', sparteFilter)
+    if (sortBy !== 'name') params.set('sort', String(sortBy))
+    if (sortOrder !== 'asc') params.set('order', sortOrder)
+    const query = params.toString()
+    window.history.replaceState(null, '', query ? `/kontakte?${query}` : '/kontakte')
+  }, [activeFilter, search, sparteFilter, sortBy, sortOrder])
 
   async function loadKontakte() {
     const requestId = ++latestContactRequestId.current
@@ -590,9 +594,7 @@ export default function KontaktePage() {
       setLoading(true)
       const params = new URLSearchParams()
       params.set('limit', '500')
-      if (activeFilter !== 'all') params.set('status', activeFilter)
       if (search) params.set('search', search)
-      if (showArchived) params.set('includeArchived', 'true')
 
       const res = await fetch(`/api/kontakte?${params.toString()}`)
       const json = await res.json()
@@ -672,15 +674,10 @@ export default function KontaktePage() {
     try {
       const params = new URLSearchParams()
       params.set('format', format)
-      if (activeFilter !== 'all') params.set('status', activeFilter)
+      if (activeFilter === 'customer' || activeFilter === 'not_interested') params.set('status', activeFilter)
+      if (activeFilter === 'leads') params.set('view', 'leads')
       if (search) params.set('search', search)
-      if (sourceFilter !== 'all') params.set('source', sourceFilter)
-      if (typFilter !== 'all') params.set('kontakt_typ', typFilter)
-      if (stageFilter !== 'all') params.set('pipeline_stage', stageFilter)
       if (sparteFilter !== 'all') params.set('sparte', sparteFilter)
-      if (pruefungFilter !== 'all') params.set('pruefung_grund', pruefungFilter)
-      if (tagFilter.length > 0) params.set('tags', tagFilter.join(','))
-      if (showArchived) params.set('includeArchived', 'true')
 
       const res = await fetch(`/api/kontakte/export?${params.toString()}`)
       if (!res.ok) throw new Error('Export fehlgeschlagen')
@@ -769,13 +766,9 @@ export default function KontaktePage() {
   })
 
   const filtered = sorted.filter((k) => {
-    if (activeFilter !== 'all' && k.status !== activeFilter) return false
-    if (sourceFilter !== 'all' && (k.source || 'manuell') !== sourceFilter) return false
-    if (typFilter !== 'all' && (k.kontakt_typ || 'gewerbe') !== typFilter) return false
-    if (stageFilter !== 'all' && k.pipeline_stage !== stageFilter) return false
+    if (activeFilter === 'leads' && (k.status === 'customer' || k.status === 'not_interested')) return false
+    if ((activeFilter === 'customer' || activeFilter === 'not_interested') && k.status !== activeFilter) return false
     if (sparteFilter !== 'all' && k.sparte !== sparteFilter) return false
-    if (pruefungFilter !== 'all' && (k['prüfung_grund'] || '') !== pruefungFilter) return false
-    if (tagFilter.length > 0 && !tagFilter.every((tId) => (k.tags ?? []).some((t) => t.id === tId))) return false
     const q = search.toLowerCase()
     if (
       q &&
@@ -793,9 +786,17 @@ export default function KontaktePage() {
   const sparteOptions = Array.from(
     new Set(kontakte.map((k) => k.sparte).filter((v): v is string => !!v))
   ).sort()
-  const pruefungOptions = Array.from(
-    new Set(kontakte.map((k) => k['prüfung_grund']).filter((v): v is string => !!v))
-  ).sort()
+
+  function contactDetailHref(contactId: string): string {
+    const params = new URLSearchParams()
+    if (activeFilter !== 'all') params.set('view', activeFilter)
+    if (search) params.set('search', search)
+    if (sparteFilter !== 'all') params.set('sparte', sparteFilter)
+    if (sortBy !== 'name') params.set('sort', String(sortBy))
+    if (sortOrder !== 'asc') params.set('order', sortOrder)
+    const returnTo = params.toString() ? `/kontakte?${params.toString()}` : '/kontakte'
+    return `/kontakte/${contactId}?returnTo=${encodeURIComponent(returnTo)}`
+  }
 
   const toggleSort = (field: keyof Kontakt | 'name' | 'progress') => {
     if (sortBy === field) {
@@ -925,54 +926,17 @@ export default function KontaktePage() {
             title="Nach Status filtern"
           >
             {KONTAKT_FILTER.map((f) => {
-              const count = f.value === 'all' ? kontakte.length : kontakte.filter((k) => k.status === f.value).length
+              const count = f.value === 'all'
+                ? kontakte.length
+                : f.value === 'leads'
+                  ? kontakte.filter((k) => k.status !== 'customer' && k.status !== 'not_interested').length
+                  : kontakte.filter((k) => k.status === f.value).length
               return (
                 <option key={f.value} value={f.value}>
                   {f.label} ({count})
                 </option>
               )
             })}
-          </select>
-
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-              sourceFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
-            }`}
-            title="Nach Quelle filtern"
-          >
-            <option value="all">Quelle: Alle</option>
-            {Object.entries(SOURCE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-
-          <select
-            value={typFilter}
-            onChange={(e) => setTypFilter(e.target.value)}
-            className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-              typFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
-            }`}
-            title="Nach Kontakt-Typ filtern"
-          >
-            <option value="all">Typ: Alle</option>
-            <option value="gewerbe">🏢 Gewerbe</option>
-            <option value="privat">👤 Privat</option>
-          </select>
-
-          <select
-            value={stageFilter}
-            onChange={(e) => setStageFilter(e.target.value)}
-            className={`px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-              stageFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
-            }`}
-            title="Nach Prozessschritt filtern"
-          >
-            <option value="all">Schritt: Alle</option>
-            {PIPELINE_STEPS.map((s, i) => (
-              <option key={s.key} value={s.key}>{i + 1}. {s.label}</option>
-            ))}
           </select>
 
           <select
@@ -989,76 +953,11 @@ export default function KontaktePage() {
             ))}
           </select>
 
-          {pruefungOptions.length > 0 && (
-            <select
-              value={pruefungFilter}
-              onChange={(e) => setPruefungFilter(e.target.value)}
-              className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-                pruefungFilter !== 'all' ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
-              }`}
-              title="Nach Prüfgrund filtern"
-            >
-              <option value="all">Prüfgrund: Alle</option>
-              {pruefungOptions.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          )}
-
-          {allTags.length > 0 && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setTagFilterOpen((v) => !v)}
-                className={`max-w-full min-w-0 px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 ${
-                  tagFilter.length > 0 ? 'border-yellow-400 font-medium' : 'border-gray-200 text-gray-600'
-                }`}
-              >
-                🏷️ Tags{tagFilter.length > 0 ? ` (${tagFilter.length})` : ': Alle'}
-              </button>
-              {tagFilterOpen && (
-                <div className="absolute z-20 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto p-2">
-                  {allTags.map((tag) => (
-                    <label key={tag.id} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 rounded cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={tagFilter.includes(tag.id)}
-                        onChange={(e) => {
-                          setTagFilter((prev) =>
-                            e.target.checked ? [...prev, tag.id] : prev.filter((id) => id !== tag.id)
-                          )
-                        }}
-                        className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
-                      />
-                      {tag.name}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap px-1">
-            <input
-              type="checkbox"
-              checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
-              className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
-            />
-            Archivierte anzeigen
-          </label>
-          <HelpButton articleId="kontakte-liste.archivieren" className="text-gray-300 hover:text-yellow-600 transition-colors flex-shrink-0 self-center" />
-
-          {(sourceFilter !== 'all' || typFilter !== 'all' || stageFilter !== 'all' || sparteFilter !== 'all' || pruefungFilter !== 'all' || activeFilter !== 'all' || tagFilter.length > 0 || search) && (
+          {(sparteFilter !== 'all' || activeFilter !== 'all' || search) && (
             <button
               onClick={() => {
                 setActiveFilter('all')
-                setSourceFilter('all')
-                setTypFilter('all')
-                setStageFilter('all')
                 setSparteFilter('all')
-                setPruefungFilter('all')
-                setTagFilter([])
                 setSearch('')
               }}
               className="text-xs text-gray-500 hover:text-gray-900 font-medium underline-offset-2 hover:underline"
@@ -1151,13 +1050,13 @@ export default function KontaktePage() {
                   <tr
                     key={kontakt.id}
                     data-testid={`kontakt-row-${kontakt.id}`}
-                    onClick={() => router.push(`/kontakte/${kontakt.id}`)}
+                    onClick={() => router.push(contactDetailHref(kontakt.id))}
                     onMouseEnter={() => setHoveredRowId(kontakt.id)}
                     onMouseLeave={() => setHoveredRowId(null)}
-                    className={`border-b border-gray-100 cursor-pointer transition-all ${
+                    className={`border-b cursor-pointer transition-all ${
                       hoveredRowId === kontakt.id
-                        ? 'bg-yellow-50 shadow-md border-2 border-yellow-300'
-                        : 'border-gray-100 hover:bg-gray-50/50'
+                        ? 'shadow-md ring-2 ring-inset ring-yellow-300'
+                        : STATUS_ROW_COLORS[kontakt.status] || 'bg-white hover:bg-gray-50'
                     }`}
                   >
                     {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
@@ -1338,7 +1237,7 @@ export default function KontaktePage() {
                             onClick={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
-                              router.push(`/kontakte/${kontakt.id}`)
+                              router.push(contactDetailHref(kontakt.id))
                             }}
                           >
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1402,9 +1301,9 @@ export default function KontaktePage() {
           </p>
         ) : (
           filtered.map((kontakt) => (
-            <div key={kontakt.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div key={kontakt.id} className={`rounded-xl border border-gray-200 shadow-sm p-4 ${STATUS_ROW_COLORS[kontakt.status] || 'bg-white'}`}>
               <div className="flex items-start justify-between gap-3">
-                <Link href={`/kontakte/${kontakt.id}`} className="min-w-0 group">
+                <Link href={contactDetailHref(kontakt.id)} className="min-w-0 group">
                   <p className="font-semibold text-yellow-600 group-hover:underline truncate">
                     {kontakt.first_name} {kontakt.last_name}
                   </p>
@@ -1465,7 +1364,7 @@ export default function KontaktePage() {
                   Notiz
                 </button>
                 <Link
-                  href={`/kontakte/${kontakt.id}`}
+                  href={contactDetailHref(kontakt.id)}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20a2 2 0 012 2v14" /></svg>

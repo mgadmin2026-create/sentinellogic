@@ -3,6 +3,7 @@
 // POST /api/aufgaben — neue Aufgabe anlegen
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
 
 const VALID_STATUSES = ['offen', 'in_bearbeitung', 'erledigt']
 const VALID_PRIORITIES = ['niedrig', 'mittel', 'hoch']
@@ -10,6 +11,10 @@ const VALID_PRIORITIES = ['niedrig', 'mittel', 'hoch']
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient()
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+      return Response.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
+    }
     const url = new URL(request.url)
     const limit = parseInt(url.searchParams.get('limit') ?? '100', 10)
     const status = url.searchParams.get('status')
@@ -22,7 +27,7 @@ export async function GET(request: NextRequest) {
       .from('tasks')
       .select(`
         *,
-        contact:contact_id(first_name, last_name),
+        contact:contact_id(first_name, last_name, is_test_data),
         assigned_user:assigned_user_id(name)
       `)
       .order('fällig', { ascending: true })
@@ -54,7 +59,15 @@ export async function GET(request: NextRequest) {
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }
 
-    return Response.json({ success: true, data: data ?? [] })
+    const visibleTasks = currentUser.showTestData
+      ? data ?? []
+      : (data ?? []).filter((task: any) => {
+          const linkedTestContact = task.contact?.is_test_data === true
+          const recognizableStandaloneTestTask = /^\[TEST\]/i.test(String(task.titel || '').trim())
+          return !linkedTestContact && !recognizableStandaloneTestTask
+        })
+
+    return Response.json({ success: true, data: visibleTasks })
   } catch (err) {
     console.error('[GET /api/aufgaben] Fehler:', err)
     return Response.json({ success: false, error: 'Aufgaben konnten nicht geladen werden' }, { status: 500 })

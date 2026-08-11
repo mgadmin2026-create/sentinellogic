@@ -4,7 +4,7 @@
 // Jede Kachel zeigt den Überblick — Drawer tragen die vollständigen Felder
 // bzw. die komplette Historie (kein Feld geht verloren).
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { AutomationControls } from '@/components/AutomationControls'
@@ -174,6 +174,7 @@ type DrawerId =
   | 'beitragsuebersicht'
   | 'erstgespraech'
   | 'call-prep'
+  | 'kommentare'
 
 function fmtEuroKachel(n: number): string {
   return n.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'
@@ -182,7 +183,10 @@ function fmtEuroKachel(n: number): string {
 export default function KontaktDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const kontaktId = params.id as string
+  const requestedReturnTo = searchParams.get('returnTo')
+  const returnTo = requestedReturnTo?.startsWith('/kontakte') ? requestedReturnTo : '/kontakte'
 
   const [kontakt, setKontakt] = useState<Kontakt | null>(null)
   const [loading, setLoading] = useState(true)
@@ -545,6 +549,8 @@ export default function KontaktDetailPage() {
         onDelete={() => setDeleteConfirm(true)}
         onHistoryClick={() => setOpenDrawer('aktivitaeten')}
         onCallPrepClick={() => setOpenDrawer('call-prep')}
+        onProcessClick={() => setOpenDrawer('prozess')}
+        onCommentsClick={() => setOpenDrawer('kommentare')}
         isArchived={!!kontakt.archived_at}
         tags={kontaktTags}
         onTagsChange={handleTagsChange}
@@ -588,56 +594,6 @@ export default function KontaktDetailPage() {
             </p>
           </div>
         )}
-
-        {/* Prozess-Stepper (volle Breite) */}
-        <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 mb-4">
-          <div className="flex items-center justify-between gap-4 mb-3">
-            <p className="text-sm text-gray-600 min-w-0 truncate">
-              <span className="font-semibold text-gray-900">
-                Schritt {currentStepIndex + 1}/{PIPELINE_STEPS.length}:
-              </span>{' '}
-              {PIPELINE_STEPS[currentStepIndex]?.label}
-            </p>
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <HelpButton articleId="kontakt-detail.prozess-stepper" />
-              <button
-                onClick={() => setOpenDrawer('prozess')}
-                className="text-xs text-gray-500 hover:text-gray-900 font-medium"
-              >
-                Alle Schritte →
-              </button>
-              {!isLastStep && (
-                <button
-                  onClick={handleNextStep}
-                  disabled={pipelineSaving}
-                  className="bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  {pipelineSaving ? '…' : '→ Nächster Schritt'}
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-1">
-            {PIPELINE_STEPS.map((step, i) => {
-              const stepData = (kontakt.pipeline_steps || []).find((s: any) => s.key === step.key)
-              const done = stepData?.done || false
-              const current = i === currentStepIndex
-              return (
-                <button
-                  key={step.key}
-                  onClick={() => setOpenDrawer('prozess')}
-                  title={`${i + 1}. ${step.label}${done ? ' ✓' : current ? ' (aktuell)' : ''}`}
-                  className={`h-1.5 flex-1 rounded-full transition-colors ${
-                    done ? 'bg-emerald-500' : current ? 'bg-yellow-400' : 'bg-gray-200'
-                  } ${current ? 'ring-2 ring-yellow-200' : ''} hover:opacity-75`}
-                />
-              )
-            })}
-          </div>
-          {isLastStep && doneStepCount === PIPELINE_STEPS.length && (
-            <p className="text-xs text-emerald-600 font-medium mt-2">🎉 Alle Schritte abgeschlossen</p>
-          )}
-        </div>
 
         {/* Kachelraster */}
         <div className="grid lg:grid-cols-[1.55fr_1fr] gap-4 items-start">
@@ -979,20 +935,12 @@ export default function KontaktDetailPage() {
               </div>
             </div>
 
-            {/* Kommentare */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1.5 mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">💬 Kommentare</h3>
-                <HelpButton articleId="kontakt-detail.kommentare" />
-              </div>
-              <CommentThread entityType="contact" entityId={kontaktId} />
-            </div>
           </div>
         </div>
 
         {/* Footer */}
         <div className="mt-8 text-center">
-          <Link href="/kontakte" className="text-gray-500 hover:text-gray-900 text-sm font-medium">
+          <Link href={returnTo} className="text-gray-500 hover:text-gray-900 text-sm font-medium">
             ← Zurück zur Übersicht
           </Link>
         </div>
@@ -1037,6 +985,14 @@ export default function KontaktDetailPage() {
         onClose={() => setOpenDrawer(null)}
       >
         <AktivitaetenPanel aktivitäten={aktivitäten} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'kommentare'}
+        title="💬 Kommentare"
+        onClose={() => setOpenDrawer(null)}
+      >
+        <CommentThread entityType="contact" entityId={kontaktId} />
       </Drawer>
 
       <Drawer

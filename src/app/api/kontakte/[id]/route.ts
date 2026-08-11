@@ -7,6 +7,7 @@ import { logContactUpdated, logContactArchived, logPipelineStageChanged, logStat
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
+import { executeStatusAutomations } from '@/lib/automation-engine'
 
 const ALLOWED_UPDATE_FIELDS = new Set([
   'first_name', 'last_name', 'email', 'phone_mobile', 'phone_office',
@@ -75,6 +76,10 @@ export async function GET(
   try {
     const supabase = createServerClient()
     const { id } = params
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+      return Response.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
+    }
 
     // Kontakt laden (inkl. Name des Verantwortlichen für die Kopfzeile)
     const { data: contact, error: contactError } = await supabase
@@ -83,7 +88,7 @@ export async function GET(
       .eq('id', id)
       .single()
 
-    if (contactError || !contact) {
+    if (contactError || !contact || (contact.is_test_data && !currentUser.showTestData)) {
       return Response.json({ success: false, error: 'Kontakt nicht gefunden' }, { status: 404 })
     }
 
@@ -246,6 +251,9 @@ export async function PATCH(
       )
       if (data.email && (!data.klicktipp_id || klicktippRelevantChange)) {
         await syncStoredContactToKlickTipp(supabase, data)
+      }
+      if (raw.status) {
+        await executeStatusAutomations(id, String(raw.status))
       }
     }
     return Response.json({ success: true, data })

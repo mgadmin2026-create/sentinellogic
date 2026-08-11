@@ -9,6 +9,7 @@ import {
   createSuperchatContact,
   SuperchatApiError,
   updateSuperchatContact,
+  assignConversationLabelToContact,
   type SuperchatContactInput,
 } from '@/lib/integrations/superchat'
 import { runWithTracking, type ResumeRun } from '@/lib/sync-runs/retry-runner'
@@ -31,6 +32,7 @@ export interface SuperchatSyncContact {
   country: string | null
   geburtstag: string | null
   superchat_id: string | null
+  status?: string | null
 }
 
 export interface SuperchatSyncMeta {
@@ -113,6 +115,34 @@ export async function syncContactToSuperchat(
       data: { operation: wasUpdate ? 'updated' : 'created' },
       user_id: meta.userId ?? null,
     })
+
+    // Die statusbasierte Regel muss auch greifen, wenn der Kontakt erst nach
+    // dem Statuswechsel mit SuperChat verknüpft wird.
+    if (contact.status === 'customer') {
+      try {
+        const labelResult = await assignConversationLabelToContact(result.id, 'Kunde AZ')
+        await supabase.from('activities').insert({
+          lead_id: contact.id,
+          type: 'superchat_label_applied',
+          description: 'SuperChat-Gesprächslabel „Kunde AZ“ gesetzt',
+          data: labelResult,
+          user_id: meta.userId ?? null,
+        })
+      } catch (labelError) {
+        // Eine fehlende Label-Berechtigung darf die bereits erfolgreiche
+        // Kontaktsynchronisation nicht nachträglich als fehlgeschlagen markieren.
+        console.error('[SuperChat Sync] Gesprächslabel konnte nicht gesetzt werden')
+        await supabase.from('activities').insert({
+          lead_id: contact.id,
+          type: 'superchat_label_failed',
+          description: 'SuperChat-Gesprächslabel „Kunde AZ“ konnte nicht gesetzt werden',
+          data: {
+            reason: labelError instanceof Error ? labelError.message : 'Unbekannter Fehler',
+          },
+          user_id: meta.userId ?? null,
+        })
+      }
+    }
 
     return { superchatId: result.id, operation: wasUpdate ? 'updated' : 'created', synchronizedAt }
   } catch (error) {

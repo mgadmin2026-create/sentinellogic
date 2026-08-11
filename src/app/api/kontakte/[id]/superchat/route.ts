@@ -28,7 +28,7 @@ export async function POST(
   const { data: contact, error: contactError } = await supabase
     .from('contacts')
     .select(
-      'id, first_name, last_name, email, phone_mobile, phone_office, anrede, company_name, street, hausnummer, postal_code, city, country, geburtstag, archived_at, superchat_id'
+      'id, first_name, last_name, email, phone_mobile, phone_office, anrede, company_name, street, hausnummer, postal_code, city, country, geburtstag, status, archived_at, superchat_id'
     )
     .eq('id', params.id)
     .single()

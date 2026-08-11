@@ -244,6 +244,27 @@ function readContactId(body: unknown): string | null {
   return null
 }
 
+function readResults(body: unknown): Record<string, unknown>[] {
+  if (!body || typeof body !== 'object') return []
+  const record = body as Record<string, unknown>
+  const candidates = [record.results, record.data, record.conversations, record.labels]
+  const list = candidates.find(Array.isArray)
+  return Array.isArray(list)
+    ? list.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+    : []
+}
+
+function readLabelIds(conversation: Record<string, unknown>): string[] {
+  if (!Array.isArray(conversation.labels)) return []
+  return conversation.labels.flatMap((label): string[] => {
+    if (typeof label === 'string' && label.startsWith('la_')) return [label]
+    if (label && typeof label === 'object' && typeof (label as Record<string, unknown>).id === 'string') {
+      return [String((label as Record<string, unknown>).id)]
+    }
+    return []
+  })
+}
+
 async function superchatRequest(
   path: string,
   method: 'GET' | 'POST' | 'PATCH',
@@ -456,4 +477,57 @@ export async function updateSuperchatContact(
     buildContactPayload(contact, handles, customAttributes)
   )
   return { id: contactId }
+}
+
+export interface SuperchatLabelResult {
+  conversationsFound: number
+  conversationsUpdated: number
+}
+
+/**
+ * Ergänzt ein Gesprächslabel auf allen Gesprächen eines Kontakts. Vorhandene
+ * Labels werden mitgesendet und dadurch nicht versehentlich entfernt.
+ */
+export async function assignConversationLabelToContact(
+  contactId: string,
+  labelName: string
+): Promise<SuperchatLabelResult> {
+  if (!/^(?:co|ct)_[A-Za-z0-9_-]+$/.test(contactId)) {
+    throw new SuperchatApiError('Ungültige SuperChat-Kontakt-ID')
+  }
+
+  const normalizedLabelName = labelName.trim().toLowerCase()
+  const labelsBody = await superchatRequest('/labels?limit=100', 'GET')
+  const label = readResults(labelsBody).find(
+    (candidate) => String(candidate.name || '').trim().toLowerCase() === normalizedLabelName
+  )
+  const labelId = typeof label?.id === 'string' ? label.id : null
+  if (!labelId) {
+    throw new SuperchatApiError(`Das SuperChat-Gesprächslabel „${labelName}“ wurde nicht gefunden`)
+  }
+
+  const conversationsBody = await superchatRequest(
+    `/contacts/${encodeURIComponent(contactId)}/conversations`,
+    'GET'
+  )
+  const conversations = readResults(conversationsBody)
+  let updated = 0
+
+  for (const summary of conversations) {
+    const conversationId = typeof summary.id === 'string' ? summary.id : null
+    if (!conversationId || !/^cv_[A-Za-z0-9_-]+$/.test(conversationId)) continue
+
+    const fullConversation = readLabelIds(summary).length > 0
+      ? summary
+      : readContactRecord(await superchatRequest(`/conversations/${encodeURIComponent(conversationId)}`, 'GET')) || summary
+    const existingLabelIds = readLabelIds(fullConversation)
+    if (existingLabelIds.includes(labelId)) continue
+
+    await superchatRequest(`/conversations/${encodeURIComponent(conversationId)}`, 'PATCH', {
+      labels: [...existingLabelIds, labelId],
+    })
+    updated++
+  }
+
+  return { conversationsFound: conversations.length, conversationsUpdated: updated }
 }

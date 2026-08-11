@@ -10,11 +10,13 @@ interface Rule {
   id: string; created_at: string; name: string
   condition_source: LeadSource | 'all'
   condition_sparte?: string
+  condition_status?: LeadStatus | null
   actions: {
     klicktipp_tag?: string; klicktipp_tags?: string[]
     dialfire_campaign?: string; dialfire_task_name?: string
     set_status?: LeadStatus; send_notification?: boolean
     notification_email?: string
+    superchat_label?: string
   }
   active: boolean; runs: number
 }
@@ -67,6 +69,8 @@ export default function RegelnPage() {
   const [newDialfire, setNewDialfire] = useState('')
   const [newDialfireTask, setNewDialfireTask] = useState('')
   const [newStatus, setNewStatus] = useState('')
+  const [newConditionStatus, setNewConditionStatus] = useState('')
+  const [newSuperchatLabel, setNewSuperchatLabel] = useState('')
   const [newNotification, setNewNotification] = useState(false)
   const [newNotificationEmail, setNewNotificationEmail] = useState('')
 
@@ -135,7 +139,7 @@ export default function RegelnPage() {
   }
 
   async function saveRule() {
-    if (!newKlicktippTags.length && !newDialfire && !newDialfireTask && !newStatus && !newNotification) return
+    if (!newKlicktippTags.length && !newDialfire && !newDialfireTask && !newStatus && !newNotification && !newSuperchatLabel.trim()) return
     setSaving(true)
     const sourceLbl = SOURCE_OPTIONS.find((s) => s.value === newSource)?.label ?? newSource
     const actions: Rule['actions'] = {}
@@ -143,13 +147,16 @@ export default function RegelnPage() {
     if (newDialfire) actions.dialfire_campaign = newDialfire
     if (newDialfireTask) actions.dialfire_task_name = newDialfireTask
     if (newStatus) actions.set_status = newStatus as LeadStatus
+    if (newSuperchatLabel.trim()) actions.superchat_label = newSuperchatLabel.trim()
     if (newNotification) {
       actions.send_notification = true
       if (newNotificationEmail.trim()) actions.notification_email = newNotificationEmail.trim()
     }
 
     const sparteLbl = sparteOptions.find((i) => i.value === newSparte)?.label
-    const ruleName = sparteLbl && sparteLbl !== 'Alle Sparten'
+    const ruleName = newConditionStatus
+      ? `Status ${STATUS_LABELS[newConditionStatus]} → ${newSuperchatLabel.trim() || 'Regel'}`
+      : sparteLbl && sparteLbl !== 'Alle Sparten'
       ? `${sourceLbl} + ${sparteLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
       : `${sourceLbl} → ${editingRuleId ? 'Regel' : 'Neue Regel'}`
 
@@ -159,6 +166,7 @@ export default function RegelnPage() {
       name: ruleName,
       condition_source: newSource,
       condition_sparte: newSparte || null,
+      condition_status: newConditionStatus || null,
       actions,
       ...(editingRuleId ? {} : { active: true })
     }
@@ -184,7 +192,7 @@ export default function RegelnPage() {
     }
     setSaving(false); setModalOpen(false); setEditingRuleId(null)
     setNewSource('facebook'); setNewSparte(''); setNewKlicktippTags([]); setNewDialfire(''); setNewDialfireTask('')
-    setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
+    setNewStatus(''); setNewConditionStatus(''); setNewSuperchatLabel(''); setNewNotification(false); setNewNotificationEmail('')
     loadRules()
   }
 
@@ -196,6 +204,8 @@ export default function RegelnPage() {
     setNewDialfire(rule.actions.dialfire_campaign || '')
     setNewDialfireTask(rule.actions.dialfire_task_name || '')
     setNewStatus(rule.actions.set_status || '')
+    setNewConditionStatus(rule.condition_status || '')
+    setNewSuperchatLabel(rule.actions.superchat_label || '')
     setNewNotification(rule.actions.send_notification || false)
     setNewNotificationEmail(rule.actions.notification_email || '')
     setModalOpen(true)
@@ -217,7 +227,7 @@ export default function RegelnPage() {
         <button onClick={() => {
           setEditingRuleId(null)
           setNewSource('facebook'); setNewSparte(''); setNewKlicktippTags([]); setNewDialfire(''); setNewDialfireTask('')
-          setNewStatus(''); setNewNotification(false); setNewNotificationEmail('')
+          setNewStatus(''); setNewConditionStatus(''); setNewSuperchatLabel(''); setNewNotification(false); setNewNotificationEmail('')
           setModalOpen(true)
         }}
           className="flex items-center gap-2 bg-[#FFC300] hover:bg-[#e6b000] text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
@@ -361,9 +371,15 @@ export default function RegelnPage() {
                     {/* WENN */}
                     <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 min-w-[200px]">
                       <p className="text-xs font-bold text-blue-500 uppercase tracking-wide mb-1">WENN</p>
-                      <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
-                        Quelle = {SOURCE_OPTIONS.find((s) => s.value === rule.condition_source)?.label ?? rule.condition_source}
-                      </p>
+                      {rule.condition_status ? (
+                        <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
+                          Status = {STATUS_LABELS[rule.condition_status]}
+                        </p>
+                      ) : (
+                        <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
+                          Quelle = {SOURCE_OPTIONS.find((s) => s.value === rule.condition_source)?.label ?? rule.condition_source}
+                        </p>
+                      )}
                       {rule.condition_sparte && (
                         <p className="text-sm font-semibold text-[#1A1A1A] text-blue-700">
                           + Sparte = {sparteOptions.find((i) => i.value === rule.condition_sparte)?.label ?? rule.condition_sparte}
@@ -402,6 +418,12 @@ export default function RegelnPage() {
                           <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                             Status setzen: <span className="font-semibold ml-1">{STATUS_LABELS[rule.actions.set_status]}</span>
+                          </div>
+                        )}
+                        {rule.actions.superchat_label && (
+                          <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                            SuperChat-Gesprächslabel: <span className="font-semibold ml-1">{rule.actions.superchat_label}</span>
                           </div>
                         )}
                         {rule.actions.send_notification && (
@@ -463,13 +485,37 @@ export default function RegelnPage() {
             <div className="space-y-4">
               {/* Source */}
               <div>
+                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Status-Bedingung (optional)</label>
+                <select value={newConditionStatus} onChange={(e) => {
+                  setNewConditionStatus(e.target.value)
+                  if (e.target.value) setNewSource('all')
+                }}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  <option value="">-- Regel wird beim Anlegen geprüft --</option>
+                  {STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Quelle</label>
-                <select value={newSource} onChange={(e) => setNewSource(e.target.value)}
+                <select value={newSource} onChange={(e) => setNewSource(e.target.value)} disabled={!!newConditionStatus}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
                   {SOURCE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">SuperChat-Gesprächslabel (optional)</label>
+                <input
+                  type="text"
+                  value={newSuperchatLabel}
+                  onChange={(e) => setNewSuperchatLabel(e.target.value)}
+                  placeholder="z. B. Kunde AZ"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]"
+                />
+                <p className="text-xs text-gray-400 mt-1">Das Label muss bereits in SuperChat vorhanden sein.</p>
               </div>
 
               {/* Insurance Product */}

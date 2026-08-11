@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient()
     const body = await request.json()
-    const { name, condition_source, condition_sparte, actions } = body
+    const { name, condition_source, condition_sparte, condition_status, actions } = body
     if (!name || !condition_source || !actions) {
       return Response.json({ success: false, error: 'name, condition_source und actions sind Pflicht' }, { status: 400 })
     }
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
         name,
         condition_source,
         condition_sparte: condition_sparte || null,
+        condition_status: condition_status || null,
         actions,
         active: body.active ?? true
       })

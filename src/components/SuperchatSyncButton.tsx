@@ -133,7 +133,7 @@ export function SuperchatSyncButton({
           rel="noopener noreferrer"
           className="inline-flex text-xs font-semibold text-yellow-700 hover:text-yellow-800 hover:underline"
         >
-          Kontakt in SuperChat öffnen ↗
+          Nachrichtenfeld in SuperChat öffnen ↗
         </a>
       )}
     </div>

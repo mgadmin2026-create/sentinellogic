@@ -24,6 +24,8 @@ interface StickyContactHeaderProps {
   onDelete: () => void
   onHistoryClick: () => void
   onCallPrepClick: () => void
+  onProcessClick: () => void
+  onCommentsClick: () => void
   isArchived?: boolean
   tags: Tag[]
   onTagsChange: (tags: Tag[]) => void
@@ -79,6 +81,8 @@ export function StickyContactHeader({
   onDelete,
   onHistoryClick,
   onCallPrepClick,
+  onProcessClick,
+  onCommentsClick,
   isArchived,
   tags,
   onTagsChange,
@@ -259,6 +263,18 @@ export function StickyContactHeader({
                     className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
                   >
                     📋 Kontakthistorie
+                  </button>
+                  <button
+                    onClick={onProcessClick}
+                    className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
+                  >
+                    🎯 Prozess
+                  </button>
+                  <button
+                    onClick={onCommentsClick}
+                    className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
+                  >
+                    💬 Kommentare
                   </button>
                   {callNumber && (
                     <a

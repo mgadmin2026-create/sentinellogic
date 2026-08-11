@@ -23,6 +23,10 @@ const PIPELINE_STEPS_DEF = [
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerClient()
+    const currentUser = await getCurrentUser()
+    if (!currentUser) {
+      return Response.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
+    }
     const url = new URL(request.url)
     const limit = parseInt(url.searchParams.get('limit') ?? '100', 10)
     const status = url.searchParams.get('status')
@@ -31,6 +35,10 @@ export async function GET(request: NextRequest) {
     const assignedUserId = url.searchParams.get('assigned_user_id')
 
     let query = supabase.from('contacts').select('*').order('created_at', { ascending: false })
+
+    if (!currentUser.showTestData) {
+      query = query.eq('is_test_data', false)
+    }
 
     if (!includeArchived) {
       query = query.is('archived_at', null)

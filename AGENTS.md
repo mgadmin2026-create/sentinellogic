@@ -167,9 +167,15 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Aktiven, abgesicherten KlickTipp-JSON-Webhook `Sentimental Logic – Sentinel-Tag` (ID `176539`) für das Tag `Sentinel` eingerichtet
 - [x] KlickTipp-Tag-Bestand geprüft: 719 manuelle Tags und sechs ausgehende Webhooks; Alt-Webhook `Sentinel Logic Sync` (ID `169322`) bis zum kontrollierten Vergleich geschützt
 - [x] Vierseitige KlickTipp-Tag-Bestandsaufnahme unter `output/pdf/klicktipp-tag-bestandsaufnahme-2026-08-05.pdf` erstellt
+- [x] Kontaktübersicht um persistente Filter-/Sortierrückkehr, vier Fachansichten und Statusfarben auf der gesamten Zeile erweitert
+- [x] Kontaktdetail aufgeräumt: Prozess und Kommentare ins Drei-Punkte-Menü verschoben; Erstgespräch-PDF mit optionalen Leerfeldern ergänzt
+- [x] SuperChat-Direktlink präzisiert und Statusregel `Kunde` → Gesprächslabel `Kunde AZ` implementiert
+- [x] Sichtbarkeit markierter Testkontakte und -aufgaben je Teammitglied steuerbar gemacht; bestehende markierte Testdaten live bereinigt
+- [x] KlickTipp-Tagkorrektur für Gewerbe (`AZ Kunden`, `AZ Firmen Kunden`) und Privat (`AZ Kunden`, `Kinderprofis`) als geschützte Paketverarbeitung vorbereitet
+- [x] Regressionstest-Katalog um E2E-028 und E2E-029 für Kontaktansichten, Rücksprung, Detailmenü und Erstgespräch-PDF erweitert
 
 **Nächste Aufgabe:**
-→ Korrigierten Regressionstest erneut ausführen und verbleibende Fehler bewerten; anschließend echte KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal abnehmen
+→ KlickTipp-Tagkorrektur aus der Produktionsumgebung ausführen und kontrollieren; danach den korrigierten Regressionstest starten und verbleibende Fehler bewerten
 
 -----
 

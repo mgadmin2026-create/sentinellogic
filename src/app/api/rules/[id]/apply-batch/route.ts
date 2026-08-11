@@ -4,6 +4,7 @@ import { sendRuleBatchNotification } from '@/lib/rule-notifications'
 import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
 import { syncContactToDialfire } from '@/lib/dialfire-sync'
+import { assignConversationLabelToContact } from '@/lib/integrations/superchat'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Ohne dieses Flag greift Vercels Standard-Timeout (deutlich unter einer Minute).
@@ -17,6 +18,7 @@ interface Rule {
   id: string
   name?: string
   condition_source: string
+  condition_status?: string | null
   actions: {
     dialfire_campaign?: string
     dialfire_task_name?: string
@@ -25,6 +27,7 @@ interface Rule {
     set_status?: string
     send_notification?: boolean
     notification_email?: string
+    superchat_label?: string
   }
 }
 
@@ -65,15 +68,20 @@ export async function POST(
       .update({ runs: (rule.runs ?? 0) + 1 })
       .eq('id', ruleId)
 
-    // 2. Find contacts matching rule source AND insurance type (if specified)
-    // Skip: archiviert, automation_disabled=true, status='customer'
+    // 2. Find contacts matching the configured conditions.
     let query = supabase
       .from('contacts')
       .select('*')
-      .eq('source', rule.condition_source)
       .is('archived_at', null)
       .eq('automation_disabled', false)
-      .neq('status', 'customer')
+      .eq('is_test_data', false)
+
+    if (rule.condition_source && rule.condition_source !== 'all') {
+      query = query.eq('source', rule.condition_source)
+    }
+    if (rule.condition_status) {
+      query = query.eq('status', rule.condition_status)
+    }
 
     // Wenn Versicherungstyp in der Regel definiert ist, auch danach filtern
     if (rule.condition_sparte) {
@@ -107,6 +115,7 @@ export async function POST(
     let klicktippSynced = 0
     let klicktippFailed = 0
     let klicktippSkipped = 0
+    let superchatLabeled = 0
     const errors: string[] = []
     const affectedContacts: { email: string; name: string; dialfire: 'synced' | 'failed' | 'none' }[] = []
 
@@ -116,6 +125,7 @@ export async function POST(
     if (rule.actions.dialfire_campaign) actionsSummary.push(`Dialfire-Kampagne "${rule.actions.dialfire_campaign}"${rule.actions.dialfire_task_name ? ` (Task: ${rule.actions.dialfire_task_name})` : ''}`)
     const ruleKlicktippTagList = ruleKlicktippTags(rule.actions)
     if (ruleKlicktippTagList.length) actionsSummary.push(`KlickTipp-Tags "${ruleKlicktippTagList.join('", "')}"`)
+    if (rule.actions.superchat_label) actionsSummary.push(`SuperChat-Gesprächslabel "${rule.actions.superchat_label}"`)
     if (rule.actions.send_notification && rule.actions.notification_email) actionsSummary.push(`Benachrichtigung an ${rule.actions.notification_email}`)
 
     for (const contact of contactList) {
@@ -145,7 +155,7 @@ export async function POST(
         }
 
         // Skip if no actions
-        if (Object.keys(fieldsToSet).length === 0) {
+        if (Object.keys(fieldsToSet).length === 0 && !rule.actions.superchat_label) {
           skippedCount++
           continue
         }
@@ -154,10 +164,9 @@ export async function POST(
         let dialfireOutcome: 'synced' | 'failed' | 'none' = 'none'
 
         // Update contact
-        const { error: updateError } = await supabase
-          .from('contacts')
-          .update(fieldsToSet)
-          .eq('id', contact.id)
+        const { error: updateError } = Object.keys(fieldsToSet).length > 0
+          ? await supabase.from('contacts').update(fieldsToSet).eq('id', contact.id)
+          : { error: null }
 
         if (updateError) {
           errors.push(`${contact.email}: ${updateError.message}`)
@@ -174,6 +183,11 @@ export async function POST(
           `Batch: Rule ${rule.id} applied (${Object.keys(fieldsToSet).join(', ')})`,
           { rule_id: rule.id, trigger: 'batch', ...fieldsSummary }
         )
+
+        if (rule.actions.superchat_label && contact.superchat_id) {
+          const labelResult = await assignConversationLabelToContact(contact.superchat_id, rule.actions.superchat_label)
+          superchatLabeled += labelResult.conversationsUpdated
+        }
 
         // Bereits mit denselben Tags synchronisierte Kontakte nicht erneut an die
         // KlickTipp-API schicken — bei großen Regeln (>100 Kontakte) ist das der
@@ -258,6 +272,7 @@ export async function POST(
       klicktippSynced,
       klicktippFailed,
       klicktippSkipped,
+      superchatLabeled,
       actionsSummary,
       affectedContacts,
       errors: errors.length > 0 ? errors : undefined,

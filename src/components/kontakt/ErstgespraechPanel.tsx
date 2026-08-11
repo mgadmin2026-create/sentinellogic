@@ -44,6 +44,8 @@ export function ErstgespraechPanel({ kontakt, sparten, onSave, onSaveNotes, onFo
   const [edits, setEdits] = useState<Record<string, any>>({})
   const [saving, setSaving] = useState(false)
   const [gespeichert, setGespeichert] = useState(false)
+  const [includeEmptyPdfFields, setIncludeEmptyPdfFields] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
 
   const [notizenDraft, setNotizenDraft] = useState(kontakt.notes || '')
   const [notizenSaving, setNotizenSaving] = useState(false)
@@ -83,6 +85,29 @@ export function ErstgespraechPanel({ kontakt, sparten, onSave, onSaveNotes, onFo
       await onSaveNotes(notizenDraft)
     } finally {
       setNotizenSaving(false)
+    }
+  }
+
+  async function downloadPdf() {
+    setPdfLoading(true)
+    try {
+      if (Object.keys(edits).length > 0) await handleSave()
+      if (notizenDirty) await handleSaveNotizen()
+      const response = await fetch(`/api/kontakte/${kontakt.id}/erstgespraech/pdf?includeEmpty=${includeEmptyPdfFields}`)
+      if (!response.ok) throw new Error('PDF konnte nicht erstellt werden')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `Erstgespraech-${kontakt.first_name}-${kontakt.last_name}.pdf`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('[Erstgespräch] PDF-Download fehlgeschlagen:', error)
+    } finally {
+      setPdfLoading(false)
     }
   }
 
@@ -225,6 +250,29 @@ export function ErstgespraechPanel({ kontakt, sparten, onSave, onSaveNotes, onFo
           <div ref={bottomRef} />
         </div>
       )}
+
+      <div className="mt-5 border-t border-gray-200 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={includeEmptyPdfFields}
+              onChange={(event) => setIncludeEmptyPdfFields(event.target.checked)}
+              className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+            />
+            Leere Felder im PDF ausgeben
+          </label>
+          <button
+            type="button"
+            onClick={downloadPdf}
+            disabled={pdfLoading}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {pdfLoading ? 'PDF wird erstellt…' : '⬇ Erstgespräch als PDF'}
+          </button>
+        </div>
+        <p className="mt-1.5 text-[11px] text-gray-400">Enthält ausschließlich die im Erstgespräch angezeigten Felder.</p>
+      </div>
     </div>
   )
 }

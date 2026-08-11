@@ -502,15 +502,50 @@ function normalizeTagMap(response: unknown): Map<string, number> {
   return tagsByName
 }
 
+let cachedTagMap: { expiresAt: number; value: Map<string, number> } | null = null
+
 async function resolveTagIds(tagNames: string[]): Promise<number[]> {
   if (tagNames.length === 0) return []
 
-  const response = await makeRequest<unknown>('GET', '/tag.json')
-  const tagMap = normalizeTagMap(response)
+  let tagMap = cachedTagMap && cachedTagMap.expiresAt > Date.now() ? cachedTagMap.value : null
+  if (!tagMap) {
+    const response = await makeRequest<unknown>('GET', '/tag.json')
+    tagMap = normalizeTagMap(response)
+    cachedTagMap = { expiresAt: Date.now() + 5 * 60_000, value: tagMap }
+  }
 
   return tagNames
     .map((tagName) => tagMap.get(tagName.trim().toLowerCase()))
     .filter((tagId): tagId is number => tagId != null)
+}
+
+/** Entfernt gezielt Tags; andere, nur in KlickTipp gepflegte Tags bleiben erhalten. */
+export async function untagKlickTippContact(email: string, tagIds: number[]): Promise<void> {
+  const uniqueTagIds = Array.from(new Set(tagIds.filter((id) => Number.isInteger(id) && id > 0)))
+  if (uniqueTagIds.length === 0) return
+  await makeRequest<unknown>('POST', '/subscriber/untag.json', {
+    email: email.trim().toLowerCase(),
+    tagids: uniqueTagIds,
+  })
+}
+
+/** Ersetzt ausschließlich die bisher von Sentimental Logic verwalteten Tags. */
+export async function replaceKlickTippContactTags(
+  email: string,
+  previousTagNames: string[],
+  nextTagNames: string[]
+): Promise<number[]> {
+  const [previousIds, nextIds] = await Promise.all([
+    resolveTagIds(previousTagNames),
+    resolveTagIds(nextTagNames),
+  ])
+  if (nextIds.length !== new Set(nextTagNames.map((name) => name.trim().toLowerCase())).size) {
+    throw new Error('Mindestens ein gewünschter KlickTipp-Tag wurde nicht gefunden')
+  }
+  const nextIdSet = new Set(nextIds)
+  await untagKlickTippContact(email, previousIds.filter((id) => !nextIdSet.has(id)))
+  await tagKlickTippContact(email, nextIds)
+  return nextIds
 }
 
 /** Überträgt die Stammdaten und anschließend die gewünschten KlickTipp-Tags. */

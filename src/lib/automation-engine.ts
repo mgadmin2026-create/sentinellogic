@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { sendRuleNotification } from '@/lib/rule-notifications'
 import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
+import { assignConversationLabelToContact, SuperchatApiError } from '@/lib/integrations/superchat'
 
 interface Rule {
   id: string
@@ -9,6 +10,7 @@ interface Rule {
   active: boolean
   condition_source: string
   condition_sparte?: string
+  condition_status?: string | null
   actions: {
     klicktipp_tag?: string
     klicktipp_tags?: string[]
@@ -29,6 +31,61 @@ interface AutomationResult {
     klicktipp_tags?: string[]
   }
   error?: string
+}
+
+/** Führt Regeln aus, die explizit an einen Kontaktstatus gebunden sind. */
+export async function executeStatusAutomations(contactId: string, status: string): Promise<void> {
+  const supabase = createServerClient()
+  const { data: contact } = await supabase
+    .from('contacts')
+    .select('id, source, sparte, superchat_id, automation_disabled, is_test_data')
+    .eq('id', contactId)
+    .single()
+
+  if (!contact || contact.automation_disabled || contact.is_test_data) return
+
+  const { data: rules, error } = await supabase
+    .from('rules')
+    .select('*')
+    .eq('active', true)
+    .eq('condition_status', status)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[Automation] Statusregeln konnten nicht geladen werden:', error.message)
+    return
+  }
+
+  for (const rule of rules ?? []) {
+    const sourceMatches = rule.condition_source === 'all' || rule.condition_source === contact.source
+    const sparteMatches = !rule.condition_sparte || rule.condition_sparte === contact.sparte
+    if (!sourceMatches || !sparteMatches) continue
+
+    const labelName = rule.actions?.superchat_label
+    if (!labelName || !contact.superchat_id) continue
+
+    try {
+      const result = await assignConversationLabelToContact(contact.superchat_id, labelName)
+      await logActivity(
+        null,
+        contactId,
+        'automation_executed',
+        `SuperChat-Gesprächslabel „${labelName}“ gesetzt`,
+        { rule_id: rule.id, trigger: 'status_change', ...result }
+      )
+    } catch (labelError) {
+      console.error('[Automation] SuperChat-Gesprächslabel konnte nicht gesetzt werden:', {
+        status: labelError instanceof SuperchatApiError ? labelError.status : null,
+      })
+      await logActivity(
+        null,
+        contactId,
+        'superchat_sync_failed',
+        'SuperChat-Gesprächslabel konnte nicht gesetzt werden',
+        { rule_id: rule.id, trigger: 'status_change' }
+      )
+    }
+  }
 }
 
 /**
@@ -81,6 +138,7 @@ export async function executeAutomation(
 
     // Find matching rule for this source and insurance product
     const matchingRule = rules?.find((rule: Rule) => {
+      if (rule.condition_status) return false
       // Check source condition
       const sourceMatches = rule.condition_source === 'all' || rule.condition_source === contactSource
 
