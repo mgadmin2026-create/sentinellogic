@@ -61,7 +61,7 @@ test.describe('Kontaktdetail: reduzierte Arbeitsfläche und Erstgespräch-PDF', 
     await expect(page.getByRole('dialog').getByText('Vertriebsprozess', { exact: true })).toBeVisible()
     await page.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()
 
-    await page.getByRole('button', { name: '🎙️ Erstgespräch' }).click()
+    await page.getByRole('button', { name: 'Erstgespräch bearbeiten' }).click()
     await expect(page.getByText('Leere Felder im PDF ausgeben')).toBeVisible()
     const pdfResponse = await request.get(`/api/kontakte/${created.id}/erstgespraech/pdf?includeEmpty=true`)
     expect(pdfResponse.ok()).toBeTruthy()

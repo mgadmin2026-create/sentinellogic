@@ -866,6 +866,7 @@ export default function KontaktDetailPage() {
                 </div>
                 <button
                   onClick={() => setOpenDrawer('erstgespraech')}
+                  aria-label="Erstgespräch bearbeiten"
                   className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
                 >
                   Bearbeiten

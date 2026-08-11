@@ -56,7 +56,7 @@ test.describe('Kontaktverwaltung: Detailnavigation', () => {
     await expect(page.getByRole('heading', { name: '🛡️ Versicherung & Verträge' })).toBeVisible()
     await page.getByTitle('Weitere Aktionen').click()
     await page.getByRole('button', { name: '💬 Kommentare' }).click()
-    await expect(page.getByRole('dialog').getByText('Kommentare', { exact: true })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: '💬 Kommentare' })).toBeVisible()
   })
 })
 

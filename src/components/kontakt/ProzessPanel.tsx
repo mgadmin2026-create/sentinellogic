@@ -1,6 +1,7 @@
 'use client'
 // Vollständige Vertriebsprozess-Ansicht (12 Schritte mit Erledigt-Checkboxen
 // und Fälligkeitsdaten) — ehemals Prozess-Tab, jetzt Drawer-Inhalt.
+import { HelpButton } from '@/components/help/HelpButton'
 
 export const PIPELINE_STEPS = [
   { key: 'lead_in', label: 'Lead kommt rein' },
@@ -36,7 +37,10 @@ export function ProzessPanel({ pipelineStage, pipelineSteps, saving, onNextStep,
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Vertriebsprozess</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-lg font-semibold text-gray-900">Vertriebsprozess</h2>
+          <HelpButton articleId="kontakt-detail.prozess-stepper" />
+        </div>
         {pipelineStage && (
           <button
             onClick={onNextStep}
