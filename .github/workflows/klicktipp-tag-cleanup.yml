@@ -1,0 +1,41 @@
+name: KlickTipp Tag-Korrektur
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Zur Freigabe exakt REPLACE_AZ_TAGS_2026 eingeben'
+        required: true
+        type: string
+      batch_size:
+        description: 'Kontakte pro kontrolliertem Lauf (1–50)'
+        required: true
+        default: '10'
+        type: string
+
+concurrency:
+  group: sentimental-logic-klicktipp-tag-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: inputs.confirmation == 'REPLACE_AZ_TAGS_2026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Korrekturpaket ausführen
+        env:
+          CLEANUP_TOKEN: ${{ secrets.TEST_DATA_CLEANUP_TOKEN }}
+          BATCH_SIZE: ${{ inputs.batch_size }}
+        run: |
+          set -euo pipefail
+          response="$(curl --fail-with-body --silent --show-error \
+            --request POST 'https://sentinellogic.vercel.app/api/maintenance/klicktipp-tag-cleanup' \
+            --header 'content-type: application/json' \
+            --header "x-test-cleanup-token: ${CLEANUP_TOKEN}" \
+            --data "{\"confirmation\":\"REPLACE_AZ_TAGS_2026\",\"batchSize\":${BATCH_SIZE}}")"
+
+          summary="$(printf '%s' "$response" | jq -c '{success,totalCandidates,pendingBefore,attempted,updated,failed,remainingEstimate}')"
+          printf '### KlickTipp Tag-Korrektur\n\n```json\n%s\n```\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
+
+          test "$(printf '%s' "$response" | jq -r '.success')" = 'true'
