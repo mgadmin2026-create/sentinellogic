@@ -146,6 +146,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Regressionstest-Status geprüft: letzter vollständiger Lauf 11/11 grün; aktuelle Pipeline durch HTTP 401 vor Teststart blockiert
 - [x] Regressionstest-Katalog auf 30 automatisierte Szenarien erweitert: Auth-Schutz, persönliches Dashboard, Mail-Vorlagen, Kalender, Sync-Kontrollzentrum, Datenschutz und Kontakt-E-Mail mit Cc/Bcc/Anhang
 - [x] Geschützten Zugriff der Regressionstest-Pipeline auf `/api/test-cases` über das Cleanup-Token ergänzt und den bisherigen HTTP-401-Blocker behoben
+- [x] Aufgaben-Kommentar-Test auf den sichtbaren Historien-Drawer stabilisiert und das Testdashboard öffnet automatisch den jüngsten Lauf mit vorhandenen Einzeltestergebnissen
 - [x] Fehlerlauf mit 23/30 grünen Tests analysiert, SuperChat-Test E2E-019 deaktiviert und Testfehler bei Kommentaren, Kontaktdetail sowie Profil-Sitzung korrigiert
 - [x] Kontaktarchiv-Ansicht gegen überholende API-Antworten bei schnellen Filterwechseln abgesichert
 - [x] Testdaten-Bereinigung um polymorphe Kommentare und Dokument-Anhänge erweitert, damit ausschließlich markierte Testkontakte wieder vollständig vorbereitet werden können

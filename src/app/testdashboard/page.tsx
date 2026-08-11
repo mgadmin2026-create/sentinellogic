@@ -113,12 +113,13 @@ function getTestCaseExecutions(testCase: TestCaseDefinition, runs: TestRunRecord
 
 function RunsView({ runs, loading, error }: { runs: TestRunRecord[]; loading: boolean; error: string | null }) {
   const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set())
+  const latestRunWithResults = runs.find((run) => run.results.length > 0) ?? runs[0]
 
   useEffect(() => {
-    if (runs[0]) {
-      setExpandedRunIds((current) => current.size > 0 ? current : new Set([runs[0].id]))
+    if (latestRunWithResults) {
+      setExpandedRunIds((current) => current.size > 0 ? current : new Set([latestRunWithResults.id]))
     }
-  }, [runs])
+  }, [latestRunWithResults])
 
   function toggleRun(runId: string) {
     setExpandedRunIds((current) => {
@@ -154,7 +155,7 @@ function RunsView({ runs, loading, error }: { runs: TestRunRecord[]; loading: bo
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {runs.map((run, runIndex) => {
+          {runs.map((run) => {
             const isExpanded = expandedRunIds.has(run.id)
             const detailsId = `test-run-details-${run.id}`
 
@@ -202,7 +203,7 @@ function RunsView({ runs, loading, error }: { runs: TestRunRecord[]; loading: bo
                     <td colSpan={7} className="bg-gray-50/80 px-6 py-5">
                       <div
                         id={detailsId}
-                        data-testid={runIndex === 0 ? 'latest-test-run-details' : undefined}
+                        data-testid={run.id === latestRunWithResults?.id ? 'latest-test-run-details' : undefined}
                         className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
