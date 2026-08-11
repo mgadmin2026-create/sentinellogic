@@ -246,7 +246,7 @@ export function StickyContactHeader({
               </button>
 
               {/* ⋯-Menü: Kontakthistorie + tel-Anruf + WhatsApp */}
-              <div className="relative group">
+              <div className="relative">
                 <button
                   onClick={() => setActionsMenuOpen((open) => !open)}
                   aria-expanded={actionsMenuOpen}
@@ -261,11 +261,11 @@ export function StickyContactHeader({
                   className={`absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg transition-all z-50 ${
                     actionsMenuOpen
                       ? 'opacity-100 visible'
-                      : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'
+                      : 'opacity-0 invisible'
                   }`}
                 >
                   <button
-                    onClick={onCallPrepClick}
+                    onClick={() => { setActionsMenuOpen(false); onCallPrepClick() }}
                     disabled={isArchived}
                     title="KI-Zusammenfassung zur Gesprächsvorbereitung generieren"
                     className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-40 border-b border-gray-100"

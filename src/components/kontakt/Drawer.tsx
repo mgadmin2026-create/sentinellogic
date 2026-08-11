@@ -4,6 +4,9 @@
 // bzw. die komplette Historie einer Domäne.
 import { useEffect, type ReactNode } from 'react'
 
+let openDrawerCount = 0
+let originalBodyOverflow = ''
+
 interface DrawerProps {
   isOpen: boolean
   title: string
@@ -21,12 +24,15 @@ export function Drawer({ isOpen, title, onClose, children, footer, widthClass = 
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKeyDown)
-    // Hintergrund-Scroll sperren, solange der Drawer offen ist
-    const previousOverflow = document.body.style.overflow
+    // Mehrere Drawer können kurzzeitig verschachtelt sein (z. B. Hilfe im
+    // Prozess-Drawer). Die globale Sperre erst nach dem letzten Drawer lösen.
+    if (openDrawerCount === 0) originalBodyOverflow = document.body.style.overflow
+    openDrawerCount++
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
+      openDrawerCount = Math.max(0, openDrawerCount - 1)
+      if (openDrawerCount === 0) document.body.style.overflow = originalBodyOverflow
     }
   }, [isOpen, onClose])
 
