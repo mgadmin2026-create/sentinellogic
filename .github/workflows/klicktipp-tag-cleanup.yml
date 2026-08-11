@@ -36,6 +36,8 @@ jobs:
             --data "{\"confirmation\":\"REPLACE_AZ_TAGS_2026\",\"batchSize\":${BATCH_SIZE}}")"
 
           summary="$(printf '%s' "$response" | jq -c '{success,totalCandidates,pendingBefore,attempted,updated,failed,remainingEstimate}')"
+          error_summary="$(printf '%s' "$response" | jq -c '[.errors[]?.error] | group_by(.) | map({reason: .[0], count: length})')"
+          printf 'Ergebnis: %s\nFehlergruppen: %s\n' "$summary" "$error_summary"
           printf '### KlickTipp Tag-Korrektur\n\n```json\n%s\n```\n' "$summary" >> "$GITHUB_STEP_SUMMARY"
 
           test "$(printf '%s' "$response" | jq -r '.success')" = 'true'
