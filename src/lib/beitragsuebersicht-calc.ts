@@ -2,6 +2,7 @@
 // Bearbeiten-Ansicht UND der PDF-Generierung genutzt, damit beide garantiert
 // dasselbe Ergebnis zeigen. Spiegelt exakt die Formeln aus der Excel-Vorlage.
 import type { Beitragsuebersicht, BeitragsPosition, FlottenFahrzeug } from '@/types/beitragsuebersicht'
+import { ZAHLUNGEN_PRO_JAHR } from './beitragsuebersicht-zyklus'
 
 export type Differenz = { kind: 'leer' } | { kind: 'neu' } | { kind: 'wert'; betrag: number }
 
@@ -39,7 +40,12 @@ export interface Summenergebnis {
   mehrbeitragProMonat: number
 }
 
-/** =SUM(...) je Spalte, dann =MAX(0,alt-neu) bzw. =MAX(0,(neu-alt)/12) */
+/**
+ * =SUM(...) je Spalte, dann =MAX(0,alt-neu) bzw. =MAX(0,(neu-alt)/12) — beide
+ * Werte werden zyklus-normalisiert (sumAlt/sumNeu selbst bleiben im Zyklus der
+ * Übersicht, unkonvertiert). Kollabiert bei zyklus='jaehrlich' (Faktor 1)
+ * exakt auf die ursprüngliche, jahresbasierte Formel.
+ */
 export function berechneSummen(uebersicht: Beitragsuebersicht): Summenergebnis {
   let sumAlt = 0
   let sumNeu = 0
@@ -48,10 +54,13 @@ export function berechneSummen(uebersicht: Beitragsuebersicht): Summenergebnis {
     sumAlt += alt || 0
     sumNeu += neu || 0
   }
+  const faktor = ZAHLUNGEN_PRO_JAHR[uebersicht.zyklus ?? 'jaehrlich']
+  const sumAltJahr = sumAlt * faktor
+  const sumNeuJahr = sumNeu * faktor
   return {
     sumAlt,
     sumNeu,
-    ersparnisProJahr: Math.max(0, sumAlt - sumNeu),
-    mehrbeitragProMonat: Math.max(0, (sumNeu - sumAlt) / 12),
+    ersparnisProJahr: Math.max(0, sumAltJahr - sumNeuJahr),
+    mehrbeitragProMonat: Math.max(0, (sumNeuJahr - sumAltJahr) / 12),
   }
 }

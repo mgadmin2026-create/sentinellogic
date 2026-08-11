@@ -4,7 +4,7 @@ import { uploadDocumentToGoogleDrive, getOrdnerstruktur, renameFileInGoogleDrive
 import { logFileUploaded } from '@/lib/activities-logger'
 import { getCurrentUser } from '@/lib/auth'
 import { analysiereVersicherungsdokument } from '@/lib/ki-upload'
-import { uebernehmeVertragInBeitragsuebersicht } from '@/lib/beitragsuebersicht-uebernahme'
+import { erkenneZyklus, defaultSpalte } from '@/lib/beitragsuebersicht-zyklus'
 
 function flatten(nodes: OrdnerstrukturNode[]): string[] {
   const paths: string[] = []
@@ -248,6 +248,16 @@ export async function POST(
     }
 
     // Wenn Vertrag erkannt → speichern
+    let beitragsuebersichtVorschlag: {
+      sparte: string
+      beitrag: string
+      erkannterZyklus: ReturnType<typeof erkenneZyklus>
+      vorschlagSpalte: 'alt' | 'neu'
+      versicherungsgesellschaft: string
+      vertragsbeginn: string
+      vertragsende: string
+    } | null = null
+
     if (extraktion?.is_contract && extraktion?.benefits) {
       try {
         await supabase.from('contracts').insert({
@@ -267,15 +277,20 @@ export async function POST(
         console.error('[Dokumente] Vertrags-Speicherung fehlgeschlagen:', err)
       }
 
-      // Beitrag zusätzlich als Zeile in die Beitragsübersicht übernehmen
-      await uebernehmeVertragInBeitragsuebersicht(supabase, kontaktId, {
-        sparte: extraktion.sparte,
-        beitrag: extraktion.beitrag,
-        contract_type: extraktion.contract_type,
-        versicherungsgesellschaft: extraktion.versicherungsgesellschaft,
-        vertragsbeginn: extraktion.vertragsbeginn,
-        vertragsende: extraktion.vertragsende,
-      })
+      // Beitragsübersicht wird hier NICHT mehr automatisch geschrieben — nur
+      // bei Vertrag/Angebot (nicht Nachtrag/Rechnung/Sonstiges) liefern wir
+      // einen Vorschlag zurück, den der Nutzer im UI bestätigen muss.
+      if (extraktion.sparte && extraktion.beitrag && ['police', 'angebot'].includes(extraktion.dokumenttyp)) {
+        beitragsuebersichtVorschlag = {
+          sparte: extraktion.sparte,
+          beitrag: extraktion.beitrag,
+          erkannterZyklus: erkenneZyklus(extraktion.zahlweise || extraktion.beitrag),
+          vorschlagSpalte: defaultSpalte(extraktion.contract_type),
+          versicherungsgesellschaft: extraktion.versicherungsgesellschaft || '',
+          vertragsbeginn: extraktion.vertragsbeginn || '',
+          vertragsende: extraktion.vertragsende || '',
+        }
+      }
     }
 
     // Aktivität loggen
@@ -306,6 +321,8 @@ export async function POST(
       },
       // Sichtbar machen, falls die KI-Analyse fehlgeschlagen ist (kein Vertrag erkannt/gespeichert)
       analyseWarnung: analyseFehler,
+      // Vorschlag für die Beitragsübersicht-Übernahme — muss vom Nutzer im UI bestätigt werden
+      beitragsuebersichtVorschlag,
     })
   } catch (err) {
     console.error('[Dokumente] POST error:', err)

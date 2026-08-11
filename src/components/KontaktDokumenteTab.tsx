@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { formatBytes, formatDate } from '@/lib/utils'
+import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWerte } from '@/components/BeitragsuebersichtUebernahmeForm'
+import type { Zyklus } from '@/lib/beitragsuebersicht-zyklus'
 
 interface Dokument {
   id: string
@@ -61,6 +63,15 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
   } | null>(null)
   const [editedName, setEditedName] = useState<{ first_name: string; last_name: string }>({ first_name: '', last_name: '' })
   const [confirming, setConfirming] = useState(false)
+  const [beitragsuebersichtModal, setBeitragsuebersichtModal] = useState<{
+    sparte: string
+    beitrag: string
+    versicherungsgesellschaft: string
+    vertragsbeginn: string
+    vertragsende: string
+    werte: BeitragsuebersichtUebernahmeWerte
+  } | null>(null)
+  const [uebernahmeSpeichern, setUebernahmeSpeichern] = useState(false)
 
   // Fetch documents on mount
   useEffect(() => {
@@ -225,6 +236,19 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
         if (data.analyseWarnung) {
           setWarning(`⚠️ Dokument hochgeladen, aber KI-Analyse fehlgeschlagen: ${data.analyseWarnung}`)
         }
+
+        // Vertrag/Angebot erkannt: Übernahme in Beitragsübersicht muss der Nutzer bestätigen
+        if (data.beitragsuebersichtVorschlag) {
+          const v = data.beitragsuebersichtVorschlag
+          setBeitragsuebersichtModal({
+            sparte: v.sparte,
+            beitrag: v.beitrag,
+            versicherungsgesellschaft: v.versicherungsgesellschaft,
+            vertragsbeginn: v.vertragsbeginn,
+            vertragsende: v.vertragsende,
+            werte: { uebernehmen: true, spalte: v.vorschlagSpalte, zyklus: v.erkannterZyklus ?? '' },
+          })
+        }
       }
 
       // Reload dokumente after successful upload
@@ -269,6 +293,40 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
       setError(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
     } finally {
       setConfirming(false)
+    }
+  }
+
+  const confirmBeitragsuebersicht = async () => {
+    if (!beitragsuebersichtModal) return
+    const { werte } = beitragsuebersichtModal
+    if (!werte.uebernehmen || !werte.zyklus) {
+      setBeitragsuebersichtModal(null)
+      return
+    }
+    setUebernahmeSpeichern(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/kontakte/${kontaktId}/beitragsuebersicht/uebernahme`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sparte: beitragsuebersichtModal.sparte,
+          beitrag: beitragsuebersichtModal.beitrag,
+          betragZyklus: werte.zyklus as Zyklus,
+          spalte: werte.spalte,
+          versicherungsgesellschaft: beitragsuebersichtModal.versicherungsgesellschaft,
+          vertragsbeginn: beitragsuebersichtModal.vertragsbeginn,
+          vertragsende: beitragsuebersichtModal.vertragsende,
+        }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Übernahme fehlgeschlagen')
+      setWarning('✓ Beitrag in Beitragsübersicht übernommen')
+      setBeitragsuebersichtModal(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Übernahme fehlgeschlagen')
+    } finally {
+      setUebernahmeSpeichern(false)
     }
   }
 
@@ -559,6 +617,44 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
                 className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-lg transition"
               >
                 {confirming ? '⏳ Wird hochgeladen…' : 'Trotzdem hochladen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Beitragsübersicht-Übernahme Modal */}
+      {beitragsuebersichtModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">📊 Beitragsübersicht</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Im Dokument wurde ein Beitrag erkannt. Soll er in die Beitragsübersicht dieses Kontakts übernommen werden?
+              </p>
+            </div>
+
+            <BeitragsuebersichtUebernahmeForm
+              werte={beitragsuebersichtModal.werte}
+              onChange={(werte) => setBeitragsuebersichtModal((m) => (m ? { ...m, werte } : m))}
+              sparte={beitragsuebersichtModal.sparte}
+              beitragText={beitragsuebersichtModal.beitrag}
+            />
+
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setBeitragsuebersichtModal(null)}
+                disabled={uebernahmeSpeichern}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-300 transition disabled:opacity-50"
+              >
+                Überspringen
+              </button>
+              <button
+                onClick={confirmBeitragsuebersicht}
+                disabled={uebernahmeSpeichern || (beitragsuebersichtModal.werte.uebernehmen && !beitragsuebersichtModal.werte.zyklus)}
+                className="flex-1 px-4 py-2 text-sm font-semibold text-white bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 rounded-lg transition"
+              >
+                {uebernahmeSpeichern ? '⏳ Wird gespeichert…' : 'Übernehmen'}
               </button>
             </div>
           </div>

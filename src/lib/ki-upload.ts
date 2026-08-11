@@ -89,7 +89,7 @@ const EXTRAKTION_SCHEMA = {
     contract_type: {
       type: 'string',
       enum: ['eigen', 'fremd', 'unknown'],
-      description: 'eigen: Allianz + Melih Gün; fremd: andere Versicherer; unknown: unklar',
+      description: 'eigen: Allianz + (Melih Gün oder Derya Gün); fremd: andere Versicherer; unknown: unklar',
     },
     benefits: {
       type: 'array',
@@ -145,7 +145,7 @@ ${kategorienGewerbe.map((k) => `- ${k}`).join('\n') || '- (keine konfiguriert)'}
      * coverage: Optionale Deckungssumme (z.B. "€50.000", "€200/Monat")
 
 7. contract_type (EIGEN vs. FREMD):
-   - eigen: Wenn BEIDE "Allianz" UND "Melih Gün" im Dokument erwähnt sind.
+   - eigen: Wenn BEIDE "Allianz" UND ("Melih Gün" ODER "Derya Gün") im Dokument erwähnt sind.
    - fremd: Alle anderen Versicherer (Debeka, DKV, Signal, etc.).
    - unknown: Wenn Eigenschaftsdaten unklar sind.
    ➜ Case-INSENSITIVE Suche durchführen!

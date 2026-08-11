@@ -4,6 +4,7 @@
 import { Document, Page, View, Text, StyleSheet, renderToBuffer } from '@react-pdf/renderer'
 import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
 import { berechneDifferenz, berechneSummen, effektiveWerte } from './beitragsuebersicht-calc'
+import { ZYKLUS_LABEL, type Zyklus } from './beitragsuebersicht-zyklus'
 
 export interface BeitragsuebersichtPdfInput {
   kundenname: string
@@ -39,16 +40,18 @@ const styles = StyleSheet.create({
   footer: { marginTop: 14, fontSize: 7, color: '#777', borderTopWidth: 0.5, borderTopColor: '#e0e0e0', paddingTop: 6, lineHeight: 1.4 },
 })
 
-const COLS = [
-  { key: 'sparte', label: 'Sparte', width: '18%' },
-  { key: 'versicherer', label: 'Bisheriger Versicherer', width: '13%' },
-  { key: 'alt', label: 'Beitrag bisher (€/Jahr)', width: '11%' },
-  { key: 'neu', label: 'Angebot Allianz (€/Jahr)', width: '11%' },
-  { key: 'diff', label: 'Differenz (€/Jahr)', width: '10%' },
-  { key: 'beginn', label: 'Beginn', width: '9%' },
-  { key: 'ablauf', label: 'Ablauf', width: '9%' },
-  { key: 'bemerkung', label: 'Bemerkung', width: '19%' },
-] as const
+function buildCols(zyklusLabel: string) {
+  return [
+    { key: 'sparte', label: 'Sparte', width: '18%' },
+    { key: 'versicherer', label: 'Bisheriger Versicherer', width: '13%' },
+    { key: 'alt', label: `Beitrag bisher (€/${zyklusLabel})`, width: '11%' },
+    { key: 'neu', label: `Angebot Allianz (€/${zyklusLabel})`, width: '11%' },
+    { key: 'diff', label: `Differenz (€/${zyklusLabel})`, width: '10%' },
+    { key: 'beginn', label: 'Beginn', width: '9%' },
+    { key: 'ablauf', label: 'Ablauf', width: '9%' },
+    { key: 'bemerkung', label: 'Bemerkung', width: '19%' },
+  ] as const
+}
 
 function fmtEuro(n: number): string {
   return n.toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' €'
@@ -63,6 +66,9 @@ function fmtDate(iso: string | null): string {
 function BeitragsuebersichtDocument({ kundenname, kundentyp, beratername, uebersicht }: BeitragsuebersichtPdfInput) {
   const summen = berechneSummen(uebersicht)
   const titel = kundentyp === 'privat' ? 'Privatkunden' : 'Firmenkunden'
+  const zyklus: Zyklus = uebersicht.zyklus ?? 'jaehrlich'
+  const zyklusLabel = ZYKLUS_LABEL[zyklus]
+  const COLS = buildCols(zyklusLabel)
 
   return (
     <Document>
@@ -125,7 +131,7 @@ function BeitragsuebersichtDocument({ kundenname, kundentyp, beratername, uebers
             )
           })}
           <View style={styles.sumRow}>
-            <Text style={{ width: '31%', fontSize: 8 }}>Gesamtbeitrag pro Jahr</Text>
+            <Text style={{ width: '31%', fontSize: 8 }}>Gesamtbeitrag pro {zyklusLabel}</Text>
             <Text style={{ width: '11%', fontSize: 8 }}>{fmtEuro(summen.sumAlt)}</Text>
             <Text style={{ width: '11%', fontSize: 8 }}>{fmtEuro(summen.sumNeu)}</Text>
             <Text style={{ width: '47%' }} />
@@ -148,8 +154,10 @@ function BeitragsuebersichtDocument({ kundenname, kundentyp, beratername, uebers
         </View>
 
         <Text style={styles.footer}>
-          Alle Beiträge verstehen sich als Jahresbeiträge in Euro. Der Mehrbeitrag wird zur besseren Übersicht auf den Monat umgerechnet.
-          Angebot freibleibend – maßgeblich sind die jeweiligen Versicherungsbedingungen.{'\n'}
+          {zyklus === 'jaehrlich'
+            ? 'Alle Beiträge verstehen sich als Jahresbeiträge in Euro. Der Mehrbeitrag wird zur besseren Übersicht auf den Monat umgerechnet.'
+            : `Alle Beiträge verstehen sich als Beiträge pro ${zyklusLabel} in Euro. Ersparnis und Mehrbeitrag werden zur besseren Übersicht auf Jahr bzw. Monat umgerechnet.`}
+          {' '}Angebot freibleibend – maßgeblich sind die jeweiligen Versicherungsbedingungen.{'\n'}
           Allianz Generalvertretung {beratername}
         </Text>
       </Page>

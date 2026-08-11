@@ -1,5 +1,7 @@
 // Typen für die Beitragsübersicht (Sparten-Vergleich bisheriger vs. Allianz-
 // Beitrag pro Kontakt) — siehe supabase/migrations/0051_beitragsuebersicht.sql
+import type { Zyklus } from '@/lib/beitragsuebersicht-zyklus'
+
 export interface BeitragsPosition {
   sparte: string
   versicherer_alt: string
@@ -30,6 +32,8 @@ export interface Beitragsuebersicht {
   flotte_aktiv: boolean
   positionen: BeitragsPosition[]
   fahrzeuge: FlottenFahrzeug[]
+  /** Zahlweise für die gesamte Übersicht. Fehlt bei Altdaten — dann gilt 'jaehrlich'. */
+  zyklus?: Zyklus
 }
 
 export function emptyPosition(sparte: string, istFlotteZeile = false): BeitragsPosition {

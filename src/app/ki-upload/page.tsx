@@ -3,6 +3,16 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { HelpButton } from '@/components/help/HelpButton'
+import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWerte } from '@/components/BeitragsuebersichtUebernahmeForm'
+import { erkenneZyklus, defaultSpalte } from '@/lib/beitragsuebersicht-zyklus'
+
+const DOKUMENTTYP_OPTIONEN: { value: string; label: string }[] = [
+  { value: 'police', label: 'Vertrag / Police' },
+  { value: 'angebot', label: 'Angebot' },
+  { value: 'nachtrag', label: 'Nachtrag' },
+  { value: 'rechnung', label: 'Rechnung' },
+  { value: 'sonstiges', label: 'Sonstiges' },
+]
 
 interface Leistung {
   type: string
@@ -52,6 +62,10 @@ interface StrukturNode {
   children?: StrukturNode[]
 }
 
+function zeigtUebernahmeFrage(d: Pick<Extraktion, 'is_contract' | 'dokumenttyp'>): boolean {
+  return d.is_contract && (d.dokumenttyp === 'police' || d.dokumenttyp === 'angebot')
+}
+
 function flatten(nodes: StrukturNode[]): string[] {
   const paths: string[] = []
   for (const n of nodes) {
@@ -73,6 +87,11 @@ export default function KiUploadPage() {
   const [anBestehenden, setAnBestehenden] = useState(true)
   const [struktur, setStruktur] = useState<{ privat: string[]; gewerbe: string[] }>({ privat: [], gewerbe: [] })
   const [ergebnis, setErgebnis] = useState<{ kontakt_id: string; kontakt_neu: boolean } | null>(null)
+  const [uebernahmeWerte, setUebernahmeWerte] = useState<BeitragsuebersichtUebernahmeWerte>({
+    uebernehmen: true,
+    spalte: 'alt',
+    zyklus: '',
+  })
 
   useEffect(() => {
     fetch('/api/dokument-kategorien')
@@ -98,6 +117,11 @@ export default function KiUploadPage() {
       setDaten(data.extraktion)
       setDuplikat(data.duplikat)
       setAnBestehenden(!!data.duplikat)
+      setUebernahmeWerte({
+        uebernehmen: true,
+        spalte: defaultSpalte(data.extraktion.contract_type),
+        zyklus: erkenneZyklus(data.extraktion.zahlweise || data.extraktion.beitrag) ?? '',
+      })
       setPhase('pruefen')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Analyse fehlgeschlagen')
@@ -118,6 +142,9 @@ export default function KiUploadPage() {
           ...daten,
           phone: daten.phone,
           existing_kontakt_id: duplikat && anBestehenden ? duplikat.id : undefined,
+          beitragsuebersicht_uebernehmen: zeigtUebernahmeFrage(daten) && uebernahmeWerte.uebernehmen,
+          beitragsuebersicht_spalte: uebernahmeWerte.spalte,
+          beitragsuebersicht_zyklus: uebernahmeWerte.zyklus || undefined,
         })
       )
       const res = await fetch('/api/ki-upload/commit', { method: 'POST', body: fd })
@@ -144,6 +171,7 @@ export default function KiUploadPage() {
     setDaten((d) => (d ? { ...d, [feld]: wert } : d))
 
   const kategorien = daten ? struktur[daten.kontakt_typ] : []
+  const zeigeUebernahme = daten ? zeigtUebernahmeFrage(daten) : false
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -299,6 +327,20 @@ export default function KiUploadPage() {
               {/* Versicherungsdaten */}
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-sm font-semibold text-gray-900 mb-3">🛡️ Versicherungsdaten</p>
+                <div className="mb-4">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Dokumenttyp <span className="text-gray-400 font-normal">(von KI erkannt, bei Bedarf korrigieren)</span>
+                  </label>
+                  <select
+                    value={daten.dokumenttyp}
+                    onChange={(e) => set('dokumenttyp', e.target.value)}
+                    className="w-full max-w-xs px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                  >
+                    {DOKUMENTTYP_OPTIONEN.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   {([
                     ['versicherungsgesellschaft', 'Gesellschaft'],
@@ -364,6 +406,19 @@ export default function KiUploadPage() {
                 </div>
               )}
 
+              {/* Beitragsübersicht-Übernahme */}
+              {zeigeUebernahme && (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-sm font-semibold text-gray-900 mb-3">📊 Beitragsübersicht</p>
+                  <BeitragsuebersichtUebernahmeForm
+                    werte={uebernahmeWerte}
+                    onChange={setUebernahmeWerte}
+                    sparte={daten.sparte}
+                    beitragText={daten.beitrag}
+                  />
+                </div>
+              )}
+
               {/* Ablage */}
               <div className="border-t border-gray-100 pt-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5">
@@ -385,7 +440,7 @@ export default function KiUploadPage() {
             <div className="flex gap-3">
               <button
                 onClick={commit}
-                disabled={!daten.first_name || !daten.last_name}
+                disabled={!daten.first_name || !daten.last_name || (zeigeUebernahme && uebernahmeWerte.uebernehmen && uebernahmeWerte.zyklus === '')}
                 className="px-6 py-3 bg-yellow-400 text-gray-900 font-semibold rounded-lg hover:bg-yellow-500 disabled:opacity-50"
               >
                 ✓ {duplikat && anBestehenden ? 'Dokument anhängen' : 'Kontakt anlegen & ablegen'}

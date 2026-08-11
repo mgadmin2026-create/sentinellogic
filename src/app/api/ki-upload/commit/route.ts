@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
 import { uebernehmeVertragInBeitragsuebersicht } from '@/lib/beitragsuebersicht-uebernahme'
+import type { Zyklus } from '@/lib/beitragsuebersicht-zyklus'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -46,6 +47,10 @@ interface CommitDaten {
   is_contract?: boolean
   contract_type?: 'eigen' | 'fremd' | 'unknown'
   benefits?: Leistung[]
+  // Vom Nutzer in der Prüfmaske bestätigte Beitragsübersicht-Übernahme (neu)
+  beitragsuebersicht_uebernehmen?: boolean
+  beitragsuebersicht_spalte?: 'alt' | 'neu'
+  beitragsuebersicht_zyklus?: Zyklus
 }
 
 function buildNotes(d: CommitDaten): string {
@@ -189,15 +194,19 @@ export async function POST(request: NextRequest) {
         console.warn('[KI-Upload] Contracts-Speicherung fehlgeschlagen (nicht blockierend):', err)
       }
 
-      // Beitrag zusätzlich als Zeile in die Beitragsübersicht übernehmen
-      await uebernehmeVertragInBeitragsuebersicht(supabase, kontaktId!, {
-        sparte: daten.sparte,
-        beitrag: daten.beitrag,
-        contract_type: daten.contract_type,
-        versicherungsgesellschaft: daten.versicherungsgesellschaft,
-        vertragsbeginn: daten.vertragsbeginn,
-        vertragsende: daten.vertragsende,
-      })
+      // Beitrag nur bei expliziter Nutzerbestätigung (Prüfmaske) als Zeile
+      // in die Beitragsübersicht übernehmen — nicht mehr unconditional.
+      if (daten.beitragsuebersicht_uebernehmen && daten.beitragsuebersicht_zyklus) {
+        await uebernehmeVertragInBeitragsuebersicht(supabase, kontaktId!, {
+          sparte: daten.sparte,
+          beitrag: daten.beitrag,
+          betragZyklus: daten.beitragsuebersicht_zyklus,
+          spalte: daten.beitragsuebersicht_spalte || 'alt',
+          versicherungsgesellschaft: daten.versicherungsgesellschaft,
+          vertragsbeginn: daten.vertragsbeginn,
+          vertragsende: daten.vertragsende,
+        })
+      }
     }
 
     // Activity: KI-Upload dokumentieren

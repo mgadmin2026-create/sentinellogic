@@ -8,13 +8,17 @@
 // Nutzer-Vorgabe "bei mehreren Policen zu einer Sparte mehrere Zeilen machen".
 import { createServerClient } from '@/lib/supabase/server'
 import type { Beitragsuebersicht, BeitragsPosition } from '@/types/beitragsuebersicht'
+import { konvertiereBetrag, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
 export interface VertragsExtraktionFuerUebernahme {
   sparte?: string | null
   beitrag?: string | null
-  contract_type?: 'eigen' | 'fremd' | 'unknown' | null
+  /** Vom Nutzer bestätigter Zyklus des gelesenen Betrags (siehe BeitragsuebersichtUebernahmeForm). */
+  betragZyklus: Zyklus
+  /** Vom Nutzer bestätigte Zielspalte — ersetzt die frühere automatische contract_type-Ableitung. */
+  spalte: 'alt' | 'neu'
   versicherungsgesellschaft?: string | null
   vertragsbeginn?: string | null
   vertragsende?: string | null
@@ -38,23 +42,10 @@ export async function uebernehmeVertragInBeitragsuebersicht(
   extraktion: VertragsExtraktionFuerUebernahme
 ): Promise<void> {
   const sparte = extraktion.sparte?.trim()
-  const betrag = parseBeitrag(extraktion.beitrag)
-  if (!sparte || betrag === null) return
+  const betragRoh = parseBeitrag(extraktion.beitrag)
+  if (!sparte || betragRoh === null) return
 
-  // 'eigen' = neuer Allianz-Vertrag → Spalte "Neu". 'fremd'/'unknown' =
-  // bestehende Fremdversicherung → Spalte "Alt" (inkl. Versicherer).
-  const istEigenvertrag = extraktion.contract_type === 'eigen'
-
-  const position: BeitragsPosition = {
-    sparte,
-    versicherer_alt: istEigenvertrag ? '' : extraktion.versicherungsgesellschaft?.trim() || '',
-    beitrag_alt: istEigenvertrag ? null : betrag,
-    beitrag_neu: istEigenvertrag ? betrag : null,
-    beginn: extraktion.vertragsbeginn || null,
-    ablauf: extraktion.vertragsende || null,
-    bemerkung: `Automatisch aus Vertragsupload übernommen: „${extraktion.beitrag}"`,
-    automatisch_uebernommen: true,
-  }
+  const istEigenvertrag = extraktion.spalte === 'neu'
 
   try {
     const { data: kontakt, error } = await supabase
@@ -70,9 +61,26 @@ export async function uebernehmeVertragInBeitragsuebersicht(
 
     const heute = new Date().toISOString().slice(0, 10)
     const bestehend = kontakt?.beitragsuebersicht as Beitragsuebersicht | null
+    const zielZyklus: Zyklus = bestehend?.zyklus ?? 'jaehrlich'
+    const wurdeUmgerechnet = extraktion.betragZyklus !== zielZyklus
+    const betrag = wurdeUmgerechnet ? konvertiereBetrag(betragRoh, extraktion.betragZyklus, zielZyklus) : betragRoh
+
+    const position: BeitragsPosition = {
+      sparte,
+      versicherer_alt: istEigenvertrag ? '' : extraktion.versicherungsgesellschaft?.trim() || '',
+      beitrag_alt: istEigenvertrag ? null : betrag,
+      beitrag_neu: istEigenvertrag ? betrag : null,
+      beginn: extraktion.vertragsbeginn || null,
+      ablauf: extraktion.vertragsende || null,
+      bemerkung: wurdeUmgerechnet
+        ? `Automatisch aus Vertragsupload übernommen: „${extraktion.beitrag}" (umgerechnet)`
+        : `Automatisch aus Vertragsupload übernommen: „${extraktion.beitrag}"`,
+      automatisch_uebernommen: true,
+    }
+
     const neu: Beitragsuebersicht = bestehend
       ? { ...bestehend, datum: heute, positionen: [...bestehend.positionen, position] }
-      : { datum: heute, flotte_aktiv: false, positionen: [position], fahrzeuge: [] }
+      : { datum: heute, flotte_aktiv: false, positionen: [position], fahrzeuge: [], zyklus: 'jaehrlich' }
 
     const { error: updateError } = await supabase
       .from('contacts')

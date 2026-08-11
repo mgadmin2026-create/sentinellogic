@@ -5,8 +5,9 @@
 // jeder Speichervorgang überschreibt den bisherigen Stand.
 import { useEffect, useState } from 'react'
 import { SPARTEN_PRIVAT, SPARTEN_GEWERBE, KFZ_FLOTTE_SPARTE } from '@/data/beitragsuebersicht-sparten'
-import { emptyPosition, emptyFahrzeug, type Beitragsuebersicht, type BeitragsPosition } from '@/types/beitragsuebersicht'
+import { emptyPosition, emptyFahrzeug, type Beitragsuebersicht, type BeitragsPosition, type FlottenFahrzeug } from '@/types/beitragsuebersicht'
 import { berechneDifferenz, berechneSummen, effektiveWerte, summeFahrzeuge } from '@/lib/beitragsuebersicht-calc'
+import { ZAHLUNGEN_PRO_JAHR, ZYKLUS_LABEL, ZYKLUS_OPTIONEN, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
 
 interface BeitragsuebersichtPanelProps {
   kontaktId: string
@@ -31,7 +32,16 @@ function buildInitial(kontaktTyp: 'privat' | 'gewerbe'): Beitragsuebersicht {
     flotte_aktiv: false,
     positionen: sparten.map((s) => emptyPosition(s, s === KFZ_FLOTTE_SPARTE)),
     fahrzeuge: [],
+    zyklus: 'jaehrlich',
   }
+}
+
+/** Aktualisiert die Kfz-Flotte-Positionszeile mit der aktuellen Fahrzeugsumme (no-op falls Zeile gelöscht wurde). */
+function syncFlottePosition(positionen: BeitragsPosition[], fahrzeuge: FlottenFahrzeug[]): BeitragsPosition[] {
+  const sum = summeFahrzeuge(fahrzeuge)
+  return positionen.map((p) =>
+    p.ist_flotte_zeile ? { ...p, beitrag_alt: sum.alt || null, beitrag_neu: sum.neu || null } : p
+  )
 }
 
 function fmtEuro(n: number): string {
@@ -56,11 +66,15 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
   const [saving, setSaving] = useState(false)
   const [mailLoading, setMailLoading] = useState(false)
   const [mailError, setMailError] = useState<string | null>(null)
+  const [pendingZyklus, setPendingZyklus] = useState<Zyklus | null>(null)
 
   useEffect(() => {
     setData(initialData ?? buildInitial(kontaktTyp))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kontaktId])
+
+  const zyklus: Zyklus = data.zyklus ?? 'jaehrlich'
+  const zyklusLabel = ZYKLUS_LABEL[zyklus]
 
   function updatePosition(idx: number, patch: Partial<BeitragsPosition>) {
     setData((d) => ({ ...d, positionen: d.positionen.map((p, i) => (i === idx ? { ...p, ...patch } : p)) }))
@@ -75,19 +89,64 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
   }
 
   function updateFahrzeug(idx: number, patch: Partial<typeof data.fahrzeuge[number]>) {
-    setData((d) => ({ ...d, fahrzeuge: d.fahrzeuge.map((f, i) => (i === idx ? { ...f, ...patch } : f)) }))
+    setData((d) => {
+      const fahrzeuge = d.fahrzeuge.map((f, i) => (i === idx ? { ...f, ...patch } : f))
+      return { ...d, fahrzeuge, positionen: d.flotte_aktiv ? syncFlottePosition(d.positionen, fahrzeuge) : d.positionen }
+    })
   }
 
   function addFahrzeug() {
-    setData((d) => ({ ...d, fahrzeuge: [...d.fahrzeuge, emptyFahrzeug()] }))
+    setData((d) => {
+      const fahrzeuge = [...d.fahrzeuge, emptyFahrzeug()]
+      return { ...d, fahrzeuge, positionen: d.flotte_aktiv ? syncFlottePosition(d.positionen, fahrzeuge) : d.positionen }
+    })
   }
 
   function removeFahrzeug(idx: number) {
-    setData((d) => ({ ...d, fahrzeuge: d.fahrzeuge.filter((_, i) => i !== idx) }))
+    setData((d) => {
+      const fahrzeuge = d.fahrzeuge.filter((_, i) => i !== idx)
+      return { ...d, fahrzeuge, positionen: d.flotte_aktiv ? syncFlottePosition(d.positionen, fahrzeuge) : d.positionen }
+    })
+  }
+
+  function handleFlotteAktivChange(aktiv: boolean) {
+    setData((d) => ({ ...d, flotte_aktiv: aktiv, positionen: aktiv ? syncFlottePosition(d.positionen, d.fahrzeuge) : d.positionen }))
+  }
+
+  function hatBestehendeBetraege(d: Beitragsuebersicht): boolean {
+    return (
+      d.positionen.some((p) => p.beitrag_alt != null || p.beitrag_neu != null) ||
+      d.fahrzeuge.some((f) => f.beitrag_alt != null || f.beitrag_neu != null)
+    )
+  }
+
+  function handleZyklusChange(neu: Zyklus) {
+    if (neu === zyklus) return
+    if (!hatBestehendeBetraege(data)) {
+      setData((d) => ({ ...d, zyklus: neu }))
+      return
+    }
+    setPendingZyklus(neu)
+  }
+
+  function applyZyklusSwitch(modus: 'beibehalten' | 'umrechnen') {
+    const neu = pendingZyklus
+    if (!neu) return
+    setData((d) => {
+      if (modus === 'beibehalten') return { ...d, zyklus: neu }
+      const faktor = ZAHLUNGEN_PRO_JAHR[zyklus] / ZAHLUNGEN_PRO_JAHR[neu]
+      const rund = (n: number | null) => (n == null ? null : Math.round(n * faktor * 100) / 100)
+      return {
+        ...d,
+        zyklus: neu,
+        positionen: d.positionen.map((p) => ({ ...p, beitrag_alt: rund(p.beitrag_alt), beitrag_neu: rund(p.beitrag_neu) })),
+        fahrzeuge: d.fahrzeuge.map((f) => ({ ...f, beitrag_alt: rund(f.beitrag_alt), beitrag_neu: rund(f.beitrag_neu) })),
+      }
+    })
+    setPendingZyklus(null)
   }
 
   const summen = berechneSummen(data)
-  const fahrzeugSum = summeFahrzeuge(data.fahrzeuge)
 
   async function handleSubmit() {
     setSaving(true)
@@ -126,14 +185,65 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
         Eine laufende Übersicht pro Kontakt — beim Speichern wird der bisherige Stand überschrieben, nicht versioniert.
       </p>
 
+      <div className="flex items-center gap-2.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+        <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Zyklus</label>
+        <select
+          value={zyklus}
+          onChange={(e) => handleZyklusChange(e.target.value as Zyklus)}
+          className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-yellow-400"
+        >
+          {ZYKLUS_OPTIONEN.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <span className="text-[11px] text-gray-400">Gilt für die gesamte Übersicht — alle Beträge unten sind €/{zyklusLabel}.</span>
+      </div>
+
+      {pendingZyklus && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-5 space-y-3">
+            <h4 className="font-semibold text-sm text-gray-900">
+              Zyklus wechseln: {ZYKLUS_LABEL[zyklus]} → {ZYKLUS_LABEL[pendingZyklus]}
+            </h4>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Es sind bereits Beträge erfasst. Sollen die Zahlen unverändert bleiben (z.B. 100 €/{zyklusLabel} bleibt 100 €/
+              {ZYKLUS_LABEL[pendingZyklus]}) oder auf den neuen Zyklus umgerechnet werden (z.B. 100 €/{zyklusLabel} →{' '}
+              {(100 * (ZAHLUNGEN_PRO_JAHR[zyklus] / ZAHLUNGEN_PRO_JAHR[pendingZyklus])).toLocaleString('de-DE', {
+                maximumFractionDigits: 2,
+              })}{' '}
+              €/{ZYKLUS_LABEL[pendingZyklus]})?
+            </p>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                onClick={() => applyZyklusSwitch('beibehalten')}
+                className="w-full text-left px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-xs font-medium text-gray-700"
+              >
+                Beträge beibehalten (Zahlen bleiben unverändert)
+              </button>
+              <button
+                onClick={() => applyZyklusSwitch('umrechnen')}
+                className="w-full text-left px-3 py-2 rounded-lg border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 text-xs font-medium text-gray-900"
+              >
+                Beträge umrechnen (auf neuen Zyklus normalisieren)
+              </button>
+              <button onClick={() => setPendingZyklus(null)} className="w-full text-center px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600">
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
         <table className="w-full text-xs min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 text-gray-500">
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Sparte</th>
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Versicherer alt</th>
-              <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Alt €/J.</th>
-              <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Neu €/J.</th>
+              <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Alt €/{zyklusLabel}</th>
+              <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Neu €/{zyklusLabel}</th>
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Differenz</th>
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Beginn</th>
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Ablauf</th>
@@ -144,7 +254,6 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
           <tbody>
             {data.positionen.map((p, idx) => {
               const isFlotteZeile = !!p.ist_flotte_zeile
-              const flotteLocked = isFlotteZeile && data.flotte_aktiv
               return (
                 <tr key={idx} className="border-t border-gray-100">
                   <td className="px-2 py-1.5">
@@ -175,30 +284,22 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                     />
                   </td>
                   <td className="px-2 py-1.5">
-                    {flotteLocked ? (
-                      <strong className="tabular-nums">{fmtEuro(fahrzeugSum.alt)}</strong>
-                    ) : (
-                      <input
-                        type="number"
-                        value={p.beitrag_alt ?? ''}
-                        onChange={(e) => updatePosition(idx, { beitrag_alt: e.target.value === '' ? null : Number(e.target.value) })}
-                        className="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-yellow-400"
-                        placeholder="–"
-                      />
-                    )}
+                    <input
+                      type="number"
+                      value={p.beitrag_alt ?? ''}
+                      onChange={(e) => updatePosition(idx, { beitrag_alt: e.target.value === '' ? null : Number(e.target.value) })}
+                      className="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                      placeholder="–"
+                    />
                   </td>
                   <td className="px-2 py-1.5">
-                    {flotteLocked ? (
-                      <strong className="tabular-nums">{fmtEuro(fahrzeugSum.neu)}</strong>
-                    ) : (
-                      <input
-                        type="number"
-                        value={p.beitrag_neu ?? ''}
-                        onChange={(e) => updatePosition(idx, { beitrag_neu: e.target.value === '' ? null : Number(e.target.value) })}
-                        className="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-yellow-400"
-                        placeholder="–"
-                      />
-                    )}
+                    <input
+                      type="number"
+                      value={p.beitrag_neu ?? ''}
+                      onChange={(e) => updatePosition(idx, { beitrag_neu: e.target.value === '' ? null : Number(e.target.value) })}
+                      className="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs tabular-nums focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                      placeholder="–"
+                    />
                   </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     <DifferenzCell position={p} data={data} />
@@ -228,28 +329,22 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                     )}
                   </td>
                   <td className="px-2 py-1.5">
-                    {flotteLocked ? (
-                      <span className="text-gray-400 text-[11px]">Details siehe Flotte ({data.fahrzeuge.length} Fahrzeuge)</span>
-                    ) : (
-                      <input
-                        type="text"
-                        value={p.bemerkung}
-                        onChange={(e) => updatePosition(idx, { bemerkung: e.target.value })}
-                        className="w-full min-w-[140px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
-                        placeholder="–"
-                      />
-                    )}
+                    <input
+                      type="text"
+                      value={p.bemerkung}
+                      onChange={(e) => updatePosition(idx, { bemerkung: e.target.value })}
+                      className="w-full min-w-[140px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                      placeholder="–"
+                    />
                   </td>
                   <td className="px-2 py-1.5">
-                    {!isFlotteZeile && (
-                      <button
-                        onClick={() => removePosition(idx)}
-                        aria-label="Sparte entfernen"
-                        className="text-gray-300 hover:text-red-500"
-                      >
-                        ✕
-                      </button>
-                    )}
+                    <button
+                      onClick={() => removePosition(idx)}
+                      aria-label="Sparte entfernen"
+                      className="text-gray-300 hover:text-red-500"
+                    >
+                      ✕
+                    </button>
                   </td>
                 </tr>
               )
@@ -270,7 +365,7 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
             <input
               type="checkbox"
               checked={data.flotte_aktiv}
-              onChange={(e) => setData((d) => ({ ...d, flotte_aktiv: e.target.checked }))}
+              onChange={(e) => handleFlotteAktivChange(e.target.checked)}
               className="mt-0.5 rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
             />
             <span>
@@ -287,8 +382,8 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                     <tr className="bg-gray-50 text-gray-500">
                       <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Kennzeichen</th>
                       <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Fahrzeug</th>
-                      <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Alt €/J.</th>
-                      <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Neu €/J.</th>
+                      <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Alt €/{zyklusLabel}</th>
+                      <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Neu €/{zyklusLabel}</th>
                       <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Differenz</th>
                       <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Bemerkung</th>
                       <th className="px-2 py-2" />
@@ -376,7 +471,7 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
 
       <div className="border-t border-gray-200 pt-3">
         <div className="flex items-center justify-between font-semibold text-sm pt-2 border-t-2 border-gray-900">
-          <span>Gesamtbeitrag pro Jahr</span>
+          <span>Gesamtbeitrag pro {zyklusLabel}</span>
           <span className="tabular-nums">
             {fmtEuro(summen.sumAlt)} → {fmtEuro(summen.sumNeu)}
           </span>

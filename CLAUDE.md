@@ -97,7 +97,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **KI Upload** | ✅ Done | `/ki-upload`: Versicherungsdokument (PDF/Foto, auch gescannt) → Claude-Analyse (claude-opus-4-8, Vision + Structured Outputs) → Prüfmaske → Kontakt (Quelle ki_upload, E-Mail optional) + Drive-Ablage in passender Kategorie; Duplikat → anhängen; Vermittler wird nicht als Kontakt extrahiert. Seit v0.24.0: zwei Regressionen behoben — Kontaktanlage schlug nach Einführung des Login-Systems mit „Nicht angemeldet" fehl (interne Server-zu-Server-Fetches leiteten die Session-Cookie nicht weiter), und ein erkannter Vertrag wurde doppelt in `contracts`/Beitragsübersicht angelegt (zwei unabhängige Analyse-Läufe für dasselbe Dokument) |
 | **Kommentare & @-Erwähnungen** | ✅ Done | Wiederverwendbare `CommentThread`-Komponente in Kontaktdetail-Kachel und Aufgaben-Bearbeiten-Modal; Einzel- und Gruppen-Erwähnung (`@Alle` → Einzel-Erwähnung pro aktivem User bei Erstellung), Datei-Anhang (nur wenn Kontakt auflösbar, sonst HTTP 400), E-Mail-Benachrichtigung pro Erwähnung, `/erwaehnungen`-Seite + Sidebar-Badge mit Ungelesen-Zähler |
 | **Eingebaute Hilfe & Kundendokumentation** | ✅ Done | Rein statisches, im Code gepflegtes Hilfe-System (kein DB-Table, keine API-Route) — `~62` Artikel über `src/data/help/*.ts`. Kachel-genaue Hilfe per ❓-Symbol (`<HelpButton articleId="...">`, ~39 Einfügestellen) öffnet den passenden Artikel im globalen Drawer (`HelpProvider`); Taste `?` öffnet die Seiten-Standardhilfe (Prefix-Match für `/kontakte/[id]`, sonst Exact-Match), unterdrückt in Eingabefeldern und bei bereits offenem anderen Drawer/Modal; vollständiges durchsuchbares Handbuch unter `/hilfe` mit Bereichs-Gruppierung, Volltextsuche und Deep-Linking (`#<articleId>`, Scroll + Highlight) |
-| **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar; Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden automatisch als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht" |
+| **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar inkl. der Kfz-Flotten-Sammelzeile (editierbar/löschbar wie jede andere Zeile); Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden nach expliziter Nutzerbestätigung als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht". Seit v0.27.0: Zyklus-Umschalter (monatlich/vierteljährlich/halbjährlich/jährlich) für die gesamte Übersicht mit explizitem Wechsel-Dialog (Beträge beibehalten vs. umrechnen); Vertragsupload-Übernahme fragt Spalte (Alt/Neu) und Zyklus des gelesenen Betrags aktiv ab (`BeitragsuebersichtUebernahmeForm.tsx`), statt automatisch zu schreiben — Rückfrage nur bei Dokumenttyp Vertrag/Police oder Angebot |
 | **Sparten-Verwaltung & Erstgespräch-Leitfäden** | ✅ Done | Sparten sind eine feste, admin-gepflegte Liste (`/einstellungen/sparten`) statt Freitext; Kontakte können mehreren Sparten zugeordnet werden (n:m über `contact_sparte_map`, primäre Sparte hält die alte `contacts.sparte`-Spalte automatisch synchron, damit Dialfire/KlickTipp/Regeln unverändert weiterlaufen). Jede Sparte trägt ihren eigenen Erstgespräch-Leitfaden (Fragen + Felder), von Melih selbst pflegbar; die Erstgespräch-Kachel im Kontakt rendert bei mehreren zugeordneten Sparten jeden hinterlegten Leitfaden in einem eigenen Abschnitt |
 
 ## Feature-Roadmap
@@ -244,6 +244,38 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.27.0 (2026-08-11) — Beitragsübersicht: Zyklus, editierbare Flotten-Zeile, gesteuerte Vertragsupload-Übernahme
+
+Löst drei zusammenhängende Lücken der Beitragsübersicht: bislang fest auf Jahresbeiträge verdrahtet, die
+Kfz-Flotten-Sammelzeile war schreibgeschützt ohne Löschen-Option, und Vertrags-/Angebotsuploads schrieben
+den erkannten Beitrag automatisch (ohne Rückfrage, ohne Zyklus-Kenntnis) in die Übersicht.
+
+- ✨ **Zyklus-Umschalter** (monatlich/vierteljährlich/halbjährlich/jährlich) oben in der Beitragsübersicht,
+  gilt für die gesamte Übersicht (`Beitragsuebersicht.zyklus`, neues Feld im bestehenden
+  `beitragsuebersicht`-JSONB — keine neue Migration nötig). Neuer Helper
+  `src/lib/beitragsuebersicht-zyklus.ts` (`ZAHLUNGEN_PRO_JAHR`, `erkenneZyklus()`,
+  `konvertiereBetrag()`). `berechneSummen()` normalisiert Ersparnis/Mehrbeitrag jetzt zyklusbewusst,
+  kollabiert bei `zyklus='jaehrlich'` exakt auf die bisherige Formel (rückwärtskompatibel für
+  Alt-Kontakte ohne `zyklus`-Feld). Spaltenköpfe, Summenzeile und PDF-Footer beschriften sich dynamisch.
+- ✨ **Zyklus-Wechsel-Dialog**: beim Umschalten auf einer bereits befüllten Übersicht fragt ein
+  Inline-Dialog explizit „Beträge beibehalten" vs. „Beträge umrechnen" (mit Beispielrechnung), bevor
+  etwas geändert wird — nie eine stille Umrechnung.
+- ✨ **Flotten-Sammelzeile ist jetzt normal editierbar und löschbar** wie jede andere Sparten-Zeile
+  (`BeitragsuebersichtPanel.tsx`): der bisherige Schreibschutz (`<strong>`-Anzeige statt `<input>`, kein
+  ✕-Button) entfällt; die automatische Summenbildung aus den Fahrzeugzeilen bleibt als Komfort erhalten
+  (synct bei jeder Fahrzeug-Änderung), kann danach aber manuell überschrieben werden.
+- ✨ **Gesteuerte Vertragsupload-Übernahme statt automatischem Schreiben**: `uebernehmeVertragInBeitragsuebersicht()`
+  (`src/lib/beitragsuebersicht-uebernahme.ts`) läuft nur noch nach expliziter Bestätigung, mit
+  Zyklus-Umrechnung falls der Dokument-Zyklus vom Übersichts-Zyklus abweicht. Neue geteilte Komponente
+  `BeitragsuebersichtUebernahmeForm.tsx` (Übernehmen-Checkbox, Spalten-Auswahl Alt/Neu, Zyklus-Auswahl —
+  Pflichtfeld wenn `erkenneZyklus()` uneindeutig ist) wird von beiden Upload-Pfaden genutzt: `/ki-upload`
+  zeigt sie inline in der Prüfmaske (inkl. neu editierbarem `dokumenttyp`-Feld zur KI-Korrektur), der
+  Direkt-Upload am Kontakt (`KontaktDokumenteTab.tsx`) zeigt sie in einem neuen Bestätigungs-Modal nach
+  erfolgreichem Upload (neue Route `POST /api/kontakte/[id]/beitragsuebersicht/uebernahme`). Die Rückfrage
+  erscheint nur bei Dokumenttyp Vertrag/Police oder Angebot, nicht bei Nachtrag/Rechnung/Sonstiges.
+- 🐛 **KI-Prompt-Fix**: „Derya Gün" fehlte in der Eigenvertrag-Erkennungsregel (`src/lib/ki-upload.ts`),
+  nur „Melih Gün" wurde erkannt — ergänzt.
 
 ### v0.26.0 (2026-08-11) — Gewerbedaten-Recherche in die Gesprächsvorbereitung integriert
 
