@@ -6,13 +6,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { istTechnisch } from '@/lib/activity-classification'
 import { generateCallPrep, type CallPrepContext } from '@/lib/call-prep'
+import { ensureGewerbeRecherche, refreshGewerbeRecherche } from '@/lib/company-research'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+export const maxDuration = 120
 
 export async function POST(request: NextRequest) {
   try {
-    const { contactId } = await request.json()
+    const { contactId, forceResearch } = await request.json()
     if (!contactId) {
       return NextResponse.json({ success: false, error: 'contactId erforderlich' }, { status: 400 })
     }
@@ -27,6 +28,17 @@ export async function POST(request: NextRequest) {
 
     if (contactError || !contact) {
       return NextResponse.json({ success: false, error: 'Kontakt nicht gefunden' }, { status: 404 })
+    }
+
+    let gewerbeRecherche = null
+    try {
+      gewerbeRecherche = forceResearch
+        ? await refreshGewerbeRecherche(supabase, contact)
+        : await ensureGewerbeRecherche(supabase, contact)
+    } catch (err) {
+      // Recherche ist eine Anreicherung, kein Kernbestandteil — bei Fehler
+      // (z.B. Web-Search-Timeout) läuft die Gesprächsvorbereitung trotzdem
+      console.error('[POST /api/agents/call-prep] Unternehmensrecherche fehlgeschlagen:', err)
     }
 
     const [activitiesRes, tasksRes, notesRes, docsCountRes] = await Promise.all([
@@ -93,13 +105,14 @@ export async function POST(request: NextRequest) {
       activities: fachlicheAktivitäten,
       openTasks,
       documentCount: docsCountRes.count ?? 0,
+      gewerbeRecherche,
     }
 
     const result = await generateCallPrep(context)
 
     return NextResponse.json({
       success: true,
-      data: { ...result, generated_at: new Date().toISOString() },
+      data: { ...result, gewerbeRecherche, generated_at: new Date().toISOString() },
     })
   } catch (error) {
     console.error('[POST /api/agents/call-prep] Fehler:', error)

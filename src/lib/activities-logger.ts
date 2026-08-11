@@ -44,6 +44,7 @@ export type ActivityType =
   | 'email_failed'
   | 'call_prep_saved'
   | 'strato_calendar_sync_failed'
+  | 'gewerbe_recherche'
 
 interface ActivityData {
   [key: string]: any

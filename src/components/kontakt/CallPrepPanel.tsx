@@ -8,43 +8,66 @@
 import { useEffect, useState, useCallback } from 'react'
 import { HelpButton } from '@/components/help/HelpButton'
 
+interface GewerbeRecherche {
+  kurzprofil: string | null
+  branche: string | null
+  rechtsform: string | null
+  mitarbeitanzahl: string | null
+  jahresumsatz: string | null
+  quellen: { url: string; beschreibung: string }[]
+}
+
 interface CallPrepResult {
   summary: string
   talking_points: string[]
   flags: string[]
   generated_at: string
+  gewerbeRecherche?: GewerbeRecherche | null
 }
 
 interface CallPrepPanelProps {
   kontaktId: string
+  istGewerbe?: boolean
 }
 
-export function CallPrepPanel({ kontaktId }: CallPrepPanelProps) {
+export function CallPrepPanel({ kontaktId, istGewerbe }: CallPrepPanelProps) {
   const [status, setStatus] = useState<'loading' | 'error' | 'done'>('loading')
   const [error, setError] = useState('')
   const [result, setResult] = useState<CallPrepResult | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  const generate = useCallback(async () => {
-    setStatus('loading')
-    setError('')
-    setSaved(false)
-    try {
-      const res = await fetch('/api/agents/call-prep', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId: kontaktId }),
-      })
-      const json = await res.json()
-      if (!json.success) throw new Error(json.error || 'Gesprächsvorbereitung fehlgeschlagen')
-      setResult(json.data)
-      setStatus('done')
-    } catch (err: any) {
-      setError(err.message || 'Gesprächsvorbereitung fehlgeschlagen')
-      setStatus('error')
-    }
-  }, [kontaktId])
+  const [researching, setResearching] = useState(false)
+
+  const generate = useCallback(
+    async (forceResearch = false) => {
+      setStatus('loading')
+      setError('')
+      setSaved(false)
+      try {
+        const res = await fetch('/api/agents/call-prep', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contactId: kontaktId, forceResearch }),
+        })
+        const json = await res.json()
+        if (!json.success) throw new Error(json.error || 'Gesprächsvorbereitung fehlgeschlagen')
+        setResult(json.data)
+        setStatus('done')
+      } catch (err: any) {
+        setError(err.message || 'Gesprächsvorbereitung fehlgeschlagen')
+        setStatus('error')
+      } finally {
+        setResearching(false)
+      }
+    },
+    [kontaktId]
+  )
+
+  async function handleRefreshResearch() {
+    setResearching(true)
+    await generate(true)
+  }
 
   useEffect(() => {
     generate()
@@ -92,7 +115,7 @@ export function CallPrepPanel({ kontaktId }: CallPrepPanelProps) {
       {status === 'loading' && (
         <div className="flex items-center gap-3 text-sm text-gray-500 py-8 justify-center">
           <div className="w-4 h-4 border-2 border-gray-300 border-t-yellow-500 rounded-full animate-spin" />
-          Zusammenfassung wird generiert…
+          {researching ? 'Firma wird recherchiert…' : 'Zusammenfassung wird generiert…'}
         </div>
       )}
 
@@ -101,7 +124,7 @@ export function CallPrepPanel({ kontaktId }: CallPrepPanelProps) {
           <p className="font-semibold mb-1">Fehler</p>
           <p className="mb-3">{error}</p>
           <button
-            onClick={generate}
+            onClick={() => generate()}
             className="px-3 py-1.5 text-xs font-semibold bg-red-100 hover:bg-red-200 text-red-800 rounded-lg transition-colors"
           >
             🔄 Erneut versuchen
@@ -119,6 +142,56 @@ export function CallPrepPanel({ kontaktId }: CallPrepPanelProps) {
             <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Kurzprofil</h4>
             <p className="text-sm text-gray-800 leading-relaxed">{result.summary}</p>
           </div>
+
+          {result.gewerbeRecherche?.kurzprofil && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">
+                🔎 Unternehmensrecherche
+              </h4>
+              <p className="text-sm text-gray-800 leading-relaxed mb-2">{result.gewerbeRecherche.kurzprofil}</p>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {result.gewerbeRecherche.branche && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                    {result.gewerbeRecherche.branche}
+                  </span>
+                )}
+                {result.gewerbeRecherche.rechtsform && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                    {result.gewerbeRecherche.rechtsform}
+                  </span>
+                )}
+                {result.gewerbeRecherche.mitarbeitanzahl && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                    {result.gewerbeRecherche.mitarbeitanzahl} Mitarbeiter
+                  </span>
+                )}
+                {result.gewerbeRecherche.jahresumsatz && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                    Umsatz: {result.gewerbeRecherche.jahresumsatz}
+                  </span>
+                )}
+              </div>
+              {result.gewerbeRecherche.quellen.length > 0 && (
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Quellen:{' '}
+                  {result.gewerbeRecherche.quellen.map((q, i) => (
+                    <span key={q.url}>
+                      {i > 0 && ', '}
+                      <a
+                        href={q.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-gray-700"
+                        title={q.beschreibung}
+                      >
+                        {new URL(q.url).hostname.replace(/^www\./, '')}
+                      </a>
+                    </span>
+                  ))}
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <h4 className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Gesprächsvorschläge</h4>
@@ -147,13 +220,21 @@ export function CallPrepPanel({ kontaktId }: CallPrepPanelProps) {
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100 flex-wrap">
             <button
-              onClick={generate}
+              onClick={() => generate()}
               className="px-3 py-2 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
             >
               🔄 Neu generieren
             </button>
+            {istGewerbe && (
+              <button
+                onClick={handleRefreshResearch}
+                className="px-3 py-2 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              >
+                🔎 Firma erneut recherchieren
+              </button>
+            )}
             <button
               onClick={handleSaveAsNote}
               disabled={saving}

@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.25.0 — Automation/Sync-Architektur vereinheitlicht (`sync_runs`, Retry, Control-Center) | Aktiv in Entwicklung |
+| **Version** | 0.26.0 — Gewerbedaten-Recherche in die Gesprächsvorbereitung integriert (Web-Search-Tool) | Aktiv in Entwicklung |
 
 ---
 
@@ -244,6 +244,33 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.26.0 (2026-08-11) — Gewerbedaten-Recherche in die Gesprächsvorbereitung integriert
+
+Löst den seit Projektbeginn offenen Roadmap-Punkt „Gewerbedaten-Recherche" auf Wunsch des Nutzers nicht als
+eigenständiges Feature, sondern als Erweiterung der bereits produktiven KI-Gesprächsvorbereitung
+(`src/lib/call-prep.ts`).
+
+- ✨ **Neuer Helper `src/lib/company-research.ts`**: `generateCompanyResearch()` nutzt Claudes serverseitiges
+  `web_search`-Tool (`web_search_20260209`) kombiniert mit Structured Outputs (`output_config.format`) in
+  einem einzigen `messages.create()`-Aufruf — löst die offene „zulässige Datenquellen"-Frage der Roadmap
+  pragmatisch über das öffentliche Web statt einer kostenpflichtigen Handelsregister-API. Gleiche
+  „Erfinde NICHTS"-Prompt-Disziplin wie `call-prep.ts`: Felder bleiben `null` ohne echten Beleg, jedes
+  gefüllte Feld braucht eine Quelle, komplett leeres Ergebnis bei fehlender Web-Präsenz ist explizit
+  korrektes Verhalten.
+- ✨ **Cache statt Live-Recherche pro Öffnen**: Ergebnis wird in der neuen Spalte `contacts.gewerbe_recherche`
+  (JSONB, Migration `0068_gewerbe_recherche.sql`) mit Zeitstempel persistiert. `ensureGewerbeRecherche()`
+  recherchiert nur beim allerersten Öffnen eines Gewerbekontakts ohne Cache; ein neuer „🔎 Firma erneut
+  recherchieren"-Button in `CallPrepPanel.tsx` erzwingt bei Bedarf eine frische Recherche
+  (`refreshGewerbeRecherche()`).
+- ✨ **`/api/agents/call-prep`** ruft die Recherche vor der Kontextaggregation auf (No-Op für Privatkunden/
+  ohne Firmenname, Fehler blockieren die eigentliche Gesprächsvorbereitung nicht), `maxDuration` von 60 auf
+  120 erhöht. `call-prep.ts`s `buildPrompt()` hängt bei vorhandenem Ergebnis eine neue Sektion an, mit der
+  expliziten Anweisung, die Recherche nur als Kontext für `talking_points` zu nutzen, nie als von Melih
+  bereits geprüften Fakt darzustellen.
+- ✨ **Bewusst keine automatische Übernahme in die Kontaktfelder** (Branche/Rechtsform/Mitarbeiterzahl) —
+  Nutzer-Entscheidung: Recherche-Ergebnis erscheint nur als Anzeige-Sektion in der Gesprächsvorbereitung
+  (Kurzprofil, Badges, anklickbare Quellen), `ContactOverview.tsx` bleibt unangetastet.
 
 ### v0.25.0 (2026-08-11) — Automation/Sync-Architektur vereinheitlicht: sync_runs, Retry, Control-Center
 
@@ -1157,7 +1184,9 @@ git push origin main # Deploy zu Vercel
 | `src/lib/klicktipp-webhook.ts` | `processEvent()`/`activityFor()` (aus der Route verschoben, damit Route + Retry-Handler dieselbe Logik nutzen) (v0.25.0) |
 | `src/components/automatisierungen/AutomatisierungenTabs.tsx` | Tab-Leiste, die `/regeln` und `/sync` navigatorisch unter „Automatisierungen" verbindet (v0.25.0) |
 | `src/app/api/sync-runs/route.ts`, `.../summary/route.ts`, `.../[id]/detail/route.ts`, `.../[id]/retry/route.ts`, `.../[id]/pause/route.ts`, `.../retry-all/route.ts` | Control-Center-API: Lauf-Liste, Health-Aggregation, Batch-Detail, Einzel-Retry/Pause, Retry-Queue-Flush pro Integration (v0.25.0) |
+| `supabase/migrations/0068_gewerbe_recherche.sql` | `contacts.gewerbe_recherche` JSONB — Cache für die Unternehmensrecherche (v0.26.0) |
+| `src/lib/company-research.ts` | `generateCompanyResearch()` (Claude + `web_search`-Tool + Structured Outputs), `ensureGewerbeRecherche()`/`refreshGewerbeRecherche()` (Cache-Lese/Schreib-Logik) (v0.26.0) |
 
 ---
 
-*Last Updated: 2026-08-11 — v0.25.0 Automation/Sync-Architektur vereinheitlicht (`sync_runs`, Retry, Control-Center); Roadmap nach `docs/ROADMAP.md` ausgelagert*
+*Last Updated: 2026-08-11 — v0.26.0 Gewerbedaten-Recherche in die Gesprächsvorbereitung integriert (Web-Search-Tool, `contacts.gewerbe_recherche`-Cache)*

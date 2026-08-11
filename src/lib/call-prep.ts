@@ -29,6 +29,14 @@ export interface CallPrepNote {
   type: string
 }
 
+export interface CallPrepGewerbeRecherche {
+  kurzprofil: string | null
+  branche: string | null
+  rechtsform: string | null
+  mitarbeitanzahl: string | null
+  jahresumsatz: string | null
+}
+
 export interface CallPrepContext {
   firstName: string
   lastName: string
@@ -48,6 +56,7 @@ export interface CallPrepContext {
   activities: CallPrepActivity[]
   openTasks: CallPrepTask[]
   documentCount: number
+  gewerbeRecherche?: CallPrepGewerbeRecherche | null
 }
 
 export interface CallPrepResult {
@@ -121,6 +130,18 @@ function buildPrompt(ctx: CallPrepContext): string {
         .join('\n')
     : '(keine offenen Aufgaben)'
 
+  const gewerbeRecherche = ctx.gewerbeRecherche?.kurzprofil
+    ? `
+
+UNTERNEHMENSRECHERCHE (öffentliche Web-Quellen, nicht von Melih verifiziert):
+${ctx.gewerbeRecherche.kurzprofil}
+${ctx.gewerbeRecherche.branche ? `Branche: ${ctx.gewerbeRecherche.branche}` : ''}
+${ctx.gewerbeRecherche.rechtsform ? `Rechtsform: ${ctx.gewerbeRecherche.rechtsform}` : ''}
+${ctx.gewerbeRecherche.mitarbeitanzahl ? `Mitarbeiterzahl: ${ctx.gewerbeRecherche.mitarbeitanzahl}` : ''}
+${ctx.gewerbeRecherche.jahresumsatz ? `Jahresumsatz: ${ctx.gewerbeRecherche.jahresumsatz}` : ''}
+Nutze das nur als zusätzlichen Kontext für talking_points (z.B. Bezug auf Branche/Unternehmensgröße) — stelle es nie als sicheren Fakt dar, den Melih nicht selbst geprüft hat.`
+    : ''
+
   return `Du bist ein interner Assistent für Melih (Versicherungsmakler bei einer Allianz Generalvertretung). Deine einzige Aufgabe: ihn in wenigen Sekunden auf einen bevorstehenden Telefonanruf mit diesem Kontakt vorzubereiten.
 
 WICHTIGE REGELN:
@@ -143,7 +164,7 @@ OFFENE AUFGABEN:
 ${aufgaben}
 
 DOKUMENTE:
-${ctx.documentCount} Dokument(e) beim Kontakt hinterlegt (Inhalt nicht ausgewertet, nur zur Orientierung).`
+${ctx.documentCount} Dokument(e) beim Kontakt hinterlegt (Inhalt nicht ausgewertet, nur zur Orientierung).${gewerbeRecherche}`
 }
 
 export async function generateCallPrep(ctx: CallPrepContext): Promise<CallPrepResult> {

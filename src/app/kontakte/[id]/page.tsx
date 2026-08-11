@@ -1059,7 +1059,7 @@ export default function KontaktDetailPage() {
         title="🧠 Anruf vorbereiten"
         onClose={() => setOpenDrawer(null)}
       >
-        <CallPrepPanel kontaktId={kontaktId} />
+        <CallPrepPanel kontaktId={kontaktId} istGewerbe={kontakt.kontakt_typ !== 'privat'} />
       </Drawer>
 
       <Drawer
