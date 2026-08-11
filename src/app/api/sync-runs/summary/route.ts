@@ -37,10 +37,15 @@ export async function GET(_request: NextRequest) {
   const supabase = createServerClient()
 
   try {
+    // Nur Top-Level-Läufe zählen (Batches für Facebook/Dialfire-Pull,
+    // eigenständige Items für die übrigen Integrationen) — dieselbe
+    // Definition von "ein Lauf" wie in der Automatisierungs-Läufe-Tabelle
+    // (/api/sync-runs), sonst würde diese Kachel bei Facebook/Dialfire-Pull
+    // die Anzahl einzelner Kontakte statt der tatsächlichen Läufe zeigen.
     const { data: runs, error } = await supabase
       .from('sync_runs')
       .select('integration, status, started_at')
-      .eq('run_kind', 'item')
+      .is('parent_run_id', null)
       .in('integration', INTEGRATIONS as unknown as string[])
       .order('started_at', { ascending: false })
       .limit(INTEGRATIONS.length * WINDOW_PER_INTEGRATION * 3)

@@ -4,6 +4,7 @@
 // Automatisierungs-Läufe-Tabelle auf /sync. Wird lazy nachgeladen, wenn
 // eine Batch-Zeile aufgeklappt wird (siehe /api/sync-runs/[id]/detail).
 import { createServerClient } from '@/lib/supabase/server'
+import { extractLeadLabel, type FacebookLeadRaw } from '@/lib/facebook-sync'
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
@@ -65,12 +66,9 @@ async function facebookDetail(supabase: SupabaseClient, run: BatchRun): Promise<
   const items = await loadItems(supabase, run.id)
 
   const detailItems: BatchDetailItem[] = items.map((i) => {
-    const lead = (i.data?.lead ?? {}) as Record<string, unknown>
+    const lead = (i.data?.lead ?? {}) as FacebookLeadRaw
     const result = (i.data?.result ?? {}) as Record<string, unknown>
-    const label =
-      (typeof lead.email === 'string' && lead.email) ||
-      [lead.first_name, lead.last_name].filter(Boolean).join(' ') ||
-      String(lead.id ?? 'Unbekannt')
+    const label = (typeof result.email === 'string' && result.email) || extractLeadLabel(lead)
     const note =
       result.outcome === 'linked'
         ? 'Verknüpft mit bestehendem Kontakt'

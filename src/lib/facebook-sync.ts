@@ -48,6 +48,34 @@ class FacebookLeadError extends Error {
 }
 
 /**
+ * Extrahiert einen lesbaren Anzeigenamen aus den rohen Facebook-Feldern
+ * (E-Mail bevorzugt, sonst Name) -- für die Detailansicht in der
+ * Automatisierungs-Läufe-Tabelle (batch-detail.ts), wo nur der rohe,
+ * ungemappte Lead zur Verfügung steht (der bereits gemappte Kontakt existiert
+ * dort nicht mehr, insbesondere bei fehlgeschlagenen Leads).
+ */
+export function extractLeadLabel(lead: FacebookLeadRaw): string {
+  let email: string | undefined
+  let fullName: string | undefined
+  let firstName: string | undefined
+  let lastName: string | undefined
+
+  for (const field of lead.field_data ?? []) {
+    const name = String(field?.name ?? '').toLowerCase()
+    const rawValue = field?.values?.[0]
+    if (!rawValue || String(rawValue).trim() === '') continue
+    const value = String(rawValue).trim().replace(/^[•_\s]+|[•_\s]+$/g, '').trim()
+
+    if ((name === 'email' || name === 'email_address') && !email) email = value
+    else if (name === 'full_name' && !fullName) fullName = value
+    else if (name === 'first_name' && !firstName) firstName = value
+    else if (name === 'last_name' && !lastName) lastName = value
+  }
+
+  return email || [firstName, lastName].filter(Boolean).join(' ') || fullName || lead.id
+}
+
+/**
  * Verarbeitet einen einzelnen Facebook-Lead: E-Mail-Abgleich, Update/Upsert,
  * Aktivitäts-Log, Notiz. Wirft bei jedem Fehler (statt ihn abzufangen),
  * damit sowohl der normale Lauf als auch ein späterer Retry über
