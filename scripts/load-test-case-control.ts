@@ -14,7 +14,11 @@ function requiredEnvironment(name: string): string {
 async function main() {
   const baseUrl = new URL(requiredEnvironment('PLAYWRIGHT_BASE_URL')).origin
   const githubEnv = requiredEnvironment('GITHUB_ENV')
-  const response = await fetch(`${baseUrl}/api/test-cases`, { cache: 'no-store' })
+  const controlToken = requiredEnvironment('TEST_DATA_CLEANUP_TOKEN')
+  const response = await fetch(`${baseUrl}/api/test-cases`, {
+    cache: 'no-store',
+    headers: { 'x-test-control-token': controlToken },
+  })
 
   if (!response.ok) {
     throw new Error(`Testfallsteuerung ist nicht erreichbar (HTTP ${response.status}).`)

@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.24.0 — KI-Upload-/Regel-Ausführung-Bugfixes, KlickTipp-ID in UI + Reporting sichtbar | Aktiv in Entwicklung |
+| **Version** | 0.25.0 — Automation/Sync-Architektur vereinheitlicht (`sync_runs`, Retry, Control-Center) | Aktiv in Entwicklung |
 
 ---
 
@@ -57,7 +57,10 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 |-------|---------|
 | `opportunities` | Removed from UI (v0.3.0) |
 | `pipeline_stages` | Konfigurierbare 12-Schritt-Pipeline |
-| `sync_log` | Sync-History für Lead-Import |
+| `sync_log` | Ältere Sync-History für Lead-Import; besteht seit v0.25.0 additiv neben `sync_runs` weiter (nicht abgelöst) |
+| `sync_runs` | Einheitliches Ausführungs-/Health-Log für alle Sync-Integrationen (`run_kind` batch/item, `parent_run_id`-Verschachtelung, Fehlerklassifikation, Retry-Felder) — Fundament des Automatisierungs-Läufe-Control-Centers (v0.25.0, Migration `0066_sync_runs.sql`) |
+| `sync_config` | Zeitplan-Konfiguration für zeitgesteuerte Integrationen (Facebook, Dialfire-Pull); ersetzt die früheren `facebook_sync_config`/`dialfire_sync_config` (v0.25.0, Migration `0067_sync_config.sql`) |
+| `klicktipp_webhook_events` | Rohprotokoll eingehender KlickTipp-Rücksync-Webhook-Events, dedupliziert über `event_fingerprint` (v0.9x-Ära, seit v0.25.0 zusätzlich an `sync_runs` + Retry angebunden) |
 
 ---
 
@@ -97,115 +100,19 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar; Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden automatisch als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht" |
 | **Sparten-Verwaltung & Erstgespräch-Leitfäden** | ✅ Done | Sparten sind eine feste, admin-gepflegte Liste (`/einstellungen/sparten`) statt Freitext; Kontakte können mehreren Sparten zugeordnet werden (n:m über `contact_sparte_map`, primäre Sparte hält die alte `contacts.sparte`-Spalte automatisch synchron, damit Dialfire/KlickTipp/Regeln unverändert weiterlaufen). Jede Sparte trägt ihren eigenen Erstgespräch-Leitfaden (Fragen + Felder), von Melih selbst pflegbar; die Erstgespräch-Kachel im Kontakt rendert bei mehreren zugeordneten Sparten jeden hinterlegten Leitfaden in einem eigenen Abschnitt |
 
-## Konsolidierte Feature-Roadmap (Stand 2026-08-05)
+## Feature-Roadmap
 
-Diese Roadmap ist unabhängig vom ursprünglichen Angebotsumfang und priorisiert alle aktuell bekannten Produktanforderungen. Bereits implementierte Grundlagen bleiben im Abschnitt `Feature-Status` dokumentiert.
-
-**Prioritäten:** `Hoch` = als Nächstes bzw. phasenbestimmend, `Mittel` = nach den Kernabhängigkeiten, `Niedrig` = bewusst zurückgestellt.
-
-### Phase A — Stabiler CRM-Kern, einheitliche Automatisierung und Telefonie
-
-**Ziel:** Den bestehenden CRM-Kern produktiv stabilisieren, Placetel vollständig abnehmen und Automation/Synchronisation zu einem einheitlich steuerbaren System zusammenführen.
-
-| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
-|---------|-----------|-------|-----------------------------|
-| **Vollständiger Regressionstest** | Hoch | 🟡 Testsystem und E2E-Katalog vorhanden | Gesamtlauf ausführen, fachliche Restfehler dokumentieren und kritische Fehler schließen |
-| **Placetel Click-to-Call** | Hoch | 🧪 MVP implementiert | Echten Pilotanruf mit Gesprächsdauer, Auflegegrund und Abschlussstatus erfolgreich abnehmen |
-| **Placetel Notify-/Ergebnisverarbeitung** | Hoch | 🧪 HMAC, offizielle Statuswerte, Dauer und Gesprächsergebnis vorbereitet | Reale Provider-Callbacks prüfen, Fehlerfälle absichern und Automationsfolgen testen |
-| **Automation + Synchronisation vereinheitlichen** | Hoch | 🟡 Mehrere getrennte Engines, Routen, Edge Functions und Logs vorhanden | Gemeinsame Ausführungsarchitektur für Events, manuelle Läufe und zeitgesteuerte Jobs schaffen |
-| **Einheitliche Cron-/Scheduler-Logik** | Hoch | 🔴 Fehlt als gemeinsamer Baustein | Zentrale Jobdefinition, Sperren gegen Doppelläufe, Wiederholungen, Zeitfenster und Laufhistorie implementieren |
-| **Einheitliches Log-Handling** | Hoch | 🟡 Activities, `sync_log` und anbieterspezifische Logs vorhanden | Einheitliches Lauf-/Eventmodell mit Korrelation zwischen Kontakt, Regel, Job und Integration schaffen |
-| **Einheitliches Fehler- und Retry-Handling** | Hoch | 🟡 Fehlerbehandlung pro Integration vorhanden | Standardisierte Fehlerklassen, Retry-Strategie, Dead-Letter-Status und manuelle Wiederholung einführen |
-| **Automation-/Sync-Control-Center UI** | Hoch | 🟡 Regeln- und Integrationsseiten teilweise vorhanden | Jobs, letzte Läufe, Fehler, Wiederholungen, Pausieren/Aktivieren und Health-Status zentral anzeigen |
-| **Mitarbeiterdashboard** | Hoch | 🟢 `/dashboard` personalisiert: Heute im Fokus, Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter für Admins | Stabil halten; ggf. „Abschlussquote" um echten 30-Tage-Zeitverlauf ergänzen sobald historische Snapshots existieren |
-| **Facebook Lead-Import produktiv abnehmen** | Mittel | 🟢 Webhook und manueller Sync implementiert | Echten Lead-End-to-End-Lauf inklusive Dubletten, Automation und Downstream-Sync durchführen |
-| **KlickTipp-Direktsynchronisation** | Hoch | 🟢 API-User freigeschaltet, deployed und Pilot erfolgreich | Produktiv beobachten; API-Zugang und Mapping per Regression absichern. Der direkte Management-API-Weg bleibt der verbindliche Outbound-Pfad, Make.com ist entfernt. |
-| **KlickTipp-Rücksynchronisation** | Hoch | 🧪 Migration, Secret, Statusabgleich und erster Tag-Webhook live | Reale Öffnung, Klick und Abmeldung End-to-End prüfen; danach den Statusabgleich zeitgesteuert aktivieren und Rückkanal-Monitoring im Control Center ergänzen. |
-| **KlickTipp-Tag-Bestand bereinigen** | Mittel | 🟡 Erste Bestandsaufnahme: 719 manuelle Tags, sechs ausgehende Webhooks | Vollständigen Tag-Export klassifizieren, Kampagnen-/Webhook-Abhängigkeiten prüfen und erst danach Dubletten bzw. Alt-Tags kontrolliert archivieren. Den älteren Webhook `Sentinel Logic Sync` (ID `169322`) bis zum Vergleich mit dem abgesicherten Webhook nicht löschen. |
-| **Gewerbedaten-Recherche** | Mittel | 🔴 Nur Datenmodell/Mock-Bausteine vorhanden | Zulässige Datenquellen und einen realistischen Recherche-MVP festlegen |
-| **KI-Gesprächsvorbereitung** | Mittel | 🟢 v1 live (v0.19.0): Button „Anruf vorbereiten", Claude Sonnet, strukturierte Ausgabe, manuelle Prüfung im Panel | Phase 2+: automatischer Trigger bei eingehendem Anruf/Kalendertermin, automatisches Gesprächsprotokoll |
-| **Dialfire-Synchronisation** | Niedrig | 🟢 Create-/Pull-Pfade vorhanden | Nur stabil halten; kein größerer Ausbau, wenn Placetel den operativen Bedarf ersetzt |
-| **Dialfire-Kampagnenflexibilität** | Niedrig | 🟡 Teilweise konfigurierbar | Nur noch notwendige Hardcodierungen entfernen; keine neue Fachlogik priorisieren |
-| **Granulare Rechte pro Benutzer** | Niedrig | 🟡 Rollenarchitektur vorbereitet | Erst nach Stabilisierung der Kernprozesse eine Berechtigungsmatrix definieren |
-| **TikTok Lead-Import** | Niedrig | 🔴 Nur als Kontaktquelle vorhanden | Erst nach Facebook-Abnahme und konkretem Kampagnenbedarf anbinden |
-| **Google-/YouTube-Lead-Import** | Niedrig | 🔴 Nicht implementiert | Konkrete Google-Leadquelle und Zugriff vor einer Umsetzung klären |
-
-### Phase B — AmisNow, Angebote und minimale Kundenkommunikation
-
-**Ziel:** Den operativen Verkaufsprozess mit AmisNow verbinden, das Angebotshandling fachlich entscheiden und eine kleine eigene Kommunikationslösung für die wichtigsten Abläufe bereitstellen.
-
-| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
-|---------|-----------|-------|-----------------------------|
-| **AmisNow-Personenanlage** | Hoch | 🧪 Browser-MVP vorhanden | Stabilen End-to-End-Pilot mit freigegebenen Testdaten, Jobstatus und Fehlerbehandlung abschließen |
-| **AmisNow-Angebotsberechnung** | Hoch | 🧪 Agent-Job vorbereitet | Reale Berechnung abnehmen und Angebotsnummer, Beitrag und Fehlerstatus verlässlich zurückschreiben |
-| **AmisNow-Jobsteuerung** | Hoch | 🟡 Job-/Result-Grundlagen vorhanden | Warteschlange, Wiederholung, Timeout, manuelle Freigabe und Monitoring produktionsfest machen |
-| **Entscheidung Angebotshandling** | Hoch | ⚪ Offen | Fachlich entscheiden, wie Opportunity, Angebot, Angebotsversion, Dokument und Vertrag zusammenhängen |
-| **Angebotsverwaltung/-Tracking** | Mittel | 🟡 Opportunities und Dokumente als Grundlagen vorhanden | Erst nach Produktentscheidung ein eindeutiges Datenmodell und Statussystem implementieren |
-| **Angebotsupload und Versionen** | Mittel | 🔴 Kein strukturiertes Angebot vorhanden | Dokumentreferenz, Versicherer, Tarif, Version, Gültigkeit und Nachfassdatum modellieren |
-| **Angebotsversand** | Mittel | 🔴 Kein durchgängiger Angebotsworkflow | Versand zunächst per E-Mail mit Vorlage, Protokoll und manueller Freigabe umsetzen |
-| **Automatische Angebots-Follow-ups** | Mittel | 🔴 Aufgabenbasis vorhanden | Nach Scheduler-Grundlage automatisch Aufgabe/Erinnerung aus Angebotsstatus und Frist erzeugen |
-| **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot kontrolliert in einen Vertrag überführen |
-| **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
-| **E-Mail-Vorlagen** | Hoch | 🟢 `/einstellungen/mail-vorlagen` (CRUD) + Vorlage-Dropdown in `ContactEmailModal` mit Platzhalter-Ersetzung, manuelle Freigabe (Vorlage befüllt nur, sendet nicht automatisch) | Stabil halten; ggf. weitere Platzhalter ergänzen wenn Bedarf entsteht |
-| **Vorlagen: Datenanfrage, Kündigung, Termin, Beitragsübersicht** | Hoch | 🟢 Alle vier als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
-| **Eigene minimale Kommunikationslösung** | Hoch | 🟢 Kommentare mit @-Erwähnung (Einzel + „Alle") an Kontakten und Aufgaben, Datei-Anhang, E-Mail-Benachrichtigung, `/erwaehnungen`-Übersicht + Sidebar-Badge | Stabil halten; bei Bedarf Kontakt-Kommentare auf weitere Entitäten ausweiten |
-| **Terminbuchungs-Webhook → Aktivität/GF-Mail** | Mittel | 🔴 Echte Calendly-Integration fehlt | Nach Zugang Buchung empfangen, Kontakt zuordnen, protokollieren und GF benachrichtigen |
-| **Externe Kalenderintegration (STRATO/CalDAV)** | Mittel | 🟢 Beidseitige Sync live verifiziert (v0.18.1); Timezone-Bug bei ganztägigen Terminen behoben (v0.18.2); mehrtägige Termine erscheinen jetzt in allen Ansichten korrekt an jedem berührten Tag statt nur am Starttag (v0.21.0); Teilnehmer per E-Mail einladbar, Verschieben/Ort/Inhalt-Änderungen und Stornierung lösen automatisch Einladungs-/Update-/Absage-Mails mit ICS-Anhang aus (v0.21.0–v0.22.0) | Stabil halten; bei Bedarf Pull von manuellem Button auf Cron/Edge Function umstellen, damit STRATO-seitige Änderungen automatisch ohne Klick ankommen |
-| **SuperChat-Integration/Ablösung** | Niedrig | 🔴 Nicht umgesetzt | Hinter die eigene Minimallösung stellen; später Integration, Migration oder vollständige Ablösung neu bewerten |
-| **SuperChat-Datenmigration** | Niedrig | 🔴 Nicht umgesetzt | Erst nach strategischer SuperChat-Entscheidung betrachten |
-| **Vollständiges E-Mail-Postfach / Unified Inbox** | Niedrig | 🟢 `/postfach` + `/api/postfach`: Posteingang über das STRATO-Postfach lesen/versenden (IMAP/SMTP, `strato-mail.ts`), E-Mail-Eingänge werden in der Kontakt-Timeline protokolliert — Status aus Code-Review, nicht in dieser Session selbst live abgenommen | Kurze manuelle Abnahme (Anhänge, Threading, Fehlerfälle) nachholen, dann als erledigt markieren |
-| **Kundenportal** | Niedrig | 🔴 Nicht umgesetzt | Nach der minimalen Kommunikation als eigenständiges MVP neu definieren |
-
-### Phase C — Dokumente, Gemini-Umbau, zeitgesteuerte Prozesse und Reporting
-
-**Ziel:** Die Dokumenten- und KI-Verarbeitung auf Gemini umstellen, wiederkehrende Prozesse auf der gemeinsamen Scheduler-Architektur aufbauen und echte Kennzahlen bereitstellen.
-
-| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
-|---------|-----------|-------|-----------------------------|
-| **KI-Upload: Claude → Gemini API** | Hoch | 🟢 Bestehender Flow nutzt Claude | Providerabstraktion einführen, Gemini-Analyse mit gleichwertigem strukturiertem Schema implementieren und per Regression vergleichen |
-| **Gemini-Migration sicher abnehmen** | Hoch | 🔴 Noch nicht begonnen | PDF, Foto, Scan, Vermittler-Falle, Dublette, Vertragsdaten und Fehlerfälle gegen bestehenden Testkatalog prüfen |
-| **Claude-Laufzeit nach Migration entfernen** | Mittel | 🟡 Aktuell produktiver Provider | Erst nach erfolgreicher Gemini-Abnahme Runtime-Aufrufe und nicht mehr benötigte Konfiguration entfernen |
-| **KI-Upload → Folgeaufgabe** | Hoch | 🔴 Kontakt, Dokument und Vertrag vorhanden; Aufgabe fehlt | Dokumenttypabhängige, konfigurierbare Folgeaufgabe erzeugen |
-| **Dokumentenablage** | — | 🟢 Google Drive, Kategorien und Kompression umgesetzt | Stabil halten und in neue Workflows einbinden |
-| **HiDrive vs. Google Drive** | Mittel | ⚪ Google Drive umgesetzt, Zielentscheidung offen | Google Drive als dauerhafte Lösung bestätigen oder Migration separat planen |
-| **KI-Dokumentensuche** | Mittel | 🔴 Embeddings/pgvector-Pipeline fehlt | Extraktion, Chunking, Berechtigungen, Embeddings und Suche implementieren |
-| **Zeitbasierte Workflows** | Hoch | 🔴 Fachlogik fehlt | Auf der Phase-A-Scheduler-Logik wiederkehrende fachliche Jobs definieren |
-| **Geburtstagsautomation** | Mittel | 🔴 Nicht implementiert | Empfänger, Vorlage, Freigabe, Opt-out und Doppelversandschutz definieren |
-| **Jubiläumsautomation** | Mittel | 🔴 Nicht implementiert | Fachliches Jubiläumsdatum und Versandregeln klären |
-| **Jährlicher Versicherungscheck** | Hoch | 🔴 Nicht implementiert | Vertragsbezogenen Prüftermin, Aufgabe und Kommunikationsvorlage umsetzen |
-| **Vertragsablauf-/Nachfass-Erinnerungen** | Hoch | 🟡 Vertragsdaten und Aufgaben vorhanden | Vorlaufzeiten, Eskalation, Laufhistorie und Wiederholungsregeln ergänzen |
-| **After-Sales-Prozess** | Mittel | 🟡 Pipeline-Schritt `Nachbereitung` vorhanden | Echten vertragsbezogenen statt rein linearen Kontaktprozess modellieren |
-| **Echte Dashboard-KPIs** | Hoch | 🟡 Mehrere Werte teilweise statisch | Leads, Aufgaben, Angebote, Abschlüsse und Conversion aus echten Daten berechnen |
-| **Reporting & Analytics** | Mittel | 🟡 NL→SQL und Grundansichten vorhanden | Berechtigungen, Angebots-/Vertrags-KPIs, Zeiträume und Exporte erweitern |
-| **Erweiterte Filter auf allen Listen** | Mittel | 🟢 Kontakte/Aufgaben weit fortgeschritten | Verbleibende Listen funktional angleichen |
-
-### Phase D — Erweiterter KI-Kern, Produktreife und langfristiger Ausbau
-
-**Ziel:** Erst nach stabilen Kernprozessen erweiterte KI-Funktionen und optionale Produkt-/SaaS-Fähigkeiten umsetzen.
-
-| Feature | Priorität | Stand | Nächster Schritt / Zielbild |
-|---------|-----------|-------|-----------------------------|
-| **Police ↔ AmisNow-Datenabgleich** | Hoch | 🔴 Nicht implementiert | Nach stabiler AmisNow-Anbindung Felder, Toleranzen und Prüfbericht definieren |
-| **Abweichungs-/Deckungslückenerkennung** | Mittel | 🔴 Nicht implementiert | Fachregeln und nachvollziehbare Begründungen mit manueller Prüfung entwickeln |
-| **Automatische Verkaufsargumente** | Mittel | 🔴 Nicht implementiert | Als Assistenzvorschlag mit Quellenbezug und Freigabe umsetzen |
-| **Kündigungsschreiben vorbereiten** | Mittel | 🔴 Nicht implementiert | Beitragserhöhung/Ablauf erkennen und nur einen manuell freizugebenden Entwurf erzeugen |
-| **Weitere KI-Agenten** | Niedrig | 🟡 AmisNow-Agent als erster MVP | Einsatzfelder einzeln priorisieren und jeweils mit eigener Abnahme planen |
-| **SaaS-/Mandantenfähigkeit** | Niedrig | 🟡 Auth/Rollen vorhanden, Mandantenmodell fehlt | Organisationen, Datenisolation und mandantenbezogene Konfiguration als separates Ausbauprojekt planen |
-| **Kundenportal-Ausbau** | Niedrig | 🔴 Nicht implementiert | Nur nach eigener Minimallösung und konkretem Portal-MVP priorisieren |
-| **DSGVO-Auskunfts- und Löschprozess** | Niedrig / zuletzt | 🟡 Archivierung vorhanden, vollständiger Prozess fehlt | Ganz am Ende von Phase D Aufbewahrung, Export, Freigabe und endgültige Löschung definieren |
-| **Strategische KlickTipp-Ablösung** | Mittel | ⚪ Zielrichtung bestätigt, endgültige Entscheidung noch offen | Zuerst Tag-/Kampagnenabhängigkeiten, Einwilligungshistorie, Zustellung, Automationen und Reporting vollständig inventarisieren. Funktionen schrittweise in Sentimental Logic aufbauen und erst nach Parallelbetrieb sowie Datenmigration über die Abschaltung entscheiden. |
-
-### Phasenübergreifend — iterativ einplanen
-
-Diese Arbeiten sind keine einmaligen Abschlussblöcke. Sie werden in jeder Phase gemeinsam mit den jeweiligen Features geplant und abgeschlossen.
-
-| Thema | Verbindliche Arbeitsweise |
-|-------|--------------------------|
-| **Systemdokumentation** | Architektur, Konfiguration, Datenmodell, Integrationen und Betriebsabläufe nach jeder wesentlichen Änderung aktualisieren |
-| **Tests & QA** | Für jedes Feature Abnahmekriterien und passende API-/E2E-Regressionstests ergänzen; vollständigen Katalog regelmäßig ausführen |
-| **Benutzerschulung** | Neue oder geänderte Arbeitsabläufe phasenweise demonstrieren, kurz dokumentieren und mit den betroffenen Benutzern testen |
-| **Release Notes** | Jede produktive Funktionsänderung in den In-App Release Notes festhalten |
-| **Monitoring und Datenschutz** | Logging, Datenminimierung, Berechtigungen und externe Datenweitergabe bei jedem Integrationsfeature mitprüfen |
+> Ausgelagert in eine eigene Datei: **[`docs/ROADMAP.md`](docs/ROADMAP.md)** — dort stehen alle vier
+> Phasen (A–D) mit Priorität, Stand und nächstem Schritt je Feature, plus die phasenübergreifenden
+> Arbeitsweisen (Doku, Tests, Release Notes, Monitoring). Bereits implementierte Grundlagen bleiben
+> zusätzlich im Abschnitt `Feature-Status` oben dokumentiert.
+>
+> **Aktueller Fokus (Stand 2026-08-11):** Phase A ist bei „Automation + Synchronisation
+> vereinheitlichen" inkl. aller vier Unterpunkte (Cron/Scheduler, Log-Handling, Fehler-/Retry-Handling,
+> Control-Center-UI) jetzt vollständig ✅ Done (v0.25.0, siehe „Recent Changes" unten). Offene
+> Hoch-Priorität-Punkte in Phase A: Vollständiger Regressionstest, Placetel Click-to-Call/
+> Notify-Verarbeitung, KlickTipp-Rücksynchronisation (Stand 2026-08-11: noch kein einziges reales
+> Webhook-Event angekommen, siehe `docs/ROADMAP.md`).
 
 ### ❌ Removed
 
@@ -337,6 +244,53 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.25.0 (2026-08-11) — Automation/Sync-Architektur vereinheitlicht: sync_runs, Retry, Control-Center
+
+Mehrwöchiges Vorhaben (Branch `feature/sync-runs-fundament`, 6 Phasen, nach ausführlichem Live-Testen
+konfliktfrei in `main` gemerged) zur Vereinheitlichung der bis dahin 6+ unabhängigen Sync-/
+Automation-Pfade, jeder mit eigenem Fehler-Handling und uneinheitlicher Sichtbarkeit. Ziel war
+ausdrücklich kein Neubau, sondern additives Zusammenführen unter einem gemeinsamen Datenmodell.
+
+- ✨ **Neues gemeinsames Ausführungsmodell `sync_runs`** (Migration `0066_sync_runs.sql`): `run_kind`
+  (`batch`/`item`) mit `parent_run_id`-Verschachtelung (ein Batch-Lauf pro Cron-Tick/Klick, N
+  Item-Zeilen pro Kontakt darunter), `trigger_type` (`auto`/`manual`/`cron`/`webhook`),
+  Fehlerklassifikation (`error_class`/`error_detail`) und Retry-Felder
+  (`attempt_count`/`max_attempts`/`next_retry_at`). Rein additiv — `activities`, `sync_log` und
+  `dialfire_sync_log` bestehen unverändert parallel weiter.
+- ✨ **9 Integrationen migriert**: KlickTipp-Push, Dialfire-Push, Dialfire-Pull, Facebook, SuperChat,
+  STRATO-Kalender, STRATO-Mail, KlickTipp-Rücksync-Webhook und CSV-Import schreiben jetzt einheitlich
+  über `runWithTracking()`/`recordRunStart()`/`recordRunOutcome()`
+  (`src/lib/sync-runs/retry-runner.ts`) in `sync_runs`.
+- ✨ **Automatisches + manuelles Retry** (`src/lib/sync-runs/retry-handlers.ts`, `classifyError()`
+  in `src/lib/sync-runs/error-classification.ts`) für 7 der 9 Integrationen — läuft alle 15 Minuten
+  als Piggyback im Facebook-Cron mit, zusätzlich sofort auslösbar per „Jetzt synchronisieren" auf den
+  ereignisgetriggerten Kacheln (`POST /api/sync-runs/retry-all`). Bewusst **kein** Auto-Retry für
+  STRATO-Mail — E-Mail-Versand ist nicht idempotent, ein Retry könnte eine bereits zugestellte Mail
+  ein zweites Mal an einen echten Menschen schicken; Fehlschläge landen dort immer direkt als
+  `dead_letter`.
+- ✨ **Einheitliche Zeitplan-Tabelle `sync_config`** (Migration `0067_sync_config.sql`) ersetzt die
+  beiden fast identischen `facebook_sync_config`/`dialfire_sync_config`; gemeinsamer
+  Due-Check-Helper (`src/lib/sync-runs/sync-config.ts`).
+- ✨ **Control-Center**: `/sync` zeigt jetzt echte Gesundheitsdaten pro Integration (einheitliches
+  `SyncStatusBadge`-Vokabular, 6 Zustände, statt der vorherigen hartcodierten Fake-Status), eine
+  „Automatisierungs-Läufe"-Tabelle mit Retry/Pause pro Zeile und aufklappbarem Batch-Detail (Status
+  pro einzelnem Kontakt/Lead statt nur einer Sammel-Fehlerzahl). `/sync` und `/regeln` sind über eine
+  gemeinsame „Automatisierungen"-Tab-Leiste verbunden (ein Sidebar-Eintrag statt zwei), ohne die
+  Datenmodelle zu verschmelzen — Regeln bleiben die Business-Logik-Schicht, `sync_runs` die
+  Ausführungs-/Health-Schicht darunter.
+- 🐛 **Facebook-Lead-Details zeigten „Unbekannt"** im Batch-Detail. Rohe Facebook-Lead-Objekte
+  (`data.lead` in `sync_runs`) haben keine Top-Level-`email`/`name`-Felder — die entstehen erst nach
+  dem Mapping. Neuer `extractLeadLabel()`-Helper (`src/lib/facebook-sync.ts`) parst `field_data`
+  direkt, bevorzugt aber die E-Mail aus dem tatsächlichen Sync-Ergebnis wenn vorhanden.
+- 🐛 **Health-Kacheln zeigten „50 von 50 Läufen erfolgreich"** für Facebook/Dialfire-Pull unabhängig
+  von der echten Laufzahl — gezählt wurden einzelne Kontakt-Items statt der Batch-Zeile pro Lauf,
+  was am impliziten 50-Zeilen-Fenster immer denselben Wert lieferte. Behoben durch konsequentes
+  „ein Batch = ein Lauf"-Prinzip (`.is('parent_run_id', null)`-Filter in `/api/sync-runs` und
+  `/api/sync-runs/summary`).
+- 🔧 Neue Tabellen `sync_runs`, `sync_config`; `klicktipp_webhook_events` (bereits vorhanden) ist
+  seit dieser Version zusätzlich an `sync_runs`/Retry angebunden. Details siehe `docs/ROADMAP.md`
+  (Phase A) und die neuen Einträge unter „Kritische Dateien" unten.
 
 ### v0.24.0 (2026-08-06) — KI-Upload-Regressionen, robuste Regel-Ausführung, KlickTipp-ID sichtbar
 
@@ -1192,7 +1146,18 @@ git push origin main # Deploy zu Vercel
 | `src/lib/activity-classification.ts` | `istTechnisch()` — geteiltes, direktivenloses Modul (fachlich/technisch-Klassifizierung für Aktivitäten), von UI und server-seitigem Code nutzbar (v0.19.0) |
 | `src/app/api/agents/call-prep/route.ts` | Aggregiert Kontaktdaten + ruft `call-prep.ts` auf; keine Persistierung (v0.19.0) |
 | `src/components/kontakt/CallPrepPanel.tsx` | Drawer-Inhalt: Auto-Generierung beim Öffnen, „Neu generieren", „Als Notiz speichern" (v0.19.0) |
+| `supabase/migrations/0066_sync_runs.sql`, `0067_sync_config.sql` | Neues Ausführungsmodell + einheitliche Zeitplan-Tabelle (v0.25.0) |
+| `src/lib/sync-runs/retry-runner.ts` | `runWithTracking()`/`recordRunStart()`/`recordRunOutcome()` — gemeinsamer Tracking-Wrapper aller Integrationen, persistiert bei Erfolg auch den Rückgabewert in `data.result` (v0.25.0) |
+| `src/lib/sync-runs/error-classification.ts` | `classifyError()` — transient/rate_limit/validation/auth/unknown, extrahiert HTTP-Status aus Fehlertexten (v0.25.0) |
+| `src/lib/sync-runs/retry-handlers.ts` | `RETRY_HANDLERS`-Registry + `processRetries()`/`hasRetryHandler()`, genutzt vom Cron-Piggyback und `retry-all` (v0.25.0) |
+| `src/lib/sync-runs/batch-detail.ts` | Pro-Kontakt-Aufschlüsselung eines Batch-Laufs (Facebook/Dialfire-Pull/CSV) für die Detail-Ansicht (v0.25.0) |
+| `src/lib/sync-runs/sync-config.ts` | Gemeinsamer Due-Check-Helper für zeitgesteuerte Integrationen gegen `sync_config` (v0.25.0) |
+| `src/lib/sync-runs/status.ts`, `src/components/SyncStatusBadge.tsx` | Einheitliches Status-Vokabular (6 Zustände) + Badge-Komponente für Kacheln und Lauf-Tabelle (v0.25.0) |
+| `src/lib/dialfire-sync.ts`, `src/lib/superchat-sync.ts`, `src/lib/strato-sync.ts`, `src/lib/strato-mail-sync.ts` | Konsolidierte, `sync_runs`-getrackte Sync-Funktionen je Integration, ersetzen zuvor duplizierten Inline-Code in den jeweiligen Routen (v0.25.0) |
+| `src/lib/klicktipp-webhook.ts` | `processEvent()`/`activityFor()` (aus der Route verschoben, damit Route + Retry-Handler dieselbe Logik nutzen) (v0.25.0) |
+| `src/components/automatisierungen/AutomatisierungenTabs.tsx` | Tab-Leiste, die `/regeln` und `/sync` navigatorisch unter „Automatisierungen" verbindet (v0.25.0) |
+| `src/app/api/sync-runs/route.ts`, `.../summary/route.ts`, `.../[id]/detail/route.ts`, `.../[id]/retry/route.ts`, `.../[id]/pause/route.ts`, `.../retry-all/route.ts` | Control-Center-API: Lauf-Liste, Health-Aggregation, Batch-Detail, Einzel-Retry/Pause, Retry-Queue-Flush pro Integration (v0.25.0) |
 
 ---
 
-*Last Updated: 2026-08-04 — v0.19.0 Call-Vorbereitungs-Agent (erster KI-Agent) live*
+*Last Updated: 2026-08-11 — v0.25.0 Automation/Sync-Architektur vereinheitlicht (`sync_runs`, Retry, Control-Center); Roadmap nach `docs/ROADMAP.md` ausgelagert*

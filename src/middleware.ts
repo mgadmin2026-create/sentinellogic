@@ -4,7 +4,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 // Pfade, die ohne Login erreichbar bleiben müssen:
 // - /login: der Login selbst
 // - /api/webhooks/*: externe Dienste (Dialfire, KlickTipp, Facebook) rufen diese direkt auf
-// - /api/test-environment, /api/test-runs: eigene Token-Absicherung für CI/Playwright
+// - /api/test-environment, /api/test-runs, /api/test-cases: eigene Token-/Session-Absicherung für CI/Playwright
 // - /api/auth/google/*: bestehender Google-Drive-System-OAuth-Flow, separates Thema
 // - /datenschutz: Datenschutzerklärung, u.a. als Pflicht-URL in den Facebook-App-Einstellungen hinterlegt
 // - /api/cron/*: externer Scheduler (GitHub Actions) ruft diese ohne Login-Session auf,
@@ -14,6 +14,7 @@ const PUBLIC_PATH_PREFIXES = [
   '/api/webhooks/',
   '/api/test-environment',
   '/api/test-runs',
+  '/api/test-cases',
   '/api/auth/google/',
   '/datenschutz',
   '/api/cron/',
