@@ -30,6 +30,7 @@ import { ErstgespraechPanel } from '@/components/kontakt/ErstgespraechPanel'
 import { CallPrepPanel } from '@/components/kontakt/CallPrepPanel'
 import { AuslandsreiseversicherungPanel } from '@/components/kontakt/AuslandsreiseversicherungPanel'
 import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
+import { ZYKLUS_LABEL } from '@/lib/beitragsuebersicht-zyklus'
 import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
 
 interface Kontakt {
@@ -751,15 +752,16 @@ export default function KontaktDetailPage() {
               {kontakt.beitragsuebersicht ? (
                 (() => {
                   const summen = berechneSummen(kontakt.beitragsuebersicht)
+                  const kachelZyklusLabel = ZYKLUS_LABEL[kontakt.beitragsuebersicht.zyklus ?? 'jaehrlich']
                   return (
                     <div className="flex items-center gap-5 flex-wrap">
                       <div>
                         <div className="text-lg font-bold text-gray-900 tabular-nums">{fmtEuroKachel(summen.sumAlt)}</div>
-                        <div className="text-[11px] text-gray-400 uppercase tracking-wide">Beitrag bisher / Jahr</div>
+                        <div className="text-[11px] text-gray-400 uppercase tracking-wide">Beitrag bisher / {kachelZyklusLabel}</div>
                       </div>
                       <div>
                         <div className="text-lg font-bold text-gray-900 tabular-nums">{fmtEuroKachel(summen.sumNeu)}</div>
-                        <div className="text-[11px] text-gray-400 uppercase tracking-wide">Angebot Allianz / Jahr</div>
+                        <div className="text-[11px] text-gray-400 uppercase tracking-wide">Angebot Allianz / {kachelZyklusLabel}</div>
                       </div>
                       {summen.ersparnisProJahr > 0 ? (
                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-full">
@@ -1045,7 +1047,7 @@ export default function KontaktDetailPage() {
         isOpen={openDrawer === 'beitragsuebersicht'}
         title="📊 Beitragsübersicht bearbeiten"
         onClose={() => setOpenDrawer(null)}
-        widthClass="max-w-4xl"
+        widthClass="max-w-[1400px]"
       >
         <BeitragsuebersichtPanel
           kontaktId={kontaktId}

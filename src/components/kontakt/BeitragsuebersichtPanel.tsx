@@ -329,11 +329,11 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                     )}
                   </td>
                   <td className="px-2 py-1.5">
-                    <input
-                      type="text"
+                    <textarea
+                      rows={1}
                       value={p.bemerkung}
                       onChange={(e) => updatePosition(idx, { bemerkung: e.target.value })}
-                      className="w-full min-w-[140px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                      className="w-full min-w-[220px] px-1.5 py-1 border border-gray-200 rounded text-xs leading-tight resize-y min-h-[30px] focus:outline-none focus:ring-1 focus:ring-yellow-400"
                       placeholder="–"
                     />
                   </td>
@@ -437,11 +437,11 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                             )}
                           </td>
                           <td className="px-2 py-1.5">
-                            <input
-                              type="text"
+                            <textarea
+                              rows={1}
                               value={f.bemerkung}
                               onChange={(e) => updateFahrzeug(idx, { bemerkung: e.target.value })}
-                              className="w-full min-w-[120px] px-1.5 py-1 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                              className="w-full min-w-[200px] px-1.5 py-1 border border-gray-200 rounded text-xs leading-tight resize-y min-h-[30px] focus:outline-none focus:ring-1 focus:ring-yellow-400"
                             />
                           </td>
                           <td className="px-2 py-1.5">

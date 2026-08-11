@@ -245,6 +245,21 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.27.1 (2026-08-11) — Beitragsübersicht: Nachbesserungen aus Live-Test
+
+Drei kleine Korrekturen nach dem ersten Live-Test von v0.27.0:
+
+- 🐛 **Statische Kontaktdetail-Kachel war nicht zyklusbewusst**: die kompakte Übersichts-Kachel auf der
+  Kontaktdetailseite (`src/app/kontakte/[id]/page.tsx`, außerhalb des Editors) zeigte immer „… / Jahr",
+  unabhängig vom gewählten Zyklus. Zeigt jetzt `ZYKLUS_LABEL[kontakt.beitragsuebersicht.zyklus]` wie der
+  Editor selbst.
+- ✨ **Editor-Drawer verbreitert** (`widthClass` von `max-w-4xl` auf `max-w-[1400px]`): die Sparten-Tabelle
+  (9 Spalten) passt jetzt auf gängigen Desktop-Auflösungen (getestet 1440px/1600px) komplett ins Blickfeld
+  ohne horizontales Scrollen, statt fix auf 896px begrenzt zu sein.
+- ✨ **Bemerkung-Feld vergrößert**: von einem einzeiligen `<input>` (140px) zu einem mehrzeiligen,
+  vertikal ziehbaren `<textarea>` (min. 220px, `resize-y`) in Sparten- und Flotten-Tabelle — längere Texte
+  werden nicht mehr abgeschnitten.
+
 ### v0.27.0 (2026-08-11) — Beitragsübersicht: Zyklus, editierbare Flotten-Zeile, gesteuerte Vertragsupload-Übernahme
 
 Löst drei zusammenhängende Lücken der Beitragsübersicht: bislang fest auf Jahresbeiträge verdrahtet, die
