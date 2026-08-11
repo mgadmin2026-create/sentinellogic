@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TEST_CASES } from '@/data/test-cases'
 import { createServerClient } from '@/lib/supabase/server'
 import { getTestEnvironmentConfiguration, isValidCleanupToken } from '@/lib/test-environment'
+import { getCurrentUser } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,8 +54,22 @@ function authorize(request: NextRequest): NextResponse | null {
   return null
 }
 
-/** Liefert nur IDs und Schaltzustände, niemals das Steuerungs-Token. */
-export async function GET() {
+/**
+ * Liefert nur IDs und Schaltzustände, niemals das Steuerungs-Token.
+ * Der Pfad ist für GitHub Actions öffentlich geroutet, akzeptiert aber nur
+ * eine angemeldete App-Session oder das geschützte CI-Steuerungs-Token.
+ */
+export async function GET(request: NextRequest) {
+  const configuration = getTestEnvironmentConfiguration()
+  const hasCiToken = configuration.ready && configuration.config && isValidCleanupToken(
+    request.headers.get('x-test-control-token'),
+    configuration.config.cleanupToken
+  )
+  const currentUser = hasCiToken ? null : await getCurrentUser()
+  if (!hasCiToken && !currentUser) {
+    return NextResponse.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
+  }
+
   try {
     const { disabledIds, configured } = await loadDisabledTestCases()
     return NextResponse.json({

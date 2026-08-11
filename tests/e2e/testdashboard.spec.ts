@@ -12,7 +12,7 @@ test.describe('Testdashboard', () => {
     await expect(page.getByText('Testdashboard und Testbetrieb anzeigen')).toBeVisible()
     await expect(page.getByTestId('testcase-E2E-001-enabled')).toHaveAttribute('role', 'switch')
     await expect(page.getByTestId('testcase-E2E-002-enabled')).toHaveAttribute('role', 'switch')
-    await expect(page.getByTestId('testcase-E2E-004-row').getByText('Noch nicht automatisiert')).toBeVisible()
+    await expect(page.getByTestId('testcase-E2E-005-row').getByText('Noch nicht automatisiert')).toBeVisible()
 
     await page.getByTestId('testcase-E2E-001-toggle').click()
     await expect(page.getByRole('heading', { name: 'Testschritte' })).toBeVisible()

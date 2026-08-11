@@ -144,6 +144,8 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Migration `0047_placetel_notify_statuses.sql` angewendet und Placetel Notify API konfiguriert
 - [x] Key-User-Präsentation zum aktuellen Anwendungsstand erstellt
 - [x] Regressionstest-Status geprüft: letzter vollständiger Lauf 11/11 grün; aktuelle Pipeline durch HTTP 401 vor Teststart blockiert
+- [x] Regressionstest-Katalog auf 30 automatisierte Szenarien erweitert: Auth-Schutz, persönliches Dashboard, Mail-Vorlagen, Kalender, Sync-Kontrollzentrum, Datenschutz und Kontakt-E-Mail mit Cc/Bcc/Anhang
+- [x] Geschützten Zugriff der Regressionstest-Pipeline auf `/api/test-cases` über das Cleanup-Token ergänzt und den bisherigen HTTP-401-Blocker behoben
 - [x] Idempotente Einzelkontakt-Synchronisation zu SuperChat mit Status, Aktivitätsprotokoll und E2E-019 implementiert
 - [x] Migration `0054_superchat_contact_sync.sql` auf Live-Supabase verifiziert
 - [x] SuperChat-Live-Pilot mit technisch markiertem `TESTKONTAKT` erfolgreich durchgeführt
@@ -163,7 +165,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Vierseitige KlickTipp-Tag-Bestandsaufnahme unter `output/pdf/klicktipp-tag-bestandsaufnahme-2026-08-05.pdf` erstellt
 
 **Nächste Aufgabe:**
-→ Echte KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal abnehmen; anschließend den vollständigen Export aller 719 Tags klassifizieren und den Alt-Webhook erst nach kontrolliertem Vergleich bereinigen
+→ Test-Erweiterung deployen und den vollständigen Regressionstest mit 30 Szenarien ausführen; anschließend echte KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal abnehmen
 
 -----
 

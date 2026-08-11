@@ -39,6 +39,7 @@ jobs:
         run: node --experimental-strip-types scripts/load-test-case-control.ts
         env:
           PLAYWRIGHT_BASE_URL: https://sentinellogic.vercel.app
+          TEST_DATA_CLEANUP_TOKEN: ${{ secrets.TEST_DATA_CLEANUP_TOKEN }}
 
       - name: Regressionstests ausführen
         id: regression
