@@ -552,10 +552,14 @@ export async function ensureKlickTippTags(tagNames: string[]): Promise<number[]>
 export async function untagKlickTippContact(email: string, tagIds: number[]): Promise<void> {
   const uniqueTagIds = Array.from(new Set(tagIds.filter((id) => Number.isInteger(id) && id > 0)))
   if (uniqueTagIds.length === 0) return
-  await makeRequest<unknown>('POST', '/subscriber/untag.json', {
-    email: email.trim().toLowerCase(),
-    tagids: uniqueTagIds,
-  })
+  // KlickTipp akzeptiert beim Entfernen genau eine Tag-ID pro Aufruf.
+  // Mehrere Tags in einem Array führen bei diesem Endpunkt zu HTTP 406.
+  for (const tagId of uniqueTagIds) {
+    await makeRequest<unknown>('POST', '/subscriber/untag.json', {
+      email: email.trim().toLowerCase(),
+      tagid: tagId,
+    })
+  }
 }
 
 /** Ersetzt ausschließlich die bisher von Sentimental Logic verwalteten Tags. */
