@@ -8,6 +8,8 @@ import 'server-only'
 import { Resend } from 'resend'
 import { isStratoMailboxConfigured, sendStratoMail } from '@/lib/strato-mail'
 import { toDateKey } from '@/lib/kalender-helpers'
+import { createServerClient } from '@/lib/supabase/server'
+import { trackStratoMailSend } from '@/lib/strato-mail-sync'
 
 const ALLIANZ_URL = 'https://vertretung.allianz.de/melih.guen/'
 const RESEND_FROM = 'Allianz Generalvertretung Gün <noreply@guen-versicherung.de>'
@@ -22,6 +24,7 @@ export interface TerminFuerBenachrichtigung {
   start_zeit: string
   end_zeit: string
   ganztaegig: boolean
+  contact_id?: string | null
 }
 
 interface Teilnehmer {
@@ -188,7 +191,12 @@ export async function sendTerminBenachrichtigung(params: {
 
   if (isStratoMailboxConfigured()) {
     try {
-      await sendStratoMail({ to, subject, text: body, html: buildHtml(body), icalEvent: { method, content: ics } })
+      const supabase = createServerClient()
+      await trackStratoMailSend(
+        supabase,
+        { contactId: termin.contact_id, triggerType: 'auto', data: { subject, art } },
+        () => sendStratoMail({ to, subject, text: body, html: buildHtml(body), icalEvent: { method, content: ics } })
+      )
       return
     } catch (err) {
       console.error('[termin-email] STRATO-Versand fehlgeschlagen:', err instanceof Error ? err.name : 'Unbekannter Fehler')

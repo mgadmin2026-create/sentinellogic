@@ -2,12 +2,20 @@
 // src/app/api/sync/dialfire-pull/route.ts extrahiert, damit sowohl der
 // manuelle "Jetzt synchronisieren"-Button als auch der Cron-Trigger
 // (/api/cron/dialfire-pull) dieselbe Implementierung nutzen.
-import { createClient } from '@supabase/supabase-js'
+//
+// Seit Phase 3 der Sync-Architektur-Vereinheitlichung zusätzlich an
+// sync_runs angebunden: ein run_kind='batch'-Eintrag für den gesamten Lauf,
+// je ein run_kind='item'-Eintrag pro Kontakt darunter (parent_run_id). Das
+// per-Kontakt-Audit-Log der Edge Function (dialfire_sync_log) bleibt
+// unverändert (additiv, andere Zuständigkeit -- Feld-Diff statt Lauf-
+// Protokoll). Seit Phase 5 ist sync_runs die alleinige Quelle für die
+// Automatisierungs-Läufe-Tabelle auf /sync (kein direktes sync_log-
+// Schreiben mehr, Detailansicht siehe src/lib/sync-runs/batch-detail.ts).
+import { createServerClient } from '@/lib/supabase/server'
+import { recordRunStart, recordRunOutcome, runWithTracking, type ResumeRun } from '@/lib/sync-runs/retry-runner'
+import { classifyError } from '@/lib/sync-runs/error-classification'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabase = createServerClient()
 
 interface EdgeFunctionResult {
   success: boolean
@@ -67,6 +75,41 @@ async function runWithConcurrency<T, R>(items: T[], limit: number, worker: (item
   return results
 }
 
+export interface DialfirePullContact {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  dialfire_id: string
+  dialfire_campaign_id: string
+}
+
+export interface DialfirePullContactResult {
+  changed: boolean
+  changedFields: string[]
+}
+
+/**
+ * Pullt den aktuellen Dialfire-Stand für einen einzelnen Kontakt. Wirft bei
+ * Netzwerk-/Timeout-Fehlern UND bei einem Business-Fehler der Edge Function
+ * (data.success:false bzw. sync_status!=='success'), damit sowohl der
+ * normale Lauf als auch ein späterer Retry über
+ * runWithTracking()/classifyError() laufen.
+ */
+export async function pullDialfireContact(contact: DialfirePullContact): Promise<DialfirePullContactResult> {
+  const data = await invokeEdgeFunction('dialfire-pull-sync', {
+    contact_id: contact.id,
+    dialfire_id: contact.dialfire_id,
+    campaign_id: contact.dialfire_campaign_id,
+  })
+
+  if (data.success && data.result?.sync_status === 'success') {
+    const changedFields = data.result.changed_fields ?? []
+    return { changed: changedFields.length > 0, changedFields }
+  }
+
+  throw new Error(data.result?.error_message || data.error || 'Unbekannter Fehler')
+}
+
 export interface DialfirePullSyncResult {
   success: boolean
   total: number
@@ -76,7 +119,7 @@ export interface DialfirePullSyncResult {
   error_details: Array<{ lead_id: string; email: string | null; error_message: string }>
 }
 
-export async function runDialfirePullSync(): Promise<DialfirePullSyncResult> {
+export async function runDialfirePullSync(triggerType: 'cron' | 'manual' = 'manual'): Promise<DialfirePullSyncResult> {
   const { data: contacts, error } = await supabase
     .from('contacts')
     .select('id, first_name, last_name, dialfire_id, dialfire_campaign_id')
@@ -86,72 +129,100 @@ export async function runDialfirePullSync(): Promise<DialfirePullSyncResult> {
 
   if (error) throw new Error(error.message)
 
-  let updated = 0
-  let unchanged = 0
-  let errors = 0
-  const leadNames: string[] = []
-  const errorDetails: Array<{ lead_id: string; email: string | null; error_message: string }> = []
+  const batchRun = await recordRunStart(supabase, {
+    runKind: 'batch',
+    integration: 'dialfire_pull',
+    triggerType,
+    data: { total: contacts?.length ?? 0 },
+  })
 
-  await runWithConcurrency(contacts ?? [], CONCURRENCY, async (contact) => {
-    try {
-      const data = await invokeEdgeFunction('dialfire-pull-sync', {
-        contact_id: contact.id,
-        dialfire_id: contact.dialfire_id,
-        campaign_id: contact.dialfire_campaign_id,
-      })
+  try {
+    let updated = 0
+    let unchanged = 0
+    let errors = 0
+    const errorDetails: Array<{ lead_id: string; email: string | null; error_message: string }> = []
 
-      if (data.success && data.result?.sync_status === 'success') {
-        if ((data.result.changed_fields?.length ?? 0) > 0) {
+    await runWithConcurrency(contacts ?? [], CONCURRENCY, async (contact) => {
+      try {
+        const result = await runWithTracking(
+          supabase,
+          {
+            runKind: 'item',
+            integration: 'dialfire_pull',
+            triggerType,
+            contactId: contact.id,
+            parentRunId: batchRun?.id,
+          },
+          () => pullDialfireContact(contact)
+        )
+
+        if (result.changed) {
           updated++
-          leadNames.push(`${contact.first_name} ${contact.last_name}`)
         } else {
           unchanged++
         }
-      } else {
+      } catch (err) {
         errors++
         errorDetails.push({
           lead_id: contact.id,
           email: null,
-          error_message: data.result?.error_message || data.error || 'Unbekannter Fehler',
+          error_message: err instanceof Error && err.name === 'AbortError' ? 'Zeitüberschreitung' : String(err instanceof Error ? err.message : err),
         })
       }
-    } catch (err) {
-      errors++
-      errorDetails.push({
-        lead_id: contact.id,
-        email: null,
-        error_message: err instanceof Error && err.name === 'AbortError' ? 'Zeitüberschreitung' : String(err),
+    })
+
+    const total = contacts?.length ?? 0
+
+    // sync_log wird seit Phase 5 nicht mehr direkt beschrieben -- die
+    // Automatisierungs-Läufe-Tabelle auf /sync liest diese Zahlen jetzt aus
+    // der sync_runs-Batch-Zeile unten via src/lib/sync-runs/batch-detail.ts.
+    if (batchRun) {
+      await recordRunOutcome(supabase, batchRun, {
+        success: true,
+        data: { total, updated, unchanged, errors },
       })
     }
-  })
 
-  const total = contacts?.length ?? 0
-  const status = errors > 0 ? (updated + unchanged > 0 ? 'warning' : 'error') : 'success'
-
-  const { error: syncLogError } = await supabase.from('sync_log').insert([
-    {
-      source: 'dialfire',
-      count: updated,
-      duplicates_skipped: 0,
-      status,
-      message: `${total} verbundene Kontakte geprüft — Aktualisiert: ${updated}, Unverändert: ${unchanged}, Fehler: ${errors}`,
-      lead_ids: [],
-      lead_names: leadNames,
+    return {
+      success: errors === 0,
+      total,
+      updated,
+      unchanged,
+      errors,
       error_details: errorDetails,
-      duplicate_details: [],
-    },
-  ])
-
-  if (syncLogError) {
-    console.error('[runDialfirePullSync] sync_log insert failed:', syncLogError)
+    }
+  } catch (err) {
+    if (batchRun) {
+      const message = err instanceof Error ? err.message : String(err)
+      const classification = classifyError(err)
+      await recordRunOutcome(supabase, batchRun, {
+        success: false,
+        errorClass: classification.errorClass,
+        // Batch-Zeilen werden nie erneut "retried" (das wäre der komplette
+        // Lauf nochmal) -- der nächste reguläre Cron-Tick ist der faktische
+        // Retry.
+        retryable: false,
+        errorDetail: message,
+      })
+    }
+    throw err
   }
+}
 
-  return {
-    success: errors === 0,
-    total,
-    updated,
-    unchanged,
-    errors,
-    error_details: errorDetails,
-  }
+/**
+ * Verarbeitet einen fälligen Retry für einen einzelnen Dialfire-Pull.
+ * Genutzt von retry-handlers.ts -- Kontakt wird frisch aus der DB geladen
+ * (dialfire_id/campaign_id runden über die DB, kein zusätzlicher Kontext
+ * im sync_runs.data-Feld nötig).
+ */
+export async function retryDialfirePullContact(
+  contact: DialfirePullContact,
+  resumeFrom: ResumeRun
+): Promise<DialfirePullContactResult> {
+  return runWithTracking(
+    supabase,
+    { runKind: 'item', integration: 'dialfire_pull', triggerType: 'auto', contactId: contact.id },
+    () => pullDialfireContact(contact),
+    resumeFrom
+  )
 }

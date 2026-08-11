@@ -4,45 +4,12 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { executeAutomation } from '@/lib/automation-engine'
-import { logActivity, logContactCreated } from '@/lib/activities-logger'
+import { logContactCreated } from '@/lib/activities-logger'
 import { getCurrentUser } from '@/lib/auth'
 import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
+import { syncContactToDialfire } from '@/lib/dialfire-sync'
 import { detectTestContact } from '@/lib/test-data'
 
-// Helper: Rufe Edge Function auf
-async function invokeEdgeFunction(functionName: string, payload: any) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  console.log('[invokeEdgeFunction] Starting', { functionName, url: supabaseUrl, hasKey: !!supabaseKey })
-
-  if (!supabaseUrl || !supabaseKey) {
-    console.warn('[invokeEdgeFunction] Missing env vars', { url: !!supabaseUrl, key: !!supabaseKey })
-    return null
-  }
-
-  const url = `${supabaseUrl}/functions/v1/${functionName}`
-
-  try {
-    console.log('[invokeEdgeFunction] Calling:', url)
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify(payload),
-    })
-
-    console.log('[invokeEdgeFunction] Response status:', res.status)
-    const result = await res.json()
-    console.log('[invokeEdgeFunction] Result:', result)
-    return result
-  } catch (err) {
-    console.error(`[invokeEdgeFunction] ${functionName} error:`, err)
-    return null
-  }
-}
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 
@@ -309,6 +276,7 @@ export async function POST(request: NextRequest) {
 
     // Execute automation rules (if not disabled)
     const automationDisabled = body.automation_disabled === true || testContact.isTestData
+    let matchedRuleId: string | null = null
     if (data?.id) {
       const automationResult = await executeAutomation(
         data.id,
@@ -319,6 +287,7 @@ export async function POST(request: NextRequest) {
       if (automationResult.error) {
         console.warn('[Automation] Failed:', automationResult.error)
       }
+      matchedRuleId = automationResult.rule_id ?? null
     }
 
     // Aktualisierte Daten nach der Automation laden. Diese enthalten sowohl
@@ -336,104 +305,16 @@ export async function POST(request: NextRequest) {
     // Jeder reguläre Kontakt mit E-Mail wird an KlickTipp übertragen.
     // Der Kontakt bleibt auch bei einem externen Fehler erfolgreich angelegt.
     if (updatedContact) {
-      await syncStoredContactToKlickTipp(supabase, updatedContact)
+      await syncStoredContactToKlickTipp(supabase, updatedContact, { ruleId: matchedRuleId })
     }
 
-    // Dialfire Sync: Nur wenn Dialfire-Daten vorhanden
-
-    // Edge-Function braucht zwingend dialfire_campaign_id -> nur dann syncen
-    if (data?.id && updatedContact?.dialfire_campaign_id && !testContact.isTestData) {
-      try {
-        const c = updatedContact ?? data
-        const dialfireResult = await invokeEdgeFunction('send-to-dialfire', {
-          contact: {
-            id: data.id,
-            email: c.email,
-            first_name: c.first_name,
-            last_name: c.last_name,
-            phone_mobile: c.phone_mobile || c.phone_office,
-            company_name: c.company_name,
-            street: c.street,
-            postal_code: c.postal_code,
-            city: c.city,
-            position: c.position,
-            industry: c.industry,
-            source: c.source,
-            mitarbeitanzahl: c.mitarbeitanzahl,
-            jahresumsatz: c.jahresumsatz,
-            anrede: c.anrede,
-            geburtstag: c.geburtstag,
-            jahreseinkommen: c.jahreseinkommen,
-            groesse: c.groesse,
-            gewicht: c.gewicht,
-            gesundheitszustand: c.gesundheitszustand,
-            seit_wann_selbststaendig: c.seit_wann_selbststaendig,
-            dienstverhaltnis: c.dienstverhaltnis,
-            hausnummer: c.hausnummer,
-            prüfung_grund: c.prüfung_grund,
-            krankenversicherung_status: c.krankenversicherung_status,
-            situation: c.situation,
-            versicherungsgesellschaft_1: c.versicherungsgesellschaft_1,
-            leistungen_1: c.leistungen_1,
-            aktueller_beitrag_1: c.aktueller_beitrag_1,
-            kontoinhaber_1: c.kontoinhaber_1,
-            iban_1: c.iban_1,
-            versicherungsgesellschaft_2: c.versicherungsgesellschaft_2,
-            leistungen_2: c.leistungen_2,
-            aktueller_beitrag_2: c.aktueller_beitrag_2,
-            kontoinhaber_2: c.kontoinhaber_2,
-            iban_2: c.iban_2,
-            versicherungsgesellschaft_3: c.versicherungsgesellschaft_3,
-            leistungen_3: c.leistungen_3,
-            aktueller_beitrag_3: c.aktueller_beitrag_3,
-            kontoinhaber_3: c.kontoinhaber_3,
-            iban_3: c.iban_3,
-            versicherungsgesellschaft_4: c.versicherungsgesellschaft_4,
-            leistungen_4: c.leistungen_4,
-            aktueller_beitrag_4: c.aktueller_beitrag_4,
-            kontoinhaber_4: c.kontoinhaber_4,
-            iban_4: c.iban_4,
-            versicherungsgesellschaft_5: c.versicherungsgesellschaft_5,
-            leistungen_5: c.leistungen_5,
-            aktueller_beitrag_5: c.aktueller_beitrag_5,
-            kontoinhaber_5: c.kontoinhaber_5,
-            iban_5: c.iban_5,
-            notizen_2: c.notizen_2,
-            usa_kanada_eingeschlossen: c.usa_kanada_eingeschlossen,
-            dialfire_campaign_id: updatedContact?.dialfire_campaign_id,
-            dialfire_task_name_field: updatedContact?.dialfire_task_name_field,
-          },
-        })
-
-        if (!dialfireResult) {
-          console.warn(`[Dialfire] invokeEdgeFunction returned null for ${data.email}`)
-          await logActivity(null, data.id, 'dialfire_sync_failed', 'Dialfire sync failed: Edge Function call failed or returned null')
-        } else if (dialfireResult?.success) {
-          const dialfireId = dialfireResult.dialfire_id
-
-          // Speichere dialfire_id in Supabase
-          const { error: updateError } = await supabase
-            .from('contacts')
-            .update({
-              dialfire_id: dialfireId,
-            })
-            .eq('id', data.id)
-
-          if (updateError) {
-            console.error(`[Dialfire] Fehler beim Speichern der ID: ${updateError.message}`)
-          } else {
-            console.log(`[Dialfire] Sync erfolgreich: ${data.email} -> ID: ${dialfireId}`)
-          }
-
-          await logActivity(null, data.id, 'dialfire_synced', `Dialfire synced (task: ${process.env.DIALFIRE_TASK_NAME || 'call'}, ID: ${dialfireId})`)
-        } else {
-          console.warn(`[Dialfire] Sync fehlgeschlagen für ${data.email}: ${dialfireResult?.error}`)
-          await logActivity(null, data.id, 'dialfire_sync_failed', `Dialfire sync failed: ${dialfireResult?.error || 'Unknown error'}`)
-        }
-      } catch (err) {
-        console.error(`[Dialfire] Fehler beim Sync für ${data.email}:`, err)
-        await logActivity(null, data.id, 'dialfire_sync_failed', `Dialfire sync failed: ${String(err)}`)
-      }
+    // Dialfire Sync: syncContactToDialfire prüft selbst, ob dialfire_campaign_id
+    // gesetzt ist (sonst skipped) — kein separater Guard hier nötig.
+    if (data?.id && updatedContact && !testContact.isTestData) {
+      await syncContactToDialfire(supabase, updatedContact, {
+        ruleId: matchedRuleId,
+        triggerType: 'auto',
+      })
     }
 
     return Response.json({ success: true, data }, { status: 201 })

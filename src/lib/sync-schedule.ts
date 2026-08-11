@@ -1,8 +1,7 @@
-// Berechnet next_sync_at für die Facebook-Auto-Sync-Konfiguration.
-// Geteilt zwischen der manuellen Config-Route (/api/sync-config) und dem
-// Cron-Trigger (/api/cron/facebook-sync), damit beide dieselbe Zeitlogik
-// verwenden -- vorher war die Berechnung in /api/sync-config dupliziert und
-// wurde vom Cron-Trigger (der es damals noch gar nicht gab) nie erreicht.
+// Berechnet next_sync_at für die Auto-Sync-Konfiguration. Geteilt zwischen
+// allen Integrationen mit Scheduler (Facebook, Dialfire-Pull) — sowohl den
+// manuellen Config-Routen als auch den Cron-Triggern, damit alle dieselbe
+// Zeitlogik verwenden.
 export type IntervalType = '15min' | '30min' | '60min' | 'daily' | 'weekly'
 
 export function berechneNaechstenSync(intervalType: IntervalType, von: Date = new Date()): Date {

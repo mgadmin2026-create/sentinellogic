@@ -43,6 +43,7 @@ export type ActivityType =
   | 'email_received'
   | 'email_failed'
   | 'call_prep_saved'
+  | 'strato_calendar_sync_failed'
 
 interface ActivityData {
   [key: string]: any

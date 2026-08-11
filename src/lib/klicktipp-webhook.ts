@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from 'node:crypto'
+import { createServerClient } from '@/lib/supabase/server'
 
 export const MAX_KLICKTIPP_WEBHOOK_BYTES = 64 * 1024
 
@@ -101,4 +102,83 @@ export function verifyKlickTippWebhookToken(providedToken: string | null): boole
 
 export function fingerprintKlickTippWebhook(rawBody: string, eventId: string | null): string {
   return createHash('sha256').update(eventId ? `id:${eventId}` : rawBody).digest('hex')
+}
+
+// Nur die Felder, die processEvent()/activityFor() tatsächlich brauchen --
+// ParsedKlickTippWebhook erfüllt das strukturell (mehr Felder, kein Cast
+// nötig), ebenso ein aus einer gespeicherten klicktipp_webhook_events-Zeile
+// rekonstruiertes Objekt (Retry-Fall, siehe retry-handlers.ts). Alle diese
+// Felder sind bereits eigene Spalten der Tabelle -- ein Retry braucht den
+// rohen Webhook-Payload nicht erneut.
+export interface KlickTippWebhookEventCore {
+  eventType: string
+  occurredAt: string
+  emailStatus: KlickTippEmailStatus | null
+  klicktippId: string | null
+  campaignName: string | null
+  messageName: string | null
+  tagName: string | null
+  linkLabel: string | null
+}
+
+export function activityFor(event: KlickTippWebhookEventCore): { type: string; description: string } {
+  const descriptions: Record<string, string> = {
+    email_received: 'KlickTipp-E-Mail erhalten',
+    email_opened: 'KlickTipp-E-Mail geöffnet',
+    email_clicked: 'Link in KlickTipp-E-Mail angeklickt',
+    campaign_started: 'KlickTipp-Kampagne gestartet',
+    campaign_finished: 'KlickTipp-Kampagne beendet',
+    tag_added: 'KlickTipp-Tag vergeben',
+    tag_removed: 'KlickTipp-Tag entfernt',
+    subscribed: 'KlickTipp-Anmeldung bestätigt',
+    opt_in_pending: 'KlickTipp-Anmeldung noch unbestätigt',
+    unsubscribed: 'Kontakt bei KlickTipp abgemeldet',
+    soft_bounce: 'KlickTipp meldet einen Soft-Bounce',
+    hard_bounce: 'KlickTipp meldet einen Hard-Bounce',
+  }
+  const base = descriptions[event.eventType] ?? `KlickTipp-Ereignis: ${event.eventType}`
+  const detail = event.messageName || event.campaignName || event.tagName || event.linkLabel
+  return { type: `klicktipp_${event.eventType}`, description: detail ? `${base}: ${detail}` : base }
+}
+
+/**
+ * Übernimmt ein KlickTipp-Ereignis in Kontaktstatus + Aktivitäten-Timeline.
+ * Wirft bei Fehlern -- Aufrufer (Route, oder retry-handlers.ts bei einem
+ * Retry) fängt das selbst ab. Idempotent: der activities-Insert dedupliziert
+ * über den eindeutigen external_event_key, ein erneuter Aufruf mit
+ * demselben fingerprint ist harmlos.
+ */
+export async function processEvent(
+  event: KlickTippWebhookEventCore,
+  contact: { id: string },
+  fingerprint: string
+): Promise<void> {
+  const supabase = createServerClient()
+  const updates: Record<string, unknown> = { klicktipp_last_event_at: event.occurredAt }
+  if (event.emailStatus) {
+    updates.klicktipp_email_status = event.emailStatus
+    updates.klicktipp_status_updated_at = event.occurredAt
+  }
+  if (event.klicktippId) updates.klicktipp_id = event.klicktippId
+
+  const { error: updateError } = await supabase.from('contacts').update(updates).eq('id', contact.id)
+  if (updateError) throw new Error(`Kontaktstatus konnte nicht aktualisiert werden: ${updateError.message}`)
+
+  const activity = activityFor(event)
+  const { error: activityError } = await supabase.from('activities').insert({
+    lead_id: contact.id,
+    external_event_key: `klicktipp:${fingerprint}`,
+    type: activity.type,
+    description: activity.description,
+    data: {
+      channel: 'klicktipp',
+      campaign_name: event.campaignName,
+      message_name: event.messageName,
+      tag_name: event.tagName,
+      link_label: event.linkLabel,
+      email_status: event.emailStatus,
+    },
+    created_at: event.occurredAt,
+  })
+  if (activityError && activityError.code !== '23505') throw new Error(`Aktivität konnte nicht gespeichert werden: ${activityError.message}`)
 }

@@ -20,6 +20,9 @@ interface NavItem {
   icon: React.ReactNode
   /** Nur für Admins sichtbar (z.B. Testdashboard, Einstellungen) */
   adminOnly?: boolean
+  /** Weitere Routen, die denselben Sidebar-Eintrag aktiv markieren (z.B. /sync
+   *  gehört zur Automatisierungen-Gruppe, hat aber weiterhin eine eigene Route). */
+  alsoActiveFor?: string[]
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -100,19 +103,9 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    href: '/sync',
-    label: 'Synchronisation',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="23 4 23 10 17 10" />
-        <polyline points="1 20 1 14 7 14" />
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-      </svg>
-    ),
-  },
-  {
     href: '/regeln',
     label: 'Automatisierungen',
+    alsoActiveFor: ['/sync'],
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -198,8 +191,11 @@ export default function Sidebar({ currentUser }: SidebarProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, pathname])
 
-  const isActive = (href: string) =>
+  const matchesRoute = (href: string) =>
     pathname === href || (href !== '/dashboard' && pathname.startsWith(href))
+
+  const isActive = (item: NavItem) =>
+    matchesRoute(item.href) || (item.alsoActiveFor ?? []).some((href) => matchesRoute(href))
 
   // Drawer bei Navigation schließen
   useEffect(() => {
@@ -286,7 +282,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin(currentUser?.role)).map((item) => {
-          const active = isActive(item.href)
+          const active = isActive(item)
           return (
             <Link
               key={item.href}

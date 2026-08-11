@@ -96,7 +96,7 @@ export async function POST(
       contentType: b.contentType,
     }))
 
-    const result = await sendContactEmail({ to, cc: cc.valid, bcc: bcc.valid, subject, body: text, attachments })
+    const result = await sendContactEmail({ to, cc: cc.valid, bcc: bcc.valid, subject, body: text, attachments, contactId: id })
 
     if (!result.ok) {
       await logActivity(null, id, 'email_failed', `E-Mail an ${to} fehlgeschlagen: ${result.error || 'Unbekannter Fehler'}`, {

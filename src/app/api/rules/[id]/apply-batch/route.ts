@@ -3,6 +3,7 @@ import { logActivity } from '@/lib/activities-logger'
 import { sendRuleBatchNotification } from '@/lib/rule-notifications'
 import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
+import { syncContactToDialfire } from '@/lib/dialfire-sync'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Ohne dieses Flag greift Vercels Standard-Timeout (deutlich unter einer Minute).
@@ -33,35 +34,6 @@ function sameTags(a: string[] | null | undefined, b: string[]): boolean {
   const as = [...(a ?? [])].sort()
   const bs = [...b].sort()
   return as.length === bs.length && as.every((tag, i) => tag === bs[i])
-}
-
-async function invokeEdgeFunction(functionName: string, payload: any) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    console.warn('[invokeEdgeFunction] Missing env vars')
-    return null
-  }
-
-  const url = `${supabaseUrl}/functions/v1/${functionName}`
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-      body: JSON.stringify(payload),
-    })
-
-    const result = await res.json()
-    return result
-  } catch (err) {
-    console.error(`[invokeEdgeFunction] ${functionName} error:`, err)
-    return null
-  }
 }
 
 export async function POST(
@@ -213,10 +185,11 @@ export async function POST(
           sameTags(contact.klicktipp_tags, ruleKlicktippTagList)
 
         if (ruleKlicktippTagList.length > 0 && !alreadyKlicktippSynced) {
-          const klicktippResult = await syncStoredContactToKlickTipp(supabase, {
-            ...contact,
-            ...fieldsToSet,
-          })
+          const klicktippResult = await syncStoredContactToKlickTipp(
+            supabase,
+            { ...contact, ...fieldsToSet },
+            { ruleId: rule.id }
+          )
           if (klicktippResult.status === 'synced') klicktippSynced++
           if (klicktippResult.status === 'failed') klicktippFailed++
           if (klicktippResult.status === 'skipped') klicktippSkipped++
@@ -234,106 +207,17 @@ export async function POST(
           contact.dialfire_campaign_id === fieldsToSet.dialfire_campaign_id
 
         if (fieldsToSet.dialfire_campaign_id && !alreadyDialfireSynced) {
-          try {
-            const dialfireResult = await invokeEdgeFunction('send-to-dialfire', {
-              contact: {
-                id: contact.id,
-                email: contact.email,
-                first_name: contact.first_name,
-                last_name: contact.last_name,
-                phone_mobile: contact.phone_mobile || contact.phone_office,
-                company_name: contact.company_name,
-                street: contact.street,
-                postal_code: contact.postal_code,
-                city: contact.city,
-                position: contact.position,
-                industry: contact.industry,
-                source: contact.source,
-                mitarbeitanzahl: contact.mitarbeitanzahl,
-                jahresumsatz: contact.jahresumsatz,
-                anrede: contact.anrede,
-                geburtstag: contact.geburtstag,
-                jahreseinkommen: contact.jahreseinkommen,
-                groesse: contact.groesse,
-                gewicht: contact.gewicht,
-                gesundheitszustand: contact.gesundheitszustand,
-                seit_wann_selbststaendig: contact.seit_wann_selbststaendig,
-                dienstverhaltnis: contact.dienstverhaltnis,
-                hausnummer: contact.hausnummer,
-                prüfung_grund: contact.prüfung_grund,
-                krankenversicherung_status: contact.krankenversicherung_status,
-                situation: contact.situation,
-                versicherungsgesellschaft_1: contact.versicherungsgesellschaft_1,
-                leistungen_1: contact.leistungen_1,
-                aktueller_beitrag_1: contact.aktueller_beitrag_1,
-                kontoinhaber_1: contact.kontoinhaber_1,
-                iban_1: contact.iban_1,
-                versicherungsgesellschaft_2: contact.versicherungsgesellschaft_2,
-                leistungen_2: contact.leistungen_2,
-                aktueller_beitrag_2: contact.aktueller_beitrag_2,
-                kontoinhaber_2: contact.kontoinhaber_2,
-                iban_2: contact.iban_2,
-                versicherungsgesellschaft_3: contact.versicherungsgesellschaft_3,
-                leistungen_3: contact.leistungen_3,
-                aktueller_beitrag_3: contact.aktueller_beitrag_3,
-                kontoinhaber_3: contact.kontoinhaber_3,
-                iban_3: contact.iban_3,
-                versicherungsgesellschaft_4: contact.versicherungsgesellschaft_4,
-                leistungen_4: contact.leistungen_4,
-                aktueller_beitrag_4: contact.aktueller_beitrag_4,
-                kontoinhaber_4: contact.kontoinhaber_4,
-                iban_4: contact.iban_4,
-                versicherungsgesellschaft_5: contact.versicherungsgesellschaft_5,
-                leistungen_5: contact.leistungen_5,
-                aktueller_beitrag_5: contact.aktueller_beitrag_5,
-                kontoinhaber_5: contact.kontoinhaber_5,
-                iban_5: contact.iban_5,
-                notizen_2: contact.notizen_2,
-                dialfire_campaign_id: fieldsToSet.dialfire_campaign_id,
-                dialfire_task_name_field: fieldsToSet.dialfire_task_name_field,
-              },
-            })
-
-            if (dialfireResult?.success) {
-              const dialfireId = dialfireResult.dialfire_id
-
-              // Update contact with dialfire_id
-              const { error: dfIdError } = await supabase
-                .from('contacts')
-                .update({
-                  dialfire_id: dialfireId,
-                  dialfire_updated_at: new Date().toISOString(),
-                })
-                .eq('id', contact.id)
-
-              if (dfIdError) {
-                console.error(`[Dialfire Batch] Fehler beim Speichern der ID für ${contact.email}: ${dfIdError.message}`)
-              }
-
-              dialfireSynced++
-              dialfireOutcome = 'synced'
-              console.log(`[Dialfire Batch] Synced: ${contact.email} -> ID: ${dialfireId}`)
-              await logActivity(
-                null,
-                contact.id,
-                'dialfire_synced',
-                `Dialfire synced via batch rule (ID: ${dialfireId})`
-              )
-            } else {
-              dialfireFailed++
-              dialfireOutcome = 'failed'
-              console.warn(`[Dialfire Batch] Failed for ${contact.email}: ${dialfireResult?.error}`)
-              await logActivity(
-                null,
-                contact.id,
-                'dialfire_sync_failed',
-                `Dialfire sync failed: ${dialfireResult?.error || 'Unknown error'}`
-              )
-            }
-          } catch (err) {
+          const dialfireResult = await syncContactToDialfire(
+            supabase,
+            { ...contact, ...fieldsToSet },
+            { ruleId: rule.id, triggerType: 'manual' }
+          )
+          if (dialfireResult.status === 'synced') {
+            dialfireSynced++
+            dialfireOutcome = 'synced'
+          } else if (dialfireResult.status === 'failed') {
             dialfireFailed++
             dialfireOutcome = 'failed'
-            console.error(`[Dialfire Batch] Error for ${contact.email}:`, err)
           }
         } else if (alreadyDialfireSynced) {
           dialfireOutcome = 'synced'

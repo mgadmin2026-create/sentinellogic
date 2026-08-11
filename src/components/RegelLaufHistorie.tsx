@@ -117,17 +117,17 @@ export function RegelLaufHistorie({ ruleId, runs }: { ruleId: string; runs: numb
               <div className="overflow-x-auto rounded-lg border border-gray-200">
                 <table className="w-full min-w-[720px] text-xs">
                   <thead>
-                    <tr className="bg-gray-50 text-gray-500">
-                      <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide">Zeitpunkt</th>
-                      <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide">Kontakt</th>
-                      <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide">Ausgelöst</th>
-                      <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide">Gesetzt</th>
-                      <th className="px-3 py-2 text-left font-semibold uppercase tracking-wide">Synchronisation</th>
+                    <tr className="border-b border-gray-100 bg-gray-50/60">
+                      <th className="px-3 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide">Zeitpunkt</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide">Kontakt</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide">Ausgelöst</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide">Gesetzt</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-400 uppercase tracking-wide">Synchronisation</th>
                     </tr>
                   </thead>
                   <tbody>
                     {laeufe.map((lauf) => (
-                      <tr key={lauf.id} className="border-t border-gray-100 align-top">
+                      <tr key={lauf.id} className="border-b border-gray-50 align-top hover:bg-gray-50/40 transition-colors last:border-0">
                         <td className="whitespace-nowrap px-3 py-2 text-gray-500">{zeitpunkt(lauf.zeitpunkt)}</td>
                         <td className="px-3 py-2">
                           {lauf.kontakt ? (

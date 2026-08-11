@@ -62,11 +62,17 @@ export async function executeAutomation(
       return acc
     }, {})
 
-    // Load all active rules
+    // Load all active rules. Ohne ORDER BY ist die von Supabase zurückgegebene
+    // Reihenfolge nicht garantiert — bei mehreren aktiv passenden Regeln würde
+    // .find() unten sonst nicht-deterministisch die "erste" wählen. Älteste
+    // Regel zuerst macht das Matching reproduzierbar; ersetzt keine echte
+    // Priorisierung nach Spezifität (z.B. Regel mit Sparte vor Catch-All-Regel) —
+    // das bleibt eine offene Produktentscheidung.
     const { data: rules, error: rulesError } = await supabase
       .from('rules')
       .select('*')
       .eq('active', true)
+      .order('created_at', { ascending: true })
 
     if (rulesError) {
       console.error('[Automation] Error loading rules:', rulesError)
