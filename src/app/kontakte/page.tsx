@@ -233,6 +233,7 @@ const KONTAKT_FILTER = [
 
 const DEFAULT_SORT_BY: keyof Kontakt = 'created_at'
 const DEFAULT_SORT_ORDER: 'asc' | 'desc' = 'desc'
+const CONTACT_SCROLL_STORAGE_PREFIX = 'kontakte-scroll:'
 
 const PIPELINE_STEPS = [
   { key: 'lead_in', label: 'Lead kommt rein' },
@@ -332,6 +333,7 @@ export default function KontaktePage() {
   const [archiveTasksToo, setArchiveTasksToo] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const latestContactRequestId = useRef(0)
+  const scrollRestored = useRef(false)
 
   // Sortierung - erweitert für alle Spalten
   const [sortBy, setSortBy] = useState<keyof Kontakt | 'name' | 'progress'>(() => (searchParams.get('sort') as keyof Kontakt | 'name' | 'progress') || DEFAULT_SORT_BY)
@@ -582,6 +584,38 @@ export default function KontaktePage() {
     loadKontakte()
   }, [activeFilter, search])
 
+  // Die Kontaktliste scrollt am Desktop sowohl im Seitenbereich als auch in
+  // der Tabelle selbst. Nach dem Rücksprung aus einem Kontakt werden deshalb
+  // beide Positionen wiederhergestellt, sobald die Kontakte gerendert sind.
+  useEffect(() => {
+    if (loading || scrollRestored.current) return
+
+    const listHref = currentContactListHref()
+    const storageKey = `${CONTACT_SCROLL_STORAGE_PREFIX}${listHref}`
+    const storedPosition = sessionStorage.getItem(storageKey)
+    scrollRestored.current = true
+    if (!storedPosition) return
+
+    try {
+      const position = JSON.parse(storedPosition) as {
+        mainTop?: number
+        windowTop?: number
+        tableTop?: number
+      }
+      window.requestAnimationFrame(() => {
+        const main = document.querySelector('main')
+        const table = document.querySelector<HTMLElement>('[data-testid="kontakte-scrollbereich"]')
+        if (main instanceof HTMLElement) main.scrollTop = Number(position.mainTop) || 0
+        window.scrollTo({ top: Number(position.windowTop) || 0, behavior: 'auto' })
+        if (table) table.scrollTop = Number(position.tableTop) || 0
+        sessionStorage.removeItem(storageKey)
+      })
+    } catch (err) {
+      console.error('Fehler beim Wiederherstellen der Kontaktlisten-Position:', err)
+      sessionStorage.removeItem(storageKey)
+    }
+  }, [loading])
+
   // Listenansicht vollständig in der URL halten. Dadurch funktionieren sowohl
   // Browser-Zurück als auch der Rücksprung aus einem Kontaktdetail zuverlässig.
   useEffect(() => {
@@ -794,14 +828,32 @@ export default function KontaktePage() {
     new Set(kontakte.map((k) => k.sparte).filter((v): v is string => !!v))
   ).sort()
 
-  function contactDetailHref(contactId: string): string {
+  function currentContactListHref(): string {
     const params = new URLSearchParams()
     if (activeFilter !== 'all') params.set('view', activeFilter)
     if (search) params.set('search', search)
     if (sparteFilter !== 'all') params.set('sparte', sparteFilter)
     if (sortBy !== DEFAULT_SORT_BY) params.set('sort', String(sortBy))
     if (sortOrder !== DEFAULT_SORT_ORDER) params.set('order', sortOrder)
-    const returnTo = params.toString() ? `/kontakte?${params.toString()}` : '/kontakte'
+    return params.toString() ? `/kontakte?${params.toString()}` : '/kontakte'
+  }
+
+  function saveContactListPosition(): void {
+    const main = document.querySelector('main')
+    const table = document.querySelector<HTMLElement>('[data-testid="kontakte-scrollbereich"]')
+    const position = {
+      mainTop: main instanceof HTMLElement ? main.scrollTop : 0,
+      windowTop: window.scrollY,
+      tableTop: table?.scrollTop ?? 0,
+    }
+    sessionStorage.setItem(
+      `${CONTACT_SCROLL_STORAGE_PREFIX}${currentContactListHref()}`,
+      JSON.stringify(position)
+    )
+  }
+
+  function contactDetailHref(contactId: string): string {
+    const returnTo = currentContactListHref()
     return `/kontakte/${contactId}?returnTo=${encodeURIComponent(returnTo)}`
   }
 
@@ -971,7 +1023,7 @@ export default function KontaktePage() {
 
       {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}
       <div data-testid="kontakte-tabelle" className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
+        <div data-testid="kontakte-scrollbereich" className="overflow-x-auto overflow-y-auto max-h-[70vh]">
           <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-gray-50/95 border-b border-gray-100">
               <tr className="border-b border-gray-100 bg-gray-50/80">
@@ -1051,7 +1103,10 @@ export default function KontaktePage() {
                   <tr
                     key={kontakt.id}
                     data-testid={`kontakt-row-${kontakt.id}`}
-                    onClick={() => router.push(contactDetailHref(kontakt.id))}
+                    onClick={() => {
+                      saveContactListPosition()
+                      router.push(contactDetailHref(kontakt.id))
+                    }}
                     onMouseEnter={() => setHoveredRowId(kontakt.id)}
                     onMouseLeave={() => setHoveredRowId(null)}
                     className={`border-b cursor-pointer transition-all ${
@@ -1238,6 +1293,7 @@ export default function KontaktePage() {
                             onClick={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
+                              saveContactListPosition()
                               router.push(contactDetailHref(kontakt.id))
                             }}
                           >
@@ -1304,7 +1360,7 @@ export default function KontaktePage() {
           filtered.map((kontakt) => (
             <div key={kontakt.id} className={`rounded-xl border border-gray-200 shadow-sm p-4 ${STATUS_ROW_COLORS[kontakt.status] || 'bg-white'}`}>
               <div className="flex items-start justify-between gap-3">
-                <Link href={contactDetailHref(kontakt.id)} className="min-w-0 group">
+                <Link href={contactDetailHref(kontakt.id)} onClick={saveContactListPosition} className="min-w-0 group">
                   <p className="font-semibold text-yellow-600 group-hover:underline truncate">
                     {kontakt.first_name} {kontakt.last_name}
                   </p>
@@ -1366,6 +1422,7 @@ export default function KontaktePage() {
                 </button>
                 <Link
                   href={contactDetailHref(kontakt.id)}
+                  onClick={saveContactListPosition}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20" /><path d="M6.5 2H20a2 2 0 012 2v14" /></svg>

@@ -5,7 +5,7 @@ import { createPlaywrightTestContact, expectOk } from './support/test-data'
 test.describe('Kontaktübersicht: Ansichten und Rücksprung', () => {
   applyTestCaseControl('E2E-028')
 
-  test('behält Ansicht, Suche und Sortierung beim Rücksprung aus dem Kontakt', async ({ page, request }) => {
+  test('behält Ansicht, Suche, Sortierung und Listenposition beim Rücksprung aus dem Kontakt', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('FilterReturn')
     const createResponse = await request.post('/api/kontakte', { data: contact })
     const { data: created } = await expectOk(createResponse, 'Testkontakt anlegen')
@@ -18,7 +18,33 @@ test.describe('Kontaktübersicht: Ansichten und Rücksprung', () => {
     const row = page.getByTestId(`kontakt-row-${created.id}`)
     await expect(row).toBeVisible()
     await expect(row).toHaveClass(/bg-gray-50/)
-    await row.click()
+
+    // Erzeugt im Test eine lange Tabelle, ohne zahlreiche Testkontakte in der
+    // Live-Datenbank anlegen zu müssen. Der SPA-Navigationswechsel behält den
+    // Stil bei, sodass die echte Wiederherstellung messbar bleibt.
+    await page.addStyleTag({ content: `
+      [data-testid="kontakte-scrollbereich"] { max-height: 180px !important; }
+      [data-testid="kontakte-scrollbereich"] tbody::before {
+        content: "";
+        display: table-row;
+        height: 700px;
+      }
+    ` })
+    const scrollArea = page.getByTestId('kontakte-scrollbereich')
+    const expectedTableTop = await scrollArea.evaluate((element) => {
+      element.scrollTop = Math.min(320, element.scrollHeight - element.clientHeight)
+      return element.scrollTop
+    })
+    expect(expectedTableTop).toBeGreaterThan(100)
+
+    await row.evaluate((element) => (element as HTMLElement).click())
+    await expect(page).toHaveURL(new RegExp(`/kontakte/${created.id}`))
+    const storedPosition = await page.evaluate(() => {
+      const key = Object.keys(sessionStorage).find((candidate) => candidate.startsWith('kontakte-scroll:'))
+      return key ? JSON.parse(sessionStorage.getItem(key) || '{}') : null
+    })
+    expect(storedPosition?.tableTop).toBe(expectedTableTop)
+
     await page.getByRole('link', { name: '← Zurück zur Übersicht' }).click()
 
     await expect(page).toHaveURL(/view=leads/)
@@ -26,6 +52,7 @@ test.describe('Kontaktübersicht: Ansichten und Rücksprung', () => {
     await expect(page).toHaveURL(/order=desc/)
     await expect(leadsView).toHaveAttribute('aria-pressed', 'true')
     await expect(page.getByPlaceholder('Nach Name, E-Mail oder Firma suchen…')).toHaveValue(contact.email)
+    await expect.poll(() => scrollArea.evaluate((element) => element.scrollTop)).toBe(expectedTableTop)
   })
 
   test('zeigt vier Ansichtsbuttons, die reduzierte Filterleiste und die neue Standardansicht', async ({ page, request }) => {

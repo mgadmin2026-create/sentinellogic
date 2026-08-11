@@ -472,11 +472,11 @@ export const TEST_CASES: TestCaseDefinition[] = [
   {
     id: 'E2E-028',
     name: 'Kontaktansichten und stabiler Rücksprung',
-    description: 'Prüft die vier fachlichen Kontaktansichten und stellt sicher, dass Ansicht, Suche und Sortierung beim Rücksprung aus einem Kontakt erhalten bleiben.',
+    description: 'Prüft die vier fachlichen Kontaktansichten und stellt sicher, dass Ansicht, Suche, Sortierung und die genaue Listenposition beim Rücksprung aus einem Kontakt erhalten bleiben.',
     steps: [
       'Einen markierten Testkontakt anlegen und die Lead-Ansicht mit Suche und Sortierung öffnen.',
-      'Den Treffer sowie die statusabhängige Zeilenfarbe prüfen und das Kontaktdetail öffnen.',
-      'Über „Zurück zur Übersicht“ zurückkehren und alle gesetzten Werte in URL und Oberfläche vergleichen.',
+      'In der Kontaktliste nach unten scrollen, den Treffer sowie die statusabhängige Zeilenfarbe prüfen und das Kontaktdetail öffnen.',
+      'Über „Zurück zur Übersicht“ zurückkehren und Ansicht, Suche, Sortierung sowie die wiederhergestellte Scrollposition vergleichen.',
       'Die vier sichtbaren Ansichtsbuttons Alle Kontakte, Leads, Kunden und Nicht interessierte sowie den Wegfall des Status-Auswahlfelds prüfen.',
       'Die einzeilige Filterleiste mit Suche und Sparte sowie die Standardspalten und Standardsortierung nach dem neuesten Kontakt prüfen.',
     ],
@@ -485,7 +485,7 @@ export const TEST_CASES: TestCaseDefinition[] = [
     state: 'Bereit',
     kind: 'E2E',
     resultTitles: [
-      'behält Ansicht, Suche und Sortierung beim Rücksprung aus dem Kontakt',
+      'behält Ansicht, Suche, Sortierung und Listenposition beim Rücksprung aus dem Kontakt',
       'zeigt vier Ansichtsbuttons, die reduzierte Filterleiste und die neue Standardansicht',
     ],
   },
