@@ -54,7 +54,7 @@ test.describe('Kontaktverwaltung: Detailnavigation', () => {
     // Zentrale Kacheln sichtbar
     await expect(page.getByRole('heading', { name: '✓ Nächste Aufgabe' })).toBeVisible()
     await expect(page.getByRole('heading', { name: '🛡️ Versicherung & Verträge' })).toBeVisible()
-    await page.getByTitle('Weitere Aktionen').hover()
+    await page.getByTitle('Weitere Aktionen').click()
     await page.getByRole('button', { name: '💬 Kommentare' }).click()
     await expect(page.getByRole('dialog').getByText('Kommentare', { exact: true })).toBeVisible()
   })

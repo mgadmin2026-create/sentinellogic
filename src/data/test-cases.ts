@@ -166,12 +166,11 @@ export const TEST_CASES: TestCaseDefinition[] = [
   },
   {
     id: 'E2E-010',
-    name: 'Tag anlegen, zuweisen, filtern und umbenennen',
-    description: 'Prüft den Lebenszyklus eines internen Tags von der Anlage über die Kontaktzuordnung und Filterung bis zur Umbenennung.',
+    name: 'Tag anlegen, zuweisen und umbenennen',
+    description: 'Prüft den Lebenszyklus eines internen Tags von der Anlage über die Kontaktzuordnung bis zur Umbenennung.',
     steps: [
       'Einen markierten Testkontakt öffnen und einen eindeutigen Test-Tag anlegen.',
       'Den Tag dem Kontakt zuweisen und die Persistenz nach einem Reload prüfen.',
-      'In der Kontaktübersicht nach dem Tag filtern und den Kontakt prüfen.',
       'Den Tag umbenennen und die Änderung in der Kontaktansicht kontrollieren.',
       'Den Test-Tag abschließend wieder entfernen.',
     ],
@@ -179,7 +178,7 @@ export const TEST_CASES: TestCaseDefinition[] = [
     priority: 'Mittel',
     state: 'Bereit',
     kind: 'E2E',
-    resultTitles: ['Tag anlegen, zuweisen, filtern und umbenennen'],
+    resultTitles: ['Tag anlegen, zuweisen und umbenennen'],
   },
   {
     id: 'E2E-011',

@@ -34,19 +34,17 @@ test.describe('Kontakte: Archivieren', () => {
     // Standardansicht: Kontakt verschwindet aus der Liste
     await expect(tabelle.getByText(fullName)).not.toBeVisible()
 
-    // "Archivierte anzeigen" -> Kontakt erscheint wieder, mit Badge
-    await page.getByText('Archivierte anzeigen').click()
-    await expect(tabelle.getByText(fullName)).toBeVisible()
-    await expect(tabelle.getByTestId('contact-archive-status')).toBeVisible()
-
     // Verknüpfte Aufgabe wurde mitarchiviert
     const detailRes = await request.get(`/api/kontakte/${created.id}`)
     const detailJson = await detailRes.json()
+    expect(detailJson.data.archived_at).toBeTruthy()
     expect(detailJson.data.tasks[0].archived_at).toBeTruthy()
 
-    // Wiederherstellen
-    await page.getByTitle('Wiederherstellen').click()
-    await page.getByText('Archivierte anzeigen').click()
+    // Die obere Archiv-Ansicht ist fachlich entfallen. Wiederherstellung bleibt
+    // über die bestehende Serverfunktion möglich und bringt den Kontakt zurück.
+    const restoreRes = await request.post(`/api/kontakte/${created.id}/restore`)
+    await expectOk(restoreRes, 'Kontakt wiederherstellen')
+    await page.reload()
     await expect(tabelle.getByText(fullName)).toBeVisible()
 
     const restoredRes = await request.get(`/api/kontakte/${created.id}`)

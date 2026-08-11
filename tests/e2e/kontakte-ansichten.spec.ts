@@ -56,7 +56,7 @@ test.describe('Kontaktdetail: reduzierte Arbeitsfläche und Erstgespräch-PDF', 
     await expect(page.getByText(/Schritt \d+\/12:/)).toHaveCount(0)
     await expect(page.getByRole('heading', { name: '💬 Kommentare' })).toHaveCount(0)
 
-    await page.getByTitle('Weitere Aktionen').hover()
+    await page.getByTitle('Weitere Aktionen').click()
     await page.getByRole('button', { name: '🎯 Prozess' }).click()
     await expect(page.getByRole('dialog').getByText('Vertriebsprozess', { exact: true })).toBeVisible()
     await page.getByRole('dialog').getByRole('button', { name: 'Schließen' }).click()

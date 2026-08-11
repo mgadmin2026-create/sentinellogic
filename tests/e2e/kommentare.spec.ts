@@ -24,6 +24,8 @@ test.describe('Kommentare & Erwähnungen', () => {
     const { data: created } = await expectOk(createRes, 'Testkontakt anlegen')
 
     await page.goto(`/kontakte/${created.id}`)
+    await page.getByTitle('Weitere Aktionen').click()
+    await page.getByRole('button', { name: '💬 Kommentare' }).click()
     const commentBody = `[TEST] Bitte prüfen @Test`
     const textarea = page.getByPlaceholder('Kommentar schreiben… @ um jemanden zu erwähnen')
     await textarea.fill(commentBody)

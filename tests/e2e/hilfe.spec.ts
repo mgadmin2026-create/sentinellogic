@@ -15,6 +15,8 @@ test.describe('Kontextsensitive Hilfe', () => {
 
     await page.goto(`/kontakte/${created.id}`)
 
+    await page.getByTitle('Weitere Aktionen').click()
+    await page.getByRole('button', { name: '🎯 Prozess' }).click()
     await page.getByRole('button', { name: 'Hilfe: Vertriebsprozess (12 Schritte)' }).click()
     await expect(page.getByRole('dialog', { name: /Vertriebsprozess \(12 Schritte\)/ })).toBeVisible()
     await page.keyboard.press('Escape')

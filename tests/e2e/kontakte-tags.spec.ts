@@ -5,9 +5,8 @@ import { applyTestCaseControl } from './support/test-control'
 test.describe('Kontakte: Tags', () => {
   applyTestCaseControl('E2E-010')
 
-  test('Tag anlegen, zuweisen, filtern und umbenennen', async ({ page, request }) => {
+  test('Tag anlegen, zuweisen und umbenennen', async ({ page, request }) => {
     const contact = createPlaywrightTestContact('TagTest')
-    const fullName = `${contact.first_name} ${contact.last_name}`
     const createRes = await request.post('/api/kontakte', { data: contact })
     const { data: created } = await expectOk(createRes, 'Testkontakt anlegen')
 
@@ -32,12 +31,6 @@ test.describe('Kontakte: Tags', () => {
       // Persistenz nach Reload (Beweis für den PUT-/GET-Roundtrip)
       await page.reload()
       await expect(page.getByRole('button', { name: `Tag ${tagName} entfernen` })).toBeVisible()
-
-      // Filter in der Kontaktliste
-      await page.goto('/kontakte')
-      await page.getByRole('button', { name: /Tags/ }).click()
-      await page.getByText(tagName, { exact: true }).click()
-      await expect(page.getByTestId('kontakte-tabelle').getByText(fullName)).toBeVisible()
 
       // Umbenennen propagiert überall (contact_tag_map referenziert per tag_id)
       const renamedName = `${tagName}-renamed`

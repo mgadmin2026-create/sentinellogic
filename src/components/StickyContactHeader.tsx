@@ -96,6 +96,7 @@ export function StickyContactHeader({
 }: StickyContactHeaderProps) {
   const [notesEditMode, setNotesEditMode] = useState(false)
   const [notesDraft, setNotesDraft] = useState('')
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
 
   const callNumber = phoneMobile || phoneOffice
   const waNumber = toWhatsAppNumber(callNumber)
@@ -246,10 +247,23 @@ export function StickyContactHeader({
 
               {/* ⋯-Menü: Kontakthistorie + tel-Anruf + WhatsApp */}
               <div className="relative group">
-                <button className="px-2.5 py-2 text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-gray-300 rounded-lg transition-colors" title="Weitere Aktionen">
+                <button
+                  onClick={() => setActionsMenuOpen((open) => !open)}
+                  aria-expanded={actionsMenuOpen}
+                  aria-haspopup="menu"
+                  className="px-2.5 py-2 text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-gray-300 rounded-lg transition-colors"
+                  title="Weitere Aktionen"
+                >
                   ⋯
                 </button>
-                <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div
+                  role="menu"
+                  className={`absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg transition-all z-50 ${
+                    actionsMenuOpen
+                      ? 'opacity-100 visible'
+                      : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'
+                  }`}
+                >
                   <button
                     onClick={onCallPrepClick}
                     disabled={isArchived}
@@ -259,19 +273,19 @@ export function StickyContactHeader({
                     🧠 Vorbereiten
                   </button>
                   <button
-                    onClick={onHistoryClick}
+                    onClick={() => { setActionsMenuOpen(false); onHistoryClick() }}
                     className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
                   >
                     📋 Kontakthistorie
                   </button>
                   <button
-                    onClick={onProcessClick}
+                    onClick={() => { setActionsMenuOpen(false); onProcessClick() }}
                     className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
                   >
                     🎯 Prozess
                   </button>
                   <button
-                    onClick={onCommentsClick}
+                    onClick={() => { setActionsMenuOpen(false); onCommentsClick() }}
                     className="block w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 border-b border-gray-100"
                   >
                     💬 Kommentare
