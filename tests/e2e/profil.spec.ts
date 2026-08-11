@@ -59,7 +59,13 @@ test.describe('Profil: Eigene Daten und Passwort', () => {
     // Name ändern und über die API persistiert prüfen, danach zurücksetzen
     const changedName = `${originalName} [E2E]`
     await page.locator('input[name="name"]').fill(changedName)
+    const changeNameResponsePromise = page.waitForResponse((response) => (
+      response.url().endsWith('/api/me')
+      && response.request().method() === 'PATCH'
+      && response.request().postDataJSON()?.name === changedName
+    ))
     await page.getByRole('button', { name: 'Speichern' }).click()
+    expect((await changeNameResponsePromise).ok()).toBe(true)
     await expect(page.getByText('Gespeichert.')).toBeVisible()
 
     const afterChangeRes = await page.request.get('/api/me')
@@ -67,7 +73,13 @@ test.describe('Profil: Eigene Daten und Passwort', () => {
     expect(afterChangeJson.data.name).toBe(changedName)
 
     await page.locator('input[name="name"]').fill(originalName)
+    const revertNameResponsePromise = page.waitForResponse((response) => (
+      response.url().endsWith('/api/me')
+      && response.request().method() === 'PATCH'
+      && response.request().postDataJSON()?.name === originalName
+    ))
     await page.getByRole('button', { name: 'Speichern' }).click()
+    expect((await revertNameResponsePromise).ok()).toBe(true)
     await expect(page.getByText('Gespeichert.')).toBeVisible()
 
     const revertedRes = await page.request.get('/api/me')
