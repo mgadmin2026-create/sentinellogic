@@ -3,7 +3,7 @@
 // Zeile 1: Identität (Name, Status, Qualität) + Meta (Firma, Geburtstag/Alter,
 // E-Mail, Verantwortlicher) + Aktionen. Zeile 2: Tags + Notizen, ebenfalls fixiert.
 import { useState } from 'react'
-import { toWhatsAppNumber } from '@/lib/phone'
+import { normalizePhoneNumber, toWhatsAppNumber } from '@/lib/phone'
 import { PlacetelCallButton } from '@/components/PlacetelCallButton'
 import { TagInput, type Tag } from '@/components/TagInput'
 
@@ -15,6 +15,7 @@ interface StickyContactHeaderProps {
   email?: string
   phoneMobile?: string
   phoneOffice?: string
+  superchatId?: string | null
   status?: string
   qualität?: string
   geburtstag?: string
@@ -72,6 +73,7 @@ export function StickyContactHeader({
   email,
   phoneMobile,
   phoneOffice,
+  superchatId,
   status,
   qualität,
   geburtstag,
@@ -104,6 +106,25 @@ export function StickyContactHeader({
   const statusBadge = status ? STATUS_BADGES[status] : undefined
   const initials = `${(firstName || '?').charAt(0)}${(lastName || '?').charAt(0)}`.toUpperCase()
   const notesFirstLine = notes ? notes.split('\n')[0] : ''
+
+  function buildSuperchatUrl(): string | null {
+    if (!superchatId) return null
+    const mobile = normalizePhoneNumber(phoneMobile)
+    const office = normalizePhoneNumber(phoneOffice)
+    const normalizedEmail = email?.trim().toLowerCase()
+    const params = new URLSearchParams()
+
+    if (mobile) params.set('wa', mobile.replace(/^\+/, ''))
+    else if (office) params.set('sms', office.replace(/^\+/, ''))
+    else if (normalizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) params.set('email', normalizedEmail)
+    else return null
+
+    if (firstName?.trim()) params.set('firstname', firstName.trim())
+    if (lastName?.trim()) params.set('lastname', lastName.trim())
+    return `https://app.superchat.de/inbox/find/?${params.toString()}`
+  }
+
+  const superchatUrl = buildSuperchatUrl()
 
   async function saveNotes() {
     await onSaveNotes(notesDraft)
@@ -175,56 +196,18 @@ export function StickyContactHeader({
                 </button>
               )}
 
-              {/* AMIS.NOW Dropdown */}
-              {handleCreateAmisTask && (
-                <div className="relative group">
-                  <button className="px-3 py-2 text-xs sm:text-sm font-semibold bg-amber-400 hover:bg-amber-500 text-gray-900 rounded-lg transition-colors">
-                    ⚡ AMIS
-                  </button>
-                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                    <button
-                      onClick={() => handleCreateAmisTask('person_create')}
-                      disabled={amisCreating !== null}
-                      className="w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 border-b border-gray-100"
-                    >
-                      {amisCreating === 'person_create' ? '⏳ Person anlegen...' : '👤 Person anlegen'}
-                    </button>
-                    <button
-                      onClick={() => handleCreateAmisTask('person_create_quote')}
-                      disabled={amisCreating !== null}
-                      className="w-full text-left px-4 py-2 text-xs font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      {amisCreating === 'person_create_quote' ? '⏳ Angebot berechnen...' : '💰 Angebot berechnen'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* AMIS Status Info */}
-              {latestAmisTask && (
-                <div className="relative group">
-                  <button className="px-2.5 py-2 text-xs sm:text-sm font-semibold rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors" title="AMIS Status">
-                    ℹ️
-                  </button>
-                  <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-3 space-y-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 text-xs">
-                    <div>
-                      <p className="text-gray-500 font-semibold">Letzte Aufgabe</p>
-                      <p className="text-gray-900">{latestAmisTask.titel}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 font-semibold">Status</p>
-                      <p className="text-gray-900">{amisStatusLabel}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 font-semibold">Angebotsnummer</p>
-                      <p className="text-gray-900">{latestAmisTask.amis_quote_number || '—'}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 font-semibold">Erstellt</p>
-                      <p className="text-gray-900">{latestAmisTask.created_at ? new Date(latestAmisTask.created_at).toLocaleDateString('de-DE') : '—'}</p>
-                    </div>
-                  </div>
-                </div>
+              {superchatUrl && (
+                <a
+                  href={superchatUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Nachrichtenfeld dieses Kontakts in SuperChat öffnen"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 sm:text-sm"
+                >
+                  <span aria-hidden="true">💬</span>
+                  <span>SuperChat</span>
+                  <span className="text-[10px] text-emerald-100" aria-hidden="true">↗</span>
+                </a>
               )}
 
               {/* Bearbeiten — öffnet den EditDrawer mit allen Feldern */}
@@ -290,6 +273,46 @@ export function StickyContactHeader({
                   >
                     💬 Kommentare
                   </button>
+                  {handleCreateAmisTask && (
+                    <div className="border-b border-gray-100 bg-amber-50/60 px-3 py-2.5">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-gray-900">⚡ AMIS.NOW</span>
+                        <span
+                          className="cursor-help rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-amber-200"
+                          title={latestAmisTask
+                            ? `Letzte Aufgabe: ${latestAmisTask.titel}\nStatus: ${amisStatusLabel}\nAngebotsnummer: ${latestAmisTask.amis_quote_number || '—'}\nErstellt: ${latestAmisTask.created_at ? new Date(latestAmisTask.created_at).toLocaleDateString('de-DE') : '—'}`
+                            : 'Noch keine AMIS.NOW-Aufgabe vorhanden'}
+                          aria-label="AMIS.NOW-Status anzeigen"
+                        >
+                          i
+                        </span>
+                      </div>
+                      <p className="mb-2 text-[10px] leading-relaxed text-gray-500">
+                        Kontakt in AMIS.NOW anlegen oder direkt ein Angebot vorbereiten.
+                      </p>
+                      <div className="grid grid-cols-1 gap-1">
+                        <button
+                          onClick={() => { setActionsMenuOpen(false); handleCreateAmisTask('person_create') }}
+                          disabled={amisCreating !== null || isArchived}
+                          title="Legt für diesen Kontakt eine Person in AMIS.NOW an"
+                          className="rounded-md bg-white px-2.5 py-2 text-left text-xs font-medium text-gray-800 ring-1 ring-gray-200 hover:bg-amber-50 disabled:opacity-40"
+                        >
+                          {amisCreating === 'person_create' ? '⏳ Person wird angelegt…' : '👤 Person anlegen'}
+                        </button>
+                        <button
+                          onClick={() => { setActionsMenuOpen(false); handleCreateAmisTask('person_create_quote') }}
+                          disabled={amisCreating !== null || isArchived}
+                          title="Legt die Person an und startet anschließend die Angebotsberechnung"
+                          className="rounded-md bg-white px-2.5 py-2 text-left text-xs font-medium text-gray-800 ring-1 ring-gray-200 hover:bg-amber-50 disabled:opacity-40"
+                        >
+                          {amisCreating === 'person_create_quote' ? '⏳ Angebot wird vorbereitet…' : '💰 Angebot berechnen'}
+                        </button>
+                      </div>
+                      <p className="mt-2 truncate text-[10px] text-gray-500" title={latestAmisTask?.titel || 'Keine AMIS.NOW-Aufgabe'}>
+                        Status: <span className="font-semibold text-gray-700">{amisStatusLabel || 'Keine AMIS-Aufgabe'}</span>
+                      </p>
+                    </div>
+                  )}
                   {callNumber && (
                     <a
                       href={`tel:${callNumber}`}

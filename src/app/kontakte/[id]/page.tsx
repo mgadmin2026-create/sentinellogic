@@ -541,6 +541,7 @@ export default function KontaktDetailPage() {
         email={kontakt.email}
         phoneMobile={kontakt.phone_mobile}
         phoneOffice={kontakt.phone_office}
+        superchatId={kontakt.superchat_id}
         status={kontakt.status}
         qualität={kontakt.qualität}
         geburtstag={kontakt.geburtstag}
