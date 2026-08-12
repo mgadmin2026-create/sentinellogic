@@ -160,6 +160,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] SuperChat-Nachrichten als primäre Kopfaktion platziert und AMIS.NOW benutzerfreundlich ins Weitere-Aktionen-Menü verschoben
 - [x] Falsche SuperChat-Verknüpfungen können nach klarer Bestätigung in Sentimental Logic gelöst und anschließend neu zugeordnet werden, ohne Daten in SuperChat zu löschen
 - [x] Geschützte Sammelsynchronisation für aktive Kontakte mit Status `Nicht interessiert` und SuperChat-Gesprächslabel `Kein Interesse` ergänzt
+- [x] SuperChat-Sammelsynchronisation setzt nach Anfragelimits automatisch ab der letzten sicheren Position fort
 - [x] STRATO-E-Mail-Postfach als IMAP-/SMTP-MVP mit Posteingang, Lesen, Antworten, Versand und Kontaktzuordnung integriert
 - [x] Eingehende STRATO-E-Mails bekannter Kontakte idempotent in der Aktivitäten-Timeline ergänzt und Migration `0061_strato_incoming_email_activities.sql` live angewendet
 - [x] Regel-Sammelausführung zeigt KlickTipp-Erfolge, Fehler und übersprungene Übertragungen; archivierte Kontakte werden ausgeschlossen

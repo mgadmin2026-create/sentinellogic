@@ -363,7 +363,11 @@ export default function SyncPage() {
           if (typeof value === 'number') total[key] += value
         }
         cursor = data.nextCursor
-        if (data.rateLimited) throw new Error('SuperChat-Anfragelimit erreicht. Der Lauf kann später fortgesetzt werden.')
+        if (data.rateLimited) {
+          zeigeToast('success', 'SuperChat-Anfragelimit erreicht – automatische Fortsetzung in 65 Sekunden.')
+          await new Promise((resolve) => setTimeout(resolve, 65_000))
+          continue
+        }
         if (!data.hasMore) break
       }
 

@@ -57,7 +57,6 @@ export async function POST(request: Request) {
 
   for (const contact of contacts ?? []) {
     result.examined += 1
-    nextCursor = contact.id
     let superchatId = contact.superchat_id
 
     try {
@@ -84,6 +83,7 @@ export async function POST(request: Request) {
             result.linkedExisting += 1
           } catch {
             result.conflicts += 1
+            nextCursor = contact.id
             continue
           }
         }
@@ -105,6 +105,7 @@ export async function POST(request: Request) {
           user_id: currentUser.id,
         })
       }
+      nextCursor = contact.id
     } catch (error) {
       if (error instanceof SuperchatApiError && error.status === 429) {
         result.rateLimited = true
@@ -114,6 +115,7 @@ export async function POST(request: Request) {
         status: error instanceof SuperchatApiError ? error.status : null,
       })
       result.failed += 1
+      nextCursor = contact.id
     }
   }
 
