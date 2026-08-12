@@ -98,3 +98,59 @@ export async function GET(
     return Response.json({ success: false, error: message }, { status: 502 })
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const currentUser = await getCurrentUser()
+  if (!currentUser) return Response.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
+  if (!currentUser.active) return Response.json({ success: false, error: 'Benutzerkonto ist deaktiviert' }, { status: 403 })
+  if (!UUID_PATTERN.test(params.id)) return Response.json({ success: false, error: 'Ungültige Kontakt-ID' }, { status: 400 })
+
+  const supabase = createServerClient()
+  const { data: contact, error: contactError } = await supabase
+    .from('contacts')
+    .select('id, superchat_id')
+    .eq('id', params.id)
+    .single()
+
+  if (contactError || !contact) {
+    return Response.json({ success: false, error: 'Kontakt nicht gefunden' }, { status: 404 })
+  }
+  if (!contact.superchat_id) {
+    return Response.json({ success: false, error: 'Kontakt ist nicht mit SuperChat verknüpft' }, { status: 409 })
+  }
+
+  // Optimistische Bedingung verhindert, dass eine zwischenzeitlich geänderte
+  // Verknüpfung versehentlich gelöst wird. In SuperChat selbst wird nichts gelöscht.
+  const { data: unlinked, error: unlinkError } = await supabase
+    .from('contacts')
+    .update({
+      superchat_id: null,
+      superchat_last_sync: null,
+      superchat_sync_error: null,
+    })
+    .eq('id', params.id)
+    .eq('superchat_id', contact.superchat_id)
+    .select('id')
+    .maybeSingle()
+
+  if (unlinkError || !unlinked) {
+    console.error('[SuperChat Link] Verknüpfung konnte nicht gelöst werden')
+    return Response.json(
+      { success: false, error: 'Die SuperChat-Verknüpfung wurde zwischenzeitlich geändert. Bitte die Seite neu laden.' },
+      { status: 409 }
+    )
+  }
+
+  await supabase.from('activities').insert({
+    lead_id: params.id,
+    type: 'superchat_synced',
+    description: 'SuperChat-Verknüpfung manuell gelöst',
+    data: { operation: 'unlinked' },
+    user_id: currentUser.id,
+  })
+
+  return Response.json({ success: true })
+}

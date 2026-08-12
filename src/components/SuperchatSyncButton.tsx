@@ -39,6 +39,8 @@ export function SuperchatSyncButton({
 }: SuperchatSyncButtonProps) {
   const [syncing, setSyncing] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [unlinking, setUnlinking] = useState(false)
+  const [confirmUnlink, setConfirmUnlink] = useState(false)
   const [candidates, setCandidates] = useState<SuperchatCandidate[]>([])
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [message, setMessage] = useState<{
@@ -134,6 +136,36 @@ export function SuperchatSyncButton({
     }
   }
 
+  async function unlinkExisting() {
+    setUnlinking(true)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/kontakte/${contactId}/superchat/link-existing`, {
+        method: 'DELETE',
+      })
+      const body = await response.json().catch(() => null)
+      if (!response.ok || !body?.success) {
+        throw new Error(body?.error || 'SuperChat-Verknüpfung konnte nicht gelöst werden')
+      }
+
+      setConfirmUnlink(false)
+      setCandidates([])
+      setSelectedCandidateId(null)
+      setMessage({
+        type: 'success',
+        text: 'Die Verknüpfung wurde gelöst. Der Kontakt und seine Nachrichten in SuperChat bleiben erhalten.',
+      })
+      await onSynchronized()
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'SuperChat-Verknüpfung konnte nicht gelöst werden',
+      })
+    } finally {
+      setUnlinking(false)
+    }
+  }
+
   const statusText = lastSync
     ? `Zuletzt übertragen: ${new Date(lastSync).toLocaleString('de-DE')}`
     : superchatId
@@ -177,7 +209,7 @@ export function SuperchatSyncButton({
             <button
               type="button"
               onClick={findExisting}
-              disabled={syncing || linking || disabled}
+              disabled={syncing || linking || unlinking || disabled}
               className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {linking ? 'Suche…' : 'Bestehenden suchen'}
@@ -186,13 +218,52 @@ export function SuperchatSyncButton({
           <button
             type="button"
             onClick={synchronize}
-            disabled={syncing || linking || disabled}
+            disabled={syncing || linking || unlinking || disabled}
             className="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-bold text-gray-900 transition-colors hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {syncing ? 'Übertrage…' : superchatId ? 'Aktualisieren' : 'Übertragen'}
           </button>
         </div>
       </div>
+
+      {superchatId && !confirmUnlink && (
+        <button
+          type="button"
+          onClick={() => { setConfirmUnlink(true); setMessage(null) }}
+          disabled={syncing || unlinking || disabled}
+          className="inline-flex text-[11px] font-medium text-gray-400 underline-offset-2 transition-colors hover:text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+          title="Entfernt nur die Zuordnung in Sentimental Logic. In SuperChat wird nichts gelöscht."
+        >
+          Falsche Verknüpfung lösen
+        </button>
+      )}
+
+      {superchatId && confirmUnlink && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3" role="alertdialog" aria-label="SuperChat-Verknüpfung lösen">
+          <p className="text-xs font-bold text-red-800">SuperChat-Verknüpfung wirklich lösen?</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-red-700">
+            Nur die Zuordnung in Sentimental Logic wird entfernt. Der Kontakt und alle Nachrichten bleiben in SuperChat bestehen.
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmUnlink(false)}
+              disabled={unlinking}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              onClick={unlinkExisting}
+              disabled={unlinking}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {unlinking ? 'Wird gelöst…' : 'Verknüpfung lösen'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {!superchatId && candidates.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
