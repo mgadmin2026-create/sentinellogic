@@ -207,6 +207,7 @@ export default function SyncPage() {
   const [retryAllLoading, setRetryAllLoading] = useState<string | null>(null)
   const [superchatReconcileLoading, setSuperchatReconcileLoading] = useState(false)
   const [superchatFacebookSyncLoading, setSuperchatFacebookSyncLoading] = useState(false)
+  const [superchatNotInterestedLoading, setSuperchatNotInterestedLoading] = useState(false)
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   const [runDetails, setRunDetails] = useState<Record<string, BatchDetail | null>>({})
   const [detailLoading, setDetailLoading] = useState<string | null>(null)
@@ -327,6 +328,55 @@ export default function SyncPage() {
       zeigeToast('error', err instanceof Error ? err.message : 'Facebook-Synchronisation fehlgeschlagen')
     } finally {
       setSuperchatFacebookSyncLoading(false)
+    }
+  }
+
+  async function handleSuperchatNotInterestedSync() {
+    setSuperchatNotInterestedLoading(true)
+    const total = {
+      examined: 0, synchronized: 0, linkedExisting: 0, alreadyLinked: 0,
+      contactsLabeled: 0, conversationsUpdated: 0, alreadyLabeled: 0,
+      withoutConversation: 0, conflicts: 0, failed: 0,
+    }
+    let cursor: string | null = null
+
+    try {
+      for (let batch = 0; batch < 50; batch += 1) {
+        const response: Response = await fetch('/api/maintenance/superchat-sync-not-interested', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cursor }),
+        })
+        const json: {
+          success: boolean
+          error?: string
+          data: Record<string, number | boolean | string | null> & {
+            nextCursor: string | null
+            hasMore: boolean
+            rateLimited: boolean
+          }
+        } = await response.json()
+        if (!json.success) throw new Error(json.error || 'SuperChat-Synchronisation fehlgeschlagen')
+        const data = json.data
+        for (const key of Object.keys(total) as Array<keyof typeof total>) {
+          const value = data[key]
+          if (typeof value === 'number') total[key] += value
+        }
+        cursor = data.nextCursor
+        if (data.rateLimited) throw new Error('SuperChat-Anfragelimit erreicht. Der Lauf kann später fortgesetzt werden.')
+        if (!data.hasMore) break
+      }
+
+      zeigeToast(
+        total.conflicts === 0 && total.failed === 0 ? 'success' : 'error',
+        `Kein Interesse: ${total.examined} geprüft, ${total.synchronized} neu synchronisiert, ${total.linkedExisting} bestehend verbunden, ${total.contactsLabeled} Kontakte neu gelabelt, ${total.alreadyLabeled} bereits gelabelt, ${total.withoutConversation} ohne Gespräch, ${total.conflicts} Konflikte, ${total.failed} Fehler`
+      )
+      loadHealth()
+      loadRuns()
+    } catch (err) {
+      zeigeToast('error', err instanceof Error ? err.message : 'SuperChat-Synchronisation fehlgeschlagen')
+    } finally {
+      setSuperchatNotInterestedLoading(false)
     }
   }
 
@@ -707,15 +757,23 @@ export default function SyncPage() {
                 {source.id === 'superchat' && (
                   <>
                     <button
+                      onClick={handleSuperchatNotInterestedSync}
+                      disabled={superchatNotInterestedLoading || superchatFacebookSyncLoading || superchatReconcileLoading}
+                      title="Synchronisiert ausschließlich aktive Kontakte mit Status Nicht interessiert und setzt auf vorhandenen Gesprächen das Label Kein Interesse"
+                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-red-200 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg transition-all hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {superchatNotInterestedLoading ? 'Nicht interessierte werden verarbeitet…' : 'Nicht interessierte → SuperChat'}
+                    </button>
+                    <button
                       onClick={handleSuperchatFacebookSync}
-                      disabled={superchatFacebookSyncLoading || superchatReconcileLoading}
+                      disabled={superchatFacebookSyncLoading || superchatReconcileLoading || superchatNotInterestedLoading}
                       className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300] text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFD333] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {superchatFacebookSyncLoading ? 'Facebook-Kontakte werden übertragen…' : 'Offene Facebook-Kontakte übertragen'}
                     </button>
                     <button
                       onClick={handleSuperchatReconcile}
-                      disabled={superchatReconcileLoading || superchatFacebookSyncLoading}
+                      disabled={superchatReconcileLoading || superchatFacebookSyncLoading || superchatNotInterestedLoading}
                       className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300]/10 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFC300]/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {superchatReconcileLoading ? 'Bestand wird abgeglichen…' : 'Bestehende Kontakte verbinden'}
