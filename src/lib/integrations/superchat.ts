@@ -58,6 +58,17 @@ export interface SuperchatExistingContactResult extends SuperchatContactResult {
   matchedBy: Array<'email' | 'phone'>
 }
 
+export interface SuperchatMatchInput {
+  referenceId: string
+  contact: SuperchatContactInput
+}
+
+export interface SuperchatMatchResult {
+  matches: Array<SuperchatExistingContactResult & { referenceId: string }>
+  notFoundReferenceIds: string[]
+  ambiguousReferenceIds: string[]
+}
+
 export class SuperchatApiError extends Error {
   readonly status: number | null
 
@@ -518,6 +529,94 @@ export async function findExistingSuperchatContact(
 
   const [id, matchedBy] = Array.from(matches.entries())[0]
   return { id, matchedBy: Array.from(matchedBy) }
+}
+
+/**
+ * Liest den SuperChat-Bestand einmalig ein und gleicht mehrere Sentinel-
+ * Kontakte ab. Weder Namen noch unscharfe Werte werden zur Zuordnung genutzt.
+ */
+export async function matchExistingSuperchatContacts(
+  inputs: SuperchatMatchInput[]
+): Promise<SuperchatMatchResult> {
+  const providerIdsByHandle = new Map<string, Set<string>>()
+  let cursor: string | null = null
+
+  do {
+    const query = cursor ? `?limit=100&after=${encodeURIComponent(cursor)}` : '?limit=100'
+    const body = await superchatRequest(`/contacts${query}`, 'GET')
+    for (const candidate of readResults(body)) {
+      const candidateId = readContactId(candidate)
+      if (!candidateId || !/^(?:co|ct)_[A-Za-z0-9_-]+$/.test(candidateId)) continue
+      for (const handle of readExistingHandles(candidate)) {
+        const normalizedValue = handle.type === 'mail'
+          ? normalizeEmail(handle.value)
+          : normalizePhoneNumber(handle.value)
+        if (!normalizedValue) continue
+        const key = `${handle.type}:${normalizedValue.toLowerCase()}`
+        const ids = providerIdsByHandle.get(key) ?? new Set<string>()
+        ids.add(candidateId)
+        providerIdsByHandle.set(key, ids)
+      }
+    }
+    cursor = readNextCursor(body)
+  } while (cursor)
+
+  const provisionalMatches: Array<SuperchatExistingContactResult & { referenceId: string }> = []
+  const notFoundReferenceIds: string[] = []
+  const ambiguous = new Set<string>()
+
+  for (const input of inputs) {
+    let handles: SuperchatHandle[]
+    try {
+      handles = buildHandles(input.contact)
+    } catch {
+      notFoundReferenceIds.push(input.referenceId)
+      continue
+    }
+
+    const providerIds = new Set<string>()
+    const reasonsByProvider = new Map<string, Set<'email' | 'phone'>>()
+    for (const handle of handles) {
+      const key = `${handle.type}:${handle.value.trim().toLowerCase()}`
+      for (const providerId of Array.from(providerIdsByHandle.get(key) ?? [])) {
+        providerIds.add(providerId)
+        const reasons = reasonsByProvider.get(providerId) ?? new Set<'email' | 'phone'>()
+        reasons.add(handle.type === 'mail' ? 'email' : 'phone')
+        reasonsByProvider.set(providerId, reasons)
+      }
+    }
+
+    if (providerIds.size === 0) {
+      notFoundReferenceIds.push(input.referenceId)
+    } else if (providerIds.size > 1) {
+      ambiguous.add(input.referenceId)
+    } else {
+      const id = Array.from(providerIds)[0]
+      provisionalMatches.push({
+        referenceId: input.referenceId,
+        id,
+        matchedBy: Array.from(reasonsByProvider.get(id) ?? []),
+      })
+    }
+  }
+
+  // Auch die Gegenrichtung muss eindeutig sein: Ein SuperChat-Datensatz darf
+  // nicht mehreren Sentinel-Kontakten automatisch zugeordnet werden.
+  const referencesByProvider = new Map<string, string[]>()
+  for (const match of provisionalMatches) {
+    const references = referencesByProvider.get(match.id) ?? []
+    references.push(match.referenceId)
+    referencesByProvider.set(match.id, references)
+  }
+  for (const references of Array.from(referencesByProvider.values())) {
+    if (references.length > 1) references.forEach((referenceId) => ambiguous.add(referenceId))
+  }
+
+  return {
+    matches: provisionalMatches.filter((match) => !ambiguous.has(match.referenceId)),
+    notFoundReferenceIds,
+    ambiguousReferenceIds: Array.from(ambiguous),
+  }
 }
 
 /** Aktualisiert den bereits verknüpften Kontakt; seine ID bleibt unverändert. */

@@ -60,6 +60,10 @@ Notizen, Versicherungsdaten und sonstige CRM-Felder verlassen das System nicht.
 - `POST /api/kontakte/[id]/superchat/link-existing`: geschützte Sonderaktion,
   die SuperChat-Kontakte seitenweise liest und ausschließlich über eindeutige,
   exakte Kontaktwege mit Sentinel verknüpft.
+- `POST /api/maintenance/superchat-link-existing`: einmalige, nur für
+  Administratoren verfügbare Sammelaktion. Sie liest den SuperChat-Bestand nur
+  einmal, gleicht alle noch nicht verknüpften aktiven Sentinel-Kontakte ab und
+  liefert ausschließlich aggregierte Ergebniszahlen zurück.
 - `src/components/SuperchatSyncButton.tsx`: Status und Nutzeraktion in der
   Kontaktdetailseite.
 - Migration `0054_superchat_contact_sync.sql`: `superchat_id`,

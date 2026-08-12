@@ -170,6 +170,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Kontaktübersicht auf vier sichtbare Ansichtsbuttons, eine einzeilige Suche-/Sparte-Filterleiste und eine gemeinsame Kopf-Aktionsleiste umgestellt; Standardspalten entsprechen der Key-User-Vorgabe und sind nach neuestem Kontakt sortiert
 - [x] Rücksprung aus dem Kontaktdetail stellt neben Ansicht, Suche und Sortierung auch die vorherige Seiten- und Tabellen-Scrollposition der Kontaktübersicht wieder her; dies gilt auch für den Sidebar-Menüpunkt „Kontakte“ und weitere Detail-Rückwege
 - [x] SuperChat-Bestandsverknüpfung ergänzt: bereits vorhandene Kontakte können über eine Sonderaktion nur bei eindeutigem exaktem E-Mail-/Telefon-Treffer mit Sentinel verbunden und anschließend direkt in SuperChat geöffnet werden
+- [x] Geschützten SuperChat-Sammelabgleich ergänzt, der den Providerbestand einmalig einliest und offene aktive Sentinel-Kontakte ausschließlich bei beidseitig eindeutiger E-Mail-/Telefon-Zuordnung verbindet
 - [x] Kontaktübersicht um persistente Filter-/Sortierrückkehr, vier Fachansichten und Statusfarben auf der gesamten Zeile erweitert
 - [x] Kontaktdetail aufgeräumt: Prozess und Kommentare ins Drei-Punkte-Menü verschoben; Erstgespräch-PDF mit optionalen Leerfeldern ergänzt
 - [x] SuperChat-Direktlink präzisiert und Statusregel `Kunde` → Gesprächslabel `Kunde AZ` implementiert
