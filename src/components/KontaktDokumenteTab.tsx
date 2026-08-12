@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWerte } from '@/components/BeitragsuebersichtUebernahmeForm'
 import type { Zyklus } from '@/lib/beitragsuebersicht-zyklus'
+import { findeKategorieFuerSparte } from '@/lib/sparte-kategorie-match'
 
 interface Dokument {
   id: string
@@ -23,6 +24,8 @@ interface StrukturNode {
 
 interface KontaktDokumenteTabProps {
   kontaktId: string
+  /** Primäre Sparte des Kontakts (falls vorhanden) — steuert die automatische Vorbelegung der Ablage-Kategorie. */
+  primarySparte?: string | null
 }
 
 // Baum des Kontakt-Typs zu waehlbaren Pfaden flachklopfen (max. 2 Ebenen)
@@ -37,7 +40,7 @@ function flattenStruktur(nodes: StrukturNode[]): string[] {
   return paths
 }
 
-export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
+export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumenteTabProps) {
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -99,7 +102,11 @@ export function KontaktDokumenteTab({ kontaktId }: KontaktDokumenteTabProps) {
           const strukturRes = await fetch('/api/dokument-kategorien')
           const strukturData = await strukturRes.json()
           if (strukturData.success) {
-            setKategorien(flattenStruktur(strukturData.data[typ] || []))
+            const pfade = flattenStruktur(strukturData.data[typ] || [])
+            setKategorien(pfade)
+            // Ablage-Kategorie anhand der Kontakt-Sparte vorbelegen (bester Treffer, sonst
+            // "Sonstiges") — der Nutzer kann die Vorbelegung jederzeit selbst überschreiben.
+            setUploadKategorie(findeKategorieFuerSparte(primarySparte, pfade) ?? 'Sonstiges')
           }
         } catch {
           // Struktur nicht ladbar -> nur "Sonstiges"

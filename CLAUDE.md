@@ -245,6 +245,27 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.28.0 (2026-08-11) — Dokument-Upload: Ablage-Kategorie automatisch aus der Kontakt-Sparte vorbelegen
+
+Beim Dokument-Upload am Kontakt (`KontaktDokumenteTab.tsx`) musste die Ablage-Kategorie („Ablegen unter")
+bislang bei jedem Upload manuell gewählt werden (Default immer „Sonstiges"). Wird jetzt anhand der primären
+Sparte des Kontakts automatisch vorbelegt — der Nutzer kann die Vorbelegung weiterhin jederzeit über das
+unverändert vollständige Dropdown überschreiben.
+
+- ✨ **Neuer Helper `src/lib/sparte-kategorie-match.ts`**: `findeKategorieFuerSparte(sparte, kategorien)` —
+  normalisierter Teilstring-Abgleich (Kleinschreibung, „versicherung"-Suffix entfernt, Sonderzeichen
+  raus) zwischen Sparten-Namen (`sparten`-Stammdaten, z.B. „KFZ", „Haftpflicht", „PKV") und den
+  konfigurierbaren Ablage-Kategorien (`system_config` „dokument_ordnerstruktur"). Bewusst kein festes
+  1:1-Mapping, da beide Listen unabhängig voneinander gepflegt werden — liefert `null` bei
+  Uneindeutigkeit, dann bleibt „Sonstiges" der Default und der Nutzer wählt manuell.
+- ✨ **Abkürzungs-Auflösung** für gängige Initialismen, die als Teilstring nie gegen ausgeschriebene
+  Kategorienamen treffen würden (PKV, PHV, BU, BAV, BKV) — z.B. Sparte „PKV" → Kategorie
+  „Private Krankenversicherung", live verifiziert.
+- ✨ `KontaktDokumenteTab.tsx` bekommt eine neue Prop `primarySparte`, von `src/app/kontakte/[id]/page.tsx`
+  aus der primären Sparte (`contact_sparte_map`) bzw. ersatzweise `contacts.sparte` befüllt; die
+  Vorbelegung passiert einmalig beim Laden der Kategorie-Liste in `loadDokumente()`, danach frei
+  editierbar wie bisher.
+
 ### v0.27.1 (2026-08-11) — Beitragsübersicht: Nachbesserungen aus Live-Test
 
 Drei kleine Korrekturen nach dem ersten Live-Test von v0.27.0:

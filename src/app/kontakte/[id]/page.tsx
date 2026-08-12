@@ -1040,7 +1040,10 @@ export default function KontaktDetailPage() {
         onClose={() => setOpenDrawer(null)}
         widthClass="max-w-3xl"
       >
-        <KontaktDokumenteTab kontaktId={kontaktId} />
+        <KontaktDokumenteTab
+          kontaktId={kontaktId}
+          primarySparte={kontaktSparten.find((z) => z.is_primary)?.sparte.name ?? kontakt?.sparte}
+        />
       </Drawer>
 
       <Drawer
