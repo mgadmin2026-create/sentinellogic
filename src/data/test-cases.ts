@@ -323,18 +323,23 @@ export const TEST_CASES: TestCaseDefinition[] = [
   {
     id: 'E2E-019',
     name: 'Kontakt an SuperChat übertragen',
-    description: 'Prüft den kontrollierten Start der SuperChat-Übertragung aus der Kontaktdetailseite, ohne Testdaten an den externen Provider zu senden.',
+    description: 'Prüft die kontrollierte SuperChat-Übertragung sowie die Sonderaktion zum Verknüpfen eines bereits vorhandenen Kontakts, ohne Testdaten an den externen Provider zu senden.',
     steps: [
       'Einen eindeutig markierten Testkontakt anlegen und seine Detailseite öffnen.',
       'Den noch nicht übertragenen SuperChat-Status prüfen.',
       'Die Übertragung auslösen; die geschützte Serverroute im Browser sicher simulieren.',
       'HTTP-Methode und verständliche Erfolgsmeldung prüfen.',
+      'Die Sonderaktion „Bestehenden verbinden“ mit einem eindeutigen E-Mail-Treffer simulieren und die Verknüpfungsmeldung prüfen.',
     ],
     area: 'Integrationen',
     priority: 'Hoch',
     state: 'Bereit',
     kind: 'E2E',
-    resultTitles: ['überträgt einen Kontakt kontrolliert an SuperChat'],
+    resultTitles: [
+      'überträgt einen Kontakt kontrolliert an SuperChat',
+      'öffnet einen verknüpften Kontakt direkt in SuperChat',
+      'verknüpft einen bereits vorhandenen SuperChat-Kontakt kontrolliert',
+    ],
   },
   {
     id: 'E2E-020',

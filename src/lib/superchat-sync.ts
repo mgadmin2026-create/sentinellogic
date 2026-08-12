@@ -7,6 +7,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import {
   createSuperchatContact,
+  findExistingSuperchatContact,
   SuperchatApiError,
   updateSuperchatContact,
   assignConversationLabelToContact,
@@ -46,18 +47,14 @@ export interface SuperchatSyncResult {
   synchronizedAt: string
 }
 
-/**
- * Überträgt einen Kontakt an SuperChat (Create oder Update, je nachdem ob
- * superchat_id bereits gesetzt ist). Wirft SuperchatApiError bei Fehlern --
- * der Aufrufer (Route, oder retry-handlers.ts bei einem Retry) fängt das
- * weiterhin selbst ab.
- */
-export async function syncContactToSuperchat(
-  supabase: SupabaseClient,
-  contact: SuperchatSyncContact,
-  meta: SuperchatSyncMeta = {}
-): Promise<SuperchatSyncResult> {
-  const providerInput: SuperchatContactInput = {
+export interface SuperchatLinkResult {
+  superchatId: string
+  matchedBy: Array<'email' | 'phone'>
+  linkedAt: string
+}
+
+function toProviderInput(contact: SuperchatSyncContact): SuperchatContactInput {
+  return {
     firstName: contact.first_name,
     lastName: contact.last_name,
     email: contact.email,
@@ -72,6 +69,20 @@ export async function syncContactToSuperchat(
     country: contact.country,
     birthDate: contact.geburtstag,
   }
+}
+
+/**
+ * Überträgt einen Kontakt an SuperChat (Create oder Update, je nachdem ob
+ * superchat_id bereits gesetzt ist). Wirft SuperchatApiError bei Fehlern --
+ * der Aufrufer (Route, oder retry-handlers.ts bei einem Retry) fängt das
+ * weiterhin selbst ab.
+ */
+export async function syncContactToSuperchat(
+  supabase: SupabaseClient,
+  contact: SuperchatSyncContact,
+  meta: SuperchatSyncMeta = {}
+): Promise<SuperchatSyncResult> {
+  const providerInput = toProviderInput(contact)
 
   const wasUpdate = Boolean(contact.superchat_id)
 
@@ -167,4 +178,55 @@ export async function syncContactToSuperchat(
 
     throw error
   }
+}
+
+/**
+ * Verknüpft einen bereits in SuperChat vorhandenen Kontakt mit Sentinel.
+ * Es wird nur bei einem eindeutigen Treffer über E-Mail/Telefon geschrieben.
+ */
+export async function linkExistingSuperchatContact(
+  supabase: SupabaseClient,
+  contact: SuperchatSyncContact,
+  meta: SuperchatSyncMeta = {}
+): Promise<SuperchatLinkResult> {
+  if (contact.superchat_id) {
+    throw new SuperchatApiError('Dieser Sentinel-Kontakt ist bereits mit SuperChat verknüpft')
+  }
+
+  const existing = await findExistingSuperchatContact(toProviderInput(contact))
+  if (!existing) {
+    throw new SuperchatApiError(
+      'Kein eindeutiger SuperChat-Kontakt mit gleicher E-Mail-Adresse oder Telefonnummer gefunden'
+    )
+  }
+
+  const linkedAt = new Date().toISOString()
+  const { error: updateError } = await supabase
+    .from('contacts')
+    .update({
+      superchat_id: existing.id,
+      superchat_last_sync: linkedAt,
+      superchat_sync_error: null,
+    })
+    .eq('id', contact.id)
+
+  if (updateError) {
+    if (updateError.code === '23505') {
+      throw new SuperchatApiError(
+        'Dieser SuperChat-Kontakt ist bereits mit einem anderen Sentinel-Kontakt verknüpft'
+      )
+    }
+    console.error('[SuperChat Link] Verknüpfung konnte nicht gespeichert werden')
+    throw new SuperchatApiError('Die SuperChat-Verknüpfung konnte nicht gespeichert werden')
+  }
+
+  await supabase.from('activities').insert({
+    lead_id: contact.id,
+    type: 'superchat_synced',
+    description: 'Bestehenden SuperChat-Kontakt verknüpft',
+    data: { operation: 'linked', matched_by: existing.matchedBy },
+    user_id: meta.userId ?? null,
+  })
+
+  return { superchatId: existing.id, matchedBy: existing.matchedBy, linkedAt }
 }

@@ -54,6 +54,10 @@ export interface SuperchatContactResult {
   id: string
 }
 
+export interface SuperchatExistingContactResult extends SuperchatContactResult {
+  matchedBy: Array<'email' | 'phone'>
+}
+
 export class SuperchatApiError extends Error {
   readonly status: number | null
 
@@ -252,6 +256,14 @@ function readResults(body: unknown): Record<string, unknown>[] {
   return Array.isArray(list)
     ? list.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
     : []
+}
+
+function readNextCursor(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null
+  const pagination = (body as Record<string, unknown>).pagination
+  if (!pagination || typeof pagination !== 'object') return null
+  const cursor = (pagination as Record<string, unknown>).next_cursor
+  return typeof cursor === 'string' && cursor.trim() ? cursor : null
 }
 
 function readLabelIds(conversation: Record<string, unknown>): string[] {
@@ -456,6 +468,56 @@ export async function createSuperchatContact(
     throw new SuperchatApiError('SuperChat hat keine Kontakt-ID zurückgegeben')
   }
   return { id }
+}
+
+/**
+ * Findet einen bereits vorhandenen SuperChat-Kontakt ausschließlich über
+ * exakte Kontaktwege. Namen sind für eine automatische Zuordnung nicht sicher
+ * genug. Bei mehreren Treffern wird bewusst keine Verknüpfung vorgenommen.
+ */
+export async function findExistingSuperchatContact(
+  contact: SuperchatContactInput
+): Promise<SuperchatExistingContactResult | null> {
+  const desiredHandles = buildHandles(contact)
+  const desiredKeys = new Map<string, 'email' | 'phone'>()
+  for (const handle of desiredHandles) {
+    desiredKeys.set(`${handle.type}:${handle.value.trim().toLowerCase()}`, handle.type === 'mail' ? 'email' : 'phone')
+  }
+
+  const matches = new Map<string, Set<'email' | 'phone'>>()
+  let cursor: string | null = null
+
+  do {
+    const query = cursor ? `?limit=100&after=${encodeURIComponent(cursor)}` : '?limit=100'
+    const body = await superchatRequest(`/contacts${query}`, 'GET')
+    for (const candidate of readResults(body)) {
+      const candidateId = readContactId(candidate)
+      if (!candidateId || !/^(?:co|ct)_[A-Za-z0-9_-]+$/.test(candidateId)) continue
+
+      for (const handle of readExistingHandles(candidate)) {
+        const normalizedValue = handle.type === 'mail'
+          ? normalizeEmail(handle.value)
+          : normalizePhoneNumber(handle.value)
+        if (!normalizedValue) continue
+        const matchedBy = desiredKeys.get(`${handle.type}:${normalizedValue.toLowerCase()}`)
+        if (!matchedBy) continue
+        const reasons = matches.get(candidateId) ?? new Set<'email' | 'phone'>()
+        reasons.add(matchedBy)
+        matches.set(candidateId, reasons)
+      }
+    }
+    cursor = readNextCursor(body)
+  } while (cursor)
+
+  if (matches.size === 0) return null
+  if (matches.size > 1) {
+    throw new SuperchatApiError(
+      'Mehrere SuperChat-Kontakte passen zu E-Mail oder Telefonnummer. Bitte die Dubletten zuerst in SuperChat bereinigen.'
+    )
+  }
+
+  const [id, matchedBy] = Array.from(matches.entries())[0]
+  return { id, matchedBy: Array.from(matchedBy) }
 }
 
 /** Aktualisiert den bereits verknüpften Kontakt; seine ID bleibt unverändert. */

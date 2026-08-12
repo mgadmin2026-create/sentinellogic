@@ -31,6 +31,7 @@ export function SuperchatSyncButton({
   onSynchronized,
 }: SuperchatSyncButtonProps) {
   const [syncing, setSyncing] = useState(false)
+  const [linking, setLinking] = useState(false)
   const [message, setMessage] = useState<{
     type: 'success' | 'error'
     text: string
@@ -65,6 +66,35 @@ export function SuperchatSyncButton({
       })
     } finally {
       setSyncing(false)
+    }
+  }
+
+  async function linkExisting() {
+    setLinking(true)
+    setMessage(null)
+
+    try {
+      const response = await fetch(`/api/kontakte/${contactId}/superchat/link-existing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const body = await response.json().catch(() => null)
+      if (!response.ok || !body?.success) {
+        throw new Error(body?.error || 'Bestehender SuperChat-Kontakt konnte nicht verknüpft werden')
+      }
+
+      const matchedBy = Array.isArray(body.data?.matchedBy)
+        ? body.data.matchedBy.map((value: string) => value === 'phone' ? 'Telefonnummer' : 'E-Mail-Adresse').join(' und ')
+        : 'Kontaktweg'
+      setMessage({ type: 'success', text: `Bestehender SuperChat-Kontakt wurde über ${matchedBy} verknüpft.` })
+      await onSynchronized()
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Bestehender SuperChat-Kontakt konnte nicht verknüpft werden',
+      })
+    } finally {
+      setLinking(false)
     }
   }
 
@@ -106,14 +136,26 @@ export function SuperchatSyncButton({
           </p>
           <p className="text-[11px] text-gray-400">{statusText}</p>
         </div>
-        <button
-          type="button"
-          onClick={synchronize}
-          disabled={syncing || disabled}
-          className="shrink-0 rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-bold text-gray-900 transition-colors hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {syncing ? 'Übertrage…' : superchatId ? 'Aktualisieren' : 'Übertragen'}
-        </button>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          {!superchatId && (
+            <button
+              type="button"
+              onClick={linkExisting}
+              disabled={syncing || linking || disabled}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {linking ? 'Suche…' : 'Bestehenden verbinden'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={synchronize}
+            disabled={syncing || linking || disabled}
+            className="rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-bold text-gray-900 transition-colors hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {syncing ? 'Übertrage…' : superchatId ? 'Aktualisieren' : 'Übertragen'}
+          </button>
+        </div>
       </div>
 
       {(message || (!lastSync && syncError)) && (

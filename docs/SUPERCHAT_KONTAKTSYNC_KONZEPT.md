@@ -26,6 +26,10 @@ im verbundenen SuperChat-Workspace an beziehungsweise aktualisiert ihn.
 6. Nach der ersten Verknüpfung öffnet „Kontakt in SuperChat öffnen“ über den
    offiziell unterstützten SuperChat-Link die bestehende Unterhaltung
    beziehungsweise den Kontakt in einem neuen Tab.
+7. Falls der Kontakt schon vor Sentinel in SuperChat vorhanden war, sucht
+   „Bestehenden verbinden“ nach einer exakten E-Mail-Adresse oder normalisierten
+   Telefonnummer. Nur ein eindeutiger Treffer wird verknüpft; bei keinem oder
+   mehreren Treffern bleiben beide Systeme unverändert.
 
 ## Übertragene Daten
 
@@ -53,6 +57,9 @@ Notizen, Versicherungsdaten und sonstige CRM-Felder verlassen das System nicht.
 - `POST /api/kontakte/[id]/superchat`: authentifizierte Serverroute. Sie lädt
   nur die benötigten Kontaktfelder, erstellt oder aktualisiert den
   Providerkontakt und speichert den lokalen Synchronisationsstand.
+- `POST /api/kontakte/[id]/superchat/link-existing`: geschützte Sonderaktion,
+  die SuperChat-Kontakte seitenweise liest und ausschließlich über eindeutige,
+  exakte Kontaktwege mit Sentinel verknüpft.
 - `src/components/SuperchatSyncButton.tsx`: Status und Nutzeraktion in der
   Kontaktdetailseite.
 - Migration `0054_superchat_contact_sync.sql`: `superchat_id`,
@@ -83,6 +90,9 @@ in Server-Logs geschrieben.
 - Eine frei konfigurierte fremde API-Domain wird abgelehnt.
 - Ein Fehler überschreibt keine bestehende SuperChat-ID; der Lauf kann erneut
   angestoßen werden.
+- Ein HTTP-409 beim Anlegen wird nicht automatisch als sicherer Treffer
+  interpretiert. Die Bestandsverknüpfung ist eine bewusste Sonderaktion mit
+  eigenständiger, eindeutiger Prüfung.
 
 ## Bewusste Grenze des ersten Ausbaus
 

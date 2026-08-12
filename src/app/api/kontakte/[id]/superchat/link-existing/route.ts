@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { SuperchatApiError } from '@/lib/integrations/superchat'
-import { syncContactToSuperchat } from '@/lib/superchat-sync'
+import { linkExistingSuperchatContact } from '@/lib/superchat-sync'
 import { createServerClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -38,31 +38,19 @@ export async function POST(
   }
   if (contact.archived_at) {
     return Response.json(
-      { success: false, error: 'Archivierte Kontakte können nicht übertragen werden' },
+      { success: false, error: 'Archivierte Kontakte können nicht verknüpft werden' },
       { status: 409 }
     )
   }
 
   try {
-    const result = await syncContactToSuperchat(supabase, contact, { userId: currentUser.id })
+    const result = await linkExistingSuperchatContact(supabase, contact, { userId: currentUser.id })
     return Response.json({ success: true, data: result })
   } catch (error) {
-    const message =
-      error instanceof SuperchatApiError
-        ? error.message
-        : 'Kontakt konnte nicht an SuperChat übertragen werden'
-
-    const status =
-      error instanceof SuperchatApiError && error.status === 429
-        ? 429
-        : error instanceof SuperchatApiError && error.status === 409
-          ? 409
-        : error instanceof SuperchatApiError && [401, 403].includes(error.status || 0)
-          ? 502
-          : 400
-    const userMessage = error instanceof SuperchatApiError && error.status === 409
-      ? 'SuperChat meldet einen Kontaktkonflikt (HTTP 409). Falls der Kontakt dort bereits vorhanden ist, bitte „Bestehenden verbinden“ verwenden.'
-      : message
-    return Response.json({ success: false, error: userMessage }, { status })
+    const message = error instanceof SuperchatApiError
+      ? error.message
+      : 'Bestehender SuperChat-Kontakt konnte nicht verknüpft werden'
+    const status = error instanceof SuperchatApiError && error.status === 429 ? 429 : 409
+    return Response.json({ success: false, error: message }, { status })
   }
 }

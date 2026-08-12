@@ -161,4 +161,30 @@ test.describe('Kontaktdetail: SuperChat-Übertragung', () => {
     )
     await expect(link).toHaveAttribute('target', '_blank')
   })
+
+  test('verknüpft einen bereits vorhandenen SuperChat-Kontakt kontrolliert', async ({ page, request }) => {
+    const contact = createPlaywrightTestContact('SuperChatExisting')
+    const createResponse = await request.post('/api/kontakte', { data: contact })
+    const { data: created } = await expectOk(createResponse, 'Testkontakt anlegen')
+
+    await page.route(`**/api/kontakte/${created.id}/superchat/link-existing`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            superchatId: 'ct_playwright_existing',
+            matchedBy: ['email'],
+            linkedAt: new Date().toISOString(),
+          },
+        }),
+      })
+    })
+
+    await page.goto(`/kontakte/${created.id}`)
+    const syncPanel = page.getByTestId('superchat-sync')
+    await syncPanel.getByRole('button', { name: 'Bestehenden verbinden' }).click()
+    await expect(syncPanel.getByText('Bestehender SuperChat-Kontakt wurde über E-Mail-Adresse verknüpft.')).toBeVisible()
+  })
 })
