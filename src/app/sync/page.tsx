@@ -205,6 +205,7 @@ export default function SyncPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [runsToast, setRunsToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [retryAllLoading, setRetryAllLoading] = useState<string | null>(null)
+  const [superchatReconcileLoading, setSuperchatReconcileLoading] = useState(false)
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   const [runDetails, setRunDetails] = useState<Record<string, BatchDetail | null>>({})
   const [detailLoading, setDetailLoading] = useState<string | null>(null)
@@ -281,6 +282,24 @@ export default function SyncPage() {
     }
   }
 
+  async function handleSuperchatReconcile() {
+    setSuperchatReconcileLoading(true)
+    try {
+      const res = await fetch('/api/maintenance/superchat-link-existing', { method: 'POST' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Bestandsabgleich fehlgeschlagen')
+      const data = json.data
+      zeigeToast(
+        'success',
+        `SuperChat-Abgleich: ${data.examined} geprüft, ${data.linked} verbunden, ${data.notFound} nicht gefunden, ${data.ambiguous} mehrdeutig, ${data.databaseConflicts} Datenbankkonflikte`
+      )
+    } catch (err) {
+      zeigeToast('error', err instanceof Error ? err.message : 'Bestandsabgleich fehlgeschlagen')
+    } finally {
+      setSuperchatReconcileLoading(false)
+    }
+  }
+
   // Klick auf eine Batch-Zeile in der Automatisierungs-Läufe-Tabelle —
   // lädt die Detailaufschlüsselung (importierte Kontakte, Duplikate,
   // Fehler) einmalig nach und cached sie für erneutes Auf-/Zuklappen.
@@ -302,7 +321,7 @@ export default function SyncPage() {
 
   function zeigeToast(type: 'success' | 'error', msg: string) {
     setRunsToast({ type, msg })
-    setTimeout(() => setRunsToast(null), 3000)
+    setTimeout(() => setRunsToast(null), 12000)
   }
 
   async function handleRetry(runId: string) {
@@ -655,6 +674,15 @@ export default function SyncPage() {
                 <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {healthLastSyncText(sourceHealth)}</p>
               </div>
               <div className="flex flex-col gap-2 mt-auto">
+                {source.id === 'superchat' && (
+                  <button
+                    onClick={handleSuperchatReconcile}
+                    disabled={superchatReconcileLoading}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300]/10 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFC300]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {superchatReconcileLoading ? 'Bestand wird abgeglichen…' : 'Bestehende Kontakte verbinden'}
+                  </button>
+                )}
                 {isNonRetryable ? (
                   <button
                     disabled
