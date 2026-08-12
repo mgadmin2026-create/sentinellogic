@@ -338,14 +338,14 @@ export default function SyncPage() {
       contactsLabeled: 0, conversationsUpdated: 0, alreadyLabeled: 0,
       withoutConversation: 0, conflicts: 0, failed: 0,
     }
-    let cursor: string | null = null
-
     try {
-      for (let batch = 0; batch < 50; batch += 1) {
+      for (const phase of ['unlinked', 'linked'] as const) {
+      let cursor: string | null = null
+      for (let batch = 0; batch < 500; batch += 1) {
         const response: Response = await fetch('/api/maintenance/superchat-sync-not-interested', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cursor }),
+          body: JSON.stringify({ cursor, phase }),
         })
         const json: {
           success: boolean
@@ -369,6 +369,7 @@ export default function SyncPage() {
           continue
         }
         if (!data.hasMore) break
+      }
       }
 
       zeigeToast(

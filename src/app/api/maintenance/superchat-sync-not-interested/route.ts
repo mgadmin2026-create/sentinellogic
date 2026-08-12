@@ -20,6 +20,7 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}))
   const cursor = typeof body.cursor === 'string' && UUID_PATTERN.test(body.cursor) ? body.cursor : null
+  const phase = body.phase === 'linked' ? 'linked' : 'unlinked'
   const supabase = createServerClient()
 
   let query = supabase
@@ -31,6 +32,8 @@ export async function POST(request: Request) {
     .is('archived_at', null)
     .order('id', { ascending: true })
     .limit(BATCH_SIZE)
+
+  query = phase === 'linked' ? query.not('superchat_id', 'is', null) : query.is('superchat_id', null)
 
   if (cursor) query = query.gt('id', cursor)
 
@@ -58,6 +61,7 @@ export async function POST(request: Request) {
   for (const contact of contacts ?? []) {
     result.examined += 1
     let superchatId = contact.superchat_id
+    let newlyCreated = false
 
     try {
       if (superchatId) {
@@ -67,6 +71,7 @@ export async function POST(request: Request) {
           const syncResult = await syncContactToSuperchat(supabase, contact, { userId: currentUser.id })
           superchatId = syncResult.superchatId
           result.synchronized += 1
+          newlyCreated = true
         } catch (syncError) {
           if (!(syncError instanceof SuperchatApiError) || syncError.status !== 409) throw syncError
 
@@ -87,6 +92,14 @@ export async function POST(request: Request) {
             continue
           }
         }
+      }
+
+      // Ein gerade neu angelegter SuperChat-Kontakt hat noch kein Gespräch.
+      // Das Label wird deshalb erst im anschließenden Verknüpfungs-Durchlauf geprüft.
+      if (newlyCreated) {
+        result.withoutConversation += 1
+        nextCursor = contact.id
+        continue
       }
 
       const labelResult = await assignConversationLabelToContact(superchatId, LABEL_NAME)
@@ -123,6 +136,7 @@ export async function POST(request: Request) {
     success: true,
     data: {
       ...result,
+      phase,
       nextCursor,
       hasMore: !result.rateLimited && (contacts?.length ?? 0) === BATCH_SIZE,
     },
