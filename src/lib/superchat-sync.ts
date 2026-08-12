@@ -8,6 +8,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import {
   createSuperchatContact,
   findExistingSuperchatContact,
+  findExistingSuperchatContactCandidates,
   SuperchatApiError,
   updateSuperchatContact,
   assignConversationLabelToContact,
@@ -187,17 +188,21 @@ export async function syncContactToSuperchat(
 export async function linkExistingSuperchatContact(
   supabase: SupabaseClient,
   contact: SuperchatSyncContact,
-  meta: SuperchatSyncMeta = {}
+  meta: SuperchatSyncMeta = {},
+  selectedSuperchatId?: string
 ): Promise<SuperchatLinkResult> {
   if (contact.superchat_id) {
     throw new SuperchatApiError('Dieser Sentinel-Kontakt ist bereits mit SuperChat verknüpft')
   }
 
-  const existing = await findExistingSuperchatContact(toProviderInput(contact))
+  const existing = selectedSuperchatId
+    ? (await findExistingSuperchatContactCandidates(toProviderInput(contact)))
+        .find((candidate) => candidate.id === selectedSuperchatId)
+    : await findExistingSuperchatContact(toProviderInput(contact))
   if (!existing) {
-    throw new SuperchatApiError(
-      'Kein eindeutiger SuperChat-Kontakt mit gleicher E-Mail-Adresse oder Telefonnummer gefunden'
-    )
+    throw new SuperchatApiError(selectedSuperchatId
+      ? 'Der ausgewählte SuperChat-Kontakt passt nicht mehr zu E-Mail-Adresse oder Telefonnummer'
+      : 'Kein eindeutiger SuperChat-Kontakt mit gleicher E-Mail-Adresse oder Telefonnummer gefunden')
   }
 
   const linkedAt = new Date().toISOString()

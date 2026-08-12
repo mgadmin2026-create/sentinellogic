@@ -58,6 +58,14 @@ export interface SuperchatExistingContactResult extends SuperchatContactResult {
   matchedBy: Array<'email' | 'phone'>
 }
 
+export interface SuperchatExistingContactCandidate extends SuperchatExistingContactResult {
+  displayName: string
+  matchedHandles: Array<{
+    type: 'email' | 'phone'
+    maskedValue: string
+  }>
+}
+
 export interface SuperchatMatchInput {
   referenceId: string
   contact: SuperchatContactInput
@@ -448,6 +456,27 @@ function readExistingHandles(body: unknown): SuperchatHandle[] {
   })
 }
 
+function maskEmail(value: string): string {
+  const [localPart, domain] = value.split('@')
+  if (!domain) return 'E-Mail vorhanden'
+  return `${localPart.slice(0, 1)}***@${domain}`
+}
+
+function maskPhone(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  return digits.length >= 4 ? `•••• ${digits.slice(-4)}` : 'Telefonnummer vorhanden'
+}
+
+function readContactDisplayName(body: unknown): string {
+  const record = readContactRecord(body)
+  if (!record) return 'Kontakt ohne Namen'
+  const name = [record.first_name, record.last_name]
+    .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
+    .map((value) => value.trim())
+    .join(' ')
+  return name || 'Kontakt ohne Namen'
+}
+
 function mergeMissingHandles(
   existingHandles: SuperchatHandle[],
   desiredHandles: SuperchatHandle[]
@@ -489,13 +518,27 @@ export async function createSuperchatContact(
 export async function findExistingSuperchatContact(
   contact: SuperchatContactInput
 ): Promise<SuperchatExistingContactResult | null> {
+  const candidates = await findExistingSuperchatContactCandidates(contact)
+  if (candidates.length === 0) return null
+  if (candidates.length > 1) {
+    throw new SuperchatApiError(
+      'Mehrere SuperChat-Kontakte passen zu E-Mail oder Telefonnummer. Bitte einen Treffer auswählen.'
+    )
+  }
+  return { id: candidates[0].id, matchedBy: candidates[0].matchedBy }
+}
+
+/** Liefert sichere Auswahldaten für alle exakten Treffer. */
+export async function findExistingSuperchatContactCandidates(
+  contact: SuperchatContactInput
+): Promise<SuperchatExistingContactCandidate[]> {
   const desiredHandles = buildHandles(contact)
   const desiredKeys = new Map<string, 'email' | 'phone'>()
   for (const handle of desiredHandles) {
     desiredKeys.set(`${handle.type}:${handle.value.trim().toLowerCase()}`, handle.type === 'mail' ? 'email' : 'phone')
   }
 
-  const matches = new Map<string, Set<'email' | 'phone'>>()
+  const matches = new Map<string, SuperchatExistingContactCandidate>()
   let cursor: string | null = null
 
   do {
@@ -512,23 +555,29 @@ export async function findExistingSuperchatContact(
         if (!normalizedValue) continue
         const matchedBy = desiredKeys.get(`${handle.type}:${normalizedValue.toLowerCase()}`)
         if (!matchedBy) continue
-        const reasons = matches.get(candidateId) ?? new Set<'email' | 'phone'>()
-        reasons.add(matchedBy)
-        matches.set(candidateId, reasons)
+        const existing = matches.get(candidateId) ?? {
+          id: candidateId,
+          displayName: readContactDisplayName(candidate),
+          matchedBy: [],
+          matchedHandles: [],
+        }
+        if (!existing.matchedBy.includes(matchedBy)) existing.matchedBy.push(matchedBy)
+        const maskedValue = matchedBy === 'email'
+          ? maskEmail(normalizedValue)
+          : maskPhone(normalizedValue)
+        if (!existing.matchedHandles.some((item) => item.type === matchedBy && item.maskedValue === maskedValue)) {
+          existing.matchedHandles.push({ type: matchedBy, maskedValue })
+        }
+        matches.set(candidateId, existing)
       }
     }
     cursor = readNextCursor(body)
   } while (cursor)
 
-  if (matches.size === 0) return null
-  if (matches.size > 1) {
-    throw new SuperchatApiError(
-      'Mehrere SuperChat-Kontakte passen zu E-Mail oder Telefonnummer. Bitte die Dubletten zuerst in SuperChat bereinigen.'
-    )
-  }
-
-  const [id, matchedBy] = Array.from(matches.entries())[0]
-  return { id, matchedBy: Array.from(matchedBy) }
+  return Array.from(matches.values()).sort((left, right) => {
+    const reasonDifference = right.matchedBy.length - left.matchedBy.length
+    return reasonDifference || left.displayName.localeCompare(right.displayName, 'de')
+  })
 }
 
 /**

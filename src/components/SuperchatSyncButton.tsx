@@ -17,6 +17,13 @@ interface SuperchatSyncButtonProps {
   onSynchronized: () => Promise<void> | void
 }
 
+interface SuperchatCandidate {
+  id: string
+  displayName: string
+  matchedBy: Array<'email' | 'phone'>
+  matchedHandles: Array<{ type: 'email' | 'phone'; maskedValue: string }>
+}
+
 export function SuperchatSyncButton({
   contactId,
   firstName,
@@ -32,6 +39,8 @@ export function SuperchatSyncButton({
 }: SuperchatSyncButtonProps) {
   const [syncing, setSyncing] = useState(false)
   const [linking, setLinking] = useState(false)
+  const [candidates, setCandidates] = useState<SuperchatCandidate[]>([])
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [message, setMessage] = useState<{
     type: 'success' | 'error'
     text: string
@@ -69,29 +78,56 @@ export function SuperchatSyncButton({
     }
   }
 
-  async function linkExisting() {
+  async function findExisting() {
     setLinking(true)
     setMessage(null)
 
     try {
+      const response = await fetch(`/api/kontakte/${contactId}/superchat/link-existing`)
+      const body = await response.json().catch(() => null)
+      if (!response.ok || !body?.success) {
+        throw new Error(body?.error || 'SuperChat-Treffer konnten nicht geladen werden')
+      }
+
+      const found = Array.isArray(body.data?.candidates) ? body.data.candidates : []
+      setCandidates(found)
+      setSelectedCandidateId(found.length === 1 ? found[0].id : null)
+      if (found.length === 0) setMessage({ type: 'error', text: 'Kein passender SuperChat-Kontakt gefunden.' })
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'SuperChat-Treffer konnten nicht geladen werden',
+      })
+    } finally {
+      setLinking(false)
+    }
+  }
+
+  async function linkSelected() {
+    if (!selectedCandidateId) return
+    setLinking(true)
+    setMessage(null)
+    try {
       const response = await fetch(`/api/kontakte/${contactId}/superchat/link-existing`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ superchatId: selectedCandidateId }),
       })
       const body = await response.json().catch(() => null)
       if (!response.ok || !body?.success) {
-        throw new Error(body?.error || 'Bestehender SuperChat-Kontakt konnte nicht verknüpft werden')
+        throw new Error(body?.error || 'Ausgewählter SuperChat-Kontakt konnte nicht verknüpft werden')
       }
-
       const matchedBy = Array.isArray(body.data?.matchedBy)
         ? body.data.matchedBy.map((value: string) => value === 'phone' ? 'Telefonnummer' : 'E-Mail-Adresse').join(' und ')
         : 'Kontaktweg'
+      setCandidates([])
+      setSelectedCandidateId(null)
       setMessage({ type: 'success', text: `Bestehender SuperChat-Kontakt wurde über ${matchedBy} verknüpft.` })
       await onSynchronized()
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Bestehender SuperChat-Kontakt konnte nicht verknüpft werden',
+        text: error instanceof Error ? error.message : 'Ausgewählter SuperChat-Kontakt konnte nicht verknüpft werden',
       })
     } finally {
       setLinking(false)
@@ -140,11 +176,11 @@ export function SuperchatSyncButton({
           {!superchatId && (
             <button
               type="button"
-              onClick={linkExisting}
+              onClick={findExisting}
               disabled={syncing || linking || disabled}
               className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {linking ? 'Suche…' : 'Bestehenden verbinden'}
+              {linking ? 'Suche…' : 'Bestehenden suchen'}
             </button>
           )}
           <button
@@ -157,6 +193,65 @@ export function SuperchatSyncButton({
           </button>
         </div>
       </div>
+
+      {!superchatId && candidates.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-gray-800">SuperChat-Treffer auswählen</p>
+              <p className="mt-0.5 text-[11px] text-gray-500">
+                {candidates.length === 1 ? 'Ein eindeutiger Treffer wurde gefunden.' : `${candidates.length} mögliche Kontakte wurden gefunden.`}
+              </p>
+            </div>
+            <button type="button" onClick={() => { setCandidates([]); setSelectedCandidateId(null) }} className="text-xs text-gray-400 hover:text-gray-700" aria-label="Trefferliste schließen">✕</button>
+          </div>
+
+          <div className="space-y-2">
+            {candidates.map((candidate) => (
+              <label
+                key={candidate.id}
+                className={`flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 transition-colors ${selectedCandidateId === candidate.id ? 'border-yellow-400 ring-2 ring-yellow-200' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <input
+                  type="radio"
+                  name={`superchat-candidate-${contactId}`}
+                  value={candidate.id}
+                  checked={selectedCandidateId === candidate.id}
+                  onChange={() => setSelectedCandidateId(candidate.id)}
+                  className="mt-0.5 h-4 w-4 accent-yellow-500"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold text-gray-800">{candidate.displayName}</span>
+                  <span className="mt-1 flex flex-wrap gap-1">
+                    {candidate.matchedHandles.map((handle) => (
+                      <span key={`${handle.type}-${handle.maskedValue}`} className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                        {handle.type === 'email' ? 'E-Mail' : 'Telefon'}: {handle.maskedValue}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="mt-1.5 block font-mono text-[10px] text-gray-400" title={candidate.id}>
+                    ID: {candidate.id.length > 25 ? `${candidate.id.slice(0, 24)}…` : candidate.id}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {candidates.length > 1 && (
+            <p className="mt-2 text-[10px] leading-relaxed text-orange-700">
+              Bitte anhand des Namens und des markierten Kontaktwegs bewusst auswählen. Ohne Auswahl wird nichts verändert.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={linkSelected}
+            disabled={!selectedCandidateId || linking}
+            className="mt-3 w-full rounded-lg bg-yellow-400 px-3 py-2 text-xs font-bold text-gray-900 hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {linking ? 'Wird verknüpft…' : 'Ausgewählten Kontakt verbinden'}
+          </button>
+        </div>
+      )}
 
       {(message || (!lastSync && syncError)) && (
         <p

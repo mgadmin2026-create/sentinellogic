@@ -156,6 +156,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] SuperChat-Feldmapping um Firma, Adresse und Geburtsdatum sowie direkten Kontaktlink erweitert
 - [x] Geschützte Admin-Sammelaktion für aktive, unverknüpfte Facebook-Kontakte nach SuperChat ergänzt
 - [x] Kontaktübersicht um Verantwortlichen-Kürzel und kompakten Integrationsstatus mit IDs, Kampagne und Tags erweitert
+- [x] Sichere Auswahl mehrerer SuperChat-Bestandstreffer direkt im Kontaktdetail ergänzt
 - [x] STRATO-E-Mail-Postfach als IMAP-/SMTP-MVP mit Posteingang, Lesen, Antworten, Versand und Kontaktzuordnung integriert
 - [x] Eingehende STRATO-E-Mails bekannter Kontakte idempotent in der Aktivitäten-Timeline ergänzt und Migration `0061_strato_incoming_email_activities.sql` live angewendet
 - [x] Regel-Sammelausführung zeigt KlickTipp-Erfolge, Fehler und übersprungene Übertragungen; archivierte Kontakte werden ausgeschlossen
