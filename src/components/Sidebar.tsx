@@ -1,7 +1,7 @@
 'use client'
 // Sidebar-Navigation — Desktop: statisch links. Mobile: Drawer mit Hamburger.
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { logout } from '@/app/login/actions'
 import type { CurrentUser } from '@/lib/auth'
@@ -164,6 +164,7 @@ interface SidebarProps {
 
 export default function Sidebar({ currentUser }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [unreadMentions, setUnreadMentions] = useState(0)
@@ -196,6 +197,18 @@ export default function Sidebar({ currentUser }: SidebarProps) {
 
   const isActive = (item: NavItem) =>
     matchesRoute(item.href) || (item.alsoActiveFor ?? []).some((href) => matchesRoute(href))
+
+  // Auf der Kontaktdetailseite führt auch der dauerhaft sichtbare Menüpunkt
+  // „Kontakte“ zurück in die zuvor verwendete Listenansicht. Ohne diese
+  // Sonderbehandlung würde er immer /kontakte und damit „Alle Kontakte“ öffnen.
+  const navHref = (item: NavItem): string => {
+    if (item.href !== '/kontakte' || !/^\/kontakte\/[^/]+$/.test(pathname)) return item.href
+    const requestedReturnTo = searchParams.get('returnTo')
+    if (requestedReturnTo === '/kontakte' || requestedReturnTo?.startsWith('/kontakte?')) {
+      return requestedReturnTo
+    }
+    return item.href
+  }
 
   // Drawer bei Navigation schließen
   useEffect(() => {
@@ -286,7 +299,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={navHref(item)}
               className={`
                 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                 ${active

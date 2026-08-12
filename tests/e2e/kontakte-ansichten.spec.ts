@@ -45,7 +45,9 @@ test.describe('Kontaktübersicht: Ansichten und Rücksprung', () => {
     })
     expect(storedPosition?.tableTop).toBe(expectedTableTop)
 
-    await page.getByRole('link', { name: '← Zurück zur Übersicht' }).click()
+    // Der Key-User nutzt den ständig sichtbaren Menüpunkt „Kontakte“ für den
+    // Rücksprung. Auch dieser Weg muss das vollständige returnTo-Ziel verwenden.
+    await page.getByRole('link', { name: 'Kontakte', exact: true }).click()
 
     await expect(page).toHaveURL(/view=leads/)
     await expect(page).toHaveURL(/sort=status/)

@@ -290,7 +290,7 @@ export default function KontaktDetailPage() {
         body: JSON.stringify({ archiveTasks }),
       })
       if (!res.ok) throw new Error('Fehler beim Archivieren')
-      router.push('/kontakte')
+      router.push(returnTo)
     } catch (err) {
       console.error('Fehler beim Archivieren:', err)
     }
@@ -480,7 +480,7 @@ export default function KontaktDetailPage() {
     return (
       <div className="p-8">
         <p className="text-gray-400">Kontakt nicht gefunden.</p>
-        <Link href="/kontakte" className="text-yellow-600 hover:underline mt-2 inline-block">
+        <Link href={returnTo} className="text-yellow-600 hover:underline mt-2 inline-block">
           ← Zurück zur Übersicht
         </Link>
       </div>
