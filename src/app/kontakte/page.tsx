@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { KontaktImportModal } from '@/components/KontaktImportModal'
 import { HelpButton } from '@/components/help/HelpButton'
+import { ContactIntegrationPopover } from '@/components/ContactIntegrationPopover'
 
 interface Kontakt {
   id: string
@@ -30,9 +31,16 @@ interface Kontakt {
   pipeline_stage?: string
   facebook_id?: string
   facebook_phase?: string
+  dialfire_id?: string
+  dialfire_campaign_id?: string
   dialfire_campaign?: string
   dialfire_task?: string
-  klicktipp_tags?: string
+  dialfire_sync_error?: string | null
+  klicktipp_id?: string
+  klicktipp_tags?: string[]
+  superchat_id?: string | null
+  superchat_labels?: string[]
+  superchat_sync_error?: string | null
   created_at: string
   updated_at?: string
   notes?: string
@@ -313,7 +321,27 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   pipeline_stage: 60,
   source: 50,
   progress: 50,
-  actions: 60,
+  actions: 92,
+}
+
+function getInitials(name?: string) {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? []
+  if (parts.length === 0) return '—'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
+}
+
+function getAvatarColor(name?: string) {
+  if (!name) return 'border-gray-200 bg-gray-100 text-gray-400'
+  const colors = [
+    'border-violet-200 bg-violet-100 text-violet-700',
+    'border-blue-200 bg-blue-100 text-blue-700',
+    'border-emerald-200 bg-emerald-100 text-emerald-700',
+    'border-rose-200 bg-rose-100 text-rose-700',
+    'border-amber-200 bg-amber-100 text-amber-700',
+  ]
+  const index = Array.from(name).reduce((sum, character) => sum + character.charCodeAt(0), 0) % colors.length
+  return colors[index]
 }
 
 export default function KontaktePage() {
@@ -1079,7 +1107,7 @@ export default function KontaktePage() {
 
                 {/* ACTIONS Column (always at end if visible) */}
                 {visibleColumns.actions && (
-                  <th className={`text-left text-sm font-semibold text-gray-700 uppercase tracking-wide py-3 px-4 text-right`} style={{ width: '120px', minWidth: '120px' }}>
+                  <th className={`text-left text-sm font-semibold text-gray-700 uppercase tracking-wide py-3 px-4 text-right`} style={{ width: '154px', minWidth: '154px' }}>
                     Aktionen
                   </th>
                 )}
@@ -1268,8 +1296,25 @@ export default function KontaktePage() {
 
                     {/* ACTIONS Column (always at end if visible) */}
                     {visibleColumns.actions && (
-                      <td className={`px-4 py-3 text-right`} style={{ width: '120px', minWidth: '120px' }} onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-0.5 justify-end pointer-events-auto">
+                      <td className={`px-4 py-3 text-right`} style={{ width: '154px', minWidth: '154px' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5 justify-end pointer-events-auto">
+                          {(() => {
+                            const assignedName = teamMembersById[kontakt.assigned_user_id || '']
+                            return (
+                              <span
+                                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${getAvatarColor(assignedName)}`}
+                                title={assignedName ? `Verantwortlich: ${assignedName}` : 'Nicht zugewiesen'}
+                                aria-label={assignedName ? `Verantwortlich: ${assignedName}` : 'Nicht zugewiesen'}
+                              >
+                                {getInitials(assignedName)}
+                              </span>
+                            )
+                          })()}
+
+                          <ContactIntegrationPopover contact={kontakt} />
+
+                          <div className="mx-0.5 h-5 w-px bg-gray-200" aria-hidden="true" />
+
                           {/* Quick Note */}
                           <button
                             onClick={(e) => {
@@ -1409,6 +1454,26 @@ export default function KontaktePage() {
                   </div>
                   <span className="text-xs text-gray-400 whitespace-nowrap">{getStepNumber(kontakt.pipeline_stage)}/12</span>
                 </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between rounded-lg border border-gray-100 bg-white/70 px-2.5 py-2">
+                {(() => {
+                  const assignedName = teamMembersById[kontakt.assigned_user_id || '']
+                  return (
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${getAvatarColor(assignedName)}`}
+                        title={assignedName ? `Verantwortlich: ${assignedName}` : 'Nicht zugewiesen'}
+                      >
+                        {getInitials(assignedName)}
+                      </span>
+                      <span className="truncate text-xs text-gray-500">
+                        {assignedName ? `Verantwortlich: ${assignedName}` : 'Nicht zugewiesen'}
+                      </span>
+                    </div>
+                  )
+                })()}
+                <ContactIntegrationPopover contact={kontakt} />
               </div>
 
               <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-100">

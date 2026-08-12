@@ -67,10 +67,20 @@ export async function GET(request: NextRequest) {
     // Tags gebündelt nachladen (ein Query statt N+1)
     let contacts = data ?? []
     if (contacts.length > 0) {
+      const contactIds = contacts.map((contact) => contact.id)
       const { data: tagRows } = await supabase
         .from('contact_tag_map')
         .select('contact_id, tag:tag_id(id, name)')
-        .in('contact_id', contacts.map((c) => c.id))
+        .in('contact_id', contactIds)
+
+      // Bereits gesetzte SuperChat-Gesprächslabels stehen im Aktivitätsprotokoll.
+      // Gebündelt laden, damit die Kontaktliste keine Einzelabfragen je Zeile erzeugt.
+      const { data: superchatLabelRows } = await supabase
+        .from('activities')
+        .select('lead_id, description')
+        .in('lead_id', contactIds)
+        .in('type', ['superchat_label_applied', 'automation_executed'])
+        .ilike('description', 'SuperChat-Gesprächslabel%gesetzt%')
 
       const tagsByContact = new Map<string, { id: string; name: string }[]>()
       for (const row of tagRows ?? []) {
@@ -78,7 +88,21 @@ export async function GET(request: NextRequest) {
         list.push((row as any).tag)
         tagsByContact.set((row as any).contact_id, list)
       }
-      contacts = contacts.map((c) => ({ ...c, tags: tagsByContact.get(c.id) ?? [] }))
+
+      const superchatLabelsByContact = new Map<string, Set<string>>()
+      for (const row of superchatLabelRows ?? []) {
+        const label = row.description?.match(/„([^”]+)“/)?.[1]
+        if (!row.lead_id || !label) continue
+        const labels = superchatLabelsByContact.get(row.lead_id) ?? new Set<string>()
+        labels.add(label)
+        superchatLabelsByContact.set(row.lead_id, labels)
+      }
+
+      contacts = contacts.map((contact) => ({
+        ...contact,
+        tags: tagsByContact.get(contact.id) ?? [],
+        superchat_labels: Array.from(superchatLabelsByContact.get(contact.id) ?? []),
+      }))
     }
 
     return Response.json({ success: true, data: contacts })
