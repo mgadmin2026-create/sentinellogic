@@ -208,6 +208,7 @@ export default function SyncPage() {
   const [superchatReconcileLoading, setSuperchatReconcileLoading] = useState(false)
   const [superchatFacebookSyncLoading, setSuperchatFacebookSyncLoading] = useState(false)
   const [superchatNotInterestedLoading, setSuperchatNotInterestedLoading] = useState(false)
+  const [sparteFehltSyncLoading, setSparteFehltSyncLoading] = useState(false)
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   const [runDetails, setRunDetails] = useState<Record<string, BatchDetail | null>>({})
   const [detailLoading, setDetailLoading] = useState<string | null>(null)
@@ -382,6 +383,70 @@ export default function SyncPage() {
       zeigeToast('error', err instanceof Error ? err.message : 'SuperChat-Synchronisation fehlgeschlagen')
     } finally {
       setSuperchatNotInterestedLoading(false)
+    }
+  }
+
+  async function handleSparteFehltSync() {
+    setSparteFehltSyncLoading(true)
+    const total = {
+      examined: 0,
+      klicktippSynchronized: 0,
+      klicktippIdsSaved: 0,
+      superchatCreated: 0,
+      superchatLinkedExisting: 0,
+      superchatAlreadyLinked: 0,
+      superchatAmbiguous: 0,
+      superchatConflicts: 0,
+      skipped: 0,
+      failed: 0,
+    }
+
+    try {
+      for (const phase of ['klicktipp', 'superchat'] as const) {
+        let cursor: string | null = null
+        for (let batch = 0; batch < 500; batch += 1) {
+          const response: Response = await fetch('/api/maintenance/sparte-fehlt-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phase, cursor }),
+          })
+          const json: {
+            success: boolean
+            error?: string
+            data: Record<string, number | boolean | string | null> & {
+              nextCursor: string | null
+              hasMore: boolean
+              rateLimited: boolean
+            }
+          } = await response.json()
+          if (!json.success) throw new Error(json.error || 'Sonderaktion fehlgeschlagen')
+
+          const data = json.data
+          for (const key of Object.keys(total) as Array<keyof typeof total>) {
+            const value = data[key]
+            if (typeof value === 'number') total[key] += value
+          }
+          cursor = data.nextCursor
+
+          if (data.rateLimited) {
+            zeigeToast('success', 'SuperChat-Anfragelimit erreicht – automatische Fortsetzung in 65 Sekunden.')
+            await new Promise((resolve) => setTimeout(resolve, 65_000))
+            continue
+          }
+          if (!data.hasMore) break
+        }
+      }
+
+      zeigeToast(
+        total.failed === 0 && total.superchatConflicts === 0 && total.superchatAmbiguous === 0 ? 'success' : 'error',
+        `Sparte fehlt: KlickTipp ${total.klicktippSynchronized} synchronisiert (${total.klicktippIdsSaved} IDs gespeichert); SuperChat ${total.superchatCreated} neu, ${total.superchatLinkedExisting} bestehend verbunden, ${total.superchatAlreadyLinked} bereits verbunden; ${total.superchatAmbiguous} mehrdeutig, ${total.superchatConflicts} Konflikte, ${total.failed} Fehler`
+      )
+      loadHealth()
+      loadRuns()
+    } catch (err) {
+      zeigeToast('error', err instanceof Error ? err.message : 'Sonderaktion fehlgeschlagen')
+    } finally {
+      setSparteFehltSyncLoading(false)
     }
   }
 
@@ -762,8 +827,16 @@ export default function SyncPage() {
                 {source.id === 'superchat' && (
                   <>
                     <button
+                      onClick={handleSparteFehltSync}
+                      disabled={sparteFehltSyncLoading || superchatNotInterestedLoading || superchatFacebookSyncLoading || superchatReconcileLoading}
+                      title="Verknüpft Kontakte mit dem Tag Sparte fehlt bei KlickTipp und SuperChat und setzt in KlickTipp AZ Kunden sowie AZ Firmen Kunden"
+                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-blue-200 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg transition-all hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {sparteFehltSyncLoading ? 'Sparte fehlt wird verarbeitet…' : 'Sparte fehlt → KlickTipp & SuperChat'}
+                    </button>
+                    <button
                       onClick={handleSuperchatNotInterestedSync}
-                      disabled={superchatNotInterestedLoading || superchatFacebookSyncLoading || superchatReconcileLoading}
+                      disabled={superchatNotInterestedLoading || superchatFacebookSyncLoading || superchatReconcileLoading || sparteFehltSyncLoading}
                       title="Synchronisiert ausschließlich aktive Kontakte mit Status Nicht interessiert und setzt auf vorhandenen Gesprächen das Label Kein Interesse"
                       className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-red-200 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg transition-all hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -771,14 +844,14 @@ export default function SyncPage() {
                     </button>
                     <button
                       onClick={handleSuperchatFacebookSync}
-                      disabled={superchatFacebookSyncLoading || superchatReconcileLoading || superchatNotInterestedLoading}
+                      disabled={superchatFacebookSyncLoading || superchatReconcileLoading || superchatNotInterestedLoading || sparteFehltSyncLoading}
                       className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300] text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFD333] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {superchatFacebookSyncLoading ? 'Facebook-Kontakte werden übertragen…' : 'Offene Facebook-Kontakte übertragen'}
                     </button>
                     <button
                       onClick={handleSuperchatReconcile}
-                      disabled={superchatReconcileLoading || superchatFacebookSyncLoading || superchatNotInterestedLoading}
+                      disabled={superchatReconcileLoading || superchatFacebookSyncLoading || superchatNotInterestedLoading || sparteFehltSyncLoading}
                       className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300]/10 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFC300]/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {superchatReconcileLoading ? 'Bestand wird abgeglichen…' : 'Bestehende Kontakte verbinden'}
