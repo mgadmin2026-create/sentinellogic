@@ -206,6 +206,7 @@ export default function SyncPage() {
   const [runsToast, setRunsToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [retryAllLoading, setRetryAllLoading] = useState<string | null>(null)
   const [superchatReconcileLoading, setSuperchatReconcileLoading] = useState(false)
+  const [superchatFacebookSyncLoading, setSuperchatFacebookSyncLoading] = useState(false)
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
   const [runDetails, setRunDetails] = useState<Record<string, BatchDetail | null>>({})
   const [detailLoading, setDetailLoading] = useState<string | null>(null)
@@ -297,6 +298,35 @@ export default function SyncPage() {
       zeigeToast('error', err instanceof Error ? err.message : 'Bestandsabgleich fehlgeschlagen')
     } finally {
       setSuperchatReconcileLoading(false)
+    }
+  }
+
+  async function handleSuperchatFacebookSync() {
+    setSuperchatFacebookSyncLoading(true)
+    const total = { examined: 0, created: 0, conflicts: 0, failed: 0, remaining: 0 }
+    try {
+      for (let batch = 0; batch < 20; batch += 1) {
+        const res = await fetch('/api/maintenance/superchat-sync-facebook', { method: 'POST' })
+        const json = await res.json()
+        if (!json.success) throw new Error(json.error || 'Facebook-Synchronisation fehlgeschlagen')
+        const data = json.data
+        total.examined += data.examined
+        total.created += data.created
+        total.conflicts += data.conflicts
+        total.failed += data.failed
+        total.remaining = data.remaining
+        if (data.remaining === 0 || data.created === 0) break
+      }
+      zeigeToast(
+        total.remaining === 0 ? 'success' : 'error',
+        `SuperChat Facebook: ${total.created} übertragen, ${total.conflicts} Konflikte, ${total.failed} Fehler, ${total.remaining} noch offen`
+      )
+      loadHealth()
+      loadRuns()
+    } catch (err) {
+      zeigeToast('error', err instanceof Error ? err.message : 'Facebook-Synchronisation fehlgeschlagen')
+    } finally {
+      setSuperchatFacebookSyncLoading(false)
     }
   }
 
@@ -675,13 +705,22 @@ export default function SyncPage() {
               </div>
               <div className="flex flex-col gap-2 mt-auto">
                 {source.id === 'superchat' && (
-                  <button
-                    onClick={handleSuperchatReconcile}
-                    disabled={superchatReconcileLoading}
-                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300]/10 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFC300]/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {superchatReconcileLoading ? 'Bestand wird abgeglichen…' : 'Bestehende Kontakte verbinden'}
-                  </button>
+                  <>
+                    <button
+                      onClick={handleSuperchatFacebookSync}
+                      disabled={superchatFacebookSyncLoading || superchatReconcileLoading}
+                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300] text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFD333] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {superchatFacebookSyncLoading ? 'Facebook-Kontakte werden übertragen…' : 'Offene Facebook-Kontakte übertragen'}
+                    </button>
+                    <button
+                      onClick={handleSuperchatReconcile}
+                      disabled={superchatReconcileLoading || superchatFacebookSyncLoading}
+                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300]/10 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFC300]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {superchatReconcileLoading ? 'Bestand wird abgeglichen…' : 'Bestehende Kontakte verbinden'}
+                    </button>
+                  </>
                 )}
                 {isNonRetryable ? (
                   <button
