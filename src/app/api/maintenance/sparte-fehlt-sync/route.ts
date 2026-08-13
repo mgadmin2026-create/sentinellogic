@@ -11,7 +11,7 @@ export const fetchCache = 'force-no-store'
 export const maxDuration = 60
 
 const BATCH_SIZE = 5
-const SOURCE_TAG = 'Sparte fehlt'
+const SOURCE_TAGS = ['Sparte fehlt', 'Kontakttyp leer'] as const
 const KLICKTIPP_TAGS = ['AZ Kunden', 'AZ Firmen Kunden']
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -25,31 +25,32 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => ({}))
   const phase: Phase = body.phase === 'superchat' ? 'superchat' : 'klicktipp'
+  const sourceTag = SOURCE_TAGS.includes(body.sourceTag) ? body.sourceTag : SOURCE_TAGS[0]
   const cursor = typeof body.cursor === 'string' && UUID_PATTERN.test(body.cursor) ? body.cursor : null
   const supabase = createServerClient()
 
-  const { data: sourceTag, error: tagError } = await supabase
+  const { data: sourceTagRow, error: tagError } = await supabase
     .from('tags')
     .select('id')
-    .ilike('name', SOURCE_TAG)
+    .ilike('name', sourceTag)
     .maybeSingle()
 
-  if (tagError || !sourceTag) {
-    console.error('[Sparte fehlt Sync] Quell-Tag konnte nicht eindeutig geladen werden')
-    return Response.json({ success: false, error: `Tag „${SOURCE_TAG}“ wurde nicht eindeutig gefunden` }, { status: 500 })
+  if (tagError || !sourceTagRow) {
+    console.error('[Tag-Sonderaktion] Quell-Tag konnte nicht eindeutig geladen werden')
+    return Response.json({ success: false, error: `Tag „${sourceTag}“ wurde nicht eindeutig gefunden` }, { status: 500 })
   }
 
   let mapQuery = supabase
     .from('contact_tag_map')
     .select('contact_id')
-    .eq('tag_id', sourceTag.id)
+    .eq('tag_id', sourceTagRow.id)
     .order('contact_id', { ascending: true })
     .limit(BATCH_SIZE)
   if (cursor) mapQuery = mapQuery.gt('contact_id', cursor)
 
   const { data: mappings, error: mappingError } = await mapQuery
   if (mappingError) {
-    console.error('[Sparte fehlt Sync] Kontaktzuordnungen konnten nicht geladen werden')
+    console.error('[Tag-Sonderaktion] Kontaktzuordnungen konnten nicht geladen werden')
     return Response.json({ success: false, error: 'Kontakte konnten nicht geladen werden' }, { status: 500 })
   }
 
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     .eq('is_test_data', false)
 
   if (contactError) {
-    console.error('[Sparte fehlt Sync] Kontaktdaten konnten nicht geladen werden')
+    console.error('[Tag-Sonderaktion] Kontaktdaten konnten nicht geladen werden')
     return Response.json({ success: false, error: 'Kontaktdaten konnten nicht geladen werden' }, { status: 500 })
   }
 
@@ -147,7 +148,7 @@ export async function POST(request: Request) {
         result.hasMore = true
         return Response.json({ success: true, data: result })
       }
-      console.error('[Sparte fehlt Sync] SuperChat-Bestand konnte nicht abgeglichen werden')
+      console.error('[Tag-Sonderaktion] SuperChat-Bestand konnte nicht abgeglichen werden')
       return Response.json({ success: false, error: 'SuperChat-Bestandsabgleich fehlgeschlagen' }, { status: 502 })
     }
 
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
             lead_id: contact.id,
             type: 'superchat_synced',
             description: 'Bestehenden SuperChat-Kontakt für Sonderaktion verknüpft',
-            data: { operation: 'linked_bulk', matched_by: match.matchedBy, source_tag: SOURCE_TAG },
+            data: { operation: 'linked_bulk', matched_by: match.matchedBy, source_tag: sourceTag },
             user_id: currentUser.id,
           })
         }

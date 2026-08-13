@@ -164,6 +164,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] SuperChat-Sammellauf priorisiert offene Kontakte und prüft Gesprächslabels anschließend in einem eigenen Durchlauf
 - [x] Geschützte Sonderaktion für Kontakte mit Tag `Sparte fehlt`: KlickTipp-Verknüpfung mit `AZ Kunden` und `AZ Firmen Kunden`, danach eindeutiger SuperChat-Bestandsabgleich samt ID-Rückschreibung
 - [x] Sonderaktion `Sparte fehlt` produktiv ausgeführt: 134/138 KlickTipp-IDs gespeichert, 115 SuperChat-Bestandskontakte verbunden und 22 neu angelegt; vier ungültige E-Mail-Adressen sowie ein mehrdeutiger SuperChat-Treffer bleiben zur manuellen Klärung offen
+- [x] Sonderaktion für Kontakte mit Tag `Kontakttyp leer` ergänzt: KlickTipp-Abgleich mit `AZ Kunden` und `AZ Firmen Kunden`, anschließend eindeutige SuperChat-Verknüpfung samt ID-Rückschreibung
 - [x] STRATO-E-Mail-Postfach als IMAP-/SMTP-MVP mit Posteingang, Lesen, Antworten, Versand und Kontaktzuordnung integriert
 - [x] Eingehende STRATO-E-Mails bekannter Kontakte idempotent in der Aktivitäten-Timeline ergänzt und Migration `0061_strato_incoming_email_activities.sql` live angewendet
 - [x] Regel-Sammelausführung zeigt KlickTipp-Erfolge, Fehler und übersprungene Übertragungen; archivierte Kontakte werden ausgeschlossen
