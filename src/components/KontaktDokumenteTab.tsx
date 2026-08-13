@@ -5,12 +5,20 @@ import { formatBytes, formatDate } from '@/lib/utils'
 import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWerte } from '@/components/BeitragsuebersichtUebernahmeForm'
 import type { Zyklus } from '@/lib/beitragsuebersicht-zyklus'
 import { findeKategorieFuerSparte } from '@/lib/sparte-kategorie-match'
+import {
+  DOKUMENTTYP_OPTIONEN,
+  DOKUMENTTYP_FILTER_OPTIONEN,
+  dokumenttypZuFilter,
+  dokumenttypBadgeLabel,
+  type DokumenttypFilter,
+} from '@/lib/dokumenttyp'
 
 interface Dokument {
   id: string
   file_id: string
   file_name: string
   kategorie?: string
+  dokumenttyp?: string | null
   original_size: number
   compressed_size: number
   compression_ratio: number
@@ -26,6 +34,8 @@ interface KontaktDokumenteTabProps {
   kontaktId: string
   /** Primäre Sparte des Kontakts (falls vorhanden) — steuert die automatische Vorbelegung der Ablage-Kategorie. */
   primarySparte?: string | null
+  /** Öffnet eine vorbefüllte neue Aufgabe (Titel, Fälligkeit in N Tagen) — z.B. für "Angebot nachverfolgen". */
+  onCreateFolgeaufgabe?: (titel: string, fälligInTagen: number) => void
 }
 
 // Baum des Kontakt-Typs zu waehlbaren Pfaden flachklopfen (max. 2 Ebenen)
@@ -40,7 +50,7 @@ function flattenStruktur(nodes: StrukturNode[]): string[] {
   return paths
 }
 
-export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumenteTabProps) {
+export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeaufgabe }: KontaktDokumenteTabProps) {
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -55,6 +65,10 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumen
   const [kategorien, setKategorien] = useState<string[]>([])
   const [uploadKategorie, setUploadKategorie] = useState('Sonstiges')
   const [filterKategorie, setFilterKategorie] = useState<string>('alle')
+  const [filterTyp, setFilterTyp] = useState<DokumenttypFilter>('alle')
+  const [typConfirmations, setTypConfirmations] = useState<
+    { dokumentId: string; fileName: string; dokumenttyp: string; aufgabeStatus: 'idle' | 'angelegt' }[]
+  >([])
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [newFileName, setNewFileName] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -244,6 +258,14 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumen
           setWarning(`⚠️ Dokument hochgeladen, aber KI-Analyse fehlgeschlagen: ${data.analyseWarnung}`)
         }
 
+        // Dokumenttyp erkannt: Bestätigungs-/Korrektur-Karte einblenden
+        if (data.dokument?.dokumenttyp) {
+          setTypConfirmations((prev) => [
+            ...prev,
+            { dokumentId: data.dokument.id, fileName: data.dokument.file_name, dokumenttyp: data.dokument.dokumenttyp, aufgabeStatus: 'idle' },
+          ])
+        }
+
         // Vertrag/Angebot erkannt: Übernahme in Beitragsübersicht muss der Nutzer bestätigen
         if (data.beitragsuebersichtVorschlag) {
           const v = data.beitragsuebersichtVorschlag
@@ -303,6 +325,29 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumen
     }
   }
 
+  const dismissTypConfirmation = (dokumentId: string) => {
+    setTypConfirmations((prev) => prev.filter((c) => c.dokumentId !== dokumentId))
+  }
+
+  const korrigiereDokumenttyp = async (dokumentId: string, neuerTyp: string) => {
+    setTypConfirmations((prev) => prev.map((c) => (c.dokumentId === dokumentId ? { ...c, dokumenttyp: neuerTyp } : c)))
+    setDokumente((prev) => prev.map((d) => (d.id === dokumentId ? { ...d, dokumenttyp: neuerTyp } : d)))
+    try {
+      await fetch(`/api/kontakte/${kontaktId}/dokumente`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dokumentId, dokumenttyp: neuerTyp }),
+      })
+    } catch (err) {
+      setError('Dokumenttyp konnte nicht korrigiert werden')
+    }
+  }
+
+  const handleAngebotFolgeaufgabe = (dokumentId: string) => {
+    onCreateFolgeaufgabe?.('Angebot nachverfolgen', 3)
+    dismissTypConfirmation(dokumentId)
+  }
+
   const confirmBeitragsuebersicht = async () => {
     if (!beitragsuebersichtModal) return
     const { werte } = beitragsuebersichtModal
@@ -338,71 +383,69 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumen
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header with stats */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">📄 Dokumente</h3>
-          <p className="text-sm text-gray-600 mt-1">{stats.count} Dokumente, {formatBytes(stats.totalSize)} gespeichert</p>
+          <p className="text-xs text-gray-500">{stats.count} Dokumente, {formatBytes(stats.totalSize)} gespeichert</p>
         </div>
         {ordnerUrl && (
           <a
             href={ordnerUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
+            className="px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition"
           >
-            📁 In Google Drive öffnen →
+            📁 Google Drive →
           </a>
         )}
       </div>
 
       {/* Error message */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
           {error}
         </div>
       )}
 
       {/* Warning message */}
       {warning && (
-        <div className="p-4 bg-yellow-50 border border-yellow-300 rounded-lg text-yellow-800 text-sm">
+        <div className="p-3 bg-yellow-50 border border-yellow-300 rounded-lg text-yellow-800 text-sm">
           {warning}
         </div>
       )}
 
-      {/* Kategorie-Auswahl fuer Upload */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-          🗂️ Ablegen unter:
-        </label>
-        <select
-          value={uploadKategorie}
-          onChange={(e) => setUploadKategorie(e.target.value)}
-          disabled={uploading}
-          className="flex-1 max-w-xs px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-white"
-        >
-          {kategorien.map((pfad) => (
-            <option key={pfad} value={pfad}>
-              {pfad.replace('/', ' / ')}
-            </option>
-          ))}
-          <option value="Sonstiges">Sonstiges</option>
-        </select>
-      </div>
-
-      {/* Upload zone */}
+      {/* Ablage-Kategorie + Upload in einer schlanken Zeile statt zwei
+          getrennten, hohen Blöcken — spart deutlich vertikalen Platz. */}
       <div
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        className={`relative border-2 border-dashed rounded-xl p-8 transition-colors ${
-          dragActive
-            ? 'border-yellow-400 bg-yellow-50'
-            : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+        className={`flex flex-wrap items-center gap-3 rounded-xl border-2 border-dashed px-4 py-2.5 transition-colors ${
+          dragActive ? 'border-yellow-400 bg-yellow-50' : 'border-gray-300 bg-gray-50 hover:border-gray-400'
         }`}
       >
+        <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
+          <span className="hidden sm:inline">🗂️ Ablegen unter:</span>
+          <select
+            value={uploadKategorie}
+            onChange={(e) => setUploadKategorie(e.target.value)}
+            disabled={uploading}
+            className="max-w-[10rem] sm:max-w-xs px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400/40 bg-white"
+          >
+            {kategorien.map((pfad) => (
+              <option key={pfad} value={pfad}>
+                {pfad.replace('/', ' / ')}
+              </option>
+            ))}
+            <option value="Sonstiges">Sonstiges</option>
+          </select>
+        </label>
+
+        <span className="text-gray-300 hidden sm:inline">|</span>
+
         <input
           type="file"
           id="file-input"
@@ -413,34 +456,52 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumen
         />
         <label
           htmlFor="file-input"
-          className="flex flex-col items-center justify-center cursor-pointer"
+          className="flex-1 min-w-[10rem] cursor-pointer text-sm text-gray-600 hover:text-gray-900"
         >
-          <svg
-            className="w-12 h-12 text-gray-400 mb-3"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
-            />
-          </svg>
-          <p className="text-lg font-medium text-gray-900">
-            Dateien hochladen
-          </p>
-          <p className="text-sm text-gray-600 mt-1">
-            Ziehen Sie Dateien hierher oder klicken zum Auswählen
-          </p>
-          {uploading && (
-            <p className="text-sm text-yellow-600 mt-2">
-              ⏳ KI analysiert Dokument (kann bis zu 30s dauern)…
-            </p>
+          {uploading ? (
+            <span className="text-yellow-600">⏳ KI analysiert Dokument…</span>
+          ) : (
+            <>📤 Datei wählen oder hierher ziehen</>
           )}
         </label>
       </div>
+
+      {/* Dokumenttyp-Bestätigung nach Upload */}
+      {typConfirmations.map((c) => (
+        <div key={c.dokumentId} className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-indigo-900">
+              📄 <strong className="truncate">{c.fileName}</strong> erkannt als:{' '}
+              <select
+                value={c.dokumenttyp}
+                onChange={(e) => korrigiereDokumenttyp(c.dokumentId, e.target.value)}
+                className="px-2 py-1 border border-indigo-300 rounded-lg text-sm bg-white focus:outline-none"
+              >
+                {DOKUMENTTYP_OPTIONEN.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </span>
+            <div className="flex items-center gap-2">
+              {c.dokumenttyp === 'angebot' && (
+                <button
+                  onClick={() => handleAngebotFolgeaufgabe(c.dokumentId)}
+                  className="px-2.5 py-1 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
+                >
+                  + Aufgabe: Angebot nachverfolgen
+                </button>
+              )}
+              <button
+                onClick={() => dismissTypConfirmation(c.dokumentId)}
+                className="px-2 py-1 text-xs text-indigo-400 hover:text-indigo-700"
+                title="Ausblenden"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      ))}
 
       {/* Documents list */}
       {loading ? (
@@ -452,24 +513,42 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumen
         </div>
       ) : (
         <div className="border border-gray-200 rounded-xl overflow-hidden">
-          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-gray-900">
-              📋 Alle Dokumente ({dokumente.length})
-            </p>
-            <select
-              value={filterKategorie}
-              onChange={(e) => setFilterKategorie(e.target.value)}
-              className="px-2 py-1 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none"
-            >
-              <option value="alle">Alle Kategorien</option>
-              {Array.from(new Set(dokumente.map((d) => d.kategorie || 'Sonstiges'))).sort().map((k) => (
-                <option key={k} value={k}>{k.replace('/', ' / ')}</option>
+          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-gray-900">
+                📋 Alle Dokumente ({dokumente.length})
+              </p>
+              <select
+                value={filterKategorie}
+                onChange={(e) => setFilterKategorie(e.target.value)}
+                className="px-2 py-1 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none"
+              >
+                <option value="alle">Alle Kategorien</option>
+                {Array.from(new Set(dokumente.map((d) => d.kategorie || 'Sonstiges'))).sort().map((k) => (
+                  <option key={k} value={k}>{k.replace('/', ' / ')}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {DOKUMENTTYP_FILTER_OPTIONEN.map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => setFilterTyp(o.value)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    filterTyp === o.value
+                      ? 'bg-gray-900 text-white'
+                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                  }`}
+                >
+                  {o.label}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
           <div className="divide-y divide-gray-150">
             {dokumente
               .filter((doc) => filterKategorie === 'alle' || (doc.kategorie || 'Sonstiges') === filterKategorie)
+              .filter((doc) => filterTyp === 'alle' || dokumenttypZuFilter(doc.dokumenttyp) === filterTyp)
               .map((doc) => (
               <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
                 <div className="flex items-start justify-between gap-4">
@@ -510,6 +589,11 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte }: KontaktDokumen
                         <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
                           {(doc.kategorie || 'Sonstiges').replace('/', ' / ')}
                         </span>
+                        {doc.dokumenttyp && (
+                          <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
+                            {dokumenttypBadgeLabel(doc.dokumenttyp)}
+                          </span>
+                        )}
                         <a
                           href={`https://drive.google.com/file/d/${doc.file_id}/view`}
                           target="_blank"

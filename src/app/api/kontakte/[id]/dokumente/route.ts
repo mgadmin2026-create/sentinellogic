@@ -217,6 +217,7 @@ export async function POST(
         original_size: uploadResult.originalSize,
         compressed_size: uploadResult.compressedSize,
         compression_ratio: uploadResult.compressionRatio,
+        dokumenttyp: extraktion?.dokumenttyp ?? null,
         created_by: 'upload',
       })
       .select()
@@ -241,6 +242,15 @@ export async function POST(
           flatten(struktur.privat),
           flatten(struktur.gewerbe)
         )
+        // Insert oben lief bereits ohne Dokumenttyp (Analyse war zu diesem
+        // Zeitpunkt noch nicht da) — jetzt nachtragen.
+        if (extraktion?.dokumenttyp) {
+          await supabase
+            .from('dokumente_metadata')
+            .update({ dokumenttyp: extraktion.dokumenttyp })
+            .eq('id', dokument.id)
+          dokument.dokumenttyp = extraktion.dokumenttyp
+        }
       } catch (err) {
         analyseFehler = err instanceof Error ? err.message : String(err)
         console.error('[Dokumente] KI-Analyse (nach Bestätigung) fehlgeschlagen:', analyseFehler)
@@ -317,6 +327,7 @@ export async function POST(
         original_size: uploadResult.originalSize,
         compressed_size: uploadResult.compressedSize,
         compression_ratio: uploadResult.compressionRatio,
+        dokumenttyp: dokument.dokumenttyp,
         created_at: dokument.created_at,
       },
       // Sichtbar machen, falls die KI-Analyse fehlgeschlagen ist (kein Vertrag erkannt/gespeichert)
@@ -330,7 +341,9 @@ export async function POST(
   }
 }
 
-// PATCH: Dokument umbenennen
+const VALID_DOKUMENTTYPEN = new Set(['police', 'angebot', 'nachtrag', 'rechnung', 'sonstiges'])
+
+// PATCH: Dokument umbenennen und/oder Dokumenttyp korrigieren
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -340,13 +353,16 @@ export async function PATCH(
   try {
     const supabase = createServerClient()
     const body = await request.json()
-    const { dokumentId, newFileName } = body
+    const { dokumentId, newFileName, dokumenttyp } = body
 
-    if (!dokumentId || !newFileName) {
+    if (!dokumentId || (!newFileName && dokumenttyp === undefined)) {
       return NextResponse.json(
-        { error: 'dokumentId und newFileName erforderlich' },
+        { error: 'dokumentId und (newFileName oder dokumenttyp) erforderlich' },
         { status: 400 }
       )
+    }
+    if (dokumenttyp !== undefined && dokumenttyp !== null && !VALID_DOKUMENTTYPEN.has(dokumenttyp)) {
+      return NextResponse.json({ error: 'Ungültiger Dokumenttyp' }, { status: 400 })
     }
 
     // Dokument-Metadaten laden
@@ -361,13 +377,19 @@ export async function PATCH(
       return NextResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
     }
 
-    // In Google Drive umbenennen
-    await renameFileInGoogleDrive(dokument.file_id, newFileName)
+    // In Google Drive umbenennen (nur wenn tatsächlich ein neuer Name übergeben wurde)
+    if (newFileName) {
+      await renameFileInGoogleDrive(dokument.file_id, newFileName)
+    }
 
     // Metadaten aktualisieren
+    const updates: Record<string, unknown> = {}
+    if (newFileName) updates.file_name = newFileName
+    if (dokumenttyp !== undefined) updates.dokumenttyp = dokumenttyp
+
     const { data: updated, error: updateError } = await supabase
       .from('dokumente_metadata')
-      .update({ file_name: newFileName })
+      .update(updates)
       .eq('id', dokumentId)
       .select()
       .single()

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('dokumente_metadata')
       .select(
-        'id, file_id, file_name, file_type, kategorie, original_size, compressed_size, compression_ratio, created_at, kontakt_id, ordner_id, contacts(first_name, last_name)'
+        'id, file_id, file_name, file_type, kategorie, dokumenttyp, original_size, compressed_size, compression_ratio, created_at, kontakt_id, ordner_id, contacts(first_name, last_name)'
       )
       .eq('ordner_archived', false)
       .order('created_at', { ascending: false })
@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
         file_name: d.file_name,
         file_type: d.file_type,
         kategorie: d.kategorie || 'Sonstiges',
+        dokumenttyp: d.dokumenttyp || null,
         original_size: d.original_size || 0,
         compressed_size: d.compressed_size || 0,
         compression_ratio: d.compression_ratio || 0,

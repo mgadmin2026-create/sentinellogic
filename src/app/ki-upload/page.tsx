@@ -5,14 +5,7 @@ import Link from 'next/link'
 import { HelpButton } from '@/components/help/HelpButton'
 import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWerte } from '@/components/BeitragsuebersichtUebernahmeForm'
 import { erkenneZyklus, defaultSpalte } from '@/lib/beitragsuebersicht-zyklus'
-
-const DOKUMENTTYP_OPTIONEN: { value: string; label: string }[] = [
-  { value: 'police', label: 'Vertrag / Police' },
-  { value: 'angebot', label: 'Angebot' },
-  { value: 'nachtrag', label: 'Nachtrag' },
-  { value: 'rechnung', label: 'Rechnung' },
-  { value: 'sonstiges', label: 'Sonstiges' },
-]
+import { DOKUMENTTYP_OPTIONEN } from '@/lib/dokumenttyp'
 
 interface Leistung {
   type: string
@@ -86,7 +79,8 @@ export default function KiUploadPage() {
   const [duplikat, setDuplikat] = useState<Duplikat | null>(null)
   const [anBestehenden, setAnBestehenden] = useState(true)
   const [struktur, setStruktur] = useState<{ privat: string[]; gewerbe: string[] }>({ privat: [], gewerbe: [] })
-  const [ergebnis, setErgebnis] = useState<{ kontakt_id: string; kontakt_neu: boolean } | null>(null)
+  const [ergebnis, setErgebnis] = useState<{ kontakt_id: string; kontakt_neu: boolean; dokumenttyp: string } | null>(null)
+  const [folgeaufgabeStatus, setFolgeaufgabeStatus] = useState<'idle' | 'speichere' | 'fertig' | 'fehler'>('idle')
   const [uebernahmeWerte, setUebernahmeWerte] = useState<BeitragsuebersichtUebernahmeWerte>({
     uebernehmen: true,
     spalte: 'alt',
@@ -150,7 +144,7 @@ export default function KiUploadPage() {
       const res = await fetch('/api/ki-upload/commit', { method: 'POST', body: fd })
       const data = await res.json()
       if (!data.success) throw new Error(data.error || 'Speichern fehlgeschlagen')
-      setErgebnis({ kontakt_id: data.kontakt_id, kontakt_neu: data.kontakt_neu })
+      setErgebnis({ kontakt_id: data.kontakt_id, kontakt_neu: data.kontakt_neu, dokumenttyp: daten.dokumenttyp })
       setPhase('fertig')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen')
@@ -165,6 +159,37 @@ export default function KiUploadPage() {
     setDuplikat(null)
     setErgebnis(null)
     setError(null)
+    setFolgeaufgabeStatus('idle')
+  }
+
+  async function legeFolgeaufgabeAn() {
+    if (!ergebnis) return
+    setFolgeaufgabeStatus('speichere')
+    try {
+      const meRes = await fetch('/api/me')
+      const me = await meRes.json()
+      if (!me.success) throw new Error('Nicht angemeldet')
+
+      const fällig = new Date()
+      fällig.setDate(fällig.getDate() + 3)
+      const res = await fetch('/api/aufgaben', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: ergebnis.kontakt_id,
+          assigned_user_id: me.data.id,
+          titel: 'Angebot nachverfolgen',
+          fällig: fällig.toISOString().split('T')[0],
+          priorität: 'mittel',
+          status: 'offen',
+        }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Aufgabe konnte nicht angelegt werden')
+      setFolgeaufgabeStatus('fertig')
+    } catch {
+      setFolgeaufgabeStatus('fehler')
+    }
   }
 
   const set = (feld: keyof Extraktion, wert: string) =>
@@ -462,6 +487,29 @@ export default function KiUploadPage() {
             <p className="text-sm text-gray-600">
               Quelle: KI Upload — Automationen und Ablage sind durchgelaufen.
             </p>
+
+            {ergebnis.dokumenttyp === 'angebot' && (
+              <div className="max-w-sm mx-auto p-4 bg-blue-50 border border-blue-200 rounded-lg text-left">
+                {folgeaufgabeStatus === 'fertig' ? (
+                  <p className="text-sm text-blue-800">✓ Aufgabe „Angebot nachverfolgen" angelegt (fällig in 3 Tagen)</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-blue-800 mb-2">📌 Angebot erkannt — soll eine Nachverfolgung angelegt werden?</p>
+                    <button
+                      onClick={legeFolgeaufgabeAn}
+                      disabled={folgeaufgabeStatus === 'speichere'}
+                      className="px-3 py-1.5 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
+                    >
+                      {folgeaufgabeStatus === 'speichere' ? '⏳ Wird angelegt…' : '+ Aufgabe: Angebot nachverfolgen anlegen'}
+                    </button>
+                    {folgeaufgabeStatus === 'fehler' && (
+                      <p className="text-xs text-red-600 mt-2">Aufgabe konnte nicht angelegt werden. Bitte im Kontakt manuell anlegen.</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-center gap-3">
               <Link
                 href={`/kontakte/${ergebnis.kontakt_id}`}

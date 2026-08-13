@@ -245,6 +245,44 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.30.0 (2026-08-13) — Dokumenttyp-Erkennung (Vertrag/Angebot/Rechnung/Sonstiges), Folgeaufgabe bei Angebot, kompaktere Dokumente-Ansicht
+
+Branch `feature/dokumenttyp-erkennung`. Die KI-Analyse, die beim Dokument-Upload ohnehin schon läuft
+(bisher nur für Vertragserkennung/Beitragsübersicht genutzt, `src/lib/ki-upload.ts`), liefert bereits
+einen Dokumenttyp (`police`/`angebot`/`nachtrag`/`rechnung`/`sonstiges`) — der wurde bisher nirgends
+dauerhaft gespeichert. Kein zusätzlicher KI-Call nötig.
+
+- ✨ Migration `0071_dokumenttyp.sql`: neue Spalte `dokumente_metadata.dokumenttyp` (nullable, CHECK auf
+  die 5 bekannten Werte). `NULL` = nicht klassifiziert (Analyse fehlgeschlagen/nicht unterstützter
+  Dateityp), wird in der UI wie „Sonstiges" behandelt.
+- ✨ Neues gemeinsames Modul `src/lib/dokumenttyp.ts`: Labels, Optionen und Filter-Bucket-Mapping
+  (`nachtrag` zählt bewusst zum Filter „Verträge" — inhaltlich eine Vertragsänderung — der genaue Typ
+  bleibt aber pro Dokument gespeichert, nur die UI gruppiert ihn ein).
+- ✨ `POST /api/kontakte/[id]/dokumente` speichert `dokumenttyp` direkt beim Insert; `PATCH` erlaubt jetzt
+  zusätzlich zum Umbenennen auch die Korrektur des Dokumenttyps.
+- ✨ **Bestätigung im Kontakt-Dokumente-Tab**: nach jedem Upload erscheint eine nicht-blockierende Karte
+  „📄 Dokument erkannt als: [Typ] [korrigierbar ▾]". Bei Typ **Angebot** zusätzlich ein Button
+  „+ Aufgabe: Angebot nachverfolgen" — öffnet den bestehenden Aufgaben-Dialog vorbefüllt (Titel, fällig in
+  3 Tagen; gleiches Muster wie „+ Aufgabe: Folgetermin anlegen" im Erstgespräch), der Nutzer bestätigt vor
+  dem Speichern. Dafür `openNewTaskWithTitle()` in `kontakte/[id]/page.tsx` um einen optionalen
+  Fälligkeits-Offset erweitert.
+- ✨ **KI-Upload-Seite**: die Prüfmaske hatte das Dokumenttyp-Dropdown bereits (jetzt aus dem gemeinsamen
+  Modul); neu ist ein „+ Aufgabe: Angebot nachverfolgen anlegen"-Button in der „Fertig"-Phase bei Typ
+  Angebot — legt die Aufgabe direkt per `POST /api/aufgaben` an (kein eingebetteter Dialog auf dieser
+  Seite), zugewiesen an den aktuell angemeldeten User (`GET /api/me`).
+- ✨ **Filter „Alle · Verträge · Angebote · Rechnungen · Sonstiges"** zusätzlich zum bestehenden
+  Kategorie-Filter — sowohl im Kontakt-Dokumente-Tab als auch in der globalen `/dokumente`-Übersicht;
+  Dokumenttyp-Badge (indigo) neben dem bestehenden Kategorie-Badge in beiden Listen.
+- 🎨 **Kompaktere obere Bereiche** (Nutzerwunsch): Kontakt-Dokumente-Tab fasst Kategorie-Auswahl und
+  Upload-Dropzone zu einer einzigen schlanken Zeile zusammen (vorher: separate Zeile + hohe Dropzone mit
+  großem Icon) — deutlich weniger Leerraum vor der eigentlichen Dokumentenliste. Globale
+  `/dokumente`-Seite: Titel/Stats/Google-Drive-Link in einer Zeile statt gestapelter Karten, Suche und
+  Typ-Filter in einer Zeile.
+- ⚠️ Bestandsdokumente (vor dieser Änderung hochgeladen) haben `dokumenttyp = NULL` und erscheinen unter
+  „Sonstiges" — kein rückwirkendes Reklassifizieren (würde eine erneute KI-Analyse aller gespeicherten
+  Dateien erfordern, out of scope).
+- ⚠️ Migration muss vom Nutzer manuell in Supabase ausgeführt werden (Projekt-Konvention)
+
 ### v0.29.0 (2026-08-13) — Erstgespräch Unternehmerschutz: Mitarbeiterzahl aufgeschlüsselt (Vollzeit/Teilzeit/Minijob)
 
 Die Frage „Wie viele Mitarbeiter haben Sie?" im Unternehmerschutz-Leitfaden fragte bisher nur die

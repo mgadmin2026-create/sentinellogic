@@ -450,13 +450,15 @@ export default function KontaktDetailPage() {
     setTaskModalOpen(true)
   }
 
-  function openNewTaskWithTitle(titel: string) {
+  function openNewTaskWithTitle(titel: string, fälligInTagen = 0) {
+    const fällig = new Date()
+    fällig.setDate(fällig.getDate() + fälligInTagen)
     setEditingAufgabe(null)
     setNewTaskDefaults({
       contact_id: kontaktId,
       titel,
       beschreibung: '',
-      fällig: new Date().toISOString().split('T')[0],
+      fällig: fällig.toISOString().split('T')[0],
       priorität: 'mittel',
       status: 'offen',
     } as Aufgabe)
@@ -1044,6 +1046,7 @@ export default function KontaktDetailPage() {
         <KontaktDokumenteTab
           kontaktId={kontaktId}
           primarySparte={kontaktSparten.find((z) => z.is_primary)?.sparte.name ?? kontakt?.sparte}
+          onCreateFolgeaufgabe={(titel, fälligInTagen) => openNewTaskWithTitle(titel, fälligInTagen)}
         />
       </Drawer>
 
