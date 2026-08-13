@@ -40,6 +40,22 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   'usa_kanada_eingeschlossen',
 ])
 
+// Kuratierte Teilmenge von ALLOWED_UPDATE_FIELDS, die als lesbare
+// "Kontakt aktualisiert"-Aktivität geloggt wird — bewusst ohne interne/
+// Sync-Felder (klicktipp_*, dialfire_*, pipeline_steps, beitragsuebersicht
+// etc.), da diese entweder eigene Logging-Pfade haben oder als Diff
+// unlesbar/zu verrauscht wären.
+const LOGGABLE_FIELDS = new Set([
+  'first_name', 'last_name', 'email', 'phone_mobile', 'phone_office',
+  'company_name', 'industry', 'position',
+  'street', 'postal_code', 'city', 'country', 'website', 'hausnummer',
+  'notes', 'assigned_user_id', 'qualität', 'bestandskunde',
+  'jahresumsatz', 'mitarbeitanzahl',
+  'kontakt_typ', 'sparte', 'rechtsform', 'anrede', 'bemerkung',
+  'versicherungsgesellschaft', 'versicherungstyp', 'zahlweise',
+  'geburtstag_gf_inhaber', 'geschaeftsfuehrer_anzahl', 'seit_wann_gewerbe',
+])
+
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 const KLICKTIPP_SYNC_FIELDS = new Set([
@@ -197,6 +213,19 @@ export async function PATCH(
       )
     }
 
+    // Alte Werte der loggbaren Felder vorher laden, um sie nach dem Update
+    // als lesbaren Diff zu protokollieren (z.B. Namensänderungen).
+    const loggableKeysInUpdate = Object.keys(raw).filter((key) => LOGGABLE_FIELDS.has(key))
+    let beforeValues: Record<string, unknown> | null = null
+    if (loggableKeysInUpdate.length > 0) {
+      const { data: before } = await supabase
+        .from('contacts')
+        .select(loggableKeysInUpdate.join(','))
+        .eq('id', id)
+        .single()
+      beforeValues = before as Record<string, unknown> | null
+    }
+
     // Kontakt aktualisieren
     const { data, error } = await supabase
       .from('contacts')
@@ -237,6 +266,26 @@ export async function PATCH(
     // Log activity — wichtigste Änderungen tracken
     if (data) {
       const kontaktName = `${data.first_name} ${data.last_name}`
+
+      // Änderungen an loggbaren Feldern (z.B. Name, E-Mail, Adresse) als
+      // lesbaren Diff protokollieren — vorher nirgends nachvollziehbar.
+      if (beforeValues) {
+        const changes: Record<string, { old: unknown; new: unknown }> = {}
+        for (const key of loggableKeysInUpdate) {
+          const oldVal = beforeValues[key] ?? null
+          const newVal = (data as Record<string, unknown>)[key] ?? null
+          if (oldVal !== newVal) {
+            changes[key] = { old: oldVal, new: newVal }
+          }
+        }
+        if (Object.keys(changes).length > 0) {
+          try {
+            await logContactUpdated(id, kontaktName, changes, currentUser?.id)
+          } catch (e) {
+            // Fehler beim Aktivitätsloggen ignorieren
+          }
+        }
+      }
 
       // Pipeline-Stage-Wechsel loggen
       if (raw.pipeline_stage && body.pipeline_stage !== undefined) {

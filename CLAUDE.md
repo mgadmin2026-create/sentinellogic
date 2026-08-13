@@ -245,6 +245,31 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.30.1 (2026-08-13) — Dokumente-Übersicht überarbeitet, Kontakt-Änderungen erstmals protokolliert
+
+- 🎨 Globale `/dokumente`-Tabelle: Spalten „Original → Komprimiert" und „Ersparnis" entfernt (auf
+  Nutzerwunsch, im Alltag irrelevant), stattdessen editierbare Spalte „Dokumententyp" (Dropdown, PATCH
+  wie im Kontakt-Dokumente-Tab). Dateiname jetzt auch hier per ✏️ umbenennbar (bisher nur im Kontakt-Tab).
+- 🐛 **Gefunden bei der Fehlersuche zu einem konkreten Kundenfall** (Kontakt zunächst als „Alexander Herr"
+  angelegt, zwei Dokumente hochgeladen, danach auf „Werner Hippler" umbenannt): Namensänderungen an
+  Kontakten waren **nirgends nachvollziehbar**. `logContactUpdated()` (`src/lib/activities-logger.ts`)
+  existierte bereits vollständig, wurde aber nie aus `PATCH /api/kontakte/[id]` aufgerufen — nur
+  Pipeline-Stufe und Status wurden geloggt. Jetzt behoben: vor dem Update werden die alten Werte einer
+  kuratierten Feldliste (`LOGGABLE_FIELDS` — Name, Kontaktdaten, Adresse, Notizen, Firma, Sparte etc.,
+  bewusst ohne Sync-/interne Felder) geladen, nach dem Update wird ein lesbarer Diff
+  („Kontakt aktualisiert: … Änderungen: firstname: X → Y") in die Aktivitäten-Timeline geschrieben. Live
+  gegen einen Testkontakt verifiziert (Firmenname + Notiz geändert → korrekter Aktivitäts-Eintrag mit
+  Alt-/Neu-Werten).
+- ⚠️ **Bewusst noch NICHT behoben, nur dokumentiert** (Nutzer-Entscheidung, für später vorgemerkt): Der
+  Google-Drive-Ordner eines Kontakts wird bei jedem Upload über `findOrCreateContactFolder()`
+  (`src/lib/google-drive-oauth.ts`) per Namens-String gesucht (`"Vorname Nachname (kontaktId)"`) — die
+  bereits gespeicherte `contacts.google_drive_ordner_id` wird dabei nie gelesen, nur nach dem Upload
+  geschrieben. Nach einer Kontakt-Umbenennung findet die Namenssuche den alten Ordner nicht mehr und legt
+  beim nächsten Upload einen **zweiten, neuen Ordner** an (Dokumente bleiben im CRM korrekt verknüpft,
+  aber in Drive entstehen doppelte Kundenordner). Am konkreten Fall (Werner Hippler, vormals Alexander
+  Herr) noch nicht ausgelöst, da seit der Umbenennung kein weiterer Upload stattfand — tritt beim
+  nächsten Dokument-Upload für diesen Kontakt auf, wenn nicht vorher behoben.
+
 ### v0.30.0 (2026-08-13) — Dokumenttyp-Erkennung (Vertrag/Angebot/Rechnung/Sonstiges), Folgeaufgabe bei Angebot, kompaktere Dokumente-Ansicht
 
 Branch `feature/dokumenttyp-erkennung`. Die KI-Analyse, die beim Dokument-Upload ohnehin schon läuft
