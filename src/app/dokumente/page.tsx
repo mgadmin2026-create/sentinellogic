@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { HelpButton } from '@/components/help/HelpButton'
-import { DOKUMENTTYP_FILTER_OPTIONEN, dokumenttypZuFilter, dokumenttypBadgeLabel, type DokumenttypFilter } from '@/lib/dokumenttyp'
+import { DOKUMENTTYP_OPTIONEN, DOKUMENTTYP_FILTER_OPTIONEN, dokumenttypZuFilter, type DokumenttypFilter } from '@/lib/dokumenttyp'
 
 interface Dokument {
   id: string
@@ -38,6 +38,9 @@ export default function DokumentePage() {
   const [filterTyp, setFilterTyp] = useState<DokumenttypFilter>('alle')
   const [rootFolderUrl, setRootFolderUrl] = useState<string | null>(null)
   const [connected, setConnected] = useState<boolean | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [newFileName, setNewFileName] = useState('')
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -66,6 +69,47 @@ export default function DokumentePage() {
       setError('Fehler beim Laden der Dokumente')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const commitRename = async (d: Dokument) => {
+    if (!newFileName.trim() || newFileName === d.file_name) {
+      setRenamingId(null)
+      return
+    }
+    setSavingId(d.id)
+    try {
+      const res = await fetch(`/api/kontakte/${d.kontakt_id}/dokumente`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dokumentId: d.id, newFileName: newFileName.trim() }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Fehler')
+      setDokumente((prev) => prev.map((x) => (x.id === d.id ? { ...x, file_name: newFileName.trim() } : x)))
+      setRenamingId(null)
+    } catch {
+      setError('Datei konnte nicht umbenannt werden')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const changeDokumenttyp = async (d: Dokument, neuerTyp: string) => {
+    setDokumente((prev) => prev.map((x) => (x.id === d.id ? { ...x, dokumenttyp: neuerTyp } : x)))
+    setSavingId(d.id)
+    try {
+      const res = await fetch(`/api/kontakte/${d.kontakt_id}/dokumente`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dokumentId: d.id, dokumenttyp: neuerTyp }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Fehler')
+    } catch {
+      setError('Dokumenttyp konnte nicht geändert werden')
+    } finally {
+      setSavingId(null)
     }
   }
 
@@ -164,8 +208,7 @@ export default function DokumentePage() {
               <tr className="border-b border-gray-100 bg-gray-50/80">
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Datei</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Kontakt</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden md:table-cell">Original → Komprimiert</th>
-                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Ersparnis</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Dokumententyp</th>
                 <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Datum</th>
                 <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Aktion</th>
               </tr>
@@ -173,11 +216,11 @@ export default function DokumentePage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-gray-400 py-16 text-sm">Wird geladen…</td>
+                  <td colSpan={5} className="text-center text-gray-400 py-16 text-sm">Wird geladen…</td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center text-gray-400 py-16 text-sm">
+                  <td colSpan={5} className="text-center text-gray-400 py-16 text-sm">
                     {search ? 'Keine Treffer' : 'Noch keine Dokumente hochgeladen'}
                   </td>
                 </tr>
@@ -185,34 +228,62 @@ export default function DokumentePage() {
                 filtered.map((d) => (
                   <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                     <td className="px-4 py-3">
-                      <span className="flex items-center gap-2 max-w-xs">
-                        <span className="font-medium text-gray-900 truncate">📄 {d.file_name}</span>
-                        <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
-                          {(d.kategorie || 'Sonstiges').replace('/', ' / ')}
-                        </span>
-                        {d.dokumenttyp && (
-                          <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
-                            {dokumenttypBadgeLabel(d.dokumenttyp)}
+                      {renamingId === d.id ? (
+                        <div className="flex items-center gap-1.5 max-w-xs">
+                          <input
+                            type="text"
+                            value={newFileName}
+                            onChange={(e) => setNewFileName(e.target.value)}
+                            className="flex-1 min-w-0 px-2 py-1 text-sm border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => commitRename(d)}
+                            disabled={savingId === d.id}
+                            className="px-1.5 py-1 text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 rounded disabled:opacity-50"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => setRenamingId(null)}
+                            className="px-1.5 py-1 text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 rounded"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="flex items-center gap-2 max-w-xs">
+                          <span className="font-medium text-gray-900 truncate">📄 {d.file_name}</span>
+                          <button
+                            onClick={() => { setRenamingId(d.id); setNewFileName(d.file_name) }}
+                            className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-700"
+                            title="Umbenennen"
+                          >
+                            ✏️
+                          </button>
+                          <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                            {(d.kategorie || 'Sonstiges').replace('/', ' / ')}
                           </span>
-                        )}
-                      </span>
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <Link href={`/kontakte/${d.kontakt_id}`} className="text-blue-600 hover:text-blue-700 hover:underline">
                         {d.kontakt_name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap hidden md:table-cell">
-                      {formatBytes(d.original_size)} <span className="text-gray-300">→</span> {formatBytes(d.compressed_size)}
-                    </td>
                     <td className="px-4 py-3">
-                      {d.compression_ratio > 0 ? (
-                        <span className="inline-flex text-xs font-semibold px-2 py-1 rounded-full bg-green-50 text-green-700">
-                          ↓ {d.compression_ratio}%
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
+                      <select
+                        value={d.dokumenttyp || ''}
+                        onChange={(e) => changeDokumenttyp(d, e.target.value)}
+                        disabled={savingId === d.id}
+                        className="px-2 py-1 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40 disabled:opacity-50"
+                      >
+                        <option value="">— nicht klassifiziert —</option>
+                        {DOKUMENTTYP_OPTIONEN.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap hidden sm:table-cell">{formatDate(d.created_at)}</td>
                     <td className="px-4 py-3 text-right">
