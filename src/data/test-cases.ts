@@ -510,4 +510,21 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: ['öffnet Prozess und Kommentare über das Menü und exportiert Erstgesprächsfelder'],
   },
+  {
+    id: 'E2E-030',
+    name: 'Mehrfachbearbeitung in der Kontaktübersicht',
+    description: 'Prüft die verständliche Auswahl mehrerer Kontakte, die zweistufig bestätigte Sammeländerung und die nachvollziehbare Ergebnisübersicht.',
+    steps: [
+      'Zwei eindeutig markierte Testkontakte anlegen und gemeinsam in der Kontaktübersicht anzeigen.',
+      'Beide Kontakte über die Auswahlfelder markieren und die sichtbare Anzahl kontrollieren.',
+      'Die Sammelbearbeitung öffnen, den Status Qualifiziert wählen und die Änderung zunächst prüfen.',
+      'Die Änderung ausdrücklich bestätigen und die Ergebniszahlen kontrollieren.',
+      'Die dauerhafte Statusänderung bei beiden Kontakten über die API verifizieren.',
+    ],
+    area: 'Kontaktverwaltung',
+    priority: 'Kritisch',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: ['ändert mehrere ausgewählte Kontakte kontrolliert in einem Schritt'],
+  },
 ]

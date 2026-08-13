@@ -6,6 +6,7 @@ import { KontaktEditModal } from '@/components/KontaktEditModal'
 import { KontaktImportModal } from '@/components/KontaktImportModal'
 import { HelpButton } from '@/components/help/HelpButton'
 import { ContactIntegrationPopover } from '@/components/ContactIntegrationPopover'
+import { BulkContactEditDialog } from '@/components/kontakt/BulkContactEditDialog'
 
 interface Kontakt {
   id: string
@@ -384,6 +385,13 @@ export default function KontaktePage() {
   const [quickNoteText, setQuickNoteText] = useState('')
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
   const [teamMembersById, setTeamMembersById] = useState<Record<string, string>>({})
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string }[]>([])
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set())
+  const [bulkDialogField, setBulkDialogField] = useState<'status' | 'assigned_user_id' | 'kontakt_typ' | 'tags' | 'sparten' | 'archive' | null>(null)
+
+  useEffect(() => {
+    setSelectedContactIds(new Set())
+  }, [activeFilter, search, sparteFilter])
 
   // Team-Mitglieder für die Verantwortlicher-Spalte laden
   useEffect(() => {
@@ -394,6 +402,7 @@ export default function KontaktePage() {
           const map: Record<string, string> = {}
           for (const m of res.data) map[m.id] = m.name
           setTeamMembersById(map)
+          setTeamMembers(res.data.map((member: { id: string; name: string }) => ({ id: member.id, name: member.name })))
         }
       })
       .catch(() => {})
@@ -851,6 +860,29 @@ export default function KontaktePage() {
     return true
   })
 
+  const selectableVisibleIds = filtered.filter((contact) => !contact.archived_at).map((contact) => contact.id)
+  const selectedIds = Array.from(selectedContactIds)
+  const allVisibleSelected = selectableVisibleIds.length > 0 && selectableVisibleIds.every((id) => selectedContactIds.has(id))
+  const someVisibleSelected = selectableVisibleIds.some((id) => selectedContactIds.has(id))
+
+  function toggleContactSelection(contactId: string) {
+    setSelectedContactIds((current) => {
+      const next = new Set(current)
+      if (next.has(contactId)) next.delete(contactId)
+      else next.add(contactId)
+      return next
+    })
+  }
+
+  function toggleAllVisibleContacts() {
+    setSelectedContactIds((current) => {
+      const next = new Set(current)
+      if (allVisibleSelected) selectableVisibleIds.forEach((id) => next.delete(id))
+      else selectableVisibleIds.forEach((id) => next.add(id))
+      return next
+    })
+  }
+
   // Filter-Optionen dynamisch aus den geladenen Kontakten ableiten
   const sparteOptions = Array.from(
     new Set(kontakte.map((k) => k.sparte).filter((v): v is string => !!v))
@@ -1049,12 +1081,36 @@ export default function KontaktePage() {
           </select>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div data-testid="kontakte-sammelaktionen" className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-yellow-300 bg-yellow-50 p-2.5 shadow-sm">
+          <span className="mr-auto px-1 text-sm font-bold text-gray-900">
+            {selectedIds.length} {selectedIds.length === 1 ? 'Kontakt' : 'Kontakte'} ausgewählt
+          </span>
+          <button type="button" onClick={() => setBulkDialogField('status')} className="rounded-lg bg-yellow-400 px-3 py-2 text-xs font-semibold text-gray-900 hover:bg-yellow-500">Bearbeiten</button>
+          <button type="button" onClick={() => setBulkDialogField('assigned_user_id')} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">Verantwortliche Person</button>
+          <button type="button" onClick={() => setBulkDialogField('tags')} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">Tags</button>
+          <button type="button" onClick={() => setBulkDialogField('sparten')} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">Sparten</button>
+          <button type="button" onClick={() => setBulkDialogField('archive')} className="rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50">Archivieren</button>
+          <button type="button" onClick={() => setSelectedContactIds(new Set())} className="px-2 py-2 text-xs font-medium text-gray-500 underline hover:text-gray-900">Auswahl aufheben</button>
+        </div>
+      )}
+
       {/* Tabelle — DYNAMISCHE SPALTEN (nur Desktop) */}
       <div data-testid="kontakte-tabelle" className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div data-testid="kontakte-scrollbereich" className="overflow-x-auto overflow-y-auto max-h-[70vh]">
           <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
             <thead className="sticky top-0 z-10 bg-gray-50/95 border-b border-gray-100">
               <tr className="border-b border-gray-100 bg-gray-50/80">
+                <th className="w-12 px-4 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    aria-label="Alle sichtbaren Kontakte auswählen"
+                    checked={allVisibleSelected}
+                    ref={(input) => { if (input) input.indeterminate = someVisibleSelected && !allVisibleSelected }}
+                    onChange={toggleAllVisibleContacts}
+                    className="h-4 w-4 rounded border-gray-300 accent-yellow-500"
+                  />
+                </th>
                 {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
                 {columnOrder
                   .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
@@ -1116,13 +1172,13 @@ export default function KontaktePage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="text-center text-gray-400 py-16 text-sm">
+                  <td colSpan={Object.values(visibleColumns).filter(v => v).length + 1} className="text-center text-gray-400 py-16 text-sm">
                     Kontakte werden geladen…
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={Object.values(visibleColumns).filter(v => v).length} className="text-center py-16">
+                  <td colSpan={Object.values(visibleColumns).filter(v => v).length + 1} className="text-center py-16">
                     <p className="text-gray-400 text-sm">{kontakte.length === 0 ? 'Noch keine Kontakte vorhanden.' : 'Keine Kontakte gefunden.'}</p>
                   </td>
                 </tr>
@@ -1143,6 +1199,17 @@ export default function KontaktePage() {
                         : STATUS_ROW_COLORS[kontakt.status] || 'bg-white hover:bg-gray-50'
                     }`}
                   >
+                    <td className="w-12 px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                      <input
+                        data-testid={`kontakt-auswahl-${kontakt.id}`}
+                        type="checkbox"
+                        aria-label={`${kontakt.first_name} ${kontakt.last_name} auswählen`}
+                        checked={selectedContactIds.has(kontakt.id)}
+                        disabled={!!kontakt.archived_at}
+                        onChange={() => toggleContactSelection(kontakt.id)}
+                        className="h-4 w-4 rounded border-gray-300 accent-yellow-500 disabled:cursor-not-allowed disabled:opacity-40"
+                      />
+                    </td>
                     {/* DYNAMISCH: Loop through all visible columns in CUSTOM ORDER */}
                     {columnOrder
                       .filter(key => visibleColumns[key] && key !== 'progress' && key !== 'actions')
@@ -1403,8 +1470,17 @@ export default function KontaktePage() {
           </p>
         ) : (
           filtered.map((kontakt) => (
-            <div key={kontakt.id} className={`rounded-xl border border-gray-200 shadow-sm p-4 ${STATUS_ROW_COLORS[kontakt.status] || 'bg-white'}`}>
+            <div key={kontakt.id} className={`rounded-xl border border-gray-200 shadow-sm p-4 ${selectedContactIds.has(kontakt.id) ? 'ring-2 ring-yellow-400' : ''} ${STATUS_ROW_COLORS[kontakt.status] || 'bg-white'}`}>
               <div className="flex items-start justify-between gap-3">
+                <input
+                  data-testid={`kontakt-auswahl-mobil-${kontakt.id}`}
+                  type="checkbox"
+                  aria-label={`${kontakt.first_name} ${kontakt.last_name} auswählen`}
+                  checked={selectedContactIds.has(kontakt.id)}
+                  disabled={!!kontakt.archived_at}
+                  onChange={() => toggleContactSelection(kontakt.id)}
+                  className="mt-1 h-5 w-5 flex-shrink-0 rounded border-gray-300 accent-yellow-500 disabled:opacity-40"
+                />
                 <Link href={contactDetailHref(kontakt.id)} onClick={saveContactListPosition} className="min-w-0 group">
                   <p className="font-semibold text-yellow-600 group-hover:underline truncate">
                     {kontakt.first_name} {kontakt.last_name}
@@ -1713,6 +1789,19 @@ export default function KontaktePage() {
       )}
 
       {/* Edit Modal */}
+      {bulkDialogField && (
+        <BulkContactEditDialog
+          contactIds={selectedIds}
+          teamMembers={teamMembers}
+          initialField={bulkDialogField}
+          onClose={() => setBulkDialogField(null)}
+          onCompleted={async () => {
+            await loadKontakte()
+            setSelectedContactIds(new Set())
+          }}
+        />
+      )}
+
       <KontaktEditModal
         kontakt={editingKontakt}
         isOpen={editModalOpen}
