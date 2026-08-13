@@ -153,6 +153,12 @@ export async function POST(request: NextRequest) {
     // Analyse + Vertrags-Übernahme sind hier (Schritt 3.5) bereits mit den vom
     // User geprüften Daten erledigt.
     uploadForm.append('skipVertragsanalyse', 'true')
+    // dokumenttyp wurde in der Prüfmaske vom Nutzer bestätigt/korrigiert —
+    // ohne diesen Override würde er beim Insert verloren gehen, da wegen
+    // skipVertragsanalyse keine eigene Analyse mehr läuft (extraktion=null).
+    if (daten.dokumenttyp) {
+      uploadForm.append('dokumenttyp', daten.dokumenttyp)
+    }
 
     const uploadRes = await fetch(`${origin}/api/kontakte/${kontaktId}/dokumente`, {
       method: 'POST',

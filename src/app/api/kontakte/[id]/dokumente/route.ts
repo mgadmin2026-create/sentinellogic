@@ -110,6 +110,12 @@ export async function POST(
     // ohne dieses Flag würde hier ein zweiter, unabhängiger KI-Durchlauf
     // denselben Vertrag nochmal anlegen (doppelte contracts-/Beitragsübersicht-Zeilen).
     const skipVertragsanalyse = formData.get('skipVertragsanalyse') === 'true'
+    // Der KI-Upload-Commit-Flow kennt den Dokumenttyp bereits (vom Nutzer in
+    // der Prüfmaske bestätigt) — bei skipVertragsanalyse läuft hier keine
+    // eigene Analyse mehr, ohne diesen Override würde der Typ sonst nie
+    // gespeichert (extraktion bleibt null).
+    const dokumenttypOverrideRaw = String(formData.get('dokumenttyp') || '').trim()
+    const dokumenttypOverride = VALID_DOKUMENTTYPEN.has(dokumenttypOverrideRaw) ? dokumenttypOverrideRaw : null
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
@@ -217,7 +223,7 @@ export async function POST(
         original_size: uploadResult.originalSize,
         compressed_size: uploadResult.compressedSize,
         compression_ratio: uploadResult.compressionRatio,
-        dokumenttyp: extraktion?.dokumenttyp ?? null,
+        dokumenttyp: dokumenttypOverride ?? extraktion?.dokumenttyp ?? null,
         created_by: 'upload',
       })
       .select()

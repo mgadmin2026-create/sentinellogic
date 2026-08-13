@@ -245,6 +245,29 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.30.3 (2026-08-13) — Bugfix: Dokumenttyp ging bei KI-Upload-Dokumenten verloren
+
+**Gemeldetes Symptom:** Bei einem über KI-Upload hochgeladenen Angebot wird — anders als beim direkten
+Upload im Kontakt-Dokumente-Tab — keine Aufgabe „Angebot nachverfolgen" angeboten.
+
+- 🔍 Die Angebots-Erkennung auf der `/ki-upload`-Seite selbst (Prüfmaske + „Fertig"-Bildschirm) war korrekt
+  verdrahtet und funktioniert im selben Durchlauf. Der eigentliche Fehler lag eine Ebene tiefer: `POST
+  /api/ki-upload/commit` ruft zur Drive-Ablage intern `POST /api/kontakte/[id]/dokumente` mit
+  `skipVertragsanalyse=true` auf (verhindert eine teure Doppel-Analyse, siehe v0.24.0) — ohne diese Analyse
+  blieb dort aber `extraktion` (und damit der bereits von der KI erkannte und vom Nutzer in der Prüfmaske
+  bestätigte Dokumenttyp) `null`. Das frisch angelegte Dokument landete dadurch immer als „— nicht
+  klassifiziert —" in der Kontakt-Dokumentenliste — ohne Badge, ohne Möglichkeit, von dort aus die
+  Folgeaufgabe anzustoßen, obwohl der Typ längst bekannt war.
+- ✅ Fix: `commit/route.ts` gibt den in der Prüfmaske bestätigten `dokumenttyp` jetzt explizit als
+  Formularfeld an die Dokumente-Route weiter; diese übernimmt einen gültigen Override-Wert direkt, auch
+  wenn wegen `skipVertragsanalyse` keine eigene Analyse läuft.
+- ⚠️ Nicht rückwirkend behoben: vor diesem Fix über KI-Upload angelegte Dokumente bleiben
+  „nicht klassifiziert" (lassen sich aber wie jedes andere Dokument über das Dropdown in der Liste manuell
+  nachkorrigieren — danach ist auch die Folgeaufgabe-Aktion dort wieder relevant, s. v0.30.2).
+- ℹ️ Konnte lokal nicht Ende-zu-Ende nachgestellt werden (Google Drive in dieser Dev-Umgebung nicht
+  verbunden, bekannte Einschränkung) — Fix basiert auf Code-Analyse + Auswertung echter Produktionsdaten
+  (Dokument- und Aufgaben-Zeitstempel eines realen Testkontakts), die exakt zum gemeldeten Symptom passten.
+
 ### v0.30.2 (2026-08-13) — Kontakt-Dokumente-Tab: gleiche Vereinfachung wie globale Übersicht
 
 Auf Nutzerwunsch dieselbe Bereinigung wie v0.30.1 auch im Kontakt-Dokumente-Tab (`KontaktDokumenteTab.tsx`)
