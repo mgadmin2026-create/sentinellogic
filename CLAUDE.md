@@ -245,6 +245,23 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.30.2 (2026-08-13) — Kontakt-Dokumente-Tab: gleiche Vereinfachung wie globale Übersicht
+
+Auf Nutzerwunsch dieselbe Bereinigung wie v0.30.1 auch im Kontakt-Dokumente-Tab (`KontaktDokumenteTab.tsx`)
+umgesetzt, dabei zusätzlich kompakter als vorher:
+
+- 🎨 Jede Dokumentzeile war bisher zweizeilig (Datei/Badges in Zeile 1, „Original: X → Komprimiert: Y" in
+  Zeile 2, plus ein separater grüner „↓ N%"-Ersparnis-Chip rechts). Komplett entfernt — jede Zeile ist
+  jetzt einzeilig: Datei + ✏️ + Kategorie-Badge, danach ein editierbares Dokumenttyp-Dropdown (identisch
+  zur globalen Übersicht, direkt in der Liste statt nur über die Bestätigungskarte nach dem Upload),
+  Datum, Löschen.
+  Der redundante zweite „Öffnen ↗"-Link entfernt (Dateiname selbst verlinkt bereits zu Drive).
+- 🎨 Der „✓ Speicher gespart: … durch Komprimierung"-Hinweis unterhalb der Liste entfernt (gleiche
+  Kategorie irrelevanter Information wie die entfernten Spalten in v0.30.1).
+- ℹ️ Die Bestätigungskarte nach dem Upload (Dokumenttyp-Vorschlag + „+ Aufgabe: Angebot nachverfolgen")
+  bleibt bestehen — sie ist weiterhin der proaktive Hinweis direkt nach dem Hochladen, das neue Dropdown
+  in der Liste ist für spätere Korrekturen.
+
 ### v0.30.1 (2026-08-13) — Dokumente-Übersicht überarbeitet, Kontakt-Änderungen erstmals protokolliert
 
 - 🎨 Globale `/dokumente`-Tabelle: Spalten „Original → Komprimiert" und „Ersparnis" entfernt (auf

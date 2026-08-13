@@ -9,7 +9,6 @@ import {
   DOKUMENTTYP_OPTIONEN,
   DOKUMENTTYP_FILTER_OPTIONEN,
   dokumenttypZuFilter,
-  dokumenttypBadgeLabel,
   type DokumenttypFilter,
 } from '@/lib/dokumenttyp'
 
@@ -58,7 +57,6 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
   const [stats, setStats] = useState({
     count: 0,
     totalSize: 0,
-    totalOriginalSize: 0,
   })
   const [ordnerUrl, setOrdnerUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -107,7 +105,6 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
         setStats({
           count: data.kontakt.dokumente_count,
           totalSize: data.kontakt.dokumente_total_size,
-          totalOriginalSize: data.dokumente?.reduce((sum: number, d: Dokument) => sum + d.original_size, 0) || 0,
         })
 
         // Ordnerstruktur des Kontakt-Typs laden (privat/gewerbe)
@@ -550,108 +547,81 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
               .filter((doc) => filterKategorie === 'alle' || (doc.kategorie || 'Sonstiges') === filterKategorie)
               .filter((doc) => filterTyp === 'alle' || dokumenttypZuFilter(doc.dokumenttyp) === filterTyp)
               .map((doc) => (
-              <div key={doc.id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    {renamingId === doc.id ? (
-                      <div className="flex items-center gap-2 mb-2">
-                        <input
-                          type="text"
-                          value={newFileName}
-                          onChange={(e) => setNewFileName(e.target.value)}
-                          className="flex-1 px-2 py-1 text-sm border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => commitRename(doc.id)}
-                          className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 rounded"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => setRenamingId(null)}
-                          className="px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 rounded"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 min-w-0">
-                        <a
-                          href={`https://drive.google.com/file/d/${doc.file_id}/view`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-gray-900 truncate hover:text-blue-600 hover:underline"
-                          title="In Google Drive öffnen"
-                        >
-                          📄 {doc.file_name}
-                        </a>
-                        <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
-                          {(doc.kategorie || 'Sonstiges').replace('/', ' / ')}
-                        </span>
-                        {doc.dokumenttyp && (
-                          <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium">
-                            {dokumenttypBadgeLabel(doc.dokumenttyp)}
-                          </span>
-                        )}
-                        <a
-                          href={`https://drive.google.com/file/d/${doc.file_id}/view`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-shrink-0 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          Öffnen ↗
-                        </a>
-                      </div>
-                    )}
-                    <div className="flex gap-3 mt-2 text-xs text-gray-600">
-                      <span>
-                        Original: <strong>{formatBytes(doc.original_size)}</strong>
-                      </span>
-                      <span className="text-gray-400">→</span>
-                      <span>
-                        Komprimiert: <strong>{formatBytes(doc.compressed_size)}</strong>
+              <div key={doc.id} className="px-4 py-2 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  {renamingId === doc.id ? (
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      <input
+                        type="text"
+                        value={newFileName}
+                        onChange={(e) => setNewFileName(e.target.value)}
+                        className="flex-1 min-w-0 px-2 py-1 text-sm border border-yellow-300 rounded focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => commitRename(doc.id)}
+                        className="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 hover:bg-green-200 rounded"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => setRenamingId(null)}
+                        className="px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 rounded"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center gap-2 min-w-0">
+                      <a
+                        href={`https://drive.google.com/file/d/${doc.file_id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-gray-900 truncate hover:text-blue-600 hover:underline"
+                        title="In Google Drive öffnen"
+                      >
+                        📄 {doc.file_name}
+                      </a>
+                      <button
+                        onClick={() => handleRename(doc.id, doc.file_name)}
+                        className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-700"
+                        title="Umbenennen"
+                      >
+                        ✏️
+                      </button>
+                      <span className="inline-flex flex-shrink-0 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                        {(doc.kategorie || 'Sonstiges').replace('/', ' / ')}
                       </span>
                     </div>
-                  </div>
-                  <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
-                    {renamingId !== doc.id && (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleRename(doc.id, doc.file_name)}
-                          className="px-2 py-1 text-xs font-medium text-gray-600 hover:bg-yellow-50 rounded transition"
-                          title="Umbenennen"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => handleDelete(doc.id)}
-                          disabled={deletingId === doc.id}
-                          className="px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 rounded transition"
-                          title="Löschen"
-                        >
-                          {deletingId === doc.id ? '⏳' : '🗑️'}
-                        </button>
-                      </div>
-                    )}
-                    <div className="bg-green-50 px-2 py-1 rounded text-xs font-semibold text-green-700">
-                      ↓ {doc.compression_ratio}%
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {formatDate(doc.created_at)}
-                    </p>
-                  </div>
+                  )}
+
+                  <select
+                    value={doc.dokumenttyp || ''}
+                    onChange={(e) => korrigiereDokumenttyp(doc.id, e.target.value)}
+                    className="flex-shrink-0 px-2 py-1 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+                  >
+                    <option value="">— nicht klassifiziert —</option>
+                    {DOKUMENTTYP_OPTIONEN.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+
+                  <p className="flex-shrink-0 text-xs text-gray-500 whitespace-nowrap">
+                    {formatDate(doc.created_at)}
+                  </p>
+
+                  <button
+                    onClick={() => handleDelete(doc.id)}
+                    disabled={deletingId === doc.id}
+                    className="flex-shrink-0 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 rounded transition"
+                    title="Löschen"
+                  >
+                    {deletingId === doc.id ? '⏳' : '🗑️'}
+                  </button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Savings info */}
-      {dokumente.length > 0 && (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-          <strong>✓ Speicher gespart:</strong> {formatBytes(stats.totalOriginalSize - stats.totalSize)} durch Komprimierung
         </div>
       )}
 
