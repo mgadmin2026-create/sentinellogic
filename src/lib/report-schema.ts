@@ -27,6 +27,7 @@ TABELLE contacts  — Kontakte/Leads (Haupttabelle, jeder Kunde/Interessent)
   "krankenversicherung_status" text, situation text  -- PKV-Felder
   bestandskunde boolean, "qualität" text, notes text
   mitarbeitanzahl int, jahresumsatz numeric, jahreseinkommen numeric
+  mitarbeiter_vollzeit int, mitarbeiter_teilzeit int, mitarbeiter_minijob int  -- Aufschlüsselung der Mitarbeiterzahl
   dialfire_id text, dialfire_campaign_id text
   dialfire_last_call_at timestamptz, dialfire_last_call_status text, dialfire_disposition text
   klicktipp_id text          -- Subscriber-ID in KlickTipp; NULL = noch nicht synchronisiert

@@ -29,6 +29,9 @@ interface Kontakt {
   bestandskunde?: boolean
   jahresumsatz?: string
   mitarbeitanzahl?: number
+  mitarbeiter_vollzeit?: number
+  mitarbeiter_teilzeit?: number
+  mitarbeiter_minijob?: number
   versicherungstyp?: string
   kontakt_typ?: string
   sparte?: string
@@ -381,6 +384,9 @@ export function ContactOverview({ kontakt, onSave, isEditing = false, onEditChan
               <Field label="Website" field="website" type="url" value={getValue('website')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Jahresumsatz" field="jahresumsatz" value={getValue('jahresumsatz')} onChange={handleChange} isEditing={isEditing} />
               <Field label="Mitarbeiterzahl" field="mitarbeitanzahl" type="number" value={getValue('mitarbeitanzahl')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="davon Vollzeit" field="mitarbeiter_vollzeit" type="number" value={getValue('mitarbeiter_vollzeit')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="davon Teilzeit" field="mitarbeiter_teilzeit" type="number" value={getValue('mitarbeiter_teilzeit')} onChange={handleChange} isEditing={isEditing} />
+              <Field label="davon Minijobler" field="mitarbeiter_minijob" type="number" value={getValue('mitarbeiter_minijob')} onChange={handleChange} isEditing={isEditing} />
             </div>
           </div>
 

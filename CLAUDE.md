@@ -245,6 +245,26 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 
 ## Recent Changes
 
+### v0.29.0 (2026-08-13) — Erstgespräch Unternehmerschutz: Mitarbeiterzahl aufgeschlüsselt (Vollzeit/Teilzeit/Minijob)
+
+Die Frage „Wie viele Mitarbeiter haben Sie?" im Unternehmerschutz-Leitfaden fragte bisher nur die
+Gesamtzahl ab (`mitarbeitanzahl`). Auf Wunsch um drei Unterfelder ergänzt.
+
+- ✨ Migration `0070_mitarbeiter_aufschluesselung.sql`: neue Spalten `contacts.mitarbeiter_vollzeit`,
+  `mitarbeiter_teilzeit`, `mitarbeiter_minijob` (integer, nullable); dieselbe Migration erweitert per
+  `UPDATE` das `felder`-Array der Frage `mitarbeiter` im admin-gepflegten Leitfaden der Sparte
+  „Unternehmerschutz" (`sparten.leitfaden_fragen`, siehe v0.20.0) — reines Datenupdate, kein Code nötig,
+  da `ErstgespraechPanel.tsx` und der PDF-Export (`erstgespraech-pdf.tsx`/`.../erstgespraech/pdf/route.ts`)
+  Fragen/Felder bereits generisch aus der DB rendern
+- ✨ Neue Felder auch in `ContactOverview.tsx` (Sektion „Unternehmen & Branche" → Grunddaten, neben
+  „Mitarbeiterzahl"), in `report-schema.ts` (NL→SQL-Reporting) und in der `ALLOWED_UPDATE_FIELDS`-Liste
+  von `PATCH /api/kontakte/[id]` ergänzt
+- ℹ️ Bewusst nicht angefasst: CSV-Export (`GET /api/kontakte/export?format=csv`) liest alle
+  `contacts`-Spalten per `select('*')` und zeigt die neuen Felder dadurch automatisch ohne Code-Änderung;
+  Excel-/PDF-Export nutzen ein kuratiertes Übersichts-Spaltenset, das selbst die bestehende
+  `mitarbeitanzahl` nicht enthält — die neuen Felder folgen hier bewusst demselben Muster
+- ⚠️ Migration muss vom Nutzer manuell in Supabase ausgeführt werden (Projekt-Konvention)
+
 ### v0.28.0 (2026-08-11) — Dokument-Upload: Ablage-Kategorie automatisch aus der Kontakt-Sparte vorbelegen
 
 Beim Dokument-Upload am Kontakt (`KontaktDokumenteTab.tsx`) musste die Ablage-Kategorie („Ablegen unter")

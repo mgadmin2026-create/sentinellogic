@@ -56,6 +56,9 @@ export interface Contact {
   industry?: string
   jahresumsatz?: string
   mitarbeitanzahl?: string
+  mitarbeiter_vollzeit?: number
+  mitarbeiter_teilzeit?: number
+  mitarbeiter_minijob?: number
   // Insurance Info
   sparte?: string
   prüfung_grund?: string
