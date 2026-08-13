@@ -190,6 +190,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] KlickTipp-Tagkorrektur für 218 Kontakte produktiv abgeschlossen: Gewerbe (`AZ Kunden`, `AZ Firmen Kunden`), Privat (`AZ Kunden`, `Kinderprofis`), 0 Fehler und 0 offene Kandidaten
 - [x] Regressionstest-Katalog um E2E-028 und E2E-029 für Kontaktansichten, Rücksprung, Detailmenü und Erstgespräch-PDF erweitert
 - [x] Aktionsmenü und verschachtelte Drawer stabilisiert; Regressionstests an die neue Kontaktoberfläche angepasst
+- [x] Kontaktübersicht um eine sichere Mehrfachbearbeitung mit sichtbarer Auswahl, zweistufiger Bestätigung, Status/Verantwortlichkeit/Kontakttyp/Tags/Sparten/Archivierung, Teilergebnis-Anzeige und E2E-030 erweitert
 
 **Nächste Aufgabe:**
 → SuperChat-Gesprächslabel `Kunde AZ` mit einem echten Pilotkontakt abnehmen; anschließend KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal prüfen
