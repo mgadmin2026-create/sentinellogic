@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.26.0 — Gewerbedaten-Recherche in die Gesprächsvorbereitung integriert (Web-Search-Tool) | Aktiv in Entwicklung |
+| **Version** | 0.30.3 — Dokumenttyp-Erkennung (Vertrag/Angebot/Rechnung/Sonstiges), Folgeaufgabe bei Angebot, kompaktere Dokumente-Ansicht | Aktiv in Entwicklung |
 
 ---
 
@@ -99,6 +99,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Eingebaute Hilfe & Kundendokumentation** | ✅ Done | Rein statisches, im Code gepflegtes Hilfe-System (kein DB-Table, keine API-Route) — `~62` Artikel über `src/data/help/*.ts`. Kachel-genaue Hilfe per ❓-Symbol (`<HelpButton articleId="...">`, ~39 Einfügestellen) öffnet den passenden Artikel im globalen Drawer (`HelpProvider`); Taste `?` öffnet die Seiten-Standardhilfe (Prefix-Match für `/kontakte/[id]`, sonst Exact-Match), unterdrückt in Eingabefeldern und bei bereits offenem anderen Drawer/Modal; vollständiges durchsuchbares Handbuch unter `/hilfe` mit Bereichs-Gruppierung, Volltextsuche und Deep-Linking (`#<articleId>`, Scroll + Highlight) |
 | **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar inkl. der Kfz-Flotten-Sammelzeile (editierbar/löschbar wie jede andere Zeile); Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden nach expliziter Nutzerbestätigung als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht". Seit v0.27.0: Zyklus-Umschalter (monatlich/vierteljährlich/halbjährlich/jährlich) für die gesamte Übersicht mit explizitem Wechsel-Dialog (Beträge beibehalten vs. umrechnen); Vertragsupload-Übernahme fragt Spalte (Alt/Neu) und Zyklus des gelesenen Betrags aktiv ab (`BeitragsuebersichtUebernahmeForm.tsx`), statt automatisch zu schreiben — Rückfrage nur bei Dokumenttyp Vertrag/Police oder Angebot |
 | **Sparten-Verwaltung & Erstgespräch-Leitfäden** | ✅ Done | Sparten sind eine feste, admin-gepflegte Liste (`/einstellungen/sparten`) statt Freitext; Kontakte können mehreren Sparten zugeordnet werden (n:m über `contact_sparte_map`, primäre Sparte hält die alte `contacts.sparte`-Spalte automatisch synchron, damit Dialfire/KlickTipp/Regeln unverändert weiterlaufen). Jede Sparte trägt ihren eigenen Erstgespräch-Leitfaden (Fragen + Felder), von Melih selbst pflegbar; die Erstgespräch-Kachel im Kontakt rendert bei mehreren zugeordneten Sparten jeden hinterlegten Leitfaden in einem eigenen Abschnitt |
+| **Dokumenttyp-Erkennung & Folgeaufgabe** | ✅ Done | Die KI-Analyse beim Dokument-Upload (KI-Upload-Seite und direkter Upload im Kontakt) klassifiziert jedes Dokument als Vertrag/Police, Angebot, Nachtrag, Rechnung oder Sonstiges (`dokumente_metadata.dokumenttyp`) — kein zusätzlicher KI-Call, nur erstmals dauerhaft gespeichert. Bestätigungskarte nach Upload zeigt den erkannten Typ (korrigierbar); bei Typ Angebot Button „+ Aufgabe: Angebot nachverfolgen" (fällig in 3 Tagen). Dokumenttyp direkt in beiden Dokumentenlisten (Kontakt-Tab + globale `/dokumente`-Übersicht) editierbar und filterbar (Alle/Verträge/Angebote/Rechnungen/Sonstiges); Listen zugleich kompakter (Kompressions-Spalten entfernt, einzeilige Zeilen). Bugfix nachgezogen: der bestätigte Dokumenttyp ging beim KI-Upload-Commit-Pfad zunächst verloren (`skipVertragsanalyse` verhinderte die Persistierung) — behoben |
 
 ## Feature-Roadmap
 
@@ -107,12 +108,13 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 > Arbeitsweisen (Doku, Tests, Release Notes, Monitoring). Bereits implementierte Grundlagen bleiben
 > zusätzlich im Abschnitt `Feature-Status` oben dokumentiert.
 >
-> **Aktueller Fokus (Stand 2026-08-11):** Phase A ist bei „Automation + Synchronisation
+> **Aktueller Fokus (Stand 2026-08-14):** Phase A ist bei „Automation + Synchronisation
 > vereinheitlichen" inkl. aller vier Unterpunkte (Cron/Scheduler, Log-Handling, Fehler-/Retry-Handling,
-> Control-Center-UI) jetzt vollständig ✅ Done (v0.25.0, siehe „Recent Changes" unten). Offene
-> Hoch-Priorität-Punkte in Phase A: Vollständiger Regressionstest, Placetel Click-to-Call/
-> Notify-Verarbeitung, KlickTipp-Rücksynchronisation (Stand 2026-08-11: noch kein einziges reales
-> Webhook-Event angekommen, siehe `docs/ROADMAP.md`).
+> Control-Center-UI) weiterhin vollständig ✅ Done (v0.25.0). Offene Hoch-Priorität-Punkte in Phase A:
+> Vollständiger Regressionstest, Placetel Click-to-Call/Notify-Verarbeitung, KlickTipp-Rücksynchronisation
+> (noch kein einziges reales Webhook-Event angekommen, siehe `docs/ROADMAP.md`). Zusätzlich abseits der
+> Phasenreihenfolge umgesetzt: „KI-Upload → Folgeaufgabe" (Phase C, Dokumenttyp-Erkennung + Folgeaufgabe
+> bei Angebot, v0.30.0–v0.30.3, siehe „Recent Changes" unten) — jetzt ✅ Done statt 🔴.
 
 ### ❌ Removed
 
@@ -1377,7 +1379,9 @@ git push origin main # Deploy zu Vercel
 | `src/app/api/sync-runs/route.ts`, `.../summary/route.ts`, `.../[id]/detail/route.ts`, `.../[id]/retry/route.ts`, `.../[id]/pause/route.ts`, `.../retry-all/route.ts` | Control-Center-API: Lauf-Liste, Health-Aggregation, Batch-Detail, Einzel-Retry/Pause, Retry-Queue-Flush pro Integration (v0.25.0) |
 | `supabase/migrations/0068_gewerbe_recherche.sql` | `contacts.gewerbe_recherche` JSONB — Cache für die Unternehmensrecherche (v0.26.0) |
 | `src/lib/company-research.ts` | `generateCompanyResearch()` (Claude + `web_search`-Tool + Structured Outputs), `ensureGewerbeRecherche()`/`refreshGewerbeRecherche()` (Cache-Lese/Schreib-Logik) (v0.26.0) |
+| `supabase/migrations/0071_dokumenttyp.sql` | `dokumente_metadata.dokumenttyp` (nullable, CHECK auf 5 bekannte Werte) + Index (v0.30.0) |
+| `src/lib/dokumenttyp.ts` | Gemeinsames Modul: Dokumenttyp-Labels/-Optionen, Filter-Bucket-Mapping (`nachtrag`→„Verträge", `NULL`→„Sonstiges") — von KI-Upload-Prüfmaske, Kontakt-Dokumente-Tab und globaler `/dokumente`-Übersicht genutzt (v0.30.0) |
 
 ---
 
-*Last Updated: 2026-08-11 — v0.26.0 Gewerbedaten-Recherche in die Gesprächsvorbereitung integriert (Web-Search-Tool, `contacts.gewerbe_recherche`-Cache)*
+*Last Updated: 2026-08-14 — v0.30.3 Dokumenttyp-Erkennung, Folgeaufgabe bei Angebot, kompaktere Dokumente-Ansicht, Bugfix KI-Upload-Dokumenttyp-Verlust*

@@ -8,7 +8,7 @@
 > **Prioritäten:** `Hoch` = als Nächstes bzw. phasenbestimmend, `Mittel` = nach den
 > Kernabhängigkeiten, `Niedrig` = bewusst zurückgestellt.
 >
-> Stand: 2026-08-11
+> Stand: 2026-08-14
 
 ---
 
@@ -81,7 +81,7 @@ gemeinsamen Scheduler-Architektur aufbauen und echte Kennzahlen bereitstellen.
 | **KI-Upload: Claude → Gemini API** | Hoch | 🟢 Bestehender Flow nutzt Claude | Providerabstraktion einführen, Gemini-Analyse mit gleichwertigem strukturiertem Schema implementieren und per Regression vergleichen |
 | **Gemini-Migration sicher abnehmen** | Hoch | 🔴 Noch nicht begonnen | PDF, Foto, Scan, Vermittler-Falle, Dublette, Vertragsdaten und Fehlerfälle gegen bestehenden Testkatalog prüfen |
 | **Claude-Laufzeit nach Migration entfernen** | Mittel | 🟡 Aktuell produktiver Provider | Erst nach erfolgreicher Gemini-Abnahme Runtime-Aufrufe und nicht mehr benötigte Konfiguration entfernen |
-| **KI-Upload → Folgeaufgabe** | Hoch | 🔴 Kontakt, Dokument und Vertrag vorhanden; Aufgabe fehlt | Dokumenttypabhängige, konfigurierbare Folgeaufgabe erzeugen |
+| **KI-Upload → Folgeaufgabe** | Hoch | 🟢 Dokumenttyp (Vertrag/Angebot/Nachtrag/Rechnung/Sonstiges) wird bei jedem Upload erkannt und dauerhaft gespeichert (`dokumente_metadata.dokumenttyp`, v0.30.0); bei Typ Angebot bietet sowohl der direkte Kontakt-Upload als auch die KI-Upload-Seite eine Folgeaufgabe „Angebot nachverfolgen" (fällig in 3 Tagen) an | Aktuell nur für Angebot fest verdrahtet, nicht „konfigurierbar" im Sinne der ursprünglichen Zielformulierung — bei Bedarf je Dokumenttyp/Sparte konfigurierbare Folgeaufgaben-Regeln nachziehen |
 | **Dokumentenablage** | — | 🟢 Google Drive, Kategorien und Kompression umgesetzt | Stabil halten und in neue Workflows einbinden |
 | **HiDrive vs. Google Drive** | Mittel | ⚪ Google Drive umgesetzt, Zielentscheidung offen | Google Drive als dauerhafte Lösung bestätigen oder Migration separat planen |
 | **KI-Dokumentensuche** | Mittel | 🔴 Embeddings/pgvector-Pipeline fehlt | Extraktion, Chunking, Berechtigungen, Embeddings und Suche implementieren |
