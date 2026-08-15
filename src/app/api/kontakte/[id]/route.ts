@@ -122,12 +122,6 @@ export async function GET(
       .eq('contact_id', id)
       .order('created_at', { ascending: false })
 
-    const { data: opportunities } = await supabase
-      .from('opportunities')
-      .select('*')
-      .eq('contact_id', id)
-      .order('created_at', { ascending: false })
-
     const { data: tagRows } = await supabase
       .from('contact_tag_map')
       .select('tag:tag_id(id, name)')

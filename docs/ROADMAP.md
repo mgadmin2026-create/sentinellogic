@@ -8,7 +8,7 @@
 > **Prioritäten:** `Hoch` = als Nächstes bzw. phasenbestimmend, `Mittel` = nach den
 > Kernabhängigkeiten, `Niedrig` = bewusst zurückgestellt.
 >
-> Stand: 2026-08-14
+> Stand: 2026-08-15
 
 ---
 
@@ -28,6 +28,7 @@ Automation/Synchronisation zu einem einheitlich steuerbaren System zusammenführ
 | **Einheitliches Fehler- und Retry-Handling** | Hoch | ✅ Done | `classifyError()` (transient/rate_limit/validation/auth/unknown) + `runWithTracking()`-Wrapper + `retry-handlers.ts`-Registry für 7 von 9 Integrationen; automatischer Retry per Cron-Piggyback (alle 15 Min) und manuell sofort per „Jetzt synchronisieren" (`retry-all`). Bewusst kein Auto-Retry für STRATO-Mail (E-Mail-Versand nicht idempotent) |
 | **Automation-/Sync-Control-Center UI** | Hoch | ✅ Done | `/sync` + `/regeln` unter gemeinsamer „Automatisierungen"-Tab-Leiste (ein Sidebar-Eintrag), einheitliches `SyncStatusBadge`-Vokabular auf allen Kacheln, „Automatisierungs-Läufe"-Tabelle mit Retry/Pause pro Zeile + aufklappbarem Pro-Kontakt-Batch-Detail. Optional künftig: Deep-Links von einer Regel direkt zu ihren gefilterten Läufen |
 | **Mitarbeiterdashboard** | Hoch | 🟢 `/dashboard` personalisiert: Heute im Fokus, Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter für Admins | Stabil halten; ggf. „Abschlussquote" um echten 30-Tage-Zeitverlauf ergänzen sobald historische Snapshots existieren |
+| **UI-/Branding-Überarbeitung** | Hoch | 🔴 Nicht begonnen (Stand 2026-08-15) | Von SuperChat inspiriert: einklappbare Sidebar (jederzeit wieder ausklappbar), einheitliches Typografie-System (h1–h3, Textgrößen/-schriftarten), großzügigere Arbeitsbereich-Nutzung, konsistente Tabellen-/Button-/Feld-Darstellung über alle Seiten hinweg. Eigene Style-Guide-Datei als Ergebnis. Bewusst als eigenes, in sich geschlossenes Vorhaben nach der Angebote-Funktion (v0.32.0) behandelt, nicht nebenbei mit-gebaut, da es praktisch jede Seite berührt |
 | **Facebook Lead-Import produktiv abnehmen** | Mittel | 🟢 Webhook und manueller Sync implementiert, seit v0.25.0 zusätzlich mit Retry + Batch/Item-Sichtbarkeit im Control Center | Echten Lead-End-to-End-Lauf inklusive Dubletten, Automation und Downstream-Sync durchführen |
 | **KlickTipp-Direktsynchronisation** | Hoch | 🟢 API-User freigeschaltet, deployed und Pilot erfolgreich | Produktiv beobachten; API-Zugang und Mapping per Regression absichern. Der direkte Management-API-Weg bleibt der verbindliche Outbound-Pfad, Make.com ist entfernt. |
 | **KlickTipp-Rücksynchronisation** | Hoch | 🧪 Migration, Secret, Statusabgleich und erster Tag-Webhook live; seit v0.25.0 zusätzlich an `sync_runs`/Retry angebunden | Reale Öffnung, Klick und Abmeldung End-to-End prüfen; danach den Statusabgleich zeitgesteuert aktivieren und Rückkanal-Monitoring im Control Center ergänzen. **Stand 2026-08-11: `klicktipp_webhook_events` enthält 0 Zeilen — es ist bislang noch nie ein echtes Webhook-Event bei uns angekommen.** Zu prüfen: ob auf KlickTipp-Seite die Webhook-URL/Secret/Event-Auswahl korrekt hinterlegt sind (reine Konto-Konfiguration bei KlickTipp, nicht im Code sichtbar). |
@@ -52,12 +53,12 @@ entscheiden und eine kleine eigene Kommunikationslösung für die wichtigsten Ab
 | **AmisNow-Personenanlage** | Hoch | 🧪 Browser-MVP vorhanden | Stabilen End-to-End-Pilot mit freigegebenen Testdaten, Jobstatus und Fehlerbehandlung abschließen |
 | **AmisNow-Angebotsberechnung** | Hoch | 🧪 Agent-Job vorbereitet | Reale Berechnung abnehmen und Angebotsnummer, Beitrag und Fehlerstatus verlässlich zurückschreiben |
 | **AmisNow-Jobsteuerung** | Hoch | 🟡 Job-/Result-Grundlagen vorhanden | Warteschlange, Wiederholung, Timeout, manuelle Freigabe und Monitoring produktionsfest machen |
-| **Entscheidung Angebotshandling** | Hoch | ⚪ Offen | Fachlich entscheiden, wie Opportunity, Angebot, Angebotsversion, Dokument und Vertrag zusammenhängen |
-| **Angebotsverwaltung/-Tracking** | Mittel | 🟡 Opportunities und Dokumente als Grundlagen vorhanden | Erst nach Produktentscheidung ein eindeutiges Datenmodell und Statussystem implementieren |
-| **Angebotsupload und Versionen** | Mittel | 🔴 Kein strukturiertes Angebot vorhanden | Dokumentreferenz, Versicherer, Tarif, Version, Gültigkeit und Nachfassdatum modellieren |
+| **Entscheidung Angebotshandling** | Hoch | ✅ Done | Entschieden (v0.32.0): eigenständiges Datenmodell (`angebote`-Tabelle), unabhängig von der alten `opportunities`-Tabelle (jetzt vollständig entfernt) und von `contracts` (bleibt der bereits bestehende Vertrags-Layer). Dokument-Verknüpfung über `dokument_id` |
+| **Angebotsverwaltung/-Tracking** | Mittel | ✅ Done | `/angebote` (Karten-Pipeline + Liste) und Kontakt-Kachel „Angebote" (v0.32.0): Name, Kontakt, Status-Lifecycle (In Erstellung/Versendet/In Verhandlung/Gewonnen/Verloren), Betrag+Zyklus, Sparte, Leistungsumfang; Statuswechsel synchronisiert automatisch den Kontakt-Status |
+| **Angebotsupload und Versionen** | Mittel | 🟡 Dokumentreferenz + KI-Upload-Übernahme vorhanden (v0.32.0) | Kein echtes Versionskonzept (mehrere Angebote zum selben Kontakt/derselben Sparte sind unabhängige Datensätze, keine Versionshistorie) — bei Bedarf nachziehen |
 | **Angebotsversand** | Mittel | 🔴 Kein durchgängiger Angebotsworkflow | Versand zunächst per E-Mail mit Vorlage, Protokoll und manueller Freigabe umsetzen |
-| **Automatische Angebots-Follow-ups** | Mittel | 🔴 Aufgabenbasis vorhanden | Auf Basis der jetzt fertigen Scheduler-Grundlage (`sync_config`) automatisch Aufgabe/Erinnerung aus Angebotsstatus und Frist erzeugen |
-| **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot kontrolliert in einen Vertrag überführen |
+| **Automatische Angebots-Follow-ups** | Mittel | 🟡 Manuelle Aufgabe „Angebot nachverfolgen" bei KI-erkanntem Angebot vorhanden (v0.30.0) | Auf Basis der Scheduler-Grundlage (`sync_config`) automatisch Aufgabe/Erinnerung aus Angebotsstatus (`angebote.status`) und Frist erzeugen, statt nur beim Upload anzubieten |
+| **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot (Status „Gewonnen") kontrolliert in einen Vertrag/eine Beitragsübersicht-Zeile überführen. Bewusst NICHT automatisiert in v0.32.0 (nur Hinweisbanner) — **die Beitragsübersicht-Logik (`beitragsuebersicht-uebernahme.ts`) muss dafür angepasst werden**, sobald das automatisiert wird |
 | **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
 | **E-Mail-Vorlagen** | Hoch | 🟢 `/einstellungen/mail-vorlagen` (CRUD) + Vorlage-Dropdown in `ContactEmailModal` mit Platzhalter-Ersetzung, manuelle Freigabe (Vorlage befüllt nur, sendet nicht automatisch) | Stabil halten; ggf. weitere Platzhalter ergänzen wenn Bedarf entsteht |
 | **Vorlagen: Datenanfrage, Kündigung, Termin, Beitragsübersicht** | Hoch | 🟢 Alle vier als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
@@ -109,6 +110,7 @@ Produkt-/SaaS-Fähigkeiten umsetzen.
 | **Automatische Verkaufsargumente** | Mittel | 🔴 Nicht implementiert | Als Assistenzvorschlag mit Quellenbezug und Freigabe umsetzen |
 | **Kündigungsschreiben vorbereiten** | Mittel | 🔴 Nicht implementiert | Beitragserhöhung/Ablauf erkennen und nur einen manuell freizugebenden Entwurf erzeugen |
 | **Weitere KI-Agenten** | Niedrig | 🟡 AmisNow-Agent als erster MVP | Einsatzfelder einzeln priorisieren und jeweils mit eigener Abnahme planen |
+| **Datenqualitäts-Agent** | Niedrig | ⚪ Nur Konzept (Stand 2026-08-15) | Prüft periodisch auf Inkonsistenzen: Status „Qualifiziert" ohne angelegtes Angebot, Status „Kunde" ohne Vertrag/Police, Status „Kontaktiert" bzw. offene Aufgabe seit X Tagen ohne Fortschritt. Ergebnis als Hinweisliste (Dashboard/eigene Seite), keine automatischen Änderungen. Noch nicht ausgereift — erst nach konkreterem Konzept umsetzen |
 | **SaaS-/Mandantenfähigkeit** | Niedrig | 🟡 Auth/Rollen vorhanden, Mandantenmodell fehlt | Organisationen, Datenisolation und mandantenbezogene Konfiguration als separates Ausbauprojekt planen |
 | **Kundenportal-Ausbau** | Niedrig | 🔴 Nicht implementiert | Nur nach eigener Minimallösung und konkretem Portal-MVP priorisieren |
 | **DSGVO-Auskunfts- und Löschprozess** | Niedrig / zuletzt | 🟡 Archivierung vorhanden, vollständiger Prozess fehlt | Ganz am Ende von Phase D Aufbewahrung, Export, Freigabe und endgültige Löschung definieren |

@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.31.0 — Sparte wird beim Dokument-Upload erkannt und zur Zuordnung angeboten | Aktiv in Entwicklung |
+| **Version** | 0.32.0 — Angebote (Deal-/Angebotsnachverfolgung): neue Pipeline-Seite, Kontakt-Kachel, KI-Upload-Anbindung, Status-Automatik | Aktiv in Entwicklung |
 
 ---
 
@@ -50,6 +50,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | `comments` | Kommentare, polymorph über `entity_type`/`entity_id` (v0.9.0) | id, entity_type (`task`\|`contact`), entity_id, author_user_id, body, created_at |
 | `comment_mentions` | @-Erwähnungen pro Kommentar; „Alle" wird beim Anlegen zu Einzel-Erwähnungen pro aktivem User aufgelöst (v0.9.0) | id, comment_id, mentioned_user_id, read_at |
 | `comment_attachments` | Datei-Anhänge an Kommentaren, referenziert `dokumente_metadata` (v0.9.0) | id, comment_id, dokument_id, file_name, file_size |
+| `angebote` | Angebots-/Deal-Nachverfolgung, eigenständiges Datenmodell (v0.32.0) | id, contact_id, name, status (in_erstellung/versendet/in_verhandlung/gewonnen/verloren), betrag, zyklus, sparte, leistungsumfang, dokument_id, created_by, archived_at |
 
 ### Supporting Tables
 
@@ -100,6 +101,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **Beitragsübersicht (Sparten-Vergleich)** | ✅ Done | Digitale Version der Excel-Vorlage „Beitragsuebersicht_Vorlage_Allianz_Guen": eine laufende, unversionierte Übersicht pro Kontakt (`contacts.beitragsuebersicht` JSONB) mit Sparten-Tabelle (Alt-/Neu-Beitrag, Beginn, Ablauf, Bemerkung), automatisch berechneter Differenz/Summenzeile/Ersparnis-Box (nie persistiert, gemeinsames `beitragsuebersicht-calc.ts` für UI + PDF); beim ersten Öffnen mit den festen Privat-/Gewerbe-Sparten vorbelegt (`beitragsuebersicht-sparten.ts`), danach frei erweiterbar inkl. der Kfz-Flotten-Sammelzeile (editierbar/löschbar wie jede andere Zeile); Gewerbekunden mit 4+ Fahrzeugen können ein Flottenblatt aktivieren, dessen Summe automatisch in die Sparten-Zeile „Kfz-Flotte / Firmenfahrzeuge" einfließt (1–3 Fahrzeuge direkt in der Zeile); PDF-Export (`@react-pdf/renderer`) im Layout der Excel-Vorlage. Seit v0.23.0: Beiträge aus per KI erkannten Vertrags-Uploads werden nach expliziter Nutzerbestätigung als Zeile übernommen (📄-Badge kennzeichnet automatisch übernommene Zeilen); „Per E-Mail senden"-Button neben PDF-Export erzeugt ein frisches, zeitgestempeltes PDF und verschickt es über den bestehenden Kontakt-Mail-Versand inkl. automatischer Dokumenten-Ablage und Aktivitäten-Log, mit eigener Vorlage „Beitragsübersicht". Seit v0.27.0: Zyklus-Umschalter (monatlich/vierteljährlich/halbjährlich/jährlich) für die gesamte Übersicht mit explizitem Wechsel-Dialog (Beträge beibehalten vs. umrechnen); Vertragsupload-Übernahme fragt Spalte (Alt/Neu) und Zyklus des gelesenen Betrags aktiv ab (`BeitragsuebersichtUebernahmeForm.tsx`), statt automatisch zu schreiben — Rückfrage nur bei Dokumenttyp Vertrag/Police oder Angebot |
 | **Sparten-Verwaltung & Erstgespräch-Leitfäden** | ✅ Done | Sparten sind eine feste, admin-gepflegte Liste (`/einstellungen/sparten`) statt Freitext; Kontakte können mehreren Sparten zugeordnet werden (n:m über `contact_sparte_map`, primäre Sparte hält die alte `contacts.sparte`-Spalte automatisch synchron, damit Dialfire/KlickTipp/Regeln unverändert weiterlaufen). Jede Sparte trägt ihren eigenen Erstgespräch-Leitfaden (Fragen + Felder), von Melih selbst pflegbar; die Erstgespräch-Kachel im Kontakt rendert bei mehreren zugeordneten Sparten jeden hinterlegten Leitfaden in einem eigenen Abschnitt |
 | **Dokumenttyp-Erkennung & Folgeaufgabe** | ✅ Done | Die KI-Analyse beim Dokument-Upload (KI-Upload-Seite und direkter Upload im Kontakt) klassifiziert jedes Dokument als Vertrag/Police, Angebot, Nachtrag, Rechnung oder Sonstiges (`dokumente_metadata.dokumenttyp`) — kein zusätzlicher KI-Call, nur erstmals dauerhaft gespeichert. Bestätigungskarte nach Upload zeigt den erkannten Typ (korrigierbar); bei Typ Angebot Button „+ Aufgabe: Angebot nachverfolgen" (fällig in 3 Tagen). Dokumenttyp direkt in beiden Dokumentenlisten (Kontakt-Tab + globale `/dokumente`-Übersicht) editierbar und filterbar (Alle/Verträge/Angebote/Rechnungen/Sonstiges); Listen zugleich kompakter (Kompressions-Spalten entfernt, einzeilige Zeilen). Bugfix nachgezogen: der bestätigte Dokumenttyp ging beim KI-Upload-Commit-Pfad zunächst verloren (`skipVertragsanalyse` verhinderte die Persistierung) — behoben |
+| **Angebote (Deal-/Angebotsnachverfolgung)** | ✅ Done | Eigenständiges Datenmodell (`angebote`-Tabelle, v0.32.0) statt der alten, seit v0.3.0 aus der UI entfernten `opportunities`-Tabelle (Code jetzt vollständig entfernt, siehe „❌ Removed"). Neue Hauptseite `/angebote` mit Karten-Pipeline (5 Status-Spalten: In Erstellung/Versendet/In Verhandlung/Gewonnen/Verloren, je mit Anzahl + Summe des monatlichen Beitrags) und Tabellen-Ansicht; Anlegen/Bearbeiten/Archivieren. Neue Kontakt-Kachel „Angebote" mit gleicher Funktionalität. Statuswechsel synchronisiert automatisch den Kontakt-Status (Angebot angelegt → mind. „Qualifiziert", „Gewonnen" → „Kunde", „Verloren" → „Nicht interessiert", nie herabstufen) inkl. Aktivitäten-Log (`angebot_created`/`angebot_status_changed`, standardmäßig fachlich sichtbar). KI-Upload-Prüfmaske und Kontakt-Dokumente-Tab bieten bei erkanntem Dokumenttyp „Angebot" die Übernahme in die Angebotsübersicht inkl. Status-Auswahl an (Betrag/Zyklus/Leistungsumfang werden aus der KI-Extraktion vorbefüllt). Bewusst nicht automatisiert: „Gewonnen" legt keinen Vertrag/keine Beitragsübersicht-Zeile automatisch an — nur ein Hinweisbanner mit Link zum Kontakt |
 
 ## Feature-Roadmap
 
@@ -108,17 +110,23 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 > Arbeitsweisen (Doku, Tests, Release Notes, Monitoring). Bereits implementierte Grundlagen bleiben
 > zusätzlich im Abschnitt `Feature-Status` oben dokumentiert.
 >
-> **Aktueller Fokus (Stand 2026-08-14):** Phase A ist bei „Automation + Synchronisation
+> **Aktueller Fokus (Stand 2026-08-15):** Phase A ist bei „Automation + Synchronisation
 > vereinheitlichen" inkl. aller vier Unterpunkte (Cron/Scheduler, Log-Handling, Fehler-/Retry-Handling,
 > Control-Center-UI) weiterhin vollständig ✅ Done (v0.25.0). Offene Hoch-Priorität-Punkte in Phase A:
 > Vollständiger Regressionstest, Placetel Click-to-Call/Notify-Verarbeitung, KlickTipp-Rücksynchronisation
-> (noch kein einziges reales Webhook-Event angekommen, siehe `docs/ROADMAP.md`). Zusätzlich abseits der
-> Phasenreihenfolge umgesetzt: „KI-Upload → Folgeaufgabe" (Phase C, Dokumenttyp-Erkennung + Folgeaufgabe
-> bei Angebot, v0.30.0–v0.30.3, siehe „Recent Changes" unten) — jetzt ✅ Done statt 🔴.
+> (noch kein einziges reales Webhook-Event angekommen, siehe `docs/ROADMAP.md`), sowie neu vermerkt die
+> **UI-/Branding-Überarbeitung** (einklappbare Sidebar, einheitliches Typo-/Style-System — noch nicht
+> begonnen). Zusätzlich abseits der Phasenreihenfolge umgesetzt: „KI-Upload → Folgeaufgabe" (Phase C,
+> Dokumenttyp-Erkennung + Folgeaufgabe bei Angebot, v0.30.0–v0.30.3) und die komplette
+> „Entscheidung Angebotshandling" + „Angebotsverwaltung/-Tracking" (Phase B, v0.32.0, siehe
+> „Recent Changes" unten) — beide jetzt ✅ Done statt 🔴/⚪. Neu nur konzeptionell vermerkt (Phase D):
+> ein Datenqualitäts-Agent für Status-/Datenkonsistenz-Prüfungen.
 
 ### ❌ Removed
 
-- Opportunities (aus UI entfernt, v0.3.0)
+- Opportunities (aus UI entfernt v0.3.0, Code — Seite + API-Routen — vollständig entfernt v0.32.0
+  zugunsten der neuen `angebote`-Tabelle; die alte `opportunities`-Tabelle selbst bleibt unangetastet
+  in der DB, kein `DROP TABLE` ohne expliziten Wunsch)
 - Kontakte kopieren (unfertige Krücke ohne eigenen Endpoint, v0.6.0)
 
 ---
@@ -170,7 +178,8 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 |------|------|---------|
 | Dashboard | `/` | Mitarbeiterdashboard: personalisierte KPIs, Heute im Fokus (überfällig/heute), Meine Kontakte, Letzte Aktivitäten, Meine Pipeline, Team-Umschalter (Admin), CSV-Import |
 | Kontakte | `/kontakte` | Kontakt-Liste mit Prozess-Fortschritt, Import/Export, Tag-Filter, Archiv-Toggle |
-| Kontakt-Detail | `/kontakte/[id]` | Tab-Interface (Übersicht, Prozess, Aktivitäten, Aufgaben, Dialfire, Dokumente, Verträge, Automation) + Tags-Leiste |
+| Angebote | `/angebote` | Angebots-/Deal-Pipeline (v0.32.0): Karten-Ansicht (Kanban, 5 Status-Spalten mit Anzahl + Summe mtl. Beitrag) und Liste (Tabelle); Anlegen/Bearbeiten/Archivieren; Statuswechsel synchronisiert automatisch den Kontakt-Status |
+| Kontakt-Detail | `/kontakte/[id]` | Tab-Interface (Übersicht, Prozess, Aktivitäten, Aufgaben, Dialfire, Dokumente, Verträge, Angebote, Automation) + Tags-Leiste |
 | Testdashboard | `/testdashboard` | Regressionstest-Übersicht, Testläufe, Umgebungsstatus (v0.6.0) — **nur Admin-Rolle sichtbar in der Sidebar (v0.11.1)** |
 | Release Notes | `/release-notes` | In-App Feature-History |
 | Erwähnungen | `/erwaehnungen` | Eigene @-Erwähnungen aus Kommentaren, Alle/Ungelesen-Filter — Seite bleibt für alle Rollen erreichbar, der Sidebar-Einstieg liegt seit v0.11.1 im Profil-Menü (nicht mehr eigener Hauptnav-Eintrag) mit Zähler-Badge am Profilnamen |
@@ -246,6 +255,48 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.32.0 (2026-08-15) — Angebote (Deal-/Angebotsnachverfolgung)
+
+Branch `feature/angebote-tracking`. Löst den seit langem offenen Roadmap-Punkt „Entscheidung
+Angebotshandling" (Phase B): Angebote werden ein eigenständiges Datenmodell, an Brevos Deal-Pipeline
+orientiert (Karten-Kanban + Liste, kompakte Karten mit Name/Kontakt/Wert/Status).
+
+- ✨ Neue Tabelle `angebote` (Migration `0072_angebote.sql`): Name, Status
+  (in_erstellung/versendet/in_verhandlung/gewonnen/verloren), Betrag + Zyklus (roh gespeichert, mtl.
+  Beitrag wird live berechnet über `konvertiereBetrag()` aus `beitragsuebersicht-zyklus.ts` — nie
+  persistiert, gleiches Muster wie die Beitragsübersicht), Sparte, Leistungsumfang (Freitext),
+  `dokument_id`-Verknüpfung, Soft-Delete via `archived_at`.
+- ✨ Neue Hauptseite `/angebote` (neuer Sidebar-Eintrag zwischen Kontakte und Aufgaben): Umschaltbare
+  Karten- (5 Status-Spalten, je mit Anzahl + Summe des monatlichen Beitrags) und Listen-Ansicht,
+  Such-/Statusfilter, Anlegen/Bearbeiten/Archivieren-Modal (`ContactSearchSelect` wiederverwendet).
+- ✨ Neue Kontakt-Kachel „Angebote" (`KontaktAngeboteTab.tsx`, eigener `DrawerId`): kompakte
+  Übersichts-Kachel (Anzahl + Gesamtwert/Monat) + Drawer mit derselben CRUD-Funktionalität wie die
+  Hauptseite, kontaktgebunden.
+- ✨ **Status-Automatik**: Ein neues Angebot hebt den Kontakt-Status mindestens auf „Qualifiziert" (nie
+  herabstufen — ein bestehender Kunde bleibt Kunde); Status „Gewonnen" → Kontakt „Kunde", „Verloren" →
+  Kontakt „Nicht interessiert". Beide Wege inkl. `logStatusChanged()` und neuen Aktivitätstypen
+  `angebot_created`/`angebot_status_changed` (bewusst nicht in `istTechnisch()` aufgenommen, damit sie
+  standardmäßig in der fachlichen Kontakthistorie sichtbar sind).
+- ✨ **KI-Upload-Prüfmaske**: bei erkanntem Dokumenttyp „Angebot" erscheint ein Block „Als Angebot in die
+  Angebotsübersicht aufnehmen" mit editierbarem Namen (vorbefüllt aus Versicherungstyp/-gesellschaft)
+  und Status-Auswahl (Default „Versendet" — das hochgeladene Dokument ist das bereits versendete
+  Angebot). Bei Bestätigung legt `commit/route.ts` das Angebot nach dem Drive-Upload an (Betrag/Zyklus
+  aus der KI-Extraktion geparst, Leistungsumfang aus `benefits[]` zusammengefasst, `dokument_id` gesetzt).
+- ✨ **Kontakt-Dokumente-Tab**: die bestehende Dokumenttyp-Bestätigungskarte (v0.30.0) bekommt bei Typ
+  „Angebot" zusätzlich zum vorhandenen „+ Aufgabe: Angebot nachverfolgen"-Button einen
+  Status-Dropdown + „Als Angebot übernehmen"-Button (Name wird aus dem Dateinamen abgeleitet).
+- 🧹 **Aufgeräumt**: die alte, seit v0.3.0 aus der UI entfernte `opportunities`-Funktionalität (Seite
+  `/opportunities`, API-Routen `/api/opportunities(/[id])`, toter Query in
+  `GET /api/kontakte/[id]`) vollständig aus dem Code entfernt — passte konzeptionell nicht zum
+  gewünschten Angebots-Lifecycle. Die DB-Tabelle selbst bleibt unangetastet (kein `DROP TABLE` ohne
+  expliziten Wunsch).
+- ⚠️ **Bewusst nicht automatisiert** (Nutzer-Entscheidung): „Gewonnen" legt keinen Vertrag/keine
+  Beitragsübersicht-Zeile automatisch an. Stattdessen zeigt sowohl `/angebote` als auch die
+  Kontakt-Kachel ein Hinweisbanner „✓ Angebot gewonnen — Beitragsübersicht ggf. aktualisieren" mit Link
+  zum Kontakt. Sollte das später automatisiert werden (Roadmap-Punkt „Angebotsannahme → Vertrag",
+  Phase B), muss die Beitragsübersicht-Logik entsprechend erweitert werden.
+- ⚠️ Migration muss vom Nutzer manuell in Supabase ausgeführt werden (Projekt-Konvention)
 
 ### v0.31.0 (2026-08-15) — Sparte wird beim Dokument-Upload erkannt und zur Zuordnung angeboten
 
@@ -1411,7 +1462,12 @@ git push origin main # Deploy zu Vercel
 | `src/lib/company-research.ts` | `generateCompanyResearch()` (Claude + `web_search`-Tool + Structured Outputs), `ensureGewerbeRecherche()`/`refreshGewerbeRecherche()` (Cache-Lese/Schreib-Logik) (v0.26.0) |
 | `supabase/migrations/0071_dokumenttyp.sql` | `dokumente_metadata.dokumenttyp` (nullable, CHECK auf 5 bekannte Werte) + Index (v0.30.0) |
 | `src/lib/dokumenttyp.ts` | Gemeinsames Modul: Dokumenttyp-Labels/-Optionen, Filter-Bucket-Mapping (`nachtrag`→„Verträge", `NULL`→„Sonstiges") — von KI-Upload-Prüfmaske, Kontakt-Dokumente-Tab und globaler `/dokumente`-Übersicht genutzt (v0.30.0) |
+| `supabase/migrations/0072_angebote.sql` | `angebote`-Tabelle: Status-Lifecycle, Betrag/Zyklus (roh, mtl. Beitrag live berechnet), Leistungsumfang, `dokument_id`-Verknüpfung (v0.32.0) |
+| `src/lib/angebot-status.ts` | Gemeinsames Modul: Angebot-Status-Optionen/-Labels/-Farben — von `/angebote`, `KontaktAngeboteTab`, KI-Upload-Prüfmaske und `KontaktDokumenteTab` genutzt (v0.32.0) |
+| `src/app/api/angebote/route.ts`, `.../[id]/route.ts` | Angebote-CRUD + Status-Automatik (Kontakt-Status-Sync) + Aktivitäten-Log (v0.32.0) |
+| `src/app/angebote/page.tsx` | Angebote-Pipeline-Seite: Karten (Kanban)/Liste-Toggle, Filter, Anlegen/Bearbeiten/Archivieren (v0.32.0) |
+| `src/components/kontakt/KontaktAngeboteTab.tsx` | Kontakt-Kachel „Angebote" — gleiche CRUD-Funktionalität wie `/angebote`, kontaktgebunden (v0.32.0) |
 
 ---
 
-*Last Updated: 2026-08-14 — v0.30.3 Dokumenttyp-Erkennung, Folgeaufgabe bei Angebot, kompaktere Dokumente-Ansicht, Bugfix KI-Upload-Dokumenttyp-Verlust*
+*Last Updated: 2026-08-15 — v0.32.0 Angebote (Deal-/Angebotsnachverfolgung): Pipeline-Seite, Kontakt-Kachel, KI-Upload-Anbindung, Status-Automatik*

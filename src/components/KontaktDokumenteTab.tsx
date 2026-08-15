@@ -11,6 +11,7 @@ import {
   dokumenttypZuFilter,
   type DokumenttypFilter,
 } from '@/lib/dokumenttyp'
+import { ANGEBOT_STATUS_OPTIONEN, type AngebotStatus } from '@/lib/angebot-status'
 
 interface Dokument {
   id: string
@@ -37,6 +38,8 @@ interface KontaktDokumenteTabProps {
   onCreateFolgeaufgabe?: (titel: string, fälligInTagen: number) => void
   /** Wird nach einer bestätigten Sparten-Zuordnung aufgerufen, damit die übrige Kontaktseite (Sparten-Kachel, Erstgespräch) neu lädt. */
   onSparteZugeordnet?: () => void
+  /** Wird nach einer Angebots-Übernahme aufgerufen, damit die Angebote-Kachel neu lädt. */
+  onAngebotErstellt?: () => void
 }
 
 // Baum des Kontakt-Typs zu waehlbaren Pfaden flachklopfen (max. 2 Ebenen)
@@ -51,7 +54,7 @@ function flattenStruktur(nodes: StrukturNode[]): string[] {
   return paths
 }
 
-export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeaufgabe, onSparteZugeordnet }: KontaktDokumenteTabProps) {
+export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeaufgabe, onSparteZugeordnet, onAngebotErstellt }: KontaktDokumenteTabProps) {
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -67,7 +70,14 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
   const [filterKategorie, setFilterKategorie] = useState<string>('alle')
   const [filterTyp, setFilterTyp] = useState<DokumenttypFilter>('alle')
   const [typConfirmations, setTypConfirmations] = useState<
-    { dokumentId: string; fileName: string; dokumenttyp: string; aufgabeStatus: 'idle' | 'angelegt' }[]
+    {
+      dokumentId: string
+      fileName: string
+      dokumenttyp: string
+      aufgabeStatus: 'idle' | 'angelegt'
+      angebotStatus: AngebotStatus
+      angebotUebernommen: boolean
+    }[]
   >([])
   const [sparteConfirmation, setSparteConfirmation] = useState<{
     name: string
@@ -267,7 +277,14 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
         if (data.dokument?.dokumenttyp) {
           setTypConfirmations((prev) => [
             ...prev,
-            { dokumentId: data.dokument.id, fileName: data.dokument.file_name, dokumenttyp: data.dokument.dokumenttyp, aufgabeStatus: 'idle' },
+            {
+              dokumentId: data.dokument.id,
+              fileName: data.dokument.file_name,
+              dokumenttyp: data.dokument.dokumenttyp,
+              aufgabeStatus: 'idle',
+              angebotStatus: 'versendet',
+              angebotUebernommen: false,
+            },
           ])
         }
 
@@ -362,6 +379,33 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
   const handleAngebotFolgeaufgabe = (dokumentId: string) => {
     onCreateFolgeaufgabe?.('Angebot nachverfolgen', 3)
     dismissTypConfirmation(dokumentId)
+  }
+
+  const setAngebotStatusFuer = (dokumentId: string, status: AngebotStatus) => {
+    setTypConfirmations((prev) => prev.map((c) => (c.dokumentId === dokumentId ? { ...c, angebotStatus: status } : c)))
+  }
+
+  const uebernehmeAlsAngebot = async (c: { dokumentId: string; fileName: string; angebotStatus: AngebotStatus }) => {
+    try {
+      const name = c.fileName.replace(/\.[^.]+$/, '')
+      const res = await fetch('/api/angebote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: kontaktId,
+          name,
+          status: c.angebotStatus,
+          dokument_id: c.dokumentId,
+          created_by: 'dokument_upload',
+        }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Angebot konnte nicht angelegt werden')
+      setTypConfirmations((prev) => prev.map((x) => (x.dokumentId === c.dokumentId ? { ...x, angebotUebernommen: true } : x)))
+      onAngebotErstellt?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Angebot konnte nicht angelegt werden')
+    }
   }
 
   const bestaetigeSparteZuordnen = async () => {
@@ -525,7 +569,7 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
 
       {/* Dokumenttyp-Bestätigung nach Upload */}
       {typConfirmations.map((c) => (
-        <div key={c.dokumentId} className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
+        <div key={c.dokumentId} className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm space-y-2">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <span className="text-indigo-900">
               📄 <strong className="truncate">{c.fileName}</strong> erkannt als:{' '}
@@ -557,6 +601,30 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
               </button>
             </div>
           </div>
+
+          {c.dokumenttyp === 'angebot' && (
+            c.angebotUebernommen ? (
+              <p className="text-xs text-indigo-700">✓ Als Angebot in die Angebotsübersicht übernommen</p>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={c.angebotStatus}
+                  onChange={(e) => setAngebotStatusFuer(c.dokumentId, e.target.value as AngebotStatus)}
+                  className="px-2 py-1 border border-indigo-300 rounded-lg text-xs bg-white focus:outline-none"
+                >
+                  {ANGEBOT_STATUS_OPTIONEN.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => uebernehmeAlsAngebot(c)}
+                  className="px-2.5 py-1 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
+                >
+                  Als Angebot übernehmen
+                </button>
+              </div>
+            )
+          )}
         </div>
       ))}
 

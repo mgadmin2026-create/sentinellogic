@@ -45,6 +45,8 @@ export type ActivityType =
   | 'call_prep_saved'
   | 'strato_calendar_sync_failed'
   | 'gewerbe_recherche'
+  | 'angebot_created'
+  | 'angebot_status_changed'
 
 interface ActivityData {
   [key: string]: any
@@ -285,6 +287,46 @@ export async function logStatusChanged(
     'status_changed',
     `Status geändert für ${contactName}: ${oldStatus} → ${newStatus}`,
     { oldStatus, newStatus },
+    userId
+  )
+}
+
+/**
+ * Angebot angelegt
+ */
+export async function logAngebotCreated(
+  contactId: string,
+  contactName: string,
+  angebotName: string,
+  userId?: string | null
+) {
+  await logActivity(
+    null,
+    contactId,
+    'angebot_created',
+    `Angebot „${angebotName}" angelegt für ${contactName}`,
+    { angebotName },
+    userId
+  )
+}
+
+/**
+ * Angebot-Status geändert
+ */
+export async function logAngebotStatusChanged(
+  contactId: string,
+  contactName: string,
+  angebotName: string,
+  oldStatus: string,
+  newStatus: string,
+  userId?: string | null
+) {
+  await logActivity(
+    null,
+    contactId,
+    'angebot_status_changed',
+    `Angebot „${angebotName}" für ${contactName}: ${oldStatus} → ${newStatus}`,
+    { angebotName, oldStatus, newStatus },
     userId
   )
 }

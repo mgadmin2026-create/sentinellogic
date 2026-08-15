@@ -29,8 +29,9 @@ import { BeitragsuebersichtPanel } from '@/components/kontakt/Beitragsuebersicht
 import { ErstgespraechPanel } from '@/components/kontakt/ErstgespraechPanel'
 import { CallPrepPanel } from '@/components/kontakt/CallPrepPanel'
 import { AuslandsreiseversicherungPanel } from '@/components/kontakt/AuslandsreiseversicherungPanel'
+import { KontaktAngeboteTab, type Angebot } from '@/components/kontakt/KontaktAngeboteTab'
 import { berechneSummen } from '@/lib/beitragsuebersicht-calc'
-import { ZYKLUS_LABEL } from '@/lib/beitragsuebersicht-zyklus'
+import { ZYKLUS_LABEL, konvertiereBetrag } from '@/lib/beitragsuebersicht-zyklus'
 import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
 
 interface Kontakt {
@@ -169,6 +170,7 @@ type DrawerId =
   | 'aufgaben'
   | 'dokumente'
   | 'vertraege'
+  | 'angebote'
   | 'placetel'
   | 'dialfire'
   | 'automation'
@@ -215,10 +217,22 @@ export default function KontaktDetailPage() {
   const [amisMessage, setAmisMessage] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
   const [kontaktTags, setKontaktTags] = useState<{ id: string; name: string }[]>([])
   const [kontaktSparten, setKontaktSparten] = useState<KontaktSparte[]>([])
+  const [angebote, setAngebote] = useState<Angebot[]>([])
 
   useEffect(() => {
     loadKontakt()
+    loadAngebote()
   }, [kontaktId])
+
+  async function loadAngebote() {
+    try {
+      const res = await fetch(`/api/angebote?contact_id=${kontaktId}`, { cache: 'no-store' })
+      const json = await res.json()
+      if (json.success) setAngebote(json.data)
+    } catch {
+      // Fehler beim Laden der Angebote ignorieren -- Kachel zeigt dann einfach "keine Angebote"
+    }
+  }
 
   async function loadKontakt() {
     try {
@@ -785,6 +799,39 @@ export default function KontaktDetailPage() {
               )}
             </div>
 
+            {/* Angebote */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-900">📋 Angebote</h3>
+                <button
+                  onClick={() => setOpenDrawer('angebote')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Bearbeiten →
+                </button>
+              </div>
+              {angebote.length === 0 ? (
+                <p className="text-sm text-gray-400">Noch keine Angebote angelegt.</p>
+              ) : (
+                <div className="flex items-center gap-5 flex-wrap">
+                  <div>
+                    <div className="text-lg font-bold text-gray-900 tabular-nums">{angebote.length}</div>
+                    <div className="text-[11px] text-gray-400 uppercase tracking-wide">Angebote</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-gray-900 tabular-nums">
+                      {fmtEuroKachel(
+                        angebote
+                          .filter((a) => a.status !== 'verloren')
+                          .reduce((sum, a) => sum + (a.betrag ? konvertiereBetrag(a.betrag, a.zyklus || 'jaehrlich', 'monatlich') : 0), 0)
+                      )}
+                    </div>
+                    <div className="text-[11px] text-gray-400 uppercase tracking-wide">Gesamtwert / Monat</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Dokumente */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between">
@@ -1048,6 +1095,7 @@ export default function KontaktDetailPage() {
           primarySparte={kontaktSparten.find((z) => z.is_primary)?.sparte.name ?? kontakt?.sparte}
           onCreateFolgeaufgabe={(titel, fälligInTagen) => openNewTaskWithTitle(titel, fälligInTagen)}
           onSparteZugeordnet={loadKontakt}
+          onAngebotErstellt={loadAngebote}
         />
       </Drawer>
 
@@ -1074,6 +1122,20 @@ export default function KontaktDetailPage() {
         widthClass="max-w-3xl"
       >
         <KontaktVertraegeTab kontaktId={kontaktId} />
+      </Drawer>
+
+      <Drawer
+        isOpen={openDrawer === 'angebote'}
+        title="📋 Angebote"
+        onClose={() => setOpenDrawer(null)}
+        widthClass="max-w-3xl"
+      >
+        <KontaktAngeboteTab
+          kontaktId={kontaktId}
+          kontaktName={kontakt ? `${kontakt.first_name} ${kontakt.last_name}`.trim() : ''}
+          angebote={angebote}
+          onChanged={loadAngebote}
+        />
       </Drawer>
 
       <Drawer
