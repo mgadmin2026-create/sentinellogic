@@ -7,6 +7,7 @@ import { KontaktImportModal } from '@/components/KontaktImportModal'
 import { HelpButton } from '@/components/help/HelpButton'
 import { ContactIntegrationPopover } from '@/components/ContactIntegrationPopover'
 import { BulkContactEditDialog } from '@/components/kontakt/BulkContactEditDialog'
+import { Button, PageHeader } from '@/components/ui'
 
 interface Kontakt {
   id: string
@@ -947,76 +948,70 @@ export default function KontaktePage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-full">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap sm:flex-nowrap">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-3xl font-bold text-gray-900">Kontakte</h1>
+      <PageHeader
+        title="Kontakte"
+        subtitle={
+          <span className="flex items-center gap-1.5">
+            {loading ? 'Lädt…' : `${kontakte.length} Kontakte gesamt`}
             <HelpButton articleId="kontakte-liste.overview" />
-          </div>
-          <p className="text-gray-500 text-sm mt-0.5">{loading ? 'Lädt…' : `${kontakte.length} Kontakte gesamt`}</p>
-        </div>
-        <div data-testid="kontakte-header-actions" className="flex items-center justify-end gap-2 flex-wrap">
-          <button
-            onClick={() => setImportModalOpen(true)}
-            className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            Importieren
-          </button>
-          <div className="relative">
-            <button
-              onClick={() => setExportMenuOpen((v) => !v)}
-              disabled={exporting !== null}
-              className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap disabled:opacity-50"
-            >
+          </span>
+        }
+        actions={
+          <div data-testid="kontakte-header-actions" className="flex items-center justify-end gap-2 flex-wrap">
+            <Button variant="secondary" onClick={() => setImportModalOpen(true)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              {exporting ? `${exporting.toUpperCase()}…` : 'Exportieren'}
-            </button>
-            {exportMenuOpen && (
-              <div className="absolute right-0 z-30 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-                {(['csv', 'xlsx', 'pdf'] as const).map((fmt) => (
-                  <button
-                    key={fmt}
-                    onClick={() => handleExport(fmt)}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-yellow-50 transition-colors"
-                  >
-                    Als {fmt.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            )}
+              Importieren
+            </Button>
+            <div className="relative">
+              <Button
+                variant="secondary"
+                onClick={() => setExportMenuOpen((v) => !v)}
+                disabled={exporting !== null}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                {exporting ? `${exporting.toUpperCase()}…` : 'Exportieren'}
+              </Button>
+              {exportMenuOpen && (
+                <div className="absolute right-0 z-30 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+                  {(['csv', 'xlsx', 'pdf'] as const).map((fmt) => (
+                    <button
+                      key={fmt}
+                      onClick={() => handleExport(fmt)}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-yellow-50 transition-colors"
+                    >
+                      Als {fmt.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button variant="secondary" onClick={() => setShowColumnModal(true)} title="Spalten anpassen">
+              <span aria-hidden="true">⚙️</span>
+              Spalten
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingKontakt(null)
+                setEditModalOpen(true)
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Neu
+            </Button>
           </div>
-          <button
-            onClick={() => setShowColumnModal(true)}
-            className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
-            title="Spalten anpassen"
-          >
-            <span aria-hidden="true">⚙️</span>
-            Spalten
-          </button>
-          <button
-            onClick={() => {
-              setEditingKontakt(null)
-              setEditModalOpen(true)
-            }}
-            className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Neu
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Die vier fachlichen Sichten sind bewusst kein Filterfeld mehr. */}
       <div

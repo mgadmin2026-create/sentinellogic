@@ -15,6 +15,7 @@ import { PIPELINE_STEPS } from '@/components/kontakt/ProzessPanel'
 import { HelpButton } from '@/components/help/HelpButton'
 import { isAdmin } from '@/lib/roles'
 import { isOverdue as istUeberfaellig, isDueToday as istHeuteFaellig, heutigesDatumBerlin } from '@/lib/pipeline'
+import { Button, Card, PageHeader } from '@/components/ui'
 
 interface CurrentUser {
   id: string
@@ -195,58 +196,52 @@ export default function DashboardPage() {
 
       <div className="p-4 md:p-8">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-[#1A1A1A]">
-              {greeting}{firstName ? `, ${firstName}` : ''}
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
+        <PageHeader
+          title={`${greeting}${firstName ? `, ${firstName}` : ''}`}
+          subtitle={
+            <>
               {dateLabel}
               {!loading && (overdueTasks.length > 0 || todayTasks.length > 0) && (
                 <> · {overdueTasks.length > 0 && <span className="text-red-600 font-medium">{overdueTasks.length} Aufgabe{overdueTasks.length !== 1 ? 'n' : ''} überfällig</span>}
                 {overdueTasks.length > 0 && todayTasks.length > 0 && ', '}
                 {todayTasks.length > 0 && <span className="font-medium">{todayTasks.length} heute fällig</span>}</>
               )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {admin && (
-              <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 gap-0.5">
-                <button
-                  onClick={() => setViewMode('me')}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${viewMode === 'me' ? 'bg-[#1A1A1A] text-white' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Meine Ansicht
-                </button>
-                <button
-                  onClick={() => setViewMode('team')}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${viewMode === 'team' ? 'bg-[#1A1A1A] text-white' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                  Team
-                </button>
-              </div>
-            )}
-            {admin && <HelpButton articleId="dashboard.ansicht-umschalter" />}
-            <button
-              onClick={() => setCsvModalOpen(true)}
-              className="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Import
-            </button>
-            <button
-              onClick={() => setNewKontaktModalOpen(true)}
-              className="flex items-center gap-2 bg-[#FFC300] hover:bg-[#e6b000] text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Neuer Kontakt
-            </button>
-          </div>
-        </div>
+            </>
+          }
+          actions={
+            <>
+              {admin && (
+                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 gap-0.5">
+                  <button
+                    onClick={() => setViewMode('me')}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${viewMode === 'me' ? 'bg-brand-dark text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Meine Ansicht
+                  </button>
+                  <button
+                    onClick={() => setViewMode('team')}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${viewMode === 'team' ? 'bg-brand-dark text-white' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Team
+                  </button>
+                </div>
+              )}
+              {admin && <HelpButton articleId="dashboard.ansicht-umschalter" />}
+              <Button variant="secondary" onClick={() => setCsvModalOpen(true)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Import
+              </Button>
+              <Button onClick={() => setNewKontaktModalOpen(true)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Neuer Kontakt
+              </Button>
+            </>
+          }
+        />
 
         {/* KPI-Reihe */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -257,7 +252,7 @@ export default function DashboardPage() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-[#1A1A1A]">{loading ? '—' : totalKontakte}</p>
+            <p className="text-2xl font-extrabold text-gray-900">{loading ? '—' : totalKontakte}</p>
             <p className="text-xs text-gray-400 mt-1">in aktiver Betreuung</p>
           </div>
           <div className={`bg-white rounded-xl border p-4 ${overdueTasks.length > 0 ? 'border-red-200' : 'border-gray-200'}`}>
@@ -267,7 +262,7 @@ export default function DashboardPage() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-[#1A1A1A]">{loading ? '—' : overdueTasks.length}</p>
+            <p className="text-2xl font-extrabold text-gray-900">{loading ? '—' : overdueTasks.length}</p>
             <p className={`text-xs mt-1 ${overdueTasks.length > 0 ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
               {overdueTasks.length > 0 ? 'jetzt bearbeiten' : 'alles im Zeitplan'}
             </p>
@@ -279,7 +274,7 @@ export default function DashboardPage() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-[#1A1A1A]">{loading ? '—' : todayTasks.length}</p>
+            <p className="text-2xl font-extrabold text-gray-900">{loading ? '—' : todayTasks.length}</p>
             <p className="text-xs text-gray-400 mt-1">
               {todayTasks.filter((t) => t.priorität === 'hoch').length > 0 ? `${todayTasks.filter((t) => t.priorität === 'hoch').length} hohe Priorität` : 'für heute'}
             </p>
@@ -291,7 +286,7 @@ export default function DashboardPage() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>
               </div>
             </div>
-            <p className="text-2xl font-extrabold text-[#1A1A1A]">{loading ? '—' : `${abschlussquote}%`}</p>
+            <p className="text-2xl font-extrabold text-gray-900">{loading ? '—' : `${abschlussquote}%`}</p>
             <p className="text-xs text-gray-400 mt-1">{customerCount} Kunden von {totalKontakte} Kontakten</p>
           </div>
         </div>
@@ -301,7 +296,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                   🎯 Heute im Fokus
                   <HelpButton articleId="dashboard.heute-im-fokus" />
                   {focusTasks.length > 0 && (
@@ -310,7 +305,7 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </h2>
-                <Link href="/aufgaben" className="text-sm text-gray-500 hover:text-[#1A1A1A] font-medium">Alle Aufgaben →</Link>
+                <Link href="/aufgaben" className="text-sm text-gray-500 hover:text-gray-900 font-medium">Alle Aufgaben →</Link>
               </div>
               {loading ? (
                 <p className="text-center text-gray-400 py-10 text-sm">Wird geladen…</p>
@@ -325,7 +320,7 @@ export default function DashboardPage() {
                       className="w-[18px] h-[18px] rounded-md border-2 border-gray-300 hover:border-emerald-500 flex-shrink-0"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#1A1A1A] truncate">{t.titel}</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate">{t.titel}</p>
                       <div className="text-xs text-gray-500 flex items-center gap-1.5 flex-wrap mt-0.5">
                         {t.contact_id && t.contact && (
                           <Link href={`/kontakte/${t.contact_id}`} className="font-semibold text-gray-600 hover:underline">
@@ -351,11 +346,11 @@ export default function DashboardPage() {
 
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                   👤 {viewMode === 'me' ? 'Meine Kontakte' : 'Kontakte'}
                   <HelpButton articleId="dashboard.meine-kontakte" />
                 </h2>
-                <Link href="/kontakte" className="text-sm text-gray-500 hover:text-[#1A1A1A] font-medium">Alle {totalKontakte} →</Link>
+                <Link href="/kontakte" className="text-sm text-gray-500 hover:text-gray-900 font-medium">Alle {totalKontakte} →</Link>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -376,7 +371,7 @@ export default function DashboardPage() {
                       return (
                         <tr key={k.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60">
                           <td className="px-5 py-2.5">
-                            <Link href={`/kontakte/${k.id}`} className="font-semibold text-[#1A1A1A] hover:underline">
+                            <Link href={`/kontakte/${k.id}`} className="font-semibold text-gray-900 hover:underline">
                               {k.first_name} {k.last_name}
                             </Link>
                             {k.company_name && <div className="text-xs text-gray-500">{k.company_name}</div>}
@@ -391,7 +386,7 @@ export default function DashboardPage() {
                           <td className="px-5 py-2.5">
                             <div className="flex items-center gap-2">
                               <span className="w-14 h-1.5 rounded-full bg-gray-100 overflow-hidden inline-block">
-                                <span className="block h-full bg-[#FFC300]" style={{ width: `${((idx + 1) / PIPELINE_STEPS.length) * 100}%` }} />
+                                <span className="block h-full bg-brand" style={{ width: `${((idx + 1) / PIPELINE_STEPS.length) * 100}%` }} />
                               </span>
                               <span className="text-xs text-gray-400">{idx + 1}/{PIPELINE_STEPS.length}</span>
                             </div>
@@ -410,7 +405,7 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                   📝 Letzte Aktivitäten
                   <HelpButton articleId="dashboard.aktivitaeten" />
                 </h2>
@@ -427,7 +422,7 @@ export default function DashboardPage() {
                         {getActivityIcon(akt.type)}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs leading-relaxed text-[#1A1A1A]">
+                        <p className="text-xs leading-relaxed text-gray-900">
                           {akt.contact && (
                             <Link href={`/kontakte/${akt.contact.id}`} className="font-bold hover:underline">
                               {akt.contact.first_name} {akt.contact.last_name}
@@ -446,7 +441,7 @@ export default function DashboardPage() {
 
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                   📊 {viewMode === 'me' ? 'Meine Pipeline' : 'Team-Pipeline'}
                   <HelpButton articleId="dashboard.pipeline" />
                 </h2>
@@ -456,7 +451,7 @@ export default function DashboardPage() {
                   <div key={step.key} className="flex items-center gap-2.5 px-5 py-1.5">
                     <span className="text-[11px] text-gray-500 w-[104px] flex-shrink-0 truncate" title={step.label}>{i + 1}. {step.label}</span>
                     <span className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                      <span className="block h-full bg-[#FFC300] rounded-full" style={{ width: `${(step.count / maxPipelineCount) * 100}%` }} />
+                      <span className="block h-full bg-brand rounded-full" style={{ width: `${(step.count / maxPipelineCount) * 100}%` }} />
                     </span>
                     <span className="text-[11px] font-bold text-gray-500 w-5 text-right flex-shrink-0">{step.count}</span>
                   </div>
@@ -466,7 +461,7 @@ export default function DashboardPage() {
 
             <div className="bg-white rounded-xl border border-gray-200">
               <div className="px-5 py-3.5 border-b border-gray-100">
-                <h2 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900 flex items-center gap-2">
                   ⚡ Schnellzugriff
                   <HelpButton articleId="dashboard.schnellzugriff" />
                 </h2>
@@ -477,28 +472,28 @@ export default function DashboardPage() {
                   className="flex flex-col items-start gap-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-left transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" y1="8" x2="19" y2="14" /><line x1="22" y1="11" x2="16" y2="11" /></svg>
-                  <span className="text-xs font-bold text-[#1A1A1A]">Neuer Kontakt</span>
+                  <span className="text-xs font-bold text-gray-900">Neuer Kontakt</span>
                 </button>
                 <button
                   onClick={() => setNewAufgabeModalOpen(true)}
                   className="flex flex-col items-start gap-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-left transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <span className="text-xs font-bold text-[#1A1A1A]">Neue Aufgabe</span>
+                  <span className="text-xs font-bold text-gray-900">Neue Aufgabe</span>
                 </button>
                 <Link
                   href="/kalender"
                   className="flex flex-col items-start gap-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-left transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                  <span className="text-xs font-bold text-[#1A1A1A]">Termin planen</span>
+                  <span className="text-xs font-bold text-gray-900">Termin planen</span>
                 </Link>
                 <button
                   onClick={() => setCsvModalOpen(true)}
                   className="flex flex-col items-start gap-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-left transition-colors"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                  <span className="text-xs font-bold text-[#1A1A1A]">CSV importieren</span>
+                  <span className="text-xs font-bold text-gray-900">CSV importieren</span>
                 </button>
               </div>
             </div>

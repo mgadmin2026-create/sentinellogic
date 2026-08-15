@@ -6,6 +6,7 @@ import { ContactSearchSelect, type ContactSearchSelectOption } from '@/component
 import { ANGEBOT_STATUS_OPTIONEN, angebotStatusLabel, angebotStatusFarbe, type AngebotStatus } from '@/lib/angebot-status'
 import { konvertiereBetrag, ZYKLUS_OPTIONEN, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
 import { formatDate } from '@/lib/utils'
+import { Button, PageHeader } from '@/components/ui'
 
 interface Angebot {
   id: string
@@ -193,18 +194,11 @@ export default function AngebotePage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-full">
-      <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-2xl font-bold text-gray-900">Angebote</h1>
-          <span className="text-sm text-gray-400 ml-1">{filtered.length} Angebote</span>
-        </div>
-        <button
-          onClick={openNew}
-          className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2 rounded-lg transition-colors"
-        >
-          + Angebot erstellen
-        </button>
-      </div>
+      <PageHeader
+        title="Angebote"
+        subtitle={`${filtered.length} Angebote`}
+        actions={<Button onClick={openNew}>+ Angebot erstellen</Button>}
+      />
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">{error}</div>
@@ -411,8 +405,8 @@ export default function AngebotePage() {
                       </td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap hidden sm:table-cell">{formatDate(a.created_at)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <button onClick={() => openEdit(a)} className="text-xs text-gray-500 hover:text-gray-800 mr-3">Bearbeiten</button>
-                        <button onClick={() => archivieren(a.id)} className="text-xs text-red-500 hover:text-red-700">Archivieren</button>
+                        <Button variant="ghost" size="sm" onClick={() => openEdit(a)} className="mr-1">Bearbeiten</Button>
+                        <Button variant="danger" size="sm" onClick={() => archivieren(a.id)}>Archivieren</Button>
                       </td>
                     </tr>
                   ))
@@ -508,20 +502,12 @@ export default function AngebotePage() {
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setModalOpen(false)}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-300 transition disabled:opacity-50"
-              >
+              <Button variant="secondary" onClick={() => setModalOpen(false)} disabled={saving} className="flex-1">
                 Abbrechen
-              </button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="flex-1 px-4 py-2 text-sm font-semibold text-gray-900 bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 rounded-lg transition"
-              >
+              </Button>
+              <Button onClick={save} disabled={saving} className="flex-1">
                 {saving ? 'Speichert…' : 'Speichern'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

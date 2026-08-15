@@ -3,7 +3,7 @@
 > Lebendes Nachschlagewerk, Ergebnis der UI-/Branding-Überarbeitung (`docs/UI_UX_KONZEPT.md`).
 > Wird parallel zum Rollout gepflegt — wächst mit jeder migrierten Seite, nicht erst am Ende.
 >
-> Stand: 2026-08-16 — Stufe 1 (Fundament) umgesetzt
+> Stand: 2026-08-16 — Stufe 1 (Fundament) + Stufe 2 (Pilotseiten) umgesetzt
 
 ---
 
@@ -92,6 +92,21 @@ unverändert.
 | Stufe | Status |
 |---|---|
 | 1 — Fundament (Tokens, Bausteine, einklappbare Sidebar) | ✅ Done (2026-08-16) |
-| 2 — Pilotseiten (Dashboard, Kontakte, Angebote) | ⬜ Offen |
+| 2 — Pilotseiten (Dashboard, Kontakte, Angebote) | ✅ Done (2026-08-16) |
 | 3 — Restliche Hauptseiten | ⬜ Offen |
 | 4 — Diese Datei | 🟡 Läuft parallel mit, wird bei jeder migrierten Seite ergänzt |
+
+### Erkenntnisse aus Stufe 2
+
+- `<PageHeader />` brauchte einen breiteren `subtitle`-Typ (`React.ReactNode` statt `string`) und
+  eine gestapelte statt inline Anordnung (Titel oben, Untertitel darunter) — Dashboard braucht
+  einen mehrzeiligen Untertitel (Datum + Aufgaben-Hinweis), nicht nur einen kurzen Zähler wie
+  bei Angebote. Beide Fälle funktionieren jetzt mit derselben Komponente.
+- Gezielte Token-Bereinigung statt Komplett-Umbau: in `dashboard/page.tsx` wurden alle
+  `text-[#1A1A1A]`/`bg-[#1A1A1A]`/`bg-[#FFC300]`-Vorkommen auf `text-gray-900`/`bg-brand-dark`/
+  `bg-brand` umgestellt — der Rest der Seite (KPI-Kacheln, Panel-Wrapper, Schnellzugriff-Kacheln)
+  blieb bewusst unangetastet, da bereits dem dominanten `rounded-xl border border-gray-200`-Muster
+  entsprach und ein Zwang in `<Card />` keinen Mehrwert bei höherem Risiko gebracht hätte.
+- `/kontakte` (1850+ Zeilen) wurde bewusst nur im Kopfbereich migriert (Titel, Zähler, vier
+  Aktions-Buttons inkl. Export-Dropdown) — die große Tabelle/Filterleiste bleibt für Stufe 3
+  unangetastet, um das Risiko in einer einzelnen Änderung klein zu halten.
