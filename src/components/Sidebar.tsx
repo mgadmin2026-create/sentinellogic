@@ -162,14 +162,32 @@ interface SidebarProps {
   currentUser: CurrentUser | null
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed'
+
 export default function Sidebar({ currentUser }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [unreadMentions, setUnreadMentions] = useState(0)
+  // Default ausgeklappt (Nutzer-Entscheidung, docs/UI_UX_KONZEPT.md) — erst nach dem Mount aus
+  // localStorage übernehmen, damit Server-/Client-Render beim ersten Paint identisch sind.
+  const [collapsed, setCollapsed] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const { openPageDefault } = useHelp()
+
+  useEffect(() => {
+    const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    if (stored === 'true') setCollapsed(true)
+  }, [])
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next))
+      return next
+    })
+  }
 
   useEffect(() => {
     if (!currentUser) return
@@ -267,16 +285,18 @@ export default function Sidebar({ currentUser }: SidebarProps) {
           fixed inset-y-0 left-0 z-50 w-64 bg-[#1A1A1A] flex flex-col h-screen
           transform transition-transform duration-200 ease-out
           ${open ? 'translate-x-0' : '-translate-x-full'}
-          md:static md:translate-x-0 md:w-56 md:flex-shrink-0 md:z-auto md:sticky md:top-0
+          md:static md:translate-x-0 md:flex-shrink-0 md:z-auto md:sticky md:top-0
+          md:transition-[width] md:duration-200 md:ease-out
+          ${collapsed ? 'md:w-16' : 'md:w-56'}
         `}
       >
-        {/* Logo + Schließen (mobil) */}
-        <div className="px-5 py-6 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        {/* Logo + Schließen (mobil) / Einklappen-Toggle (Desktop) */}
+        <div className={`py-6 border-b border-white/10 flex items-center ${collapsed ? 'md:justify-center md:px-2' : 'px-5 justify-between'}`}>
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-7 h-7 rounded bg-[#FFC300] flex items-center justify-center flex-shrink-0">
               <span className="text-[#1A1A1A] font-bold text-xs">SL</span>
             </div>
-            <span className="text-white font-semibold text-sm leading-tight">
+            <span className={`text-white font-semibold text-sm leading-tight ${collapsed ? 'md:hidden' : ''}`}>
               Sentimental<br />Logic
             </span>
           </div>
@@ -292,6 +312,23 @@ export default function Sidebar({ currentUser }: SidebarProps) {
           </button>
         </div>
 
+        {/* Einklappen/Ausklappen-Toggle (nur Desktop) */}
+        <button
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+          title={collapsed ? 'Sidebar ausklappen' : 'Sidebar einklappen'}
+          className={`hidden md:flex items-center gap-2 px-3 py-2 mx-3 mt-3 text-white/40 hover:text-white hover:bg-white/5 rounded-lg transition-colors ${collapsed ? 'justify-center' : ''}`}
+        >
+          <svg
+            width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            className={`transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`}
+          >
+            <polyline points="11 17 6 12 11 7" />
+            <polyline points="18 17 13 12 18 7" />
+          </svg>
+          {!collapsed && <span className="text-xs font-medium">Einklappen</span>}
+        </button>
+
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin(currentUser?.role)).map((item) => {
@@ -300,8 +337,10 @@ export default function Sidebar({ currentUser }: SidebarProps) {
             <Link
               key={item.href}
               href={navHref(item)}
+              title={collapsed ? item.label : undefined}
               className={`
                 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                ${collapsed ? 'md:justify-center' : ''}
                 ${active
                   ? 'bg-[#FFC300]/10 text-[#FFC300]'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
@@ -311,9 +350,9 @@ export default function Sidebar({ currentUser }: SidebarProps) {
               <span className={active ? 'text-[#FFC300]' : 'text-white/40'}>
                 {item.icon}
               </span>
-              {item.label}
+              <span className={collapsed ? 'md:hidden' : ''}>{item.label}</span>
               {active && (
-                <span className="ml-auto w-1 h-4 rounded-full bg-[#FFC300]" />
+                <span className={`ml-auto w-1 h-4 rounded-full bg-[#FFC300] ${collapsed ? 'md:hidden' : ''}`} />
               )}
             </Link>
           )
@@ -321,31 +360,35 @@ export default function Sidebar({ currentUser }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-white/10 space-y-3">
+      <div className={`py-4 border-t border-white/10 space-y-3 ${collapsed ? 'md:px-2' : 'px-5'}`}>
         {currentUser && (
           <div ref={profileMenuRef} className="relative pb-3 border-b border-white/10">
             <button
               onClick={() => setProfileMenuOpen((v) => !v)}
-              className="w-full flex items-center justify-between gap-2 text-left"
+              title={collapsed ? currentUser.name : undefined}
+              className={`w-full flex items-center gap-2 text-left ${collapsed ? 'md:justify-center' : 'justify-between'}`}
             >
-              <div className="min-w-0 flex items-center gap-2">
-                <div className="min-w-0">
+              <div className={`min-w-0 flex items-center gap-2 ${collapsed ? 'md:justify-center' : ''}`}>
+                <div className={`flex-shrink-0 w-6 h-6 rounded-full bg-white/10 items-center justify-center text-white/70 text-[11px] font-semibold ${collapsed ? 'flex' : 'hidden'}`}>
+                  {currentUser.name.charAt(0).toUpperCase()}
+                </div>
+                <div className={`min-w-0 ${collapsed ? 'md:hidden' : ''}`}>
                   <p className="text-white/80 text-xs font-semibold truncate">{currentUser.name}</p>
                   <p className="text-white/30 text-[11px] truncate">{currentUser.email}</p>
                 </div>
                 {unreadMentions > 0 && (
-                  <span className="flex-shrink-0 bg-[#FFC300] text-[#1A1A1A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                  <span className={`flex-shrink-0 bg-[#FFC300] text-[#1A1A1A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center ${collapsed ? 'md:hidden' : 'flex'}`}>
                     {unreadMentions > 99 ? '99+' : unreadMentions}
                   </span>
                 )}
               </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/40 flex-shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-white/40 flex-shrink-0 ${collapsed ? 'md:hidden' : ''}`}>
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
 
             {profileMenuOpen && (
-              <div className="mt-2 bg-[#242424] border border-white/10 rounded-lg overflow-hidden">
+              <div className="absolute bottom-full mb-2 left-0 w-48 md:w-full bg-[#242424] border border-white/10 rounded-lg overflow-hidden shadow-xl z-10">
                 <Link
                   href="/profil"
                   className="flex items-center gap-2 px-3 py-2.5 text-xs text-white/75 hover:bg-white/5 transition-colors"
@@ -387,7 +430,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
             )}
           </div>
         )}
-        <div>
+        <div className={collapsed ? 'md:hidden' : ''}>
           <p className="text-white/30 text-xs font-medium">Sentimental Logic</p>
           <div className="flex items-center gap-2 mt-1.5">
             <p className="text-white/20 text-xs">v0.11.0</p>
