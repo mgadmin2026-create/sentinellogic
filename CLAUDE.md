@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.30.3 — Dokumenttyp-Erkennung (Vertrag/Angebot/Rechnung/Sonstiges), Folgeaufgabe bei Angebot, kompaktere Dokumente-Ansicht | Aktiv in Entwicklung |
+| **Version** | 0.31.0 — Sparte wird beim Dokument-Upload erkannt und zur Zuordnung angeboten | Aktiv in Entwicklung |
 
 ---
 
@@ -246,6 +246,36 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.31.0 (2026-08-15) — Sparte wird beim Dokument-Upload erkannt und zur Zuordnung angeboten
+
+Branch `feature/sparte-erkennung-upload`. Ausgangspunkt: die KI extrahiert beim Dokument-Upload
+bereits eine Sparte, aber `POST /api/ki-upload/commit` schrieb sie direkt in `contacts.sparte` — seit der
+Umstellung auf die n:m-Tabelle `contact_sparte_map` (v0.20.0) nur noch ein automatisch mitgeführter
+Spiegel der primären Sparte, nicht mehr die tatsächliche Quelle für UI/Erstgespräch-Leitfaden. Die Sparte
+landete dadurch unsichtbar, wirkte für den Nutzer wie „nicht erkannt".
+
+- ✨ **KI-Upload-Prüfmaske**: erkennt die KI eine Sparte, die dem (neuen oder per Duplikat-Erkennung
+  bestehenden) Kontakt noch nicht zugeordnet ist, erscheint eine Checkbox „Sparte „X" zuordnen" mit Wahl
+  Hauptsparte/zusätzliche Sparte. Ist die Sparte in den Einstellungen noch nicht angelegt, wird das
+  angezeigt und sie beim Bestätigen automatisch neu angelegt (kein Abgleich/Fuzzy-Matching — exakter
+  Namensvergleich reicht für den Anwendungsfall). Ist sie dem Zielkontakt bereits zugeordnet, erscheint
+  gar keine Abfrage. Die alte, fehlerhafte direkte `contacts.sparte`-Schreibung wurde entfernt.
+- ✨ **Kontakt-Dokumente-Tab**: gleiche Logik als Bestätigungskarte nach dem Upload (analog zur
+  Dokumenttyp-Karte aus v0.30.0), da es hier keinen Prüfmaske-Schritt vor dem Speichern gibt.
+  `POST /api/kontakte/[id]/dokumente` liefert dafür einen `sparteVorschlag` in der Antwort (nur wenn
+  noch nicht zugeordnet).
+- 🐛 **Beim Testen entdeckt und behoben**: `GET /api/kontakte/[id]/sparten` hatte kein
+  `dynamic='force-dynamic'`/`fetchCache='force-no-store'` gesetzt und lief dadurch über den Next.js Data
+  Cache — ein direkt nach einem `PUT` (Sparte setzen) folgender `GET` konnte noch den alten, in einem Fall
+  sogar leeren Stand liefern. Das hätte die neue „zusätzliche Sparte hinzufügen"-Funktion (liest zuerst
+  den aktuellen Satz, ergänzt dann) im schlimmsten Fall bestehende Sparten-Zuordnungen überschrieben —
+  live reproduziert und nach dem Fix verifiziert (u.a. betrifft derselbe Cache-Bug auch die bestehende
+  `SparteMultiSelect`-Komponente in der Kontaktübersicht, unabhängig von dieser Änderung). Gleiches
+  Bug-Muster wie v0.11.2 bei `/api/dokumente`.
+- ✅ Live gegen einen echten (danach wieder archivierten) Testkontakt verifiziert: neue Sparte wurde
+  korrekt angelegt und als Hauptsparte zugeordnet, `contacts.sparte`-Spiegel korrekt synchron; eine zweite
+  Sparte als „zusätzliche Sparte" ergänzt, ohne die erste zu verlieren (nach dem Cache-Fix).
 
 ### v0.30.3 (2026-08-13) — Bugfix: Dokumenttyp ging bei KI-Upload-Dokumenten verloren
 

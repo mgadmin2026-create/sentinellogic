@@ -11,6 +11,16 @@
 import { NextRequest } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 
+// Ohne diese beiden Flags lief die Supabase-Anfrage unten trotzdem über den
+// Next.js Data Cache und konnte ein veraltetes (im schlimmsten Fall leeres)
+// Ergebnis liefern — siehe /api/dokumente für dasselbe, bereits einmal
+// behobene Bug-Muster (v0.11.2). Hier live reproduziert: eine frisch per PUT
+// gesetzte Sparte war für den nächsten GET-Aufruf im selben Request-Zyklus
+// noch nicht sichtbar, wodurch ein nachfolgendes "Sparte ergänzen" (PUT mit
+// dem vermeintlich aktuellen Satz) die gerade gesetzte Sparte überschrieben hätte.
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

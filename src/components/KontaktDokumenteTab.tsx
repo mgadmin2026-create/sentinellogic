@@ -35,6 +35,8 @@ interface KontaktDokumenteTabProps {
   primarySparte?: string | null
   /** Öffnet eine vorbefüllte neue Aufgabe (Titel, Fälligkeit in N Tagen) — z.B. für "Angebot nachverfolgen". */
   onCreateFolgeaufgabe?: (titel: string, fälligInTagen: number) => void
+  /** Wird nach einer bestätigten Sparten-Zuordnung aufgerufen, damit die übrige Kontaktseite (Sparten-Kachel, Erstgespräch) neu lädt. */
+  onSparteZugeordnet?: () => void
 }
 
 // Baum des Kontakt-Typs zu waehlbaren Pfaden flachklopfen (max. 2 Ebenen)
@@ -49,7 +51,7 @@ function flattenStruktur(nodes: StrukturNode[]): string[] {
   return paths
 }
 
-export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeaufgabe }: KontaktDokumenteTabProps) {
+export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeaufgabe, onSparteZugeordnet }: KontaktDokumenteTabProps) {
   const [dokumente, setDokumente] = useState<Dokument[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -67,6 +69,12 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
   const [typConfirmations, setTypConfirmations] = useState<
     { dokumentId: string; fileName: string; dokumenttyp: string; aufgabeStatus: 'idle' | 'angelegt' }[]
   >([])
+  const [sparteConfirmation, setSparteConfirmation] = useState<{
+    name: string
+    sparteId: string | null
+    rolle: 'primary' | 'zusaetzlich'
+    speichert: boolean
+  } | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [newFileName, setNewFileName] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -275,6 +283,17 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
             werte: { uebernehmen: true, spalte: v.vorschlagSpalte, zyklus: v.erkannterZyklus ?? '' },
           })
         }
+
+        // Sparte erkannt und dem Kontakt noch nicht zugeordnet: Bestätigung einblenden
+        if (data.sparteVorschlag) {
+          const s = data.sparteVorschlag
+          setSparteConfirmation({
+            name: s.name,
+            sparteId: s.sparteId,
+            rolle: s.hatBereitsSparten ? 'zusaetzlich' : 'primary',
+            speichert: false,
+          })
+        }
       }
 
       // Reload dokumente after successful upload
@@ -343,6 +362,47 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
   const handleAngebotFolgeaufgabe = (dokumentId: string) => {
     onCreateFolgeaufgabe?.('Angebot nachverfolgen', 3)
     dismissTypConfirmation(dokumentId)
+  }
+
+  const bestaetigeSparteZuordnen = async () => {
+    if (!sparteConfirmation) return
+    setSparteConfirmation((c) => (c ? { ...c, speichert: true } : c))
+    try {
+      let sparteId = sparteConfirmation.sparteId
+      if (!sparteId) {
+        const createRes = await fetch('/api/sparten', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: sparteConfirmation.name }),
+        })
+        const createData = await createRes.json()
+        if (!createData.success) throw new Error(createData.error || 'Sparte konnte nicht angelegt werden')
+        sparteId = createData.data.id
+      }
+
+      const currentRes = await fetch(`/api/kontakte/${kontaktId}/sparten`, { cache: 'no-store' })
+      const currentData = await currentRes.json()
+      const currentZuordnung: { is_primary: boolean; sparte: { id: string } }[] = currentData.success ? currentData.data : []
+      if (!currentZuordnung.some((z) => z.sparte.id === sparteId)) {
+        const sparteIds = [...currentZuordnung.map((z) => z.sparte.id), sparteId]
+        const bisherigePrimary = currentZuordnung.find((z) => z.is_primary)?.sparte.id
+        const primarySparteId = sparteConfirmation.rolle === 'primary' || !bisherigePrimary ? sparteId : bisherigePrimary
+        const putRes = await fetch(`/api/kontakte/${kontaktId}/sparten`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sparteIds, primarySparteId }),
+        })
+        const putData = await putRes.json()
+        if (!putData.success) throw new Error(putData.error || 'Sparte konnte nicht zugeordnet werden')
+      }
+
+      setSparteConfirmation(null)
+      setWarning(`✓ Sparte „${sparteConfirmation.name}" zugeordnet`)
+      onSparteZugeordnet?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sparte konnte nicht zugeordnet werden')
+      setSparteConfirmation((c) => (c ? { ...c, speichert: false } : c))
+    }
   }
 
   const confirmBeitragsuebersicht = async () => {
@@ -499,6 +559,56 @@ export function KontaktDokumenteTab({ kontaktId, primarySparte, onCreateFolgeauf
           </div>
         </div>
       ))}
+
+      {/* Sparten-Bestätigung nach Upload */}
+      {sparteConfirmation && (
+        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm space-y-2">
+          <p className="text-indigo-900">
+            🧭 Sparte „{sparteConfirmation.name}" erkannt
+            {!sparteConfirmation.sparteId && (
+              <span className="text-indigo-600"> (noch nicht in den Einstellungen angelegt, wird beim Übernehmen neu erstellt)</span>
+            )}
+            {' '}— diesem Kontakt zuordnen?
+          </p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex gap-4">
+              <label className="flex items-center gap-1.5 text-xs text-indigo-800">
+                <input
+                  type="radio"
+                  checked={sparteConfirmation.rolle === 'primary'}
+                  onChange={() => setSparteConfirmation((c) => (c ? { ...c, rolle: 'primary' } : c))}
+                />
+                Als Hauptsparte
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-indigo-800">
+                <input
+                  type="radio"
+                  checked={sparteConfirmation.rolle === 'zusaetzlich'}
+                  onChange={() => setSparteConfirmation((c) => (c ? { ...c, rolle: 'zusaetzlich' } : c))}
+                />
+                Als zusätzliche Sparte
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={bestaetigeSparteZuordnen}
+                disabled={sparteConfirmation.speichert}
+                className="px-2.5 py-1 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 rounded-lg transition-colors"
+              >
+                {sparteConfirmation.speichert ? 'Wird zugeordnet…' : 'Übernehmen'}
+              </button>
+              <button
+                onClick={() => setSparteConfirmation(null)}
+                disabled={sparteConfirmation.speichert}
+                className="px-2 py-1 text-xs text-indigo-400 hover:text-indigo-700"
+                title="Ausblenden"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Documents list */}
       {loading ? (

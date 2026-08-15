@@ -1047,6 +1047,7 @@ export default function KontaktDetailPage() {
           kontaktId={kontaktId}
           primarySparte={kontaktSparten.find((z) => z.is_primary)?.sparte.name ?? kontakt?.sparte}
           onCreateFolgeaufgabe={(titel, fälligInTagen) => openNewTaskWithTitle(titel, fälligInTagen)}
+          onSparteZugeordnet={loadKontakt}
         />
       </Drawer>
 

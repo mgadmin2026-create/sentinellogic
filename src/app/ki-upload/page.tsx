@@ -86,6 +86,10 @@ export default function KiUploadPage() {
     spalte: 'alt',
     zyklus: '',
   })
+  const [alleSparten, setAlleSparten] = useState<{ id: string; name: string }[]>([])
+  const [zielKontaktSparten, setZielKontaktSparten] = useState<{ is_primary: boolean; sparte: { id: string; name: string } }[]>([])
+  const [sparteZuordnen, setSparteZuordnen] = useState(true)
+  const [sparteRolle, setSparteRolle] = useState<'primary' | 'zusaetzlich'>('primary')
 
   useEffect(() => {
     fetch('/api/dokument-kategorien')
@@ -96,7 +100,31 @@ export default function KiUploadPage() {
         }
       })
       .catch(() => {})
+    fetch('/api/sparten')
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setAlleSparten(d.data) })
+      .catch(() => {})
   }, [])
+
+  // Sparten des Ziel-Kontakts nachladen, wenn ein Duplikat gefunden wurde und
+  // angehängt werden soll — steuert, ob die Sparte schon zugeordnet ist und
+  // ob "Hauptsparte" oder "zusätzliche Sparte" der sinnvollere Default ist.
+  useEffect(() => {
+    if (duplikat && anBestehenden) {
+      fetch(`/api/kontakte/${duplikat.id}/sparten`, { cache: 'no-store' })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success) {
+            setZielKontaktSparten(d.data)
+            setSparteRolle(d.data.length > 0 ? 'zusaetzlich' : 'primary')
+          }
+        })
+        .catch(() => {})
+    } else {
+      setZielKontaktSparten([])
+      setSparteRolle('primary')
+    }
+  }, [duplikat, anBestehenden])
 
   async function analysiere(f: File) {
     setFile(f)
@@ -111,6 +139,7 @@ export default function KiUploadPage() {
       setDaten(data.extraktion)
       setDuplikat(data.duplikat)
       setAnBestehenden(!!data.duplikat)
+      setSparteZuordnen(true)
       setUebernahmeWerte({
         uebernehmen: true,
         spalte: defaultSpalte(data.extraktion.contract_type),
@@ -139,6 +168,8 @@ export default function KiUploadPage() {
           beitragsuebersicht_uebernehmen: zeigtUebernahmeFrage(daten) && uebernahmeWerte.uebernehmen,
           beitragsuebersicht_spalte: uebernahmeWerte.spalte,
           beitragsuebersicht_zyklus: uebernahmeWerte.zyklus || undefined,
+          sparte_zuordnen: zeigeSparteZuordnung && sparteZuordnen,
+          sparte_rolle: sparteRolle,
         })
       )
       const res = await fetch('/api/ki-upload/commit', { method: 'POST', body: fd })
@@ -197,6 +228,12 @@ export default function KiUploadPage() {
 
   const kategorien = daten ? struktur[daten.kontakt_typ] : []
   const zeigeUebernahme = daten ? zeigtUebernahmeFrage(daten) : false
+  const sparteName = (daten?.sparte || '').trim()
+  const sparteMatch = sparteName ? alleSparten.find((s) => s.name.trim().toLowerCase() === sparteName.toLowerCase()) : undefined
+  const sparteBereitsZugeordnet = sparteName
+    ? zielKontaktSparten.some((z) => z.sparte.name.trim().toLowerCase() === sparteName.toLowerCase())
+    : false
+  const zeigeSparteZuordnung = sparteName !== '' && !sparteBereitsZugeordnet
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -386,6 +423,44 @@ export default function KiUploadPage() {
                     </div>
                   ))}
                 </div>
+
+                {zeigeSparteZuordnung && (
+                  <div className="mt-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <label className="flex items-start gap-2 text-sm text-indigo-900">
+                      <input
+                        type="checkbox"
+                        checked={sparteZuordnen}
+                        onChange={(e) => setSparteZuordnen(e.target.checked)}
+                        className="mt-0.5 rounded border-indigo-300"
+                      />
+                      <span>
+                        🧭 Sparte „{sparteName}"
+                        {!sparteMatch && <span className="text-indigo-600"> (noch nicht in den Einstellungen angelegt, wird neu erstellt)</span>}
+                        {' '}dem Kontakt zuordnen
+                      </span>
+                    </label>
+                    {sparteZuordnen && (
+                      <div className="flex gap-4 mt-2 ml-6">
+                        <label className="flex items-center gap-1.5 text-xs text-indigo-800">
+                          <input
+                            type="radio"
+                            checked={sparteRolle === 'primary'}
+                            onChange={() => setSparteRolle('primary')}
+                          />
+                          Als Hauptsparte
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs text-indigo-800">
+                          <input
+                            type="radio"
+                            checked={sparteRolle === 'zusaetzlich'}
+                            onChange={() => setSparteRolle('zusaetzlich')}
+                          />
+                          Als zusätzliche Sparte
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Vertragsdetails */}

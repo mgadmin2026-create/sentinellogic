@@ -309,6 +309,34 @@ export async function POST(
       }
     }
 
+    // Sparte erkannt? → Vorschlag zurückgeben, wenn dem Kontakt noch nicht
+    // zugeordnet (weder als Haupt- noch als Zusatzsparte) — der Nutzer
+    // entscheidet im UI, ob und in welcher Rolle sie übernommen wird.
+    let sparteVorschlag: { name: string; sparteId: string | null; hatBereitsSparten: boolean } | null = null
+    if (extraktion?.sparte?.trim()) {
+      try {
+        const sparteName = extraktion.sparte.trim()
+        const [{ data: alleSparten }, { data: zugeordnet }] = await Promise.all([
+          supabase.from('sparten').select('id, name'),
+          supabase.from('contact_sparte_map').select('is_primary, sparte:sparte_id(id, name)').eq('contact_id', kontaktId),
+        ])
+        const zugeordnetListe = (zugeordnet ?? []) as unknown as { is_primary: boolean; sparte: { id: string; name: string } }[]
+        const bereitsZugeordnet = zugeordnetListe.some(
+          (z) => z.sparte.name.trim().toLowerCase() === sparteName.toLowerCase()
+        )
+        if (!bereitsZugeordnet) {
+          const match = (alleSparten ?? []).find((s) => s.name.trim().toLowerCase() === sparteName.toLowerCase())
+          sparteVorschlag = {
+            name: sparteName,
+            sparteId: match?.id ?? null,
+            hatBereitsSparten: zugeordnetListe.length > 0,
+          }
+        }
+      } catch (err) {
+        console.error('[Dokumente] Sparten-Abgleich fehlgeschlagen:', err)
+      }
+    }
+
     // Aktivität loggen
     try {
       const currentUser = await getCurrentUser()
@@ -340,6 +368,8 @@ export async function POST(
       analyseWarnung: analyseFehler,
       // Vorschlag für die Beitragsübersicht-Übernahme — muss vom Nutzer im UI bestätigt werden
       beitragsuebersichtVorschlag,
+      // Erkannte Sparte, falls dem Kontakt noch nicht zugeordnet — muss vom Nutzer im UI bestätigt werden
+      sparteVorschlag,
     })
   } catch (err) {
     console.error('[Dokumente] POST error:', err)

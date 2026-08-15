@@ -51,6 +51,9 @@ interface CommitDaten {
   beitragsuebersicht_uebernehmen?: boolean
   beitragsuebersicht_spalte?: 'alt' | 'neu'
   beitragsuebersicht_zyklus?: Zyklus
+  // Vom Nutzer in der Prüfmaske bestätigte Sparten-Zuordnung (neu)
+  sparte_zuordnen?: boolean
+  sparte_rolle?: 'primary' | 'zusaetzlich'
 }
 
 function buildNotes(d: CommitDaten): string {
@@ -127,10 +130,14 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 2. Versicherungsfelder nachziehen ────────────────────────
+    // sparte wird NICHT hier mit-gepatcht: contacts.sparte ist seit v0.20.0 nur
+    // noch ein automatisch mitgeführter Spiegel der primären Sparte aus
+    // contact_sparte_map (n:m) — direktes Schreiben würde die eigentliche
+    // Sparten-Zuordnung (UI, Erstgespräch-Leitfaden) nicht befüllen. Siehe
+    // Schritt 2.5 für die korrekte Zuordnung.
     const patchFelder: Record<string, string> = {}
     if (daten.versicherungsgesellschaft) patchFelder.versicherungsgesellschaft = daten.versicherungsgesellschaft
     if (daten.versicherungstyp) patchFelder.versicherungstyp = daten.versicherungstyp
-    if (daten.sparte) patchFelder.sparte = daten.sparte
     if (daten.zahlweise) patchFelder.zahlweise = daten.zahlweise
 
     if (Object.keys(patchFelder).length > 0) {
@@ -141,6 +148,55 @@ export async function POST(request: NextRequest) {
       })
       if (!patchRes.ok) {
         console.warn('[KI-Upload] Versicherungsfelder-PATCH fehlgeschlagen (nicht blockierend)')
+      }
+    }
+
+    // ── 2.5 Sparte zuordnen (nur wenn in der Prüfmaske bestätigt) ────
+    // sparte_zuordnen ist false, wenn die Sparte dem Kontakt bereits
+    // zugeordnet war (Prüfmaske blendet die Abfrage dann aus) oder der
+    // Nutzer sie explizit abgewählt hat.
+    if (daten.sparte_zuordnen && daten.sparte?.trim()) {
+      try {
+        const sparteName = daten.sparte.trim()
+        const sparteListRes = await fetch(`${origin}/api/sparten`, { headers: { cookie } })
+        const sparteListData = await sparteListRes.json()
+        let sparteId: string | null = null
+        if (sparteListData.success) {
+          const match = (sparteListData.data as { id: string; name: string }[]).find(
+            (s) => s.name.trim().toLowerCase() === sparteName.toLowerCase()
+          )
+          sparteId = match?.id ?? null
+        }
+        // Noch nicht in den Einstellungen angelegt -> neu anlegen (Nutzer hat
+        // dem in der Prüfmaske zugestimmt)
+        if (!sparteId) {
+          const createSparteRes = await fetch(`${origin}/api/sparten`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', cookie },
+            body: JSON.stringify({ name: sparteName }),
+          })
+          const createSparteData = await createSparteRes.json()
+          if (createSparteData.success) sparteId = createSparteData.data.id
+        }
+
+        if (sparteId) {
+          const currentRes = await fetch(`${origin}/api/kontakte/${kontaktId}/sparten`, { headers: { cookie }, cache: 'no-store' })
+          const currentData = await currentRes.json()
+          const currentZuordnung: { is_primary: boolean; sparte: { id: string } }[] = currentData.success ? currentData.data : []
+          const bereitsZugeordnet = currentZuordnung.some((z) => z.sparte.id === sparteId)
+          if (!bereitsZugeordnet) {
+            const sparteIds = [...currentZuordnung.map((z) => z.sparte.id), sparteId]
+            const bisherigePrimary = currentZuordnung.find((z) => z.is_primary)?.sparte.id
+            const primarySparteId = daten.sparte_rolle === 'primary' || !bisherigePrimary ? sparteId : bisherigePrimary
+            await fetch(`${origin}/api/kontakte/${kontaktId}/sparten`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', cookie },
+              body: JSON.stringify({ sparteIds, primarySparteId }),
+            })
+          }
+        }
+      } catch (err) {
+        console.warn('[KI-Upload] Sparten-Zuordnung fehlgeschlagen (nicht blockierend):', err)
       }
     }
 
