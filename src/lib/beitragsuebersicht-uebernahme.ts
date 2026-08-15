@@ -27,7 +27,7 @@ export interface VertragsExtraktionFuerUebernahme {
 // KI liefert den Beitrag als freien Text ("521,60 EUR jährlich", "1.200 €
 // p.a."), keine Zahl — hier auf einen Euro-Betrag reduziert. Punkte gelten
 // als Tausendertrennzeichen (deutsches Format), Komma als Dezimaltrennzeichen.
-function parseBeitrag(raw?: string | null): number | null {
+export function parseBeitrag(raw?: string | null): number | null {
   if (!raw) return null
   const bereinigt = raw.replace(/\./g, '')
   const match = bereinigt.match(/(\d+)(?:,(\d+))?/)

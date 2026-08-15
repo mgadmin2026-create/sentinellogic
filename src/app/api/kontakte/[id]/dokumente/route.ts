@@ -286,6 +286,7 @@ export async function POST(
           duration_start: extraktion.vertragsbeginn ? new Date(extraktion.vertragsbeginn).toISOString().split('T')[0] : null,
           duration_end: extraktion.vertragsende ? new Date(extraktion.vertragsende).toISOString().split('T')[0] : null,
           benefits: extraktion.benefits,
+          dokument_id: dokument.id,
           created_by: 'dokument_upload',
         })
         console.log(`[Dokumente] Vertrag erkannt und gespeichert für Kontakt ${kontaktId}`)

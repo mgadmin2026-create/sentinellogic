@@ -6,6 +6,7 @@ import { HelpButton } from '@/components/help/HelpButton'
 import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWerte } from '@/components/BeitragsuebersichtUebernahmeForm'
 import { erkenneZyklus, defaultSpalte } from '@/lib/beitragsuebersicht-zyklus'
 import { DOKUMENTTYP_OPTIONEN } from '@/lib/dokumenttyp'
+import { ANGEBOT_STATUS_OPTIONEN, type AngebotStatus } from '@/lib/angebot-status'
 
 interface Leistung {
   type: string
@@ -90,6 +91,9 @@ export default function KiUploadPage() {
   const [zielKontaktSparten, setZielKontaktSparten] = useState<{ is_primary: boolean; sparte: { id: string; name: string } }[]>([])
   const [sparteZuordnen, setSparteZuordnen] = useState(true)
   const [sparteRolle, setSparteRolle] = useState<'primary' | 'zusaetzlich'>('primary')
+  const [angebotUebernehmen, setAngebotUebernehmen] = useState(true)
+  const [angebotStatus, setAngebotStatus] = useState<AngebotStatus>('versendet')
+  const [angebotName, setAngebotName] = useState('')
 
   useEffect(() => {
     fetch('/api/dokument-kategorien')
@@ -140,6 +144,13 @@ export default function KiUploadPage() {
       setDuplikat(data.duplikat)
       setAnBestehenden(!!data.duplikat)
       setSparteZuordnen(true)
+      setAngebotUebernehmen(true)
+      setAngebotStatus('versendet')
+      setAngebotName(
+        [data.extraktion.versicherungstyp || data.extraktion.sparte, data.extraktion.versicherungsgesellschaft]
+          .filter(Boolean)
+          .join(' – ') || 'Versicherungsangebot'
+      )
       setUebernahmeWerte({
         uebernehmen: true,
         spalte: defaultSpalte(data.extraktion.contract_type),
@@ -170,6 +181,9 @@ export default function KiUploadPage() {
           beitragsuebersicht_zyklus: uebernahmeWerte.zyklus || undefined,
           sparte_zuordnen: zeigeSparteZuordnung && sparteZuordnen,
           sparte_rolle: sparteRolle,
+          angebot_uebernehmen: zeigeAngebotUebernahme && angebotUebernehmen,
+          angebot_status: angebotStatus,
+          angebot_name: angebotName,
         })
       )
       const res = await fetch('/api/ki-upload/commit', { method: 'POST', body: fd })
@@ -234,6 +248,7 @@ export default function KiUploadPage() {
     ? zielKontaktSparten.some((z) => z.sparte.name.trim().toLowerCase() === sparteName.toLowerCase())
     : false
   const zeigeSparteZuordnung = sparteName !== '' && !sparteBereitsZugeordnet
+  const zeigeAngebotUebernahme = daten?.dokumenttyp === 'angebot'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -403,6 +418,46 @@ export default function KiUploadPage() {
                     ))}
                   </select>
                 </div>
+
+                {zeigeAngebotUebernahme && (
+                  <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <label className="flex items-start gap-2 text-sm text-indigo-900">
+                      <input
+                        type="checkbox"
+                        checked={angebotUebernehmen}
+                        onChange={(e) => setAngebotUebernehmen(e.target.checked)}
+                        className="mt-0.5 rounded border-indigo-300"
+                      />
+                      <span>📋 Als Angebot in die Angebotsübersicht aufnehmen</span>
+                    </label>
+                    {angebotUebernehmen && (
+                      <div className="grid grid-cols-2 gap-3 mt-2 ml-6">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-indigo-700 mb-1">Name</label>
+                          <input
+                            type="text"
+                            value={angebotName}
+                            onChange={(e) => setAngebotName(e.target.value)}
+                            className="w-full px-2 py-1.5 border border-indigo-200 rounded-lg text-sm bg-white focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-semibold text-indigo-700 mb-1">Angebotsstatus</label>
+                          <select
+                            value={angebotStatus}
+                            onChange={(e) => setAngebotStatus(e.target.value as AngebotStatus)}
+                            className="w-full px-2 py-1.5 border border-indigo-200 rounded-lg text-sm bg-white focus:outline-none"
+                          >
+                            {ANGEBOT_STATUS_OPTIONEN.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   {([
                     ['versicherungsgesellschaft', 'Gesellschaft'],

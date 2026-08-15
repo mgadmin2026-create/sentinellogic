@@ -8,7 +8,7 @@
 > **Prioritäten:** `Hoch` = als Nächstes bzw. phasenbestimmend, `Mittel` = nach den
 > Kernabhängigkeiten, `Niedrig` = bewusst zurückgestellt.
 >
-> Stand: 2026-08-14
+> Stand: 2026-08-15
 
 ---
 
@@ -53,12 +53,12 @@ entscheiden und eine kleine eigene Kommunikationslösung für die wichtigsten Ab
 | **AmisNow-Personenanlage** | Hoch | 🧪 Browser-MVP vorhanden | Stabilen End-to-End-Pilot mit freigegebenen Testdaten, Jobstatus und Fehlerbehandlung abschließen |
 | **AmisNow-Angebotsberechnung** | Hoch | 🧪 Agent-Job vorbereitet | Reale Berechnung abnehmen und Angebotsnummer, Beitrag und Fehlerstatus verlässlich zurückschreiben |
 | **AmisNow-Jobsteuerung** | Hoch | 🟡 Job-/Result-Grundlagen vorhanden | Warteschlange, Wiederholung, Timeout, manuelle Freigabe und Monitoring produktionsfest machen |
-| **Entscheidung Angebotshandling** | Hoch | ⚪ Offen | Fachlich entscheiden, wie Opportunity, Angebot, Angebotsversion, Dokument und Vertrag zusammenhängen |
-| **Angebotsverwaltung/-Tracking** | Mittel | 🟡 Opportunities und Dokumente als Grundlagen vorhanden | Erst nach Produktentscheidung ein eindeutiges Datenmodell und Statussystem implementieren |
-| **Angebotsupload und Versionen** | Mittel | 🔴 Kein strukturiertes Angebot vorhanden | Dokumentreferenz, Versicherer, Tarif, Version, Gültigkeit und Nachfassdatum modellieren |
+| **Entscheidung Angebotshandling** | Hoch | ✅ Done | Entschieden (v0.32.0): eigenständiges Datenmodell (`angebote`-Tabelle), unabhängig von der alten `opportunities`-Tabelle (jetzt vollständig entfernt) und von `contracts` (bleibt der bereits bestehende Vertrags-Layer). Dokument-Verknüpfung über `dokument_id` |
+| **Angebotsverwaltung/-Tracking** | Mittel | ✅ Done | `/angebote` (Karten-Pipeline + Liste) und Kontakt-Kachel „Angebote" (v0.32.0): Name, Kontakt, Status-Lifecycle (In Erstellung/Versendet/In Verhandlung/Gewonnen/Verloren), Betrag+Zyklus, Sparte, Leistungsumfang; Statuswechsel synchronisiert automatisch den Kontakt-Status |
+| **Angebotsupload und Versionen** | Mittel | 🟡 Dokumentreferenz + KI-Upload-Übernahme vorhanden (v0.32.0) | Kein echtes Versionskonzept (mehrere Angebote zum selben Kontakt/derselben Sparte sind unabhängige Datensätze, keine Versionshistorie) — bei Bedarf nachziehen |
 | **Angebotsversand** | Mittel | 🔴 Kein durchgängiger Angebotsworkflow | Versand zunächst per E-Mail mit Vorlage, Protokoll und manueller Freigabe umsetzen |
-| **Automatische Angebots-Follow-ups** | Mittel | 🔴 Aufgabenbasis vorhanden | Auf Basis der jetzt fertigen Scheduler-Grundlage (`sync_config`) automatisch Aufgabe/Erinnerung aus Angebotsstatus und Frist erzeugen |
-| **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot kontrolliert in einen Vertrag überführen |
+| **Automatische Angebots-Follow-ups** | Mittel | 🟡 Manuelle Aufgabe „Angebot nachverfolgen" bei KI-erkanntem Angebot vorhanden (v0.30.0) | Auf Basis der Scheduler-Grundlage (`sync_config`) automatisch Aufgabe/Erinnerung aus Angebotsstatus (`angebote.status`) und Frist erzeugen, statt nur beim Upload anzubieten |
+| **Angebotsannahme → Vertrag** | Mittel | 🔴 Kein durchgängiger Übergang | Angenommenes Angebot (Status „Gewonnen") kontrolliert in einen Vertrag/eine Beitragsübersicht-Zeile überführen. Bewusst NICHT automatisiert in v0.32.0 (nur Hinweisbanner) — **die Beitragsübersicht-Logik (`beitragsuebersicht-uebernahme.ts`) muss dafür angepasst werden**, sobald das automatisiert wird |
 | **Vertragsverwaltung** | Mittel | 🟡 KI-erzeugte Verträge und Anzeige vorhanden | Manuelles CRUD, Status, Dokumentbezug und Vertragslebenszyklus ergänzen |
 | **E-Mail-Vorlagen** | Hoch | 🟢 `/einstellungen/mail-vorlagen` (CRUD) + Vorlage-Dropdown in `ContactEmailModal` mit Platzhalter-Ersetzung, manuelle Freigabe (Vorlage befüllt nur, sendet nicht automatisch) | Stabil halten; ggf. weitere Platzhalter ergänzen wenn Bedarf entsteht |
 | **Vorlagen: Datenanfrage, Kündigung, Termin, Beitragsübersicht** | Hoch | 🟢 Alle vier als Start-Vorlagen angelegt, frei erweiter-/bearbeitbar | Texte bei Bedarf fachlich verfeinern |
@@ -110,6 +110,7 @@ Produkt-/SaaS-Fähigkeiten umsetzen.
 | **Automatische Verkaufsargumente** | Mittel | 🔴 Nicht implementiert | Als Assistenzvorschlag mit Quellenbezug und Freigabe umsetzen |
 | **Kündigungsschreiben vorbereiten** | Mittel | 🔴 Nicht implementiert | Beitragserhöhung/Ablauf erkennen und nur einen manuell freizugebenden Entwurf erzeugen |
 | **Weitere KI-Agenten** | Niedrig | 🟡 AmisNow-Agent als erster MVP | Einsatzfelder einzeln priorisieren und jeweils mit eigener Abnahme planen |
+| **Datenqualitäts-Agent** | Niedrig | ⚪ Nur Konzept (Stand 2026-08-15) | Prüft periodisch auf Inkonsistenzen: Status „Qualifiziert" ohne angelegtes Angebot, Status „Kunde" ohne Vertrag/Police, Status „Kontaktiert" bzw. offene Aufgabe seit X Tagen ohne Fortschritt. Ergebnis als Hinweisliste (Dashboard/eigene Seite), keine automatischen Änderungen. Noch nicht ausgereift — erst nach konkreterem Konzept umsetzen |
 | **SaaS-/Mandantenfähigkeit** | Niedrig | 🟡 Auth/Rollen vorhanden, Mandantenmodell fehlt | Organisationen, Datenisolation und mandantenbezogene Konfiguration als separates Ausbauprojekt planen |
 | **Kundenportal-Ausbau** | Niedrig | 🔴 Nicht implementiert | Nur nach eigener Minimallösung und konkretem Portal-MVP priorisieren |
 | **DSGVO-Auskunfts- und Löschprozess** | Niedrig / zuletzt | 🟡 Archivierung vorhanden, vollständiger Prozess fehlt | Ganz am Ende von Phase D Aufbewahrung, Export, Freigabe und endgültige Löschung definieren |

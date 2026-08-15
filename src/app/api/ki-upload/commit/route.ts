@@ -7,8 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activities-logger'
-import { uebernehmeVertragInBeitragsuebersicht } from '@/lib/beitragsuebersicht-uebernahme'
-import type { Zyklus } from '@/lib/beitragsuebersicht-zyklus'
+import { uebernehmeVertragInBeitragsuebersicht, parseBeitrag } from '@/lib/beitragsuebersicht-uebernahme'
+import { erkenneZyklus, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
@@ -54,6 +54,10 @@ interface CommitDaten {
   // Vom Nutzer in der Prüfmaske bestätigte Sparten-Zuordnung (neu)
   sparte_zuordnen?: boolean
   sparte_rolle?: 'primary' | 'zusaetzlich'
+  // Vom Nutzer in der Prüfmaske bestätigte Angebots-Übernahme (neu)
+  angebot_uebernehmen?: boolean
+  angebot_status?: string
+  angebot_name?: string
 }
 
 function buildNotes(d: CommitDaten): string {
@@ -250,6 +254,7 @@ export async function POST(request: NextRequest) {
           duration_start: daten.vertragsbeginn ? new Date(daten.vertragsbeginn).toISOString().split('T')[0] : null,
           duration_end: daten.vertragsende ? new Date(daten.vertragsende).toISOString().split('T')[0] : null,
           benefits: daten.benefits,
+          dokument_id: uploadData.dokument?.id,
           created_by: 'ki_upload',
         })
       } catch (err) {
@@ -268,6 +273,34 @@ export async function POST(request: NextRequest) {
           vertragsbeginn: daten.vertragsbeginn,
           vertragsende: daten.vertragsende,
         })
+      }
+    }
+
+    // ── 3.6 Angebot in die Angebotsübersicht übernehmen (nur wenn in der
+    // Prüfmaske bestätigt) ────────────────────────────────────────
+    if (daten.angebot_uebernehmen && daten.angebot_name?.trim()) {
+      try {
+        const betrag = parseBeitrag(daten.beitrag)
+        const zyklus: Zyklus | undefined = erkenneZyklus(daten.zahlweise || daten.beitrag) ?? undefined
+        await fetch(`${origin}/api/angebote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', cookie },
+          body: JSON.stringify({
+            contact_id: kontaktId,
+            name: daten.angebot_name.trim(),
+            status: daten.angebot_status || 'versendet',
+            betrag: betrag ?? undefined,
+            zyklus,
+            sparte: daten.sparte || undefined,
+            leistungsumfang: daten.benefits?.length
+              ? daten.benefits.map((l) => `${l.type}: ${l.description}${l.coverage ? ` (${l.coverage})` : ''}`).join('\n')
+              : undefined,
+            dokument_id: uploadData.dokument?.id,
+            created_by: 'ki_upload',
+          }),
+        })
+      } catch (err) {
+        console.warn('[KI-Upload] Angebots-Übernahme fehlgeschlagen (nicht blockierend):', err)
       }
     }
 
