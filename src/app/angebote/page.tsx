@@ -16,8 +16,15 @@ interface Angebot {
   zyklus: Zyklus | null
   sparte: string | null
   leistungsumfang: string | null
+  dokument_id: string | null
   created_at: string
-  contact?: { id: string; first_name: string; last_name: string } | null
+  contact?: {
+    id: string
+    first_name: string
+    last_name: string
+    assigned_user?: { id: string; name: string } | null
+  } | null
+  dokument?: { id: string; file_id: string; file_name: string } | null
 }
 
 function monatlicherBeitrag(a: Pick<Angebot, 'betrag' | 'zyklus'>): number {
@@ -54,6 +61,8 @@ export default function AngebotePage() {
   const [form, setForm] = useState(emptyForm())
   const [saving, setSaving] = useState(false)
   const [gewonnenHinweis, setGewonnenHinweis] = useState<string | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [dragOverStatus, setDragOverStatus] = useState<AngebotStatus | null>(null)
 
   useEffect(() => {
     const gespeichert = localStorage.getItem('angebote-ansicht')
@@ -266,7 +275,19 @@ export default function AngebotePage() {
           {spalten.map((spalte) => {
             const summe = spalte.items.reduce((sum, a) => sum + monatlicherBeitrag(a), 0)
             return (
-              <div key={spalte.value} className="flex-shrink-0 w-72">
+              <div
+                key={spalte.value}
+                className="flex-shrink-0 w-72"
+                onDragOver={(e) => { e.preventDefault(); setDragOverStatus(spalte.value) }}
+                onDragLeave={() => setDragOverStatus((s) => (s === spalte.value ? null : s))}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setDragOverStatus(null)
+                  const angebotId = e.dataTransfer.getData('text/plain')
+                  const angebot = angebote.find((x) => x.id === angebotId)
+                  if (angebot && angebot.status !== spalte.value) changeStatus(angebot, spalte.value)
+                }}
+              >
                 <div className="bg-gray-50 border border-gray-200 rounded-t-xl px-3 py-2.5">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-gray-900 text-sm">{spalte.label}</p>
@@ -274,24 +295,50 @@ export default function AngebotePage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{formatEuro(summe)} / Monat</p>
                 </div>
-                <div className="border border-t-0 border-gray-200 rounded-b-xl min-h-[8rem] p-2 space-y-2 bg-white">
+                <div
+                  className={`border border-t-0 rounded-b-xl min-h-[8rem] p-2 space-y-2 transition-colors ${
+                    dragOverStatus === spalte.value ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-200'
+                  }`}
+                >
                   {spalte.items.map((a) => (
-                    <button
+                    <div
                       key={a.id}
+                      draggable
+                      onDragStart={(e) => { e.dataTransfer.setData('text/plain', a.id); setDraggingId(a.id) }}
+                      onDragEnd={() => setDraggingId(null)}
                       onClick={() => openEdit(a)}
-                      className="w-full text-left p-3 border border-gray-200 rounded-lg hover:border-yellow-300 hover:shadow-sm transition-all bg-white"
+                      className={`w-full text-left p-3 border border-gray-200 rounded-lg hover:border-yellow-300 hover:shadow-sm transition-all bg-white cursor-grab active:cursor-grabbing ${
+                        draggingId === a.id ? 'opacity-40' : ''
+                      }`}
                     >
                       <p className="text-sm font-medium text-gray-900 truncate">{a.name}</p>
                       {a.contact && (
                         <p className="text-xs text-blue-600 truncate mt-0.5">{a.contact.first_name} {a.contact.last_name}</p>
                       )}
+                      {a.contact?.assigned_user && (
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">👤 {a.contact.assigned_user.name}</p>
+                      )}
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs font-semibold text-gray-700">{formatEuro(monatlicherBeitrag(a))} /Mon.</span>
-                        {a.sparte && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">{a.sparte}</span>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {a.dokument && (
+                            <a
+                              href={`https://drive.google.com/file/d/${a.dokument.file_id}/view`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title={a.dokument.file_name}
+                              className="text-xs text-blue-600 hover:text-blue-700"
+                            >
+                              📄
+                            </a>
+                          )}
+                          {a.sparte && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700">{a.sparte}</span>
+                          )}
+                        </div>
                       </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -306,9 +353,11 @@ export default function AngebotePage() {
                 <tr className="border-b border-gray-100 bg-gray-50/80">
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Name</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Kontakt</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden lg:table-cell">Verantwortlich</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Mtl. Beitrag</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Status</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden md:table-cell">Leistungsumfang</th>
+                  <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Dokument</th>
                   <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Datum</th>
                   <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Aktion</th>
                 </tr>
@@ -316,7 +365,7 @@ export default function AngebotePage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center text-gray-400 py-16 text-sm">
+                    <td colSpan={9} className="text-center text-gray-400 py-16 text-sm">
                       {search ? 'Keine Treffer' : 'Noch keine Angebote angelegt'}
                     </td>
                   </tr>
@@ -331,6 +380,7 @@ export default function AngebotePage() {
                           </Link>
                         ) : '—'}
                       </td>
+                      <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{a.contact?.assigned_user?.name || '—'}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatEuro(monatlicherBeitrag(a))}</td>
                       <td className="px-4 py-3">
                         <select
@@ -344,6 +394,21 @@ export default function AngebotePage() {
                         </select>
                       </td>
                       <td className="px-4 py-3 text-gray-600 hidden md:table-cell max-w-[16rem] truncate">{a.leistungsumfang || '—'}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        {a.dokument ? (
+                          <a
+                            href={`https://drive.google.com/file/d/${a.dokument.file_id}/view`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={a.dokument.file_name}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            📄 Öffnen ↗
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap hidden sm:table-cell">{formatDate(a.created_at)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <button onClick={() => openEdit(a)} className="text-xs text-gray-500 hover:text-gray-800 mr-3">Bearbeiten</button>

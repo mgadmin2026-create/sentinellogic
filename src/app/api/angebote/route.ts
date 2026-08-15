@@ -19,6 +19,12 @@ const CONTACT_STATUS_RANG: Record<string, number> = {
   not_interested: 3,
 }
 
+// Kontakt inkl. Verantwortlichem (für "Wer betreut das?") und verknüpftes
+// Quelldokument (für den Direkt-Link zur Drive-Datei) — analog zur
+// Kontaktübersicht bzw. den Dokumentenlisten.
+const ANGEBOT_SELECT =
+  '*, contact:contact_id(id, first_name, last_name, is_test_data, assigned_user_id, assigned_user:assigned_user_id(id, name)), dokument:dokument_id(id, file_id, file_name)'
+
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getCurrentUser()
@@ -36,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('angebote')
-      .select('*, contact:contact_id(id, first_name, last_name, is_test_data)')
+      .select(ANGEBOT_SELECT)
       .order('created_at', { ascending: false })
 
     if (!includeArchived) {
@@ -107,7 +113,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('angebote')
       .insert([angebotData])
-      .select('*, contact:contact_id(id, first_name, last_name)')
+      .select(ANGEBOT_SELECT)
       .single()
 
     if (error) {

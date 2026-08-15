@@ -223,6 +223,8 @@ export interface Contract {
   duration_start?: string
   duration_end?: string
   benefits: ContractBenefit[]
+  dokument_id?: string | null
+  dokument?: { id: string; file_id: string; file_name: string } | null
   created_at: string
   created_by: string
   updated_at: string

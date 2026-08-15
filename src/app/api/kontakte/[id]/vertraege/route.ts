@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     // Fetch verträge (Contracts) for this contact
     const { data, error } = await supabase
       .from('contracts')
-      .select('*')
+      .select('*, dokument:dokument_id(id, file_id, file_name)')
       .eq('contact_id', id)
       .order('created_at', { ascending: false })
 

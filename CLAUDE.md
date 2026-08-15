@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.32.0 — Angebote (Deal-/Angebotsnachverfolgung): neue Pipeline-Seite, Kontakt-Kachel, KI-Upload-Anbindung, Status-Automatik | Aktiv in Entwicklung |
+| **Version** | 0.32.1 — Angebote/Verträge: Dokument-Link, Verantwortlich-Anzeige, Angebote-Kanban per Drag & Drop verschiebbar | Aktiv in Entwicklung |
 
 ---
 
@@ -255,6 +255,37 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.32.1 (2026-08-15) — Angebote/Verträge: Dokument-Link, Verantwortlich, Drag & Drop
+
+Direktes Nutzer-Feedback nach dem ersten Live-Test von v0.32.0.
+
+- ✨ **Angebotsübersicht** (`/angebote` + Kontakt-Kachel `KontaktAngeboteTab.tsx`): zeigt jetzt analog
+  zur Kontaktübersicht, **wer für den Kontakt verantwortlich ist** (`contact.assigned_user`) und einen
+  direkten **Link zum verknüpften Dokument** (`angebote.dokument_id` → Drive-Datei) — beides bisher nur
+  in der Datenbank vorhanden, nirgends angezeigt. Beide API-Routen (`/api/angebote`, `/api/angebote/[id]`)
+  nutzen dafür einen gemeinsamen `ANGEBOT_SELECT`-Konstante mit verschachtelten Supabase-Joins
+  (`contact:contact_id(..., assigned_user:assigned_user_id(id, name))`, `dokument:dokument_id(...)`) statt
+  eines separaten Client-Fetches.
+- ✨ **Angebote-Kanban ist jetzt per Drag & Drop bedienbar**: Karten lassen sich zwischen den 5
+  Status-Spalten hin- und herziehen (native HTML5-Drag&Drop, keine neue Abhängigkeit) — löst denselben
+  Statuswechsel wie das bisherige Dropdown in der Listenansicht aus, inkl. der bestehenden
+  Status-Automatik (Kontakt-Status-Sync, Aktivitäten-Log).
+- 🐛 **Verträge hatten überhaupt keine Dokument-Verknüpfung** — anders als bei Angeboten fehlte
+  `contracts.dokument_id` komplett, obwohl beide Anlage-Pfade (KI-Upload-Commit, Direkt-Upload am
+  Kontakt) die Datei im selben Request bereits hochladen. Migration `0073_contracts_dokument_id.sql`
+  ergänzt die Spalte (analog `angebote.dokument_id`, v0.32.0); beide Insert-Stellen befüllen sie jetzt,
+  `GET /api/kontakte/[id]/vertraege` joint das Dokument, `KontaktVertraegeTab.tsx` bekommt eine neue
+  Spalte „Dokument" (📄 Öffnen ↗). Bestandsverträge (vor dieser Änderung angelegt) zeigen „—" — kein
+  rückwirkendes Verknüpfen möglich, da die ursprüngliche Zuordnung Dokument↔Vertrag nicht mehr
+  rekonstruierbar ist.
+- ✅ Live verifiziert: Verantwortlich- und Dokument-Anzeige auf Karte, Liste und Kontakt-Kachel korrekt;
+  Drag & Drop einer echten Karte (Versendet → In Verhandlung) per simuliertem HTML5-Drag-Event
+  ausgelöst, PATCH bestätigt, Spalten aktualisieren sich korrekt; Verträge-Tabelle zeigt neue
+  Dokument-Spalte (Bestandsdaten korrekt als „—", da vor der Migration angelegt). Testweise geänderter
+  Status danach wieder zurückgesetzt.
+- ⚠️ Migration muss vom Nutzer manuell in Supabase ausgeführt werden (Projekt-Konvention) — laut Nutzer
+  bereits erfolgt.
 
 ### v0.32.0 (2026-08-15) — Angebote (Deal-/Angebotsnachverfolgung)
 
@@ -1467,7 +1498,8 @@ git push origin main # Deploy zu Vercel
 | `src/app/api/angebote/route.ts`, `.../[id]/route.ts` | Angebote-CRUD + Status-Automatik (Kontakt-Status-Sync) + Aktivitäten-Log (v0.32.0) |
 | `src/app/angebote/page.tsx` | Angebote-Pipeline-Seite: Karten (Kanban)/Liste-Toggle, Filter, Anlegen/Bearbeiten/Archivieren (v0.32.0) |
 | `src/components/kontakt/KontaktAngeboteTab.tsx` | Kontakt-Kachel „Angebote" — gleiche CRUD-Funktionalität wie `/angebote`, kontaktgebunden (v0.32.0) |
+| `supabase/migrations/0073_contracts_dokument_id.sql` | `contracts.dokument_id` — analoge Dokument-Verknüpfung wie bei `angebote` (v0.32.1) |
 
 ---
 
-*Last Updated: 2026-08-15 — v0.32.0 Angebote (Deal-/Angebotsnachverfolgung): Pipeline-Seite, Kontakt-Kachel, KI-Upload-Anbindung, Status-Automatik*
+*Last Updated: 2026-08-15 — v0.32.1 Angebote/Verträge: Dokument-Link, Verantwortlich-Anzeige, Angebote-Kanban per Drag & Drop verschiebbar*

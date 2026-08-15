@@ -100,6 +100,7 @@ export function KontaktVertraegeTab({ kontaktId }: KontaktVertraegeTabProps) {
               <th className="px-4 py-2 text-left font-semibold text-gray-700">Beitrag</th>
               <th className="px-4 py-2 text-left font-semibold text-gray-700">Typ</th>
               <th className="px-4 py-2 text-left font-semibold text-gray-700">Leistungen</th>
+              <th className="px-4 py-2 text-left font-semibold text-gray-700">Dokument</th>
               <th className="px-4 py-2 text-center font-semibold text-gray-700">Aktion</th>
             </tr>
           </thead>
@@ -130,6 +131,21 @@ export function KontaktVertraegeTab({ kontaktId }: KontaktVertraegeTabProps) {
                   <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
                     {contract.benefits?.length || 0}
                   </span>
+                </td>
+                <td className="px-4 py-3">
+                  {contract.dokument ? (
+                    <a
+                      href={`https://drive.google.com/file/d/${contract.dokument.file_id}/view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      title={contract.dokument.file_name}
+                    >
+                      📄 Öffnen ↗
+                    </a>
+                  ) : (
+                    <span className="text-xs text-gray-400">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-center">
                   <div className="flex gap-2 justify-center">

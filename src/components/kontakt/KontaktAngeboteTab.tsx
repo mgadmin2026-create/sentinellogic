@@ -15,6 +15,7 @@ export interface Angebot {
   sparte: string | null
   leistungsumfang: string | null
   created_at: string
+  dokument?: { id: string; file_id: string; file_name: string } | null
 }
 
 interface Props {
@@ -153,6 +154,18 @@ export function KontaktAngeboteTab({ kontaktId, kontaktName, angebote, onChanged
                 {angebotStatusLabel(a.status)}
               </span>
               <span className="flex-shrink-0 text-xs text-gray-600 whitespace-nowrap">{formatEuro(monatlicherBeitrag(a))}/Mon.</span>
+              {a.dokument && (
+                <a
+                  href={`https://drive.google.com/file/d/${a.dokument.file_id}/view`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={a.dokument.file_name}
+                  className="flex-shrink-0 text-xs text-blue-600 hover:text-blue-700"
+                >
+                  📄
+                </a>
+              )}
               <span className="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap hidden sm:inline">{formatDate(a.created_at)}</span>
               <button
                 onClick={() => archivieren(a.id)}

@@ -254,6 +254,7 @@ export async function POST(request: NextRequest) {
           duration_start: daten.vertragsbeginn ? new Date(daten.vertragsbeginn).toISOString().split('T')[0] : null,
           duration_end: daten.vertragsende ? new Date(daten.vertragsende).toISOString().split('T')[0] : null,
           benefits: daten.benefits,
+          dokument_id: uploadData.dokument?.id,
           created_by: 'ki_upload',
         })
       } catch (err) {

@@ -12,6 +12,8 @@ export const fetchCache = 'force-no-store'
 
 const VALID_STATUSES = ['in_erstellung', 'versendet', 'in_verhandlung', 'gewonnen', 'verloren']
 const VALID_ZYKLEN = ['monatlich', 'vierteljaehrlich', 'halbjaehrlich', 'jaehrlich']
+const ANGEBOT_SELECT =
+  '*, contact:contact_id(id, first_name, last_name, is_test_data, assigned_user_id, assigned_user:assigned_user_id(id, name)), dokument:dokument_id(id, file_id, file_name)'
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -22,7 +24,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     const supabase = createServerClient()
     const { data, error } = await supabase
       .from('angebote')
-      .select('*, contact:contact_id(id, first_name, last_name)')
+      .select(ANGEBOT_SELECT)
       .eq('id', params.id)
       .single()
 
@@ -70,7 +72,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       .from('angebote')
       .update(updates)
       .eq('id', params.id)
-      .select('*, contact:contact_id(id, first_name, last_name)')
+      .select(ANGEBOT_SELECT)
       .single()
 
     if (error) {
