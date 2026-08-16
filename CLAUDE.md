@@ -26,7 +26,7 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 | **CRM Sync** | Dialfire API + KlickTipp API | Lead-Routing, Task-Erstellung, Tagging |
 | **Automation** | Supabase Edge Functions | Trigger-basierte Workflows |
 | **KI-Extraktion** | Claude API (claude-opus-4-8) | KI Upload: Dokument-Analyse (PDF/Vision, Structured Outputs) |
-| **Version** | 0.32.1 — Angebote/Verträge: Dokument-Link, Verantwortlich-Anzeige, Angebote-Kanban per Drag & Drop verschiebbar | Aktiv in Entwicklung |
+| **Version** | 0.33.0 — UI-/Branding-Überarbeitung: einklappbare Sidebar, einheitliche Bausteine (`Button`/`Card`/`Badge`/`PageHeader`), projektweiter Farbtoken-Sweep, Kontakthistorie als echte Timeline mit Zeitraum-Gruppierung | Aktiv in Entwicklung |
 
 ---
 
@@ -110,17 +110,20 @@ Fokus: Lead-Management, 12-Schritt-Pipeline, Aktivitäts-Tracking und automatisi
 > Arbeitsweisen (Doku, Tests, Release Notes, Monitoring). Bereits implementierte Grundlagen bleiben
 > zusätzlich im Abschnitt `Feature-Status` oben dokumentiert.
 >
-> **Aktueller Fokus (Stand 2026-08-15):** Phase A ist bei „Automation + Synchronisation
+> **Aktueller Fokus (Stand 2026-08-16):** Phase A ist bei „Automation + Synchronisation
 > vereinheitlichen" inkl. aller vier Unterpunkte (Cron/Scheduler, Log-Handling, Fehler-/Retry-Handling,
-> Control-Center-UI) weiterhin vollständig ✅ Done (v0.25.0). Offene Hoch-Priorität-Punkte in Phase A:
-> Vollständiger Regressionstest, Placetel Click-to-Call/Notify-Verarbeitung, KlickTipp-Rücksynchronisation
-> (noch kein einziges reales Webhook-Event angekommen, siehe `docs/ROADMAP.md`), sowie neu vermerkt die
-> **UI-/Branding-Überarbeitung** (einklappbare Sidebar, einheitliches Typo-/Style-System — noch nicht
-> begonnen). Zusätzlich abseits der Phasenreihenfolge umgesetzt: „KI-Upload → Folgeaufgabe" (Phase C,
-> Dokumenttyp-Erkennung + Folgeaufgabe bei Angebot, v0.30.0–v0.30.3) und die komplette
-> „Entscheidung Angebotshandling" + „Angebotsverwaltung/-Tracking" (Phase B, v0.32.0, siehe
-> „Recent Changes" unten) — beide jetzt ✅ Done statt 🔴/⚪. Neu nur konzeptionell vermerkt (Phase D):
-> ein Datenqualitäts-Agent für Status-/Datenkonsistenz-Prüfungen.
+> Control-Center-UI) weiterhin vollständig ✅ Done (v0.25.0). Die zuvor hier vermerkte
+> **UI-/Branding-Überarbeitung** ist jetzt ebenfalls ✅ Done (v0.33.0, Stufe 1–4 + Nachbesserung nach
+> Nutzer-Review, siehe „Recent Changes" unten und `docs/STYLE_GUIDE.md`). Offene Hoch-Priorität-Punkte
+> in Phase A: Vollständiger Regressionstest, Placetel Click-to-Call/Notify-Verarbeitung,
+> KlickTipp-Rücksynchronisation (noch kein einziges reales Webhook-Event angekommen, siehe
+> `docs/ROADMAP.md`). Zusätzlich abseits der Phasenreihenfolge umgesetzt: „KI-Upload → Folgeaufgabe"
+> (Phase C, Dokumenttyp-Erkennung + Folgeaufgabe bei Angebot, v0.30.0–v0.30.3) und die komplette
+> „Entscheidung Angebotshandling" + „Angebotsverwaltung/-Tracking" (Phase B, v0.32.0–v0.32.1, siehe
+> „Recent Changes" unten) — beide ✅ Done. Der zuvor nur stichwortartige „Datenqualitäts-Agent"
+> (Phase D) hat jetzt ein ausgereiftes Konzept (`docs/DATENQUALITAETS_KONZEPT.md`) — als
+> „Datenqualitäts-Center" auf der bestehenden `sync_runs`-Infrastruktur aufgesetzt, noch nicht
+> umgesetzt.
 
 ### ❌ Removed
 
@@ -255,6 +258,44 @@ export async function logStatusChanged(contactId, contactName, oldStatus, newSta
 ---
 
 ## Recent Changes
+
+### v0.33.0 (2026-08-16) — UI-/Branding-Überarbeitung
+
+Löst den Roadmap-Punkt „UI-/Branding-Überarbeitung" (Phase A, von SuperChat inspiriert). Erst
+Konzept (`docs/UI_UX_KONZEPT.md`), dann vierstufiger Rollout, dann Nachbesserung nach
+Live-Review — Details siehe `docs/STYLE_GUIDE.md`, das parallel zum Rollout mitgewachsen ist.
+Branch `feature/ui-ux-fundament` (enthielt gemergt `feature/angebote-tracking`, siehe v0.32.0).
+
+- ✨ **Stufe 1 — Fundament**: Design-Tokens (`brand`/`brand-hover`/`brand-dark` in
+  `tailwind.config.ts`, benannt statt Hex-Werte im JSX verstreut), neuer Bausteinkasten
+  `src/components/ui/` (`Button` mit 4 Varianten, `Card`, `Badge`, `PageHeader`, `EmptyState`),
+  einklappbare Sidebar (`localStorage`, Default ausgeklappt, Desktop-only, mobiles
+  Drawer-Verhalten unverändert).
+- ✨ **Stufe 2 — Pilotseiten**: Dashboard, Kontakte, Angebote auf die neuen Bausteine
+  umgestellt, `<PageHeader />` dafür um einen `ReactNode`-`subtitle` und gestapeltes Layout
+  erweitert (Dashboard braucht einen mehrzeiligen Untertitel, nicht nur einen kurzen Zähler).
+- ✨ **Stufe 3 — Restliche Hauptseiten**: `<PageHeader />`/`<Button />` auf 12 weitere Seiten
+  angewendet (Aufgaben, Kalender, Dokumente, KI-Upload, Automatisierungsregeln, Synchronisation,
+  Selektion, E-Mail-Postfach, Hilfe, Einstellungen, Mein Profil, Erwähnungen, Release Notes);
+  projektweiter Sweep aller verbliebenen `#1A1A1A`/`#FFC300`/`#e6b000`-Hex-Werte (außer der
+  bestätigten Altlast `/leads`) auf die `brand`-Token.
+- 🐛 **Nachbesserung nach Live-Review** (vier vom ersten Sweep übersehene strukturelle
+  Inkonsistenzen, da im Code-Diff nicht sichtbar): einheitlicher Seiten-Container — kein
+  Gradient-Hintergrund mehr (Einstellungen-Unterseiten, KI-Upload hatten eigenes
+  `bg-gradient-to-br`), kein `mx-auto` mehr auf ~10 Seiten (u.a. Testdashboard, Postfach,
+  Kontakt-Detail) statt der bisherigen Mischung aus links- und mittig-ausgerichteten Seiten;
+  Kontakt-Detail rechte Spalte neu sortiert (Erstgespräch → Nächste Aufgabe → Angebote →
+  Telefonie & Sync, unmittelbare Arbeit oben statt Status-Kacheln); Aktivitäten-/Kontakthistorie-
+  Timeline überarbeitet (durchgehende Verbindungslinie pro Zeile statt fixer, bei mehrzeiligen
+  Einträgen abreißender Segmente, plus Zeitraum-Gruppierung Heute/Gestern/Diese Woche/Diesen
+  Monat/„Monat Jahr" wie bei Gmail/Slack); Aufgaben-Tabelle an die als „ruhiger und
+  übersichtlicher" empfundene Angebote-Tabelle angeglichen (Header-Farbe/-Padding, Pill-Filter
+  statt Segmented-Control, Priorität jetzt als `Badge` statt reinem farbigem Text — neuer
+  Badge-Farbton `orange`).
+- ✅ Live in allen migrierten Seiten verifiziert, `tsc --noEmit` durchgehend sauber, keine
+  funktionalen Änderungen.
+- 🆕 Dateien: `docs/UI_UX_KONZEPT.md`, `docs/STYLE_GUIDE.md`, `src/components/ui/{Button,Card,
+  Badge,PageHeader,EmptyState,index}.tsx`
 
 ### v0.32.1 (2026-08-15) — Angebote/Verträge: Dokument-Link, Verantwortlich, Drag & Drop
 
@@ -1499,7 +1540,10 @@ git push origin main # Deploy zu Vercel
 | `src/app/angebote/page.tsx` | Angebote-Pipeline-Seite: Karten (Kanban)/Liste-Toggle, Filter, Anlegen/Bearbeiten/Archivieren (v0.32.0) |
 | `src/components/kontakt/KontaktAngeboteTab.tsx` | Kontakt-Kachel „Angebote" — gleiche CRUD-Funktionalität wie `/angebote`, kontaktgebunden (v0.32.0) |
 | `supabase/migrations/0073_contracts_dokument_id.sql` | `contracts.dokument_id` — analoge Dokument-Verknüpfung wie bei `angebote` (v0.32.1) |
+| `docs/UI_UX_KONZEPT.md`, `docs/STYLE_GUIDE.md` | UI-/Branding-Überarbeitung: Konzept + lebendes Nachschlagewerk (Design-Tokens, Bausteine, Seiten-Container-Regel, Kontakt-Detail-Spaltenzuordnung) (v0.33.0) |
+| `src/components/ui/{Button,Card,Badge,PageHeader,EmptyState}.tsx` | Gemeinsamer Bausteinkasten — `Button` (4 Varianten), `Card`, `Badge` (inkl. `orange`), `PageHeader` (Titel/Untertitel/Aktionen), `EmptyState` (v0.33.0) |
+| `docs/DATENQUALITAETS_KONZEPT.md` | Konzept für ein „Datenqualitäts-Center": 8 deterministische Erst-Regeln, Wiederverwendung von `sync_runs` als Ausführungsmodell, KI erst als spätere Ausbaustufe — noch nicht umgesetzt (v0.33.0) |
 
 ---
 
-*Last Updated: 2026-08-15 — v0.32.1 Angebote/Verträge: Dokument-Link, Verantwortlich-Anzeige, Angebote-Kanban per Drag & Drop verschiebbar*
+*Last Updated: 2026-08-16 — v0.33.0 UI-/Branding-Überarbeitung: einklappbare Sidebar, einheitliche Bausteine, projektweiter Farbtoken-Sweep, Kontakthistorie-Timeline mit Zeitraum-Gruppierung*

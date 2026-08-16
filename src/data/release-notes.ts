@@ -21,6 +21,87 @@ export interface ReleaseNote {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: '0.33.0',
+    date: '2026-08-16',
+    title: 'UI-/Branding-Überarbeitung',
+    summary:
+      'Einklappbare Sidebar, einheitliche Bausteine für Buttons/Kacheln/Seitenköpfe und ein durchgängiges Farbschema über die ganze App hinweg — plus eine Kontakthistorie, die jetzt wirklich wie eine Timeline aussieht.',
+    features: [
+      {
+        title: 'Einklappbare Sidebar',
+        description:
+          'Die Seitenleiste lässt sich jederzeit auf reine Icons einklappen und wieder ausklappen — mehr Platz für den Arbeitsbereich, die Einstellung wird gemerkt.',
+        category: 'improvement',
+        icon: '↔️',
+      },
+      {
+        title: 'Einheitliches Erscheinungsbild über alle Hauptseiten',
+        description:
+          'Seitenköpfe, Buttons und Farben folgen jetzt überall demselben Muster statt sich von Seite zu Seite leicht zu unterscheiden — inklusive einheitlichem Hintergrund und einer durchgängig linksbündigen Ausrichtung.',
+        category: 'improvement',
+        icon: '🎨',
+      },
+      {
+        title: 'Kontakthistorie als echte Timeline',
+        description:
+          'Die Aktivitäten-Historie eines Kontakts zeigt jetzt eine durchgehende Zeitlinie statt einzelner Listenpunkte, gruppiert nach Heute, Gestern, Diese Woche, Diesen Monat und älteren Monaten.',
+        category: 'improvement',
+        icon: '🕐',
+      },
+      {
+        title: 'Kontakt-Detailseite neu sortiert',
+        description:
+          'Die rechte Spalte zeigt zuerst die unmittelbare Arbeit am Kontakt (Erstgespräch, nächste Aufgabe), Angebote und Telefonie/Sync folgen darunter.',
+        category: 'improvement',
+        icon: '📇',
+      },
+      {
+        title: 'Aufgaben-Übersicht aufgeräumt',
+        description:
+          'Tabelle und Filter der Aufgaben-Seite wirken jetzt ruhiger und übersichtlicher, im gleichen Stil wie die Angebote-Übersicht.',
+        category: 'improvement',
+        icon: '✅',
+      },
+    ],
+  },
+  {
+    version: '0.32.0',
+    date: '2026-08-15',
+    title: 'Angebote (Deal-/Angebotsnachverfolgung)',
+    summary:
+      'Angebote sind jetzt ein eigenständiger Bereich mit Kanban- und Listenansicht — inklusive automatischem Status-Abgleich mit dem Kontakt und Übernahme direkt aus dem KI-Upload.',
+    features: [
+      {
+        title: 'Neue Angebote-Übersicht',
+        description:
+          'Kanban-Pipeline (In Erstellung/Versendet/In Verhandlung/Gewonnen/Verloren) und Tabellenansicht, Karten lassen sich per Drag & Drop zwischen den Status verschieben.',
+        category: 'feature',
+        icon: '📋',
+      },
+      {
+        title: 'Automatischer Status-Abgleich',
+        description:
+          'Ein neues Angebot hebt den Kontakt-Status mindestens auf „Qualifiziert", „Gewonnen" setzt den Kontakt auf „Kunde", „Verloren" auf „Nicht interessiert" — nie rückwärts.',
+        category: 'feature',
+        icon: '🔄',
+      },
+      {
+        title: 'Angebote direkt aus dem KI-Upload übernehmen',
+        description:
+          'Wird beim Dokument-Upload ein Angebot erkannt, lässt es sich mit Betrag, Zyklus und Leistungsumfang direkt in die Angebotsübersicht übernehmen.',
+        category: 'feature',
+        icon: '🤖',
+      },
+      {
+        title: 'Dokument-Link und Verantwortlich-Anzeige',
+        description:
+          'Angebote und Verträge zeigen jetzt einen direkten Link zum hinterlegten Dokument sowie den Verantwortlichen des Kontakts.',
+        category: 'improvement',
+        icon: '📎',
+      },
+    ],
+  },
+  {
     version: '0.11.1',
     date: '2026-08-04',
     title: 'Eingehende E-Mails in der Kontakttimeline',
