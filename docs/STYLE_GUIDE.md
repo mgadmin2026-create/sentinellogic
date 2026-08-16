@@ -124,6 +124,12 @@ Zeile (die vorherige Umsetzung) reißt ab, sobald ein Eintrag mehr als eine Zeil
 redundante Typ-Badge („contact created" als rohe Pille neben jedem Eintrag) wurde entfernt —
 das Icon transportiert den Typ bereits über Form/Farbe.
 
+**Gruppierung nach Zeitraum** (`gruppenLabel()`): Heute → Gestern → Diese Woche → Diesen Monat →
+„Monat Jahr" für alles Ältere (gleiche Staffelung wie Gmail/Slack). Die Verbindungslinie endet
+bewusst am Ende jeder Gruppe (kein Linien-Durchlauf durch den Gruppenkopf) — pro Zeile wird
+geprüft, ob der *nächste* Eintrag noch zur selben Gruppe gehört, nicht nur ob es einen nächsten
+Eintrag überhaupt gibt.
+
 ## Sidebar
 
 Einklappbar (`src/components/Sidebar.tsx`), Desktop-only (`md:` aufwärts). Zustand in

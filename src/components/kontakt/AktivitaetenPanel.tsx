@@ -46,6 +46,21 @@ function zeitpunkt(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { hour: '2-digit', minute: '2-digit' })
 }
 
+// Gruppiert die Timeline nach Tag/Woche/Monat (Heute/Gestern/Diese Woche/Diesen Monat, sonst
+// „Monat Jahr") — dieselbe Staffelung wie bei gängigen Aktivitäts-Feeds (Gmail, Slack).
+function gruppenLabel(iso: string): string {
+  const d = new Date(iso)
+  const heute = new Date()
+  const startOfDay = (dt: Date) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime()
+  const tagesDiff = Math.round((startOfDay(heute) - startOfDay(d)) / 86_400_000)
+
+  if (tagesDiff === 0) return 'Heute'
+  if (tagesDiff === 1) return 'Gestern'
+  if (tagesDiff > 1 && tagesDiff <= 6) return 'Diese Woche'
+  if (d.getFullYear() === heute.getFullYear() && d.getMonth() === heute.getMonth()) return 'Diesen Monat'
+  return d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+}
+
 export function AktivitaetenPanel({ aktivitäten }: { aktivitäten: Aktivität[] }) {
   const [zeigeTechnisch, setZeigeTechnisch] = useState(false)
 
@@ -75,36 +90,48 @@ export function AktivitaetenPanel({ aktivitäten }: { aktivitäten: Aktivität[]
         <p className="text-gray-400 text-sm">Keine Aktivitäten vorhanden.</p>
       ) : (
         <div>
-          {sichtbar.map((akt, i) => (
-            <div key={akt.id} className={`relative pl-10 ${i < sichtbar.length - 1 ? 'pb-6' : ''}`}>
-              {i < sichtbar.length - 1 && (
-                <span className="absolute left-[15px] top-8 bottom-0 w-px bg-gray-200" aria-hidden="true" />
-              )}
-              <div className={`absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ring-4 ring-white flex-shrink-0 ${getActivityColor(akt.type)}`}>
-                {getActivityIcon(akt.type)}
-              </div>
-              <p className="text-sm font-medium text-gray-900 pt-1">
-                {akt.description}
-                {akt.type === 'klicktipp_synced' && akt.data?.klicktipp_id && (
-                  <span className="ml-1.5 text-xs font-mono text-gray-400">(ID: {akt.data.klicktipp_id})</span>
+          {sichtbar.map((akt, i) => {
+            const gruppe = gruppenLabel(akt.created_at)
+            const istNeueGruppe = i === 0 || gruppe !== gruppenLabel(sichtbar[i - 1].created_at)
+            const gruppeMitNaechstem = i < sichtbar.length - 1 && gruppe === gruppenLabel(sichtbar[i + 1].created_at)
+            return (
+              <div key={akt.id}>
+                {istNeueGruppe && (
+                  <div className={`text-xs font-semibold text-gray-400 uppercase tracking-wide pl-10 ${i === 0 ? 'mb-3' : 'mt-5 mb-3'}`}>
+                    {gruppe}
+                  </div>
                 )}
-              </p>
-              {akt.type === 'email_received' && Number.isInteger(Number(akt.data?.mailbox_uid)) && Number(akt.data?.mailbox_uid) > 0 && akt.data?.uid_validity && (
-                <Link
-                  href={`/postfach?uid=${Number(akt.data?.mailbox_uid)}&uidValidity=${encodeURIComponent(String(akt.data.uid_validity))}`}
-                  className="mt-1 inline-block text-xs font-semibold text-sky-700 hover:underline"
-                >
-                  E-Mail im Postfach öffnen →
-                </Link>
-              )}
-              <div className="flex items-center gap-1.5 mt-1">
-                <p className="text-xs text-gray-400">{zeitpunkt(akt.created_at)} · {akt.user?.name || 'System'}</p>
-                {istTechnisch(akt.type) && (
-                  <span className="text-xs text-gray-400" title="Technischer Eintrag (Sync/Automation)">⚙️</span>
-                )}
+                <div className={`relative pl-10 ${gruppeMitNaechstem ? 'pb-6' : ''}`}>
+                  {gruppeMitNaechstem && (
+                    <span className="absolute left-[15px] top-8 bottom-0 w-px bg-gray-200" aria-hidden="true" />
+                  )}
+                  <div className={`absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ring-4 ring-white flex-shrink-0 ${getActivityColor(akt.type)}`}>
+                    {getActivityIcon(akt.type)}
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 pt-1">
+                    {akt.description}
+                    {akt.type === 'klicktipp_synced' && akt.data?.klicktipp_id && (
+                      <span className="ml-1.5 text-xs font-mono text-gray-400">(ID: {akt.data.klicktipp_id})</span>
+                    )}
+                  </p>
+                  {akt.type === 'email_received' && Number.isInteger(Number(akt.data?.mailbox_uid)) && Number(akt.data?.mailbox_uid) > 0 && akt.data?.uid_validity && (
+                    <Link
+                      href={`/postfach?uid=${Number(akt.data?.mailbox_uid)}&uidValidity=${encodeURIComponent(String(akt.data.uid_validity))}`}
+                      className="mt-1 inline-block text-xs font-semibold text-sky-700 hover:underline"
+                    >
+                      E-Mail im Postfach öffnen →
+                    </Link>
+                  )}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <p className="text-xs text-gray-400">{zeitpunkt(akt.created_at)} · {akt.user?.name || 'System'}</p>
+                    {istTechnisch(akt.type) && (
+                      <span className="text-xs text-gray-400" title="Technischer Eintrag (Sync/Automation)">⚙️</span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
