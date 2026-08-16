@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { HelpButton } from '@/components/help/HelpButton'
 import { isOverdue as istUeberfaellig } from '@/lib/pipeline'
-import { Button, PageHeader } from '@/components/ui'
+import { Badge, Button, PageHeader, type BadgeColor } from '@/components/ui'
 
 interface Aufgabe {
   id: string
@@ -31,7 +31,7 @@ const STATUS_COLORS = {
   in_bearbeitung: 'bg-yellow-100 text-yellow-800',
   erledigt: 'bg-emerald-100 text-emerald-800',
 }
-const PRIORITÄT_COLORS = { niedrig: 'text-gray-500', mittel: 'text-orange-500', hoch: 'text-red-500' }
+const PRIORITÄT_BADGE_COLOR: Record<string, BadgeColor> = { niedrig: 'gray', mittel: 'orange', hoch: 'red' }
 const PRIORITÄT_LABELS = { niedrig: 'Niedrig', mittel: 'Mittel', hoch: 'Hoch' }
 
 const AUFGABEN_FILTER = [
@@ -221,99 +221,89 @@ export default function AufgabenPage() {
         }
       />
 
-      <div className="mb-6 space-y-3">
+      <div className="mb-4 flex items-center gap-3 flex-wrap">
         <input
           type="text"
           placeholder="Nach Titel oder Kontakt suchen…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+          className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm flex-1 min-w-[14rem] max-w-xs focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
         />
+        <HelpButton articleId="aufgaben.suche-filter" />
 
-        <div className="flex gap-2 flex-wrap items-center">
-          <HelpButton articleId="aufgaben.suche-filter" />
-          {currentUserId && (
-            <button
-              onClick={() => setAssignedUserFilter(assignedUserFilter === currentUserId ? 'all' : currentUserId)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all whitespace-nowrap ${
-                assignedUserFilter === currentUserId
-                  ? 'bg-yellow-400 border-yellow-400 text-gray-900'
-                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              Meine Aufgaben
-            </button>
-          )}
-
-          <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1 w-fit">
-            {AUFGABEN_FILTER.map((f) => {
-              const count =
-                f.value === 'all' ? aufgaben.length : aufgaben.filter((a) => a.status === f.value).length
-              return (
-                <button
-                  key={f.value}
-                  onClick={() => setStatusFilter(f.value)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                    statusFilter === f.value
-                      ? 'bg-yellow-400 text-gray-900'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  {f.label} <span className="ml-1 text-xs">{count}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="flex gap-1.5 bg-white border border-gray-200 rounded-lg p-1 w-fit">
-            {PRIORITÄT_FILTER.map((f) => {
-              const count =
-                f.value === 'all' ? aufgaben.length : aufgaben.filter((a) => a.priorität === f.value).length
-              return (
-                <button
-                  key={f.value}
-                  onClick={() => setPrioritätFilter(f.value)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
-                    prioritätFilter === f.value
-                      ? 'bg-yellow-400 text-gray-900'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  {f.label} <span className="ml-1 text-xs">{count}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          <select
-            value={assignedUserFilter}
-            onChange={(e) => setAssignedUserFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+        {currentUserId && (
+          <button
+            onClick={() => setAssignedUserFilter(assignedUserFilter === currentUserId ? 'all' : currentUserId)}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+              assignedUserFilter === currentUserId
+                ? 'bg-gray-900 text-white'
+                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+            }`}
           >
-            <option value="all">Verantwortlicher: Alle</option>
-            {teamMembers.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
-            ))}
-          </select>
+            👤 Meine Aufgaben
+          </button>
+        )}
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {AUFGABEN_FILTER.map((f) => {
+            const count =
+              f.value === 'all' ? aufgaben.length : aufgaben.filter((a) => a.status === f.value).length
+            return (
+              <button
+                key={f.value}
+                onClick={() => setStatusFilter(f.value)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                  statusFilter === f.value ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {f.label} {count}
+              </button>
+            )
+          })}
         </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {PRIORITÄT_FILTER.map((f) => {
+            const count =
+              f.value === 'all' ? aufgaben.length : aufgaben.filter((a) => a.priorität === f.value).length
+            return (
+              <button
+                key={f.value}
+                onClick={() => setPrioritätFilter(f.value)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                  prioritätFilter === f.value ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                {f.label} {count}
+              </button>
+            )
+          })}
+        </div>
+
+        <select
+          value={assignedUserFilter}
+          onChange={(e) => setAssignedUserFilter(e.target.value)}
+          className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400/40"
+        >
+          <option value="all">Verantwortlicher: Alle</option>
+          {teamMembers.map((m) => (
+            <option key={m.id} value={m.id}>{m.name}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Aufgabe</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Kontakt</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Priorität</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Status</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Fällig</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Verantwortlicher</th>
-                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-5 py-3">Aktionen</th>
+              <tr className="border-b border-gray-100 bg-gray-50/80">
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Aufgabe</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Kontakt</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Priorität</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Status</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Fällig</th>
+                <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Verantwortlicher</th>
+                <th className="text-right text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -343,29 +333,27 @@ export default function AufgabenPage() {
                 filtered.map((aufgabe) => (
                   <tr
                     key={aufgabe.id}
-                    className={`border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}
+                    className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors cursor-pointer ${aufgabe.status === 'erledigt' ? 'opacity-60' : ''}`}
                     onClick={() => openEditModal(aufgabe)}
                   >
-                    <td className="px-5 py-3.5 font-semibold text-yellow-600 hover:underline">{aufgabe.titel}</td>
-                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[16rem] truncate">{aufgabe.titel}</td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       {aufgabe.contact_name && aufgabe.contact_id ? (
-                        <Link href={`/kontakte/${aufgabe.contact_id}`} className="text-yellow-600 hover:underline">
+                        <Link href={`/kontakte/${aufgabe.contact_id}`} className="text-blue-600 hover:underline">
                           {aufgabe.contact_name}
                         </Link>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5">
-                      <span className={`text-xs font-bold ${PRIORITÄT_COLORS[aufgabe.priorität]}`}>
-                        {PRIORITÄT_LABELS[aufgabe.priorität]}
-                      </span>
+                    <td className="px-4 py-3">
+                      <Badge color={PRIORITÄT_BADGE_COLOR[aufgabe.priorität]}>{PRIORITÄT_LABELS[aufgabe.priorität]}</Badge>
                     </td>
-                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <select
                         value={aufgabe.status}
                         onChange={(e) => handleStatusChange(aufgabe.id, e.target.value)}
-                        className={`text-xs font-medium px-2 py-1 rounded-full border-0 cursor-pointer ${STATUS_COLORS[aufgabe.status]}`}
+                        className={`px-2 py-1 rounded-full text-xs font-medium border-0 focus:outline-none focus:ring-2 focus:ring-yellow-400 cursor-pointer ${STATUS_COLORS[aufgabe.status]}`}
                       >
                         {Object.entries(STATUS_LABELS).map(([v, label]) => (
                           <option key={v} value={v}>
@@ -374,7 +362,7 @@ export default function AufgabenPage() {
                         ))}
                       </select>
                     </td>
-                    <td className={`px-5 py-3.5 text-xs ${isOverdue(aufgabe.fällig, aufgabe.status) ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
+                    <td className={`px-4 py-3 whitespace-nowrap text-xs ${isOverdue(aufgabe.fällig, aufgabe.status) ? 'text-red-600 font-bold' : 'text-gray-500'}`}>
                       {new Date(aufgabe.fällig).toLocaleDateString('de-DE')}
                       {isOverdue(aufgabe.fällig, aufgabe.status) && (
                         <span className="ml-2 inline-flex items-center px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold">
@@ -382,8 +370,8 @@ export default function AufgabenPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-gray-600 text-xs">{aufgabe.assigned_user_name}</td>
-                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{aufgabe.assigned_user_name}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => setDeleteConfirm(aufgabe.id)}
                         aria-label="Löschen"
@@ -430,9 +418,9 @@ export default function AufgabenPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <p className="font-semibold text-yellow-600 min-w-0">{aufgabe.titel}</p>
-                <span className={`text-xs font-bold flex-shrink-0 ${PRIORITÄT_COLORS[aufgabe.priorität]}`}>
+                <Badge color={PRIORITÄT_BADGE_COLOR[aufgabe.priorität]} className="flex-shrink-0">
                   {PRIORITÄT_LABELS[aufgabe.priorität]}
-                </span>
+                </Badge>
               </div>
 
               {aufgabe.contact_name && aufgabe.contact_id && (

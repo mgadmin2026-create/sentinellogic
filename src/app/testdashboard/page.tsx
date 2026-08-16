@@ -425,8 +425,8 @@ export default function TestdashboardPage() {
   ]
 
   return (
-    <div className="min-h-full bg-[#F7F7F5]">
-      <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <div className="min-h-full">
+      <div className="max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2">

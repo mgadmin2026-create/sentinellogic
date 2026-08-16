@@ -90,7 +90,7 @@ export default function ProcessSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin text-4xl mb-4">⚙️</div>
           <p className="text-gray-600">Lade Prozessschritte...</p>
@@ -100,8 +100,8 @@ export default function ProcessSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="max-w-4xl">
         {/* Header */}
         <Link href="/einstellungen" className="text-blue-600 hover:text-blue-700 font-medium mb-4 inline-block">
           ← Zurück zu Einstellungen

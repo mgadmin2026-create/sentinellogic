@@ -104,7 +104,7 @@ export default function ProfilPage() {
 
   if (!user) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12 text-center">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-2xl text-center">
         <p className="text-gray-600">Nicht angemeldet.</p>
         <Link href="/login" className="text-yellow-600 hover:underline text-sm mt-2 inline-block">Zum Login</Link>
       </div>
@@ -112,7 +112,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl space-y-6">
       <PageHeader title="Mein Profil" subtitle="Persönliche Daten und Passwort verwalten" />
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">

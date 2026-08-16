@@ -4,7 +4,7 @@
 // als Trägt-Element genutzt, nicht als Ersatz für die Farblogik.
 import { HTMLAttributes } from 'react'
 
-export type BadgeColor = 'gray' | 'blue' | 'yellow' | 'green' | 'red' | 'indigo'
+export type BadgeColor = 'gray' | 'blue' | 'yellow' | 'green' | 'red' | 'indigo' | 'orange'
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   color?: BadgeColor
@@ -17,6 +17,7 @@ const COLOR_CLASSES: Record<BadgeColor, string> = {
   green: 'bg-green-100 text-green-700',
   red: 'bg-red-100 text-red-700',
   indigo: 'bg-indigo-50 text-indigo-700',
+  orange: 'bg-orange-100 text-orange-700',
 }
 
 export function Badge({ color = 'gray', className = '', ...props }: BadgeProps) {

@@ -252,8 +252,8 @@ export default function KiUploadPage() {
   const zeigeAngebotUebernahme = daten?.dokumenttyp === 'angebot'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="max-w-3xl">
         <PageHeader title="🤖 KI Upload" subtitle={<HelpButton articleId="ki-upload.overview" />} />
         <p className="text-gray-600 -mt-4 mb-8">
           Versicherungsdokument hochladen — die KI erkennt den Kunden, legt den Kontakt an und

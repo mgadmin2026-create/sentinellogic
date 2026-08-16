@@ -58,7 +58,7 @@ export default function ErwaehnungenPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl">
         <PageHeader
           title="Erwähnungen"
           subtitle={<HelpButton articleId="erwaehnungen.overview" />}

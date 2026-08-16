@@ -603,7 +603,7 @@ export default function KontaktDetailPage() {
         onSent={() => loadKontakt()}
       />
 
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="max-w-7xl p-4 sm:p-6">
         {/* AMIS.NOW Message */}
         {amisMessage && (
           <div className={`mb-4 p-4 rounded-lg border ${amisMessage.type === 'ok' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
@@ -799,6 +799,26 @@ export default function KontaktDetailPage() {
               )}
             </div>
 
+            {/* Dokumente */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">📎 Dokumente</h3>
+                  <HelpButton articleId="kontakt-detail.dokumente" />
+                </div>
+                <button
+                  onClick={() => setOpenDrawer('dokumente')}
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Öffnen →
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Upload, Kategorien & Google-Drive-Ablage</p>
+            </div>
+          </div>
+
+          {/* Rechte Spalte: Arbeit */}
+          <div className="flex flex-col gap-4">
             {/* Angebote */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-2">
@@ -830,23 +850,6 @@ export default function KontaktDetailPage() {
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Dokumente */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-semibold text-gray-900">📎 Dokumente</h3>
-                  <HelpButton articleId="kontakt-detail.dokumente" />
-                </div>
-                <button
-                  onClick={() => setOpenDrawer('dokumente')}
-                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
-                >
-                  Öffnen →
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 mt-2">Upload, Kategorien & Google-Drive-Ablage</p>
             </div>
 
             {/* Telefonie & Sync */}
@@ -905,10 +908,7 @@ export default function KontaktDetailPage() {
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Rechte Spalte: Arbeit */}
-          <div className="flex flex-col gap-4">
             {/* Erstgespräch */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between">

@@ -22,7 +22,7 @@ interface Ordnerstruktur {
 
 export default function DokumenteSettingsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50" />}>
+    <Suspense fallback={<div className="p-4 sm:p-6 lg:p-8" />}>
       <DokumenteSettingsInner />
     </Suspense>
   )
@@ -45,8 +45,8 @@ function DokumenteSettingsInner() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="max-w-3xl">
         <Link href="/einstellungen" className="text-sm text-blue-600 hover:text-blue-700">
           ← Zurück zu Einstellungen
         </Link>

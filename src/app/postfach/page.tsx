@@ -157,8 +157,8 @@ export default function PostfachPage() {
   )
 
   return (
-    <div className="min-h-full bg-gray-50 p-4 md:p-6">
-      <div className="max-w-[1500px] mx-auto">
+    <div className="min-h-full p-4 md:p-6">
+      <div className="max-w-[1500px]">
         <PageHeader
           title="E-Mail-Postfach"
           subtitle={mailbox ? `${mailbox.account} · ${mailbox.total} Nachrichten` : 'STRATO IMAP/SMTP'}

@@ -101,7 +101,7 @@ export default function MailVorlagenPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl">
       <Link href="/einstellungen" className="text-sm text-gray-500 hover:text-gray-900">← Einstellungen</Link>
       <div className="flex items-center justify-between mt-2 mb-6">
         <div>

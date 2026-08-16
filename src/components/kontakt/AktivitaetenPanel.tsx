@@ -74,42 +74,34 @@ export function AktivitaetenPanel({ aktivitäten }: { aktivitäten: Aktivität[]
       {sichtbar.length === 0 ? (
         <p className="text-gray-400 text-sm">Keine Aktivitäten vorhanden.</p>
       ) : (
-        <div className="space-y-4">
+        <div>
           {sichtbar.map((akt, i) => (
-            <div key={akt.id} className="flex gap-4">
-              <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0 ${getActivityColor(akt.type)}`}>
-                  {getActivityIcon(akt.type)}
-                </div>
-                {i < sichtbar.length - 1 && <div className="w-0.5 h-8 bg-gray-200 mt-2" />}
+            <div key={akt.id} className={`relative pl-10 ${i < sichtbar.length - 1 ? 'pb-6' : ''}`}>
+              {i < sichtbar.length - 1 && (
+                <span className="absolute left-[15px] top-8 bottom-0 w-px bg-gray-200" aria-hidden="true" />
+              )}
+              <div className={`absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center text-sm ring-4 ring-white flex-shrink-0 ${getActivityColor(akt.type)}`}>
+                {getActivityIcon(akt.type)}
               </div>
-              <div className="flex-1 pt-1">
-                <p className="text-sm font-medium text-gray-900">
-                  {akt.description}
-                  {akt.type === 'klicktipp_synced' && akt.data?.klicktipp_id && (
-                    <span className="ml-1.5 text-xs font-mono text-gray-400">(ID: {akt.data.klicktipp_id})</span>
-                  )}
-                </p>
-                {akt.type === 'email_received' && Number.isInteger(Number(akt.data?.mailbox_uid)) && Number(akt.data?.mailbox_uid) > 0 && akt.data?.uid_validity && (
-                  <Link
-                    href={`/postfach?uid=${Number(akt.data?.mailbox_uid)}&uidValidity=${encodeURIComponent(String(akt.data.uid_validity))}`}
-                    className="mt-1 inline-block text-xs font-semibold text-sky-700 hover:underline"
-                  >
-                    E-Mail im Postfach öffnen →
-                  </Link>
+              <p className="text-sm font-medium text-gray-900 pt-1">
+                {akt.description}
+                {akt.type === 'klicktipp_synced' && akt.data?.klicktipp_id && (
+                  <span className="ml-1.5 text-xs font-mono text-gray-400">(ID: {akt.data.klicktipp_id})</span>
                 )}
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-xs text-gray-400">{zeitpunkt(akt.created_at)}</p>
-                  <span className="text-xs text-gray-400">· {akt.user?.name || 'System'}</span>
-                  {akt.type && (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${getActivityColor(akt.type)}`}>
-                      {akt.type.replace(/_/g, ' ')}
-                    </span>
-                  )}
-                  {istTechnisch(akt.type) && (
-                    <span className="text-xs text-gray-400" title="Technischer Eintrag (Sync/Automation)">⚙️</span>
-                  )}
-                </div>
+              </p>
+              {akt.type === 'email_received' && Number.isInteger(Number(akt.data?.mailbox_uid)) && Number(akt.data?.mailbox_uid) > 0 && akt.data?.uid_validity && (
+                <Link
+                  href={`/postfach?uid=${Number(akt.data?.mailbox_uid)}&uidValidity=${encodeURIComponent(String(akt.data.uid_validity))}`}
+                  className="mt-1 inline-block text-xs font-semibold text-sky-700 hover:underline"
+                >
+                  E-Mail im Postfach öffnen →
+                </Link>
+              )}
+              <div className="flex items-center gap-1.5 mt-1">
+                <p className="text-xs text-gray-400">{zeitpunkt(akt.created_at)} · {akt.user?.name || 'System'}</p>
+                {istTechnisch(akt.type) && (
+                  <span className="text-xs text-gray-400" title="Technischer Eintrag (Sync/Automation)">⚙️</span>
+                )}
               </div>
             </div>
           ))}

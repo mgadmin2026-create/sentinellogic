@@ -3,7 +3,8 @@
 > Lebendes Nachschlagewerk, Ergebnis der UI-/Branding-Überarbeitung (`docs/UI_UX_KONZEPT.md`).
 > Wird parallel zum Rollout gepflegt — wächst mit jeder migrierten Seite, nicht erst am Ende.
 >
-> Stand: 2026-08-16 — Stufe 1 (Fundament) + Stufe 2 (Pilotseiten) + Stufe 3 (restliche Hauptseiten) umgesetzt
+> Stand: 2026-08-16 — Stufe 1–3 umgesetzt, plus Nachbesserung: Seiten-Container/Hintergrund,
+> Kontakt-Detail-Spaltenzuordnung, Aktivitäten-Timeline, Aufgaben-/Angebote-Tabellenangleichung
 
 ---
 
@@ -62,9 +63,10 @@ Titel-Header mit Aktionsleiste. `padded={false}` für Karten, die ihr Padding se
 (z.B. um eine Tabelle randlos einzubetten).
 
 ### `<Badge color />`
-Reine Darstellungshülle (`gray`/`blue`/`yellow`/`green`/`red`/`indigo`) — die Farblogik für
-fachliche Status bleibt in ihren eigenen Modulen, dieser Baustein wird dort nur als
-Trägerelement verwendet.
+Reine Darstellungshülle (`gray`/`blue`/`yellow`/`green`/`red`/`indigo`/`orange`) — die Farblogik
+für fachliche Status bleibt in ihren eigenen Modulen, dieser Baustein wird dort nur als
+Trägerelement verwendet. `orange` kam mit der Aufgaben-Priorität „Mittel" hinzu (analog zum
+bereits vorhandenen `bg-orange-100 text-orange-700`-Muster im Dashboard).
 
 ### `<EmptyState icon text hint action />`
 Einheitlicher Leerzustand („Keine Daten") statt individueller Textblöcke pro Seite.
@@ -79,6 +81,47 @@ Tabellen bleiben pro Seite eigenes `<table>`-Markup (Entscheidung siehe
     <tr className="border-b border-gray-100 bg-gray-50/80">
       <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-4 py-3">…</th>
 ```
+
+## Seiten-Container
+
+Jede Hauptseite trägt ihren Hintergrund **nicht selbst** — `bg-gray-50` kommt einmalig aus
+`src/app/layout.tsx` (`<body>`). Seiten setzen nur noch das Padding, kein eigenes `min-h-screen`
+und kein Gradient:
+
+```tsx
+<div className="p-4 sm:p-6 lg:p-8">
+  {/* optional: <div className="max-w-3xl"> für schmalere Formular-/Einstellungsseiten */}
+</div>
+```
+
+- **Kein `mx-auto`** auf der äußeren Seite — Inhalt startet immer linksbündig, auch wenn eine
+  Unterseite inhaltlich schmaler ist (`max-w-*` ohne Zentrierung). Eine zentrierte Seite neben
+  linksbündigen Nachbarseiten war genau die „mal links, mal mittig"-Inkonsistenz, die im ersten
+  Stufe-3-Durchgang übersehen wurde.
+- **Kein Seiten-eigener Gradient-Hintergrund** (`bg-gradient-to-br from-blue-50 to-indigo-50` kam
+  vorher in mehreren Einstellungen-Unterseiten und `/ki-upload` vor) — nur der `bg-gray-50` aus
+  dem Layout.
+- Ausnahmen bewusst außerhalb dieser Regel: `/login`, `/datenschutz` (kein Sidebar-Kontext,
+  eigenständiges Layout) und `/telefonie/eingehend` (Einzelzweck-Screen-Pop, kein normaler
+  Seitenaufruf über die Sidebar).
+
+## Kontakt-Detailseite: Spalten-Zuordnung
+
+Zweispaltiges Kachelraster (`grid lg:grid-cols-[1.55fr_1fr]`). Faustregel: **linke Spalte =
+Stammdaten** (Kontakt, Unternehmen, Versicherung & Verträge, Beitragsübersicht, Dokumente),
+**rechte Spalte = Arbeit/Aktion** (Angebote, Telefonie & Sync, Erstgespräch, Nächste Aufgabe).
+Angebote und Telefonie & Sync waren ursprünglich in der linken Spalte einsortiert, gehören aber
+inhaltlich zur rechten (aktive Vertriebsarbeit, nicht Stammdaten) — entsprechend verschoben.
+
+## Aktivitäten-/Kontakthistorie-Timeline
+
+`AktivitaetenPanel.tsx` nutzt ein durchgehendes Linien-Muster statt einzelner Segmente pro
+Zeile: Jede Zeile trägt ihre eigene Verbindungslinie von ihrem Icon bis zum unteren Rand ihres
+eigenen Paddings (`absolute left-[15px] top-8 bottom-0 w-px bg-gray-200`), wodurch sich die
+Linie über unterschiedlich hohe Einträge hinweg nahtlos fortsetzt — ein fixes `h-8`-Segment pro
+Zeile (die vorherige Umsetzung) reißt ab, sobald ein Eintrag mehr als eine Zeile Text hat. Der
+redundante Typ-Badge („contact created" als rohe Pille neben jedem Eintrag) wurde entfernt —
+das Icon transportiert den Typ bereits über Form/Farbe.
 
 ## Sidebar
 
@@ -95,6 +138,33 @@ unverändert.
 | 2 — Pilotseiten (Dashboard, Kontakte, Angebote) | ✅ Done (2026-08-16) |
 | 3 — Restliche Hauptseiten | ✅ Done (2026-08-16) |
 | 4 — Diese Datei | ✅ Done (2026-08-16) — lief parallel zu 1–3 mit, wird bei künftigen Migrationen (z.B. Testdashboard-Kopf, Einstellungen-Unterseiten) weiter ergänzt |
+
+### Nachbesserung nach Nutzer-Review (2026-08-16)
+
+Der erste Stufe-3-Durchgang hat den Hex-/Typografie-Sweep vollständig erledigt, aber vier
+strukturelle Inkonsistenzen übersehen, die erst beim Durchklicken auffielen:
+
+1. **Seiten-Container/Hintergrund**: mehrere Einstellungen-Unterseiten + `/ki-upload` hatten
+   einen eigenen `min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50`-Hintergrund statt des
+   App-weiten `bg-gray-50`, und ca. 10 Seiten zentrierten ihren gesamten Inhalt (`mx-auto`)
+   während die Mehrheit linksbündig ist. Beides behoben, siehe „Seiten-Container" oben — dabei
+   auch `/kontakte/[id]`, `/testdashboard` und `/postfach` erwischt, die zwar keinen Gradient,
+   aber eine Ganzseiten-Zentrierung hatten.
+2. **Kontakt-Detail-Spalten**: Angebote und Telefonie & Sync waren in der linken „Stammdaten"-
+   Spalte einsortiert, gehören aber zur rechten „Arbeit"-Spalte — verschoben, siehe eigener
+   Abschnitt oben.
+3. **Aktivitäten-Timeline**: sah durch abreißende Verbindungslinien (fixe Segmentlänge statt
+   durchgehender Linie) nicht wie eine echte Timeline aus — auf ein pro-Zeile-durchgehendes
+   Linien-Muster umgestellt.
+4. **Aufgaben- vs. Angebote-Tabelle**: unterschiedliche Header-Farbe/-Padding, unterschiedliche
+   Filterleisten-Muster (Segmented-Control vs. Pill-Chips) und die Aufgaben-Priorität war reiner
+   farbiger Text statt eines Badges wie überall sonst — beide Tabellen jetzt auf dasselbe Muster
+   angeglichen (siehe „Bewusst keine `<DataTable />`" oben).
+
+**Für Stufe 4+ mitgenommen**: Vor einer weiteren Seiten-Migration immer gegen eine bereits
+migrierte Referenzseite (Dashboard/Kontakte/Angebote) durchklicken, nicht nur den Code diffen —
+Hintergrund/Zentrierung/Spalten-Zuordnung fallen im Code-Review leicht durch, im Browser sofort
+auf.
 
 ### Erkenntnisse aus Stufe 3
 

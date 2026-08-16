@@ -84,7 +84,7 @@ export default function ReportingPage() {
   const columns = result?.rows?.length ? Object.keys(result.rows[0]) : []
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl">
       <PageHeader
         title="Selektion"
         subtitle={
