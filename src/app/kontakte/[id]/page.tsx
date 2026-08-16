@@ -819,6 +819,85 @@ export default function KontaktDetailPage() {
 
           {/* Rechte Spalte: Arbeit */}
           <div className="flex flex-col gap-4">
+            {/* Erstgespräch */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">🎙️ Erstgespräch</h3>
+                  <HelpButton articleId="kontakt-detail.erstgespraech" />
+                </div>
+                <button
+                  onClick={() => setOpenDrawer('erstgespraech')}
+                  aria-label="Erstgespräch bearbeiten"
+                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
+                >
+                  Bearbeiten
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                {kontaktSparten.length === 0
+                  ? 'Keine Sparte hinterlegt'
+                  : kontaktSparten.length === 1
+                    ? kontaktSparten[0].sparte.leitfaden_fragen.length > 0
+                      ? `Leitfaden: ${kontaktSparten[0].sparte.name}`
+                      : `Kein Leitfaden für Sparte „${kontaktSparten[0].sparte.name}"`
+                    : `${kontaktSparten.length} Sparten: ${kontaktSparten.map((z) => z.sparte.name).join(', ')}`}
+              </p>
+            </div>
+
+            {/* Nächste Aufgabe */}
+            <div className="bg-white rounded-xl border-2 border-yellow-400 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-sm font-semibold text-gray-900">✓ Nächste Aufgabe</h3>
+                  <HelpButton articleId="kontakt-detail.naechste-aufgabe" />
+                </div>
+                {nextTask && nextTaskOverdue && (
+                  <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Überfällig
+                  </span>
+                )}
+              </div>
+              {nextTask ? (
+                <>
+                  <button
+                    onClick={() => openEditTask(nextTask)}
+                    className="text-sm font-semibold text-gray-900 hover:text-yellow-700 text-left"
+                  >
+                    {nextTask.titel}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Fällig {new Date(nextTask.fällig).toLocaleDateString('de-DE')}
+                    {nextTask.assigned_user?.name ? ` · ${nextTask.assigned_user.name}` : ''}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400">Keine offenen Aufgaben.</p>
+              )}
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {nextTask && (
+                  <button
+                    onClick={() => handleTaskStatusChange(nextTask.id, 'erledigt')}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    ✓ Erledigt
+                  </button>
+                )}
+                <button
+                  onClick={openNewTask}
+                  className="text-yellow-600 hover:text-yellow-700 text-xs font-semibold"
+                >
+                  + Neue Aufgabe
+                </button>
+                <button
+                  onClick={() => setOpenDrawer('aufgaben')}
+                  className="ml-auto text-gray-500 hover:text-gray-900 text-xs font-medium"
+                >
+                  Historie ({aufgaben.length}) →
+                </button>
+              </div>
+            </div>
+
             {/* Angebote */}
             <div className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-2">
@@ -905,85 +984,6 @@ export default function KontaktDetailPage() {
                 >
                   <span className="text-gray-700 group-hover:text-yellow-700">KlickTipp & Integrations</span>
                   <span className="text-yellow-600 text-xs font-semibold">→</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Erstgespräch */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-semibold text-gray-900">🎙️ Erstgespräch</h3>
-                  <HelpButton articleId="kontakt-detail.erstgespraech" />
-                </div>
-                <button
-                  onClick={() => setOpenDrawer('erstgespraech')}
-                  aria-label="Erstgespräch bearbeiten"
-                  className="text-xs text-yellow-600 hover:text-yellow-700 font-semibold"
-                >
-                  Bearbeiten
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                {kontaktSparten.length === 0
-                  ? 'Keine Sparte hinterlegt'
-                  : kontaktSparten.length === 1
-                    ? kontaktSparten[0].sparte.leitfaden_fragen.length > 0
-                      ? `Leitfaden: ${kontaktSparten[0].sparte.name}`
-                      : `Kein Leitfaden für Sparte „${kontaktSparten[0].sparte.name}"`
-                    : `${kontaktSparten.length} Sparten: ${kontaktSparten.map((z) => z.sparte.name).join(', ')}`}
-              </p>
-            </div>
-
-            {/* Nächste Aufgabe */}
-            <div className="bg-white rounded-xl border-2 border-yellow-400 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-semibold text-gray-900">✓ Nächste Aufgabe</h3>
-                  <HelpButton articleId="kontakt-detail.naechste-aufgabe" />
-                </div>
-                {nextTask && nextTaskOverdue && (
-                  <span className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    Überfällig
-                  </span>
-                )}
-              </div>
-              {nextTask ? (
-                <>
-                  <button
-                    onClick={() => openEditTask(nextTask)}
-                    className="text-sm font-semibold text-gray-900 hover:text-yellow-700 text-left"
-                  >
-                    {nextTask.titel}
-                  </button>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Fällig {new Date(nextTask.fällig).toLocaleDateString('de-DE')}
-                    {nextTask.assigned_user?.name ? ` · ${nextTask.assigned_user.name}` : ''}
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-gray-400">Keine offenen Aufgaben.</p>
-              )}
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                {nextTask && (
-                  <button
-                    onClick={() => handleTaskStatusChange(nextTask.id, 'erledigt')}
-                    className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    ✓ Erledigt
-                  </button>
-                )}
-                <button
-                  onClick={openNewTask}
-                  className="text-yellow-600 hover:text-yellow-700 text-xs font-semibold"
-                >
-                  + Neue Aufgabe
-                </button>
-                <button
-                  onClick={() => setOpenDrawer('aufgaben')}
-                  className="ml-auto text-gray-500 hover:text-gray-900 text-xs font-medium"
-                >
-                  Historie ({aufgaben.length}) →
                 </button>
               </div>
             </div>

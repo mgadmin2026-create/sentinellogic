@@ -109,9 +109,10 @@ und kein Gradient:
 
 Zweispaltiges Kachelraster (`grid lg:grid-cols-[1.55fr_1fr]`). Faustregel: **linke Spalte =
 Stammdaten** (Kontakt, Unternehmen, Versicherung & Verträge, Beitragsübersicht, Dokumente),
-**rechte Spalte = Arbeit/Aktion** (Angebote, Telefonie & Sync, Erstgespräch, Nächste Aufgabe).
-Angebote und Telefonie & Sync waren ursprünglich in der linken Spalte einsortiert, gehören aber
-inhaltlich zur rechten (aktive Vertriebsarbeit, nicht Stammdaten) — entsprechend verschoben.
+**rechte Spalte = Arbeit/Aktion**, von oben nach unten in dieser festen Reihenfolge:
+**Erstgespräch → Nächste Aufgabe → Angebote → Telefonie & Sync.** Erstgespräch/Nächste Aufgabe
+oben, weil sie die unmittelbar anstehende Arbeit am Kontakt zeigen; Angebote/Telefonie & Sync
+darunter, weil sie eher Status-/Referenzinformation sind als eine sofortige Handlungsaufforderung.
 
 ## Aktivitäten-/Kontakthistorie-Timeline
 
