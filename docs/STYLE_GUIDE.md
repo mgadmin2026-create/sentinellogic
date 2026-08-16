@@ -94,7 +94,7 @@ unverändert.
 | 1 — Fundament (Tokens, Bausteine, einklappbare Sidebar) | ✅ Done (2026-08-16) |
 | 2 — Pilotseiten (Dashboard, Kontakte, Angebote) | ✅ Done (2026-08-16) |
 | 3 — Restliche Hauptseiten | ✅ Done (2026-08-16) |
-| 4 — Diese Datei | 🟡 Läuft parallel mit, wird bei jeder migrierten Seite ergänzt |
+| 4 — Diese Datei | ✅ Done (2026-08-16) — lief parallel zu 1–3 mit, wird bei künftigen Migrationen (z.B. Testdashboard-Kopf, Einstellungen-Unterseiten) weiter ergänzt |
 
 ### Erkenntnisse aus Stufe 3
 
