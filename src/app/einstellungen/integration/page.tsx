@@ -119,7 +119,7 @@ export default function IntegrationSetupPage() {
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Integration Setup</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Integration Setup</h1>
           <p className="text-gray-500">
             Konfiguriere verfügbare Werte für Dialfire Kampagnen, Tasks und KlickTipp Tags
           </p>
@@ -128,7 +128,7 @@ export default function IntegrationSetupPage() {
         <div className="space-y-8">
           {/* Dialfire Campaigns */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-[#1A1A1A] mb-3">Dialfire Kampagnen</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">Dialfire Kampagnen</h2>
             <p className="text-sm text-gray-500 mb-4">
               Format: ID | Name (eine pro Zeile)
               <br />
@@ -137,14 +137,14 @@ export default function IntegrationSetupPage() {
             <textarea
               value={campaignsText}
               onChange={(e) => setCampaignsText(e.target.value)}
-              className="w-full h-32 p-3 border border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-[#FFC300]"
+              className="w-full h-32 p-3 border border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-brand"
               placeholder="ID | Name"
             />
           </div>
 
           {/* Dialfire Tasks */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-[#1A1A1A] mb-3">Dialfire Tasks</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">Dialfire Tasks</h2>
             <p className="text-sm text-gray-500 mb-4">
               Format: task_name | Label | Description (eine pro Zeile)
               <br />
@@ -153,14 +153,14 @@ export default function IntegrationSetupPage() {
             <textarea
               value={tasksText}
               onChange={(e) => setTasksText(e.target.value)}
-              className="w-full h-32 p-3 border border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-[#FFC300]"
+              className="w-full h-32 p-3 border border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-brand"
               placeholder="task_name | Label | Description"
             />
           </div>
 
           {/* KlickTipp Tags */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <h2 className="text-xl font-semibold text-[#1A1A1A] mb-3">KlickTipp Tags</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">KlickTipp Tags</h2>
             <p className="text-sm text-gray-500 mb-4">
               Format: Tag_ID | Tag_Name (eine pro Zeile)
               <br />
@@ -169,7 +169,7 @@ export default function IntegrationSetupPage() {
             <textarea
               value={tagsText}
               onChange={(e) => setTagsText(e.target.value)}
-              className="w-full h-32 p-3 border border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-[#FFC300]"
+              className="w-full h-32 p-3 border border-gray-200 rounded-lg font-mono text-sm focus:outline-none focus:border-brand"
               placeholder="Tag_ID | Tag_Name"
             />
           </div>
@@ -189,7 +189,7 @@ export default function IntegrationSetupPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full bg-[#FFC300] hover:bg-[#e6b000] disabled:opacity-50 text-[#1A1A1A] font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-brand hover:bg-brand-hover disabled:opacity-50 text-gray-900 font-semibold py-3 rounded-lg transition-colors"
           >
             {saving ? 'Speichert...' : 'Einstellungen speichern'}
           </button>

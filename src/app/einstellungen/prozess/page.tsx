@@ -106,7 +106,7 @@ export default function ProcessSettingsPage() {
         <Link href="/einstellungen" className="text-blue-600 hover:text-blue-700 font-medium mb-4 inline-block">
           ← Zurück zu Einstellungen
         </Link>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Vertriebs-Prozess</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Vertriebs-Prozess</h1>
         <p className="text-gray-600 mb-8">Passe die 12 Schritte deines Vertriebsprozesses an</p>
 
         {/* Messages */}

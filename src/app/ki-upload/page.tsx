@@ -7,6 +7,7 @@ import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWert
 import { erkenneZyklus, defaultSpalte } from '@/lib/beitragsuebersicht-zyklus'
 import { DOKUMENTTYP_OPTIONEN } from '@/lib/dokumenttyp'
 import { ANGEBOT_STATUS_OPTIONEN, type AngebotStatus } from '@/lib/angebot-status'
+import { PageHeader } from '@/components/ui'
 
 interface Leistung {
   type: string
@@ -253,11 +254,8 @@ export default function KiUploadPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-1.5 mb-2">
-          <h1 className="text-3xl font-bold text-gray-900">🤖 KI Upload</h1>
-          <HelpButton articleId="ki-upload.overview" />
-        </div>
-        <p className="text-gray-600 mb-8">
+        <PageHeader title="🤖 KI Upload" subtitle={<HelpButton articleId="ki-upload.overview" />} />
+        <p className="text-gray-600 -mt-4 mb-8">
           Versicherungsdokument hochladen — die KI erkennt den Kunden, legt den Kontakt an und
           ordnet die Datei automatisch in Google Drive ein.
         </p>

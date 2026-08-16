@@ -87,7 +87,7 @@ export function ProcessStepper({
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-      <h2 className="text-sm font-bold text-[#1A1A1A] uppercase tracking-wide mb-4 pb-3 border-b border-gray-100">
+      <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 pb-3 border-b border-gray-100">
         Vertriebs-Prozess
       </h2>
 
@@ -107,7 +107,7 @@ export function ProcessStepper({
                   isDone
                     ? 'bg-emerald-100 text-emerald-700 border-emerald-300'
                     : isCurrent
-                      ? 'bg-[#FFC300]/20 text-[#FFC300] border-[#FFC300] ring-2 ring-[#FFC300]/30'
+                      ? 'bg-brand/20 text-brand border-brand ring-2 ring-brand/30'
                       : isFuture
                         ? 'bg-gray-100 text-gray-400 border-gray-200'
                         : 'bg-gray-200 text-gray-600 border-gray-300'
@@ -122,12 +122,12 @@ export function ProcessStepper({
                   <h4
                     className={`text-sm font-medium ${
                       isCurrent
-                        ? 'text-[#FFC300]'
+                        ? 'text-brand'
                         : isDone
                           ? 'text-emerald-700'
                           : isFuture
                             ? 'text-gray-400'
-                            : 'text-[#1A1A1A]'
+                            : 'text-gray-900'
                     }`}
                   >
                     {step.label}
@@ -174,7 +174,7 @@ export function ProcessStepper({
                       type="date"
                       value={editingDueDateValue}
                       onChange={(e) => setEditingDueDateValue(e.target.value)}
-                      className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#FFC300]/40"
+                      className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand/40"
                     />
                     <button
                       onClick={() => handleSaveDueDate(step.key)}
@@ -225,7 +225,7 @@ export function ProcessStepper({
         <button
           onClick={handleNextStep}
           disabled={!nextStageKey || saving}
-          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-[#FFC300] text-[#1A1A1A] rounded-lg hover:bg-[#e6b000] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-brand text-gray-900 rounded-lg hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold transition-colors"
         >
           Nächster Schritt
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

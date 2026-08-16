@@ -21,7 +21,7 @@ export function ReleaseNotificationBanner({ release, onDismiss, onViewFull }: Pr
 
   return (
     <div
-      className={`bg-gradient-to-r from-[#FFC300] to-yellow-300 text-gray-900 px-6 py-4 flex items-center justify-between shadow-lg transition-all duration-200 ${
+      className={`bg-gradient-to-r from-brand to-yellow-300 text-gray-900 px-6 py-4 flex items-center justify-between shadow-lg transition-all duration-200 ${
         isClosing ? 'opacity-0 -translate-y-2' : 'opacity-100 translate-y-0'
       }`}
     >

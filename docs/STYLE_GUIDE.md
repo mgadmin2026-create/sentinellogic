@@ -3,7 +3,7 @@
 > Lebendes Nachschlagewerk, Ergebnis der UI-/Branding-Überarbeitung (`docs/UI_UX_KONZEPT.md`).
 > Wird parallel zum Rollout gepflegt — wächst mit jeder migrierten Seite, nicht erst am Ende.
 >
-> Stand: 2026-08-16 — Stufe 1 (Fundament) + Stufe 2 (Pilotseiten) umgesetzt
+> Stand: 2026-08-16 — Stufe 1 (Fundament) + Stufe 2 (Pilotseiten) + Stufe 3 (restliche Hauptseiten) umgesetzt
 
 ---
 
@@ -93,8 +93,33 @@ unverändert.
 |---|---|
 | 1 — Fundament (Tokens, Bausteine, einklappbare Sidebar) | ✅ Done (2026-08-16) |
 | 2 — Pilotseiten (Dashboard, Kontakte, Angebote) | ✅ Done (2026-08-16) |
-| 3 — Restliche Hauptseiten | ⬜ Offen |
+| 3 — Restliche Hauptseiten | ✅ Done (2026-08-16) |
 | 4 — Diese Datei | 🟡 Läuft parallel mit, wird bei jeder migrierten Seite ergänzt |
+
+### Erkenntnisse aus Stufe 3
+
+- **Vollständiger Hex-Sweep statt nur Pilotseiten**: alle verbliebenen `#1A1A1A`/`#FFC300`/`#e6b000`-
+  Vorkommen im gesamten `src/app`/`src/components` (außer der bestätigten Altlast `/leads`) auf die
+  `brand`-Token umgestellt — u.a. `Sidebar.tsx`, `StickyContactHeader.tsx`, `AutomationControls.tsx`,
+  `ProcessStepper.tsx`/`ProcessStepperBar.tsx`, `ReleaseNotesModal.tsx`/`ReleaseNotificationBanner.tsx`,
+  `AutomatisierungenTabs.tsx`, mehrere Kontakt-Panels, `layout.tsx`, `datenschutz/page.tsx`. Farbwert
+  unverändert (`text-[#1A1A1A]` → `text-gray-900` für Text, `bg-[#1A1A1A]` → `bg-brand-dark` für
+  Flächen — dieselbe Konvention wie in Stufe 2 etabliert).
+- **`<PageHeader />` auf alle einfachen Hauptseiten-Köpfe angewendet**: Aufgaben, Kalender, Dokumente,
+  KI-Upload, Automatisierungsregeln, Synchronisation, Selektion, E-Mail-Postfach, Hilfe, Einstellungen
+  (Hauptseite), Mein Profil, Erwähnungen, Release Notes.
+- **Bewusst nicht in `<PageHeader />` gezwungen**: Testdashboard (Badge-Zeile + Status-Pill oberhalb/
+  neben dem Titel passt nicht ins Titel/Untertitel/Aktionen-Schema) und die Einstellungen-Unterseiten
+  (Dokumente, Integration, Mail-Vorlagen, Prozess, Sparten, Team — bereits korrekt typografiert,
+  aber strukturell nicht migriert). Deren `<h1>` ist trotzdem bereits auf `text-2xl font-bold
+  text-gray-900` vereinheitlicht.
+- **Nicht standardisierte Buttons bleiben bewusst individuell**, wenn sie keiner der vier
+  `<Button />`-Varianten entsprechen — z.B. der dunkle „Alle synchronisieren"-Button auf `/sync`
+  (`bg-brand-dark`, kein Gelb) oder `<a>`-Elemente, die wie Buttons aussehen (z.B. „Google Drive
+  öffnen" auf `/dokumente`) — `<Button />` rendert nur `<button>`, kein `<a>`.
+- **Datenschutzerklärung und Login** (öffentliche Seiten ohne Sidebar) wurden beim Hex-Sweep
+  mitgenommen, aber nicht auf `<PageHeader />` umgestellt (kein Sidebar-Kontext, eigenständiges
+  Layout).
 
 ### Erkenntnisse aus Stufe 2
 

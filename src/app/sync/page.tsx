@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { HelpButton } from '@/components/help/HelpButton'
 import { SyncStatusBadge } from '@/components/SyncStatusBadge'
 import { AutomatisierungenTabs } from '@/components/automatisierungen/AutomatisierungenTabs'
+import { PageHeader } from '@/components/ui'
 
 type SyncStatus = 'connected' | 'warning' | 'inactive'
 type IntervalType = '15min' | '30min' | '60min' | 'daily' | 'weekly'
@@ -624,29 +625,29 @@ export default function SyncPage() {
     <div className="p-8">
       <AutomatisierungenTabs />
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-2xl font-bold text-[#1A1A1A]">Synchronisation</h1>
-            <HelpButton articleId="sync.overview" />
-          </div>
-          <p className="text-gray-500 text-sm mt-0.5">
+      <PageHeader
+        title="Synchronisation"
+        subtitle={
+          <span className="flex items-center gap-1.5">
             {runs.length > 0
               ? `Letzter Eintrag: ${new Date(runs[0].started_at).toLocaleDateString('de-DE')}, ${new Date(runs[0].started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`
               : 'Noch keine Synchronisation'}
-          </p>
-        </div>
-        <button
-          onClick={() => sources.forEach(s => s.status !== 'inactive' && handleSync(s.id))}
-          className="flex items-center gap-2 bg-[#1A1A1A] hover:bg-[#333] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-          </svg>
-          Alle synchronisieren
-        </button>
-      </div>
+            <HelpButton articleId="sync.overview" />
+          </span>
+        }
+        actions={
+          <button
+            onClick={() => sources.forEach(s => s.status !== 'inactive' && handleSync(s.id))}
+            className="flex items-center gap-2 bg-brand-dark hover:bg-[#333] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Alle synchronisieren
+          </button>
+        }
+      />
 
       {/* Preview Results */}
       {previewResult && (
@@ -685,7 +686,7 @@ export default function SyncPage() {
 
       {/* Quellen-Kacheln */}
       <div className="mb-2">
-        <h2 className="font-semibold text-[#1A1A1A] text-sm">Zeitgesteuerte Verbindungen</h2>
+        <h2 className="font-semibold text-gray-900 text-sm">Zeitgesteuerte Verbindungen</h2>
         <p className="text-xs text-gray-400 mt-0.5">Laufen automatisch nach Zeitplan, zusätzlich manuell auslösbar</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
@@ -708,7 +709,7 @@ export default function SyncPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     {!isHealthBacked && <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />}
-                    <h3 className="font-semibold text-[#1A1A1A] text-sm truncate">{source.name}</h3>
+                    <h3 className="font-semibold text-gray-900 text-sm truncate">{source.name}</h3>
                   </div>
                   <p className="text-xs text-gray-400 line-clamp-2">{source.description}</p>
                 </div>
@@ -725,13 +726,13 @@ export default function SyncPage() {
                 )}
               </div>
               <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                <p className="text-sm font-semibold text-[#1A1A1A] truncate">{countText}</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">{countText}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {lastSyncText}</p>
               </div>
               <div className="flex flex-col gap-2 mt-auto">
                 <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={() => toggleAuto(source.id)} disabled={source.disabled}
-                    className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 disabled:cursor-not-allowed ${autoEnabled ? 'bg-[#FFC300]' : 'bg-gray-200'}`}>
+                    className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 disabled:cursor-not-allowed ${autoEnabled ? 'bg-brand' : 'bg-gray-200'}`}>
                     <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </button>
                   <span className="text-xs text-gray-500 flex-shrink-0">Auto</span>
@@ -747,7 +748,7 @@ export default function SyncPage() {
                   )}
                 </div>
                 <button onClick={() => handleSync(source.id)} disabled={isSyncing || source.disabled}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent">
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-brand hover:bg-brand/5 text-gray-900 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
                     strokeLinecap="round" strokeLinejoin="round" className={isSyncing ? 'animate-spin' : ''}>
                     <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
@@ -771,7 +772,7 @@ export default function SyncPage() {
                   {isHealthBacked ? (
                     <button
                       onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
-                      className="text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
+                      className="text-xs text-gray-400 hover:text-gray-900 underline underline-offset-2"
                     >
                       Läufe ansehen
                     </button>
@@ -801,7 +802,7 @@ export default function SyncPage() {
 
       {/* Ereignisgetriggerte Integrationen — kein Zeitplan, ausgelöst durch Regel-Anwendung, Button-Klick oder Kalenderänderung */}
       <div className="mb-2">
-        <h2 className="font-semibold text-[#1A1A1A] text-sm">Ereignisgetriggerte Integrationen</h2>
+        <h2 className="font-semibold text-gray-900 text-sm">Ereignisgetriggerte Integrationen</h2>
         <p className="text-xs text-gray-400 mt-0.5">Werden nicht zeitgesteuert ausgeführt, sondern durch Regeln, Klicks oder Kalenderänderungen</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-stretch">
@@ -814,7 +815,7 @@ export default function SyncPage() {
             <div key={source.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 h-full flex flex-col">
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-[#1A1A1A] text-sm mb-1 truncate">{source.name}</h3>
+                  <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{source.name}</h3>
                   <p className="text-xs text-gray-400 line-clamp-2">{source.description}</p>
                 </div>
                 {runStatus === null ? (
@@ -824,7 +825,7 @@ export default function SyncPage() {
                 )}
               </div>
               <div className="bg-gray-50 rounded-lg px-3 py-2 mb-3">
-                <p className="text-sm font-semibold text-[#1A1A1A] truncate">{healthCountText(sourceHealth)}</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">{healthCountText(sourceHealth)}</p>
                 <p className="text-xs text-gray-400 mt-0.5">Zuletzt: {healthLastSyncText(sourceHealth)}</p>
               </div>
               <div className="flex flex-col gap-2 mt-auto">
@@ -857,14 +858,14 @@ export default function SyncPage() {
                     <button
                       onClick={handleSuperchatFacebookSync}
                       disabled={superchatFacebookSyncLoading || superchatReconcileLoading || superchatNotInterestedLoading || sparteFehltSyncLoading || kontakttypLeerSyncLoading}
-                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300] text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFD333] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-brand bg-brand text-gray-900 px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFD333] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {superchatFacebookSyncLoading ? 'Facebook-Kontakte werden übertragen…' : 'Offene Facebook-Kontakte übertragen'}
                     </button>
                     <button
                       onClick={handleSuperchatReconcile}
                       disabled={superchatReconcileLoading || superchatFacebookSyncLoading || superchatNotInterestedLoading || sparteFehltSyncLoading || kontakttypLeerSyncLoading}
-                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-[#FFC300] bg-[#FFC300]/10 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all hover:bg-[#FFC300]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-brand bg-brand/10 text-gray-900 px-3 py-1.5 rounded-lg transition-all hover:bg-brand/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {superchatReconcileLoading ? 'Bestand wird abgeglichen…' : 'Bestehende Kontakte verbinden'}
                     </button>
@@ -883,14 +884,14 @@ export default function SyncPage() {
                     onClick={() => handleRetryAll(INTEGRATION_KEY[source.id])}
                     disabled={isRetrying}
                     title="Führt alle aktuell wartenden Wiederholungen sofort aus (löst keinen neuen Abgleich für bereits erfolgreiche Kontakte aus)"
-                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 text-[#1A1A1A] px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent"
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold border border-gray-200 hover:border-brand hover:bg-brand/5 text-gray-900 px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200 disabled:hover:bg-transparent"
                   >
                     {isRetrying ? 'Läuft…' : 'Jetzt synchronisieren'}
                   </button>
                 )}
                 <button
                   onClick={() => zeigeLaeufeFuer(INTEGRATION_KEY[source.id])}
-                  className="self-center text-xs text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2"
+                  className="self-center text-xs text-gray-400 hover:text-gray-900 underline underline-offset-2"
                 >
                   Läufe ansehen
                 </button>
@@ -908,7 +909,7 @@ export default function SyncPage() {
       <div ref={runsSectionRef} className="bg-white rounded-xl border border-gray-200 shadow-sm mt-8">
         <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
           <div>
-            <h2 className="font-semibold text-[#1A1A1A]">Automatisierungs-Läufe</h2>
+            <h2 className="font-semibold text-gray-900">Automatisierungs-Läufe</h2>
             <p className="text-xs text-gray-400 mt-0.5">Einzelne Sync-Versuche über alle Integrationen, mit Fehlerdetail und Wiederholung</p>
           </div>
           <div className="flex items-center gap-2">
@@ -940,7 +941,7 @@ export default function SyncPage() {
               <option value="retrying">Wird wiederholt</option>
               <option value="skipped">Pausiert</option>
             </select>
-            <button onClick={loadRuns} className="text-xs text-gray-400 hover:text-[#1A1A1A] flex items-center gap-1 transition-colors">
+            <button onClick={loadRuns} className="text-xs text-gray-400 hover:text-gray-900 flex items-center gap-1 transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
@@ -979,7 +980,7 @@ export default function SyncPage() {
                           {new Date(run.started_at).toLocaleDateString('de-DE')},{' '}
                           {new Date(run.started_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
                         </td>
-                        <td className="px-5 py-3 font-medium text-[#1A1A1A] text-xs whitespace-nowrap">
+                        <td className="px-5 py-3 font-medium text-gray-900 text-xs whitespace-nowrap">
                           {INTEGRATION_LABELS[run.integration] ?? run.integration}
                         </td>
                         <td className="px-5 py-3 text-gray-500 text-xs">
@@ -1016,7 +1017,7 @@ export default function SyncPage() {
                                 <button
                                   onClick={() => handleRetry(run.id)}
                                   disabled={actionLoading === run.id}
-                                  className="text-xs font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-1 rounded transition-all disabled:opacity-50"
+                                  className="text-xs font-semibold text-gray-900 border border-gray-200 hover:border-brand hover:bg-brand/5 px-2 py-1 rounded transition-all disabled:opacity-50"
                                 >
                                   {actionLoading === run.id ? '…' : 'Retry jetzt'}
                                 </button>
@@ -1070,7 +1071,7 @@ export default function SyncPage() {
                                             <button
                                               onClick={() => handleRetry(item.id)}
                                               disabled={actionLoading === item.id}
-                                              className="text-[11px] font-semibold text-[#1A1A1A] border border-gray-200 hover:border-[#FFC300] hover:bg-[#FFC300]/5 px-2 py-0.5 rounded transition-all disabled:opacity-50"
+                                              className="text-[11px] font-semibold text-gray-900 border border-gray-200 hover:border-brand hover:bg-brand/5 px-2 py-0.5 rounded transition-all disabled:opacity-50"
                                             >
                                               {actionLoading === item.id ? '…' : 'Retry'}
                                             </button>

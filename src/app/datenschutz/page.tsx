@@ -20,7 +20,7 @@ export default function DatenschutzPage() {
     <div className="min-h-dvh bg-gray-50 px-4 py-12">
       <div className="max-w-2xl mx-auto bg-white rounded-xl border border-gray-200 p-6 sm:p-10">
         <div className="flex items-center gap-2 mb-8">
-          <span className="w-9 h-9 rounded-lg bg-[#FFC300] flex items-center justify-center font-bold text-gray-900">SL</span>
+          <span className="w-9 h-9 rounded-lg bg-brand flex items-center justify-center font-bold text-gray-900">SL</span>
           <span className="font-bold text-lg text-gray-900">Allianz Generalvertretung Gün</span>
         </div>
 

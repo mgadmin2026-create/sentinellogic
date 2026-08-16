@@ -51,7 +51,7 @@ function DokumenteSettingsInner() {
           ← Zurück zu Einstellungen
         </Link>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-2 mt-4">📄 Dokumente & Google Drive</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2 mt-4">📄 Dokumente & Google Drive</h1>
         <p className="text-gray-600 mb-8">
           Alle hochgeladenen Dokumente werden zentral in einem einzigen Google-Drive-Konto
           gespeichert. Verbinde dieses System-Konto einmalig.

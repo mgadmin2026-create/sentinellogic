@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { formatBytes, formatDate } from '@/lib/utils'
 import { HelpButton } from '@/components/help/HelpButton'
 import { DOKUMENTTYP_OPTIONEN, DOKUMENTTYP_FILTER_OPTIONEN, dokumenttypZuFilter, type DokumenttypFilter } from '@/lib/dokumenttyp'
+import { PageHeader } from '@/components/ui'
 
 interface Dokument {
   id: string
@@ -127,26 +128,28 @@ export default function DokumentePage() {
       {/* Header — Titel, Stats und Google-Drive-Link in einer Zeile statt
           gestapelter Blöcke, damit oben weniger Platz vor der eigentlichen
           Dokumentenliste verloren geht. */}
-      <div className="flex items-center justify-between mb-3 gap-4 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-2xl font-bold text-gray-900">Dokumente</h1>
-          <HelpButton articleId="dokumente.overview" />
-          <span className="text-sm text-gray-400 ml-1">
+      <PageHeader
+        title="Dokumente"
+        subtitle={
+          <span className="flex items-center gap-1.5">
+            <HelpButton articleId="dokumente.overview" />
             {stats.count} Dokumente · {formatBytes(stats.totalCompressed)} · <span className="text-green-600">{formatBytes(stats.totalSaved)} gespart</span>
+            <HelpButton articleId="dokumente.stats" />
           </span>
-          <HelpButton articleId="dokumente.stats" />
-        </div>
-        {rootFolderUrl && (
-          <a
-            href={rootFolderUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-          >
-            📁 Google Drive öffnen
-          </a>
-        )}
-      </div>
+        }
+        actions={
+          rootFolderUrl && (
+            <a
+              href={rootFolderUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-brand hover:bg-brand-hover text-gray-900 font-semibold text-sm px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+            >
+              📁 Google Drive öffnen
+            </a>
+          )
+        }
+      />
 
       {/* Nicht verbunden Hinweis */}
       {connected === false && (

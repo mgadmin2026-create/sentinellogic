@@ -430,14 +430,14 @@ export default function TestdashboardPage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <span className="rounded-full bg-[#FFC300]/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#705600]">
+              <span className="rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#705600]">
                 Qualitätssicherung
               </span>
               <span className="rounded-full bg-gray-200/70 px-2.5 py-1 text-[11px] font-semibold text-gray-600">
                 Aufbauphase
               </span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Testdashboard</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Testdashboard</h1>
             <p className="mt-1 text-sm text-gray-500">Regressionstests planen, ausführen und nachvollziehen.</p>
           </div>
           <div className={`flex items-center gap-2 self-start rounded-lg border bg-white px-3 py-2 text-xs shadow-sm ${environmentStatus?.ready ? 'border-emerald-200 text-emerald-700' : 'border-gray-200 text-gray-500'}`}>
@@ -502,11 +502,11 @@ export default function TestdashboardPage() {
                 >
                   {tab.label}
                   {tab.count !== undefined && (
-                    <span className={`rounded-full px-2 py-0.5 text-[11px] ${activeTab === tab.id ? 'bg-[#FFC300]/20 text-[#705600]' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-[11px] ${activeTab === tab.id ? 'bg-brand/20 text-[#705600]' : 'bg-gray-100 text-gray-500'}`}>
                       {tab.count}
                     </span>
                   )}
-                  {activeTab === tab.id && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#FFC300]" />}
+                  {activeTab === tab.id && <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand" />}
                 </button>
               ))}
             </div>
@@ -523,13 +523,13 @@ export default function TestdashboardPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Testfälle durchsuchen …"
-                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-[#FFC300] focus:bg-white focus:ring-2 focus:ring-[#FFC300]/20"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20"
                   />
                 </div>
                 <select
                   value={priority}
                   onChange={(event) => setPriority(event.target.value as 'Alle' | TestPriority)}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 outline-none focus:border-[#FFC300] focus:ring-2 focus:ring-[#FFC300]/20"
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                   aria-label="Nach Priorität filtern"
                 >
                   <option value="Alle">Alle Prioritäten</option>
@@ -577,7 +577,7 @@ export default function TestdashboardPage() {
                         value={controlToken}
                         onChange={(event) => setControlToken(event.target.value)}
                         placeholder="Teststeuerungs-Token"
-                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#FFC300] focus:ring-2 focus:ring-[#FFC300]/20"
+                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
                       />
                       <button type="submit" className="rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800">Entsperren</button>
                     </form>
@@ -693,7 +693,7 @@ export default function TestdashboardPage() {
                                     <ol className="mt-4 space-y-3">
                                       {testCase.steps.map((step, index) => (
                                         <li key={step} className="flex gap-3 text-sm leading-6 text-gray-600">
-                                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#FFC300]/20 text-xs font-bold text-[#705600]">{index + 1}</span>
+                                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/20 text-xs font-bold text-[#705600]">{index + 1}</span>
                                           <span>{step}</span>
                                         </li>
                                       ))}
@@ -757,7 +757,7 @@ export default function TestdashboardPage() {
                     ].map((item) => (
                       <li key={item.step} className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
                         <div className="flex items-center gap-3">
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFC300] text-xs font-bold text-[#1A1A1A]">{item.step}</span>
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-xs font-bold text-gray-900">{item.step}</span>
                           <h3 className="text-sm font-semibold text-gray-900">{item.title}</h3>
                         </div>
                         <p className="mt-3 text-xs leading-5 text-gray-500">{item.text}</p>
@@ -812,7 +812,7 @@ export default function TestdashboardPage() {
               </div>
             )}
           </div>
-          <div className="rounded-xl bg-[#1A1A1A] p-5 text-white shadow-sm">
+          <div className="rounded-xl bg-brand-dark p-5 text-white shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Nächster Schritt</h2>
               <span className="rounded bg-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/60">Betrieb</span>
@@ -825,7 +825,7 @@ export default function TestdashboardPage() {
                 ? 'Marker und Bereinigungs-Guard sind bereit. Der nächste Lauf überträgt sein Ergebnis automatisch.'
                 : 'Migration in Supabase ausführen, Guard freigeben und technischen Testbenutzer anlegen.'}
             </p>
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10"><div className={`h-full rounded-full bg-[#FFC300] ${testRuns.summary.totalRuns > 0 ? 'w-full' : environmentStatus?.ready ? 'w-4/5' : 'w-2/5'}`} /></div>
+            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/10"><div className={`h-full rounded-full bg-brand ${testRuns.summary.totalRuns > 0 ? 'w-full' : environmentStatus?.ready ? 'w-4/5' : 'w-2/5'}`} /></div>
             <p className="mt-2 text-[11px] text-white/40">{testRuns.summary.totalRuns > 0 ? '5 von 5 Einrichtungsschritten abgeschlossen' : environmentStatus?.ready ? '4 von 5 Einrichtungsschritten abgeschlossen' : '2 von 5 Einrichtungsschritten vorbereitet'}</p>
           </div>
         </section>

@@ -134,7 +134,7 @@ export function StickyContactHeader({
   return (
     <div className="sticky top-0 z-40 shadow-md">
       {/* Zeile 1: Identität + Aktionen (dunkel) */}
-      <div className="bg-[#1A1A1A]">
+      <div className="bg-brand-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3 min-w-0">

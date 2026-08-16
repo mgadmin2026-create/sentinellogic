@@ -5,6 +5,7 @@ import { HelpButton } from '@/components/help/HelpButton'
 import { RegelLaufHistorie } from '@/components/RegelLaufHistorie'
 import { ruleKlicktippTags } from '@/lib/rule-klicktipp-tags'
 import { AutomatisierungenTabs } from '@/components/automatisierungen/AutomatisierungenTabs'
+import { Button, PageHeader } from '@/components/ui'
 
 interface Rule {
   id: string; created_at: string; name: string
@@ -214,30 +215,29 @@ export default function RegelnPage() {
   return (
     <div className="p-8">
       <AutomatisierungenTabs />
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-2xl font-bold text-[#1A1A1A]">Automatisierungsregeln</h1>
-            <HelpButton articleId="regeln.overview" />
-          </div>
-          <p className="text-gray-500 text-sm mt-0.5">
+      <PageHeader
+        title="Automatisierungsregeln"
+        subtitle={
+          <span className="flex items-center gap-1.5">
             {loading ? 'Lädt…' : `${rules.filter((r) => r.active).length} aktive Regeln — werden bei jedem neuen Lead ausgeführt`}
-          </p>
-        </div>
-        <button onClick={() => {
-          setEditingRuleId(null)
-          setNewSource('facebook'); setNewSparte(''); setNewKlicktippTags([]); setNewDialfire(''); setNewDialfireTask('')
-          setNewStatus(''); setNewConditionStatus(''); setNewSuperchatLabel(''); setNewNotification(false); setNewNotificationEmail('')
-          setModalOpen(true)
-        }}
-          className="flex items-center gap-2 bg-[#FFC300] hover:bg-[#e6b000] text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Neue Regel erstellen
-        </button>
-      </div>
+            <HelpButton articleId="regeln.overview" />
+          </span>
+        }
+        actions={
+          <Button onClick={() => {
+            setEditingRuleId(null)
+            setNewSource('facebook'); setNewSparte(''); setNewKlicktippTags([]); setNewDialfire(''); setNewDialfireTask('')
+            setNewStatus(''); setNewConditionStatus(''); setNewSuperchatLabel(''); setNewNotification(false); setNewNotificationEmail('')
+            setModalOpen(true)
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Neue Regel erstellen
+          </Button>
+        }
+      />
 
       {/* Info Banner */}
-      <div className="bg-[#FFC300]/8 border border-[#FFC300]/25 rounded-xl px-5 py-3.5 mb-6 flex items-start gap-3">
+      <div className="bg-brand/8 border border-brand/25 rounded-xl px-5 py-3.5 mb-6 flex items-start gap-3">
         <svg width="16" height="16" className="text-[#b88c00] flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
         </svg>
@@ -372,16 +372,16 @@ export default function RegelnPage() {
                     <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 min-w-[200px]">
                       <p className="text-xs font-bold text-blue-500 uppercase tracking-wide mb-1">WENN</p>
                       {rule.condition_status ? (
-                        <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
+                        <p className="text-sm font-semibold text-gray-900 mb-1">
                           Status = {STATUS_LABELS[rule.condition_status]}
                         </p>
                       ) : (
-                        <p className="text-sm font-semibold text-[#1A1A1A] mb-1">
+                        <p className="text-sm font-semibold text-gray-900 mb-1">
                           Quelle = {SOURCE_OPTIONS.find((s) => s.value === rule.condition_source)?.label ?? rule.condition_source}
                         </p>
                       )}
                       {rule.condition_sparte && (
-                        <p className="text-sm font-semibold text-[#1A1A1A] text-blue-700">
+                        <p className="text-sm font-semibold text-gray-900 text-blue-700">
                           + Sparte = {sparteOptions.find((i) => i.value === rule.condition_sparte)?.label ?? rule.condition_sparte}
                         </p>
                       )}
@@ -392,42 +392,42 @@ export default function RegelnPage() {
                     </div>
 
                     {/* DANN */}
-                    <div className="bg-[#FFC300]/8 border border-[#FFC300]/20 rounded-lg px-4 py-3 flex-1">
+                    <div className="bg-brand/8 border border-brand/20 rounded-lg px-4 py-3 flex-1">
                       <p className="text-xs font-bold text-[#b88c00] uppercase tracking-wide mb-2">DANN</p>
                       <div className="space-y-1">
                         {ruleKlicktippTags(rule.actions).length > 0 && (
-                          <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
+                          <div className="flex items-center gap-1.5 text-sm text-gray-900">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                             KlickTipp {ruleKlicktippTags(rule.actions).length > 1 ? 'Tags' : 'Tag'}:{' '}
                             <span className="font-semibold ml-1">{ruleKlicktippTags(rule.actions).join(', ')}</span>
                           </div>
                         )}
                         {rule.actions.dialfire_campaign && (
-                          <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
+                          <div className="flex items-center gap-1.5 text-sm text-gray-900">
                             <span className="w-1.5 h-1.5 rounded-full bg-orange-400" />
                             Dialfire Kampagne: <span className="font-semibold ml-1">{rule.actions.dialfire_campaign}</span>
                           </div>
                         )}
                         {rule.actions.dialfire_task_name && (
-                          <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
+                          <div className="flex items-center gap-1.5 text-sm text-gray-900">
                             <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
                             Dialfire Task: <span className="font-semibold ml-1">{rule.actions.dialfire_task_name}</span>
                           </div>
                         )}
                         {rule.actions.set_status && (
-                          <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
+                          <div className="flex items-center gap-1.5 text-sm text-gray-900">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                             Status setzen: <span className="font-semibold ml-1">{STATUS_LABELS[rule.actions.set_status]}</span>
                           </div>
                         )}
                         {rule.actions.superchat_label && (
-                          <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
+                          <div className="flex items-center gap-1.5 text-sm text-gray-900">
                             <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
                             SuperChat-Gesprächslabel: <span className="font-semibold ml-1">{rule.actions.superchat_label}</span>
                           </div>
                         )}
                         {rule.actions.send_notification && (
-                          <div className="flex items-center gap-1.5 text-sm text-[#1A1A1A]">
+                          <div className="flex items-center gap-1.5 text-sm text-gray-900">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                             Email Benachrichtigung: <span className="font-semibold ml-1">{rule.actions.notification_email || 'Ja'}</span>
                           </div>
@@ -475,7 +475,7 @@ export default function RegelnPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-[#1A1A1A]">
+              <h2 className="text-2xl font-bold text-gray-900">
                 {editingRuleId ? '✎ Regel bearbeiten' : '➕ Neue Regel erstellen'}
               </h2>
               <button onClick={() => { setModalOpen(false); setEditingRuleId(null) }}
@@ -485,21 +485,21 @@ export default function RegelnPage() {
             <div className="space-y-4">
               {/* Source */}
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Status-Bedingung (optional)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Status-Bedingung (optional)</label>
                 <select value={newConditionStatus} onChange={(e) => {
                   setNewConditionStatus(e.target.value)
                   if (e.target.value) setNewSource('all')
                 }}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
                   <option value="">-- Regel wird beim Anlegen geprüft --</option>
                   {STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Quelle</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Quelle</label>
                 <select value={newSource} onChange={(e) => setNewSource(e.target.value)} disabled={!!newConditionStatus}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
                   {SOURCE_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
@@ -507,22 +507,22 @@ export default function RegelnPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">SuperChat-Gesprächslabel (optional)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">SuperChat-Gesprächslabel (optional)</label>
                 <input
                   type="text"
                   value={newSuperchatLabel}
                   onChange={(e) => setNewSuperchatLabel(e.target.value)}
                   placeholder="z. B. Kunde AZ"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand"
                 />
                 <p className="text-xs text-gray-400 mt-1">Das Label muss bereits in SuperChat vorhanden sein.</p>
               </div>
 
               {/* Insurance Product */}
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Versicherungstyp (optional)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Versicherungstyp (optional)</label>
                 <select value={newSparte} onChange={(e) => setNewSparte(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
                   {sparteOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
@@ -531,12 +531,12 @@ export default function RegelnPage() {
 
               {/* KlickTipp Tags - Mehrfachauswahl */}
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">KlickTipp Tags (optional)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">KlickTipp Tags (optional)</label>
                 <select
                   multiple
                   value={newKlicktippTags}
                   onChange={(e) => setNewKlicktippTags(Array.from(e.target.selectedOptions, (opt) => opt.value))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand"
                   size={4}
                 >
                   {config.klicktipp_tags?.map((tag) => (
@@ -548,9 +548,9 @@ export default function RegelnPage() {
 
               {/* Dialfire Campaign - Dropdown */}
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Dialfire Kampagne (optional)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Dialfire Kampagne (optional)</label>
                 <select value={newDialfire} onChange={(e) => setNewDialfire(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
                   <option value="">-- Keine Kampagne --</option>
                   {config.dialfire_campaigns?.map((camp) => (
                     <option key={camp.id} value={camp.id}>{camp.label}</option>
@@ -560,9 +560,9 @@ export default function RegelnPage() {
 
               {/* Dialfire Task - Dropdown */}
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Dialfire Task (optional)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Dialfire Task (optional)</label>
                 <select value={newDialfireTask} onChange={(e) => setNewDialfireTask(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
                   <option value="">-- Keine Task --</option>
                   {config.dialfire_tasks?.map((task) => (
                     <option key={task.task_name} value={task.task_name}>{task.task_label}</option>
@@ -572,9 +572,9 @@ export default function RegelnPage() {
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-semibold text-[#1A1A1A] mb-2">Status (optional)</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Status (optional)</label>
                 <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]">
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand">
                   <option value="">-- Kein Status --</option>
                   {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -586,24 +586,24 @@ export default function RegelnPage() {
               <div className="flex items-center gap-3">
                 <input type="checkbox" id="notif" checked={newNotification} onChange={(e) => setNewNotification(e.target.checked)}
                   className="w-4 h-4" />
-                <label htmlFor="notif" className="text-sm font-semibold text-[#1A1A1A]">Email Benachrichtigung</label>
+                <label htmlFor="notif" className="text-sm font-semibold text-gray-900">Email Benachrichtigung</label>
               </div>
 
               {newNotification && (
                 <input type="email" placeholder="E-Mail Adresse (optional)" value={newNotificationEmail}
                   onChange={(e) => setNewNotificationEmail(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[#FFC300]" />
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand" />
               )}
             </div>
 
             {/* Buttons */}
             <div className="flex gap-3 mt-6">
               <button onClick={() => { setModalOpen(false); setEditingRuleId(null) }}
-                className="flex-1 border border-gray-200 text-[#1A1A1A] font-semibold py-2 rounded-lg hover:bg-gray-50 transition-colors">
+                className="flex-1 border border-gray-200 text-gray-900 font-semibold py-2 rounded-lg hover:bg-gray-50 transition-colors">
                 Abbrechen
               </button>
               <button onClick={saveRule} disabled={saving}
-                className="flex-1 bg-[#FFC300] hover:bg-[#e6b000] disabled:opacity-50 text-[#1A1A1A] font-semibold py-2 rounded-lg transition-colors">
+                className="flex-1 bg-brand hover:bg-brand-hover disabled:opacity-50 text-gray-900 font-semibold py-2 rounded-lg transition-colors">
                 {saving ? 'Speichert…' : editingRuleId ? 'Speichern' : 'Regel erstellen'}
               </button>
             </div>
@@ -615,11 +615,11 @@ export default function RegelnPage() {
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg p-6 max-w-sm">
-            <h3 className="text-lg font-bold text-[#1A1A1A] mb-4">Regel löschen?</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Regel löschen?</h3>
             <p className="text-gray-600 mb-6">Diese Aktion kann nicht rückgängig gemacht werden.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)}
-                className="flex-1 border border-gray-200 text-[#1A1A1A] font-semibold py-2 rounded-lg hover:bg-gray-50">
+                className="flex-1 border border-gray-200 text-gray-900 font-semibold py-2 rounded-lg hover:bg-gray-50">
                 Abbrechen
               </button>
               <button onClick={() => { deleteRule(deleteId); setDeleteId(null) }}

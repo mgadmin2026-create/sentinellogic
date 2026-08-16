@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { HELP_ARTICLES_BY_AREA } from '@/data/help'
 import { HELP_AREA_LABELS, HELP_AREA_ORDER, type HelpArticle } from '@/types/help'
 import { HelpArticleBody } from '@/components/help/HelpArticleBody'
+import { PageHeader } from '@/components/ui'
 
 export default function HilfePage() {
   const [query, setQuery] = useState('')
@@ -32,11 +33,15 @@ export default function HilfePage() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">Hilfe</h1>
-        <p className="text-sm text-gray-500 mb-6">
-          Anleitung für Sentimental Logic — durchsuchbar, oder direkt über das ❓-Symbol neben jeder
-          Kachel bzw. die Taste <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">?</kbd> aufrufbar.
-        </p>
+        <PageHeader
+          title="Hilfe"
+          subtitle={
+            <>
+              Anleitung für Sentimental Logic — durchsuchbar, oder direkt über das ❓-Symbol neben jeder
+              Kachel bzw. die Taste <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded text-xs">?</kbd> aufrufbar.
+            </>
+          }
+        />
 
         <input
           type="text"

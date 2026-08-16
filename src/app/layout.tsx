@@ -21,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="de">
-      <body className="antialiased bg-gray-50 text-[#1A1A1A]">
+      <body className="antialiased bg-gray-50 text-gray-900">
         <HelpProvider>
           <div className="flex md:h-screen min-h-dvh md:overflow-hidden">
             <Sidebar currentUser={currentUser} />

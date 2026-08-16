@@ -15,6 +15,7 @@ import { MonatsView } from '@/components/kalender/MonatsView'
 import { JahresView } from '@/components/kalender/JahresView'
 import type { KalenderEintrag, KalenderQuelle } from '@/types/kalender'
 import { QUELLEN_FARBEN, QUELLEN_LABEL } from '@/types/kalender'
+import { Button, PageHeader } from '@/components/ui'
 import {
   arbeitsWochenTage,
   wochenTage,
@@ -310,19 +311,16 @@ export default function KalenderPage() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-2xl font-bold text-gray-900">Kalender</h1>
-          <HelpButton articleId="kalender.overview" />
-        </div>
-        <button
-          onClick={() => neuerTermin(new Date())}
-          className="flex items-center gap-2 bg-[#FFC300] hover:bg-[#e6b000] text-[#1A1A1A] font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Neuer Termin
-        </button>
-      </div>
+      <PageHeader
+        title="Kalender"
+        subtitle={<HelpButton articleId="kalender.overview" />}
+        actions={
+          <Button onClick={() => neuerTermin(new Date())}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Neuer Termin
+          </Button>
+        }
+      />
 
       <div className="grid lg:grid-cols-[240px_1fr] gap-6 items-start">
         {/* Sidebar */}

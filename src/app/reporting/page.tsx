@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { HelpButton } from '@/components/help/HelpButton'
+import { PageHeader } from '@/components/ui'
 
 interface ReportResult {
   sql?: string
@@ -84,13 +85,15 @@ export default function ReportingPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="flex items-center gap-1.5">
-        <h1 className="text-2xl font-bold text-gray-900">Selektion</h1>
-        <HelpButton articleId="reporting.overview" />
-      </div>
-      <p className="text-sm text-gray-500 mb-6">
-        Frag in eigenen Worten – die Auswertung wird live aus der Datenbank erstellt.
-      </p>
+      <PageHeader
+        title="Selektion"
+        subtitle={
+          <span className="flex items-center gap-1.5">
+            Frag in eigenen Worten – die Auswertung wird live aus der Datenbank erstellt.
+            <HelpButton articleId="reporting.overview" />
+          </span>
+        }
+      />
 
       {/* Eingabe */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">

@@ -80,7 +80,7 @@ export function AuslandsreiseversicherungPanel({ kontakt, onSave }: Auslandsreis
         <button
           onClick={handleSave}
           disabled={!dirty || saving}
-          className="text-xs font-semibold px-3 py-1.5 bg-[#FFC300] hover:bg-[#e6b000] disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 rounded-lg transition-colors"
+          className="text-xs font-semibold px-3 py-1.5 bg-brand hover:bg-brand-hover disabled:opacity-40 disabled:cursor-not-allowed text-gray-900 rounded-lg transition-colors"
         >
           {saving ? 'Speichert…' : 'Speichern'}
         </button>

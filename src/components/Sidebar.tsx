@@ -264,7 +264,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
   return (
     <>
       {/* Mobile Top-Bar (nur < md) */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-[#1A1A1A] flex items-center gap-3 px-4">
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-brand-dark flex items-center gap-3 px-4">
         <button
           onClick={() => setOpen(true)}
           aria-label="Menü öffnen"
@@ -276,8 +276,8 @@ export default function Sidebar({ currentUser }: SidebarProps) {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <div className="w-6 h-6 rounded bg-[#FFC300] flex items-center justify-center flex-shrink-0">
-          <span className="text-[#1A1A1A] font-bold text-[11px]">SL</span>
+        <div className="w-6 h-6 rounded bg-brand flex items-center justify-center flex-shrink-0">
+          <span className="text-gray-900 font-bold text-[11px]">SL</span>
         </div>
         <span className="text-white font-semibold text-sm">Sentimental Logic</span>
       </div>
@@ -293,7 +293,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-[#1A1A1A] flex flex-col h-screen
+          fixed inset-y-0 left-0 z-50 w-64 bg-brand-dark flex flex-col h-screen
           transform transition-transform duration-200 ease-out
           ${open ? 'translate-x-0' : '-translate-x-full'}
           md:static md:translate-x-0 md:flex-shrink-0 md:z-auto md:sticky md:top-0
@@ -304,8 +304,8 @@ export default function Sidebar({ currentUser }: SidebarProps) {
         {/* Logo + Schließen (mobil) / Einklappen-Toggle (Desktop) */}
         <div className={`py-6 border-b border-white/10 flex items-center ${collapsed ? 'md:justify-center md:px-2' : 'px-5 justify-between'}`}>
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded bg-[#FFC300] flex items-center justify-center flex-shrink-0">
-              <span className="text-[#1A1A1A] font-bold text-xs">SL</span>
+            <div className="w-7 h-7 rounded bg-brand flex items-center justify-center flex-shrink-0">
+              <span className="text-gray-900 font-bold text-xs">SL</span>
             </div>
             <span className={`text-white font-semibold text-sm leading-tight ${collapsed ? 'md:hidden' : ''}`}>
               Sentimental<br />Logic
@@ -353,17 +353,17 @@ export default function Sidebar({ currentUser }: SidebarProps) {
                 flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                 ${collapsed ? 'md:justify-center' : ''}
                 ${active
-                  ? 'bg-[#FFC300]/10 text-[#FFC300]'
+                  ? 'bg-brand/10 text-brand'
                   : 'text-white/60 hover:text-white hover:bg-white/5'
                 }
               `}
             >
-              <span className={active ? 'text-[#FFC300]' : 'text-white/40'}>
+              <span className={active ? 'text-brand' : 'text-white/40'}>
                 {item.icon}
               </span>
               <span className={collapsed ? 'md:hidden' : ''}>{item.label}</span>
               {active && (
-                <span className={`ml-auto w-1 h-4 rounded-full bg-[#FFC300] ${collapsed ? 'md:hidden' : ''}`} />
+                <span className={`ml-auto w-1 h-4 rounded-full bg-brand ${collapsed ? 'md:hidden' : ''}`} />
               )}
             </Link>
           )
@@ -388,7 +388,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
                   <p className="text-white/30 text-[11px] truncate">{currentUser.email}</p>
                 </div>
                 {unreadMentions > 0 && (
-                  <span className={`flex-shrink-0 bg-[#FFC300] text-[#1A1A1A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center ${collapsed ? 'md:hidden' : 'flex'}`}>
+                  <span className={`flex-shrink-0 bg-brand text-gray-900 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 items-center justify-center ${collapsed ? 'md:hidden' : 'flex'}`}>
                     {unreadMentions > 99 ? '99+' : unreadMentions}
                   </span>
                 )}
@@ -418,7 +418,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
                   <span className="flex-shrink-0">{MENTIONS_ICON}</span>
                   <span className="flex-1">Erwähnungen</span>
                   {unreadMentions > 0 && (
-                    <span className="flex-shrink-0 bg-[#FFC300] text-[#1A1A1A] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+                    <span className="flex-shrink-0 bg-brand text-gray-900 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
                       {unreadMentions > 99 ? '99+' : unreadMentions}
                     </span>
                   )}
@@ -450,7 +450,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
               onClick={openPageDefault}
               aria-label="Hilfe anzeigen (Taste ?)"
               title="Hilfe (Taste ?)"
-              className="text-white/40 hover:text-[#FFC300] transition-colors"
+              className="text-white/40 hover:text-brand transition-colors"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -460,7 +460,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
             </button>
             <a
               href="/release-notes"
-              className="text-white/40 hover:text-[#FFC300] transition-colors group relative"
+              className="text-white/40 hover:text-brand transition-colors group relative"
               title="Was ist neu?"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -468,7 +468,7 @@ export default function Sidebar({ currentUser }: SidebarProps) {
                 <line x1="12" y1="16" x2="12" y2="12" />
                 <line x1="12" y1="8" x2="12.01" y2="8" />
               </svg>
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#FFC300] rounded-full group-hover:animate-pulse" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-brand rounded-full group-hover:animate-pulse" />
             </a>
           </div>
         </div>

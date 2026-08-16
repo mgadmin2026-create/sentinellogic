@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { RELEASE_NOTES, ReleaseNote } from '@/data/release-notes'
 import { ReleaseNotesModal } from '@/components/ReleaseNotesModal'
+import { PageHeader } from '@/components/ui'
 
 type CategoryFilter = 'all' | 'feature' | 'improvement' | 'fix' | 'security'
 
@@ -30,21 +31,21 @@ export default function ReleaseNotesPage() {
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Release Notes</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Übersicht über neue Features, Verbesserungen und Bugfixes</p>
-        </div>
-        <Link href="/" className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">
-          ← Zurück zum Dashboard
-        </Link>
-      </div>
+      <PageHeader
+        title="Release Notes"
+        subtitle="Übersicht über neue Features, Verbesserungen und Bugfixes"
+        actions={
+          <Link href="/" className="text-yellow-600 hover:text-yellow-700 text-sm font-medium">
+            ← Zurück zum Dashboard
+          </Link>
+        }
+      />
 
       <div className="grid grid-cols-3 gap-6">
         {/* Sidebar: Versions List */}
         <div className="col-span-1">
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden sticky top-8">
-            <div className="bg-[#FFC300] px-6 py-4">
+            <div className="bg-brand px-6 py-4">
               <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Alle Versionen</h2>
             </div>
             <div className="divide-y divide-gray-100">
@@ -74,7 +75,7 @@ export default function ReleaseNotesPage() {
           {selectedVersion ? (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               {/* Version Header */}
-              <div className="bg-gradient-to-r from-[#FFC300] to-yellow-300 px-6 py-8">
+              <div className="bg-gradient-to-r from-brand to-yellow-300 px-6 py-8">
                 <p className="text-xs text-gray-700 font-semibold uppercase mb-2">Version</p>
                 <h2 className="text-3xl font-bold text-gray-900">{selectedVersion.version}</h2>
                 <p className="text-sm text-gray-800 mt-2">{selectedVersion.title}</p>
@@ -96,7 +97,7 @@ export default function ReleaseNotesPage() {
                     onClick={() => setCategoryFilter(cat)}
                     className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
                       categoryFilter === cat
-                        ? 'bg-[#FFC300] text-gray-900'
+                        ? 'bg-brand text-gray-900'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >

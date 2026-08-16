@@ -90,7 +90,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-[#1A1A1A] mb-4">Automation & Integration</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Automation & Integration</h3>
         <p className="text-sm text-gray-500 mb-6">
           Steuere wie dieser Kontakt automatisiert wird. Automatische Felder werden von Regeln gesetzt, manuelle können überschrieben werden.
         </p>
@@ -100,7 +100,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
       <div className="border-t pt-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h4 className="font-semibold text-[#1A1A1A] text-sm">Automation deaktivieren</h4>
+            <h4 className="font-semibold text-gray-900 text-sm">Automation deaktivieren</h4>
             <p className="text-xs text-gray-500 mt-1">Wenn aktiviert: keine Regeln und kein Dialfire-Sync. Der grundlegende KlickTipp-Kontaktsync bleibt aktiv.</p>
           </div>
           <button
@@ -123,7 +123,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
       <div className="border-t pt-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-[#1A1A1A] text-sm">Dialfire Kampagne</h4>
+            <h4 className="font-semibold text-gray-900 text-sm">Dialfire Kampagne</h4>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500">Auto</span>
               <button
@@ -153,7 +153,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
               value={data.dialfire_campaign_id || ''}
               onChange={(e) => handleUpdate({ dialfire_campaign_id: e.target.value || undefined })}
               disabled={saving || data.automation_disabled}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FFC300]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
             >
               <option value="">-- Keine Kampagne --</option>
               {config.dialfire_campaigns?.map((camp) => (
@@ -170,7 +170,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
       <div className="border-t pt-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-[#1A1A1A] text-sm">Dialfire Task</h4>
+            <h4 className="font-semibold text-gray-900 text-sm">Dialfire Task</h4>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500">Auto</span>
               <button
@@ -200,7 +200,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
               value={data.dialfire_task_name_field || ''}
               onChange={(e) => handleUpdate({ dialfire_task_name_field: e.target.value || undefined })}
               disabled={saving || data.automation_disabled}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FFC300]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
             >
               <option value="">-- Keine Task --</option>
               {config.dialfire_tasks?.map((task) => (
@@ -215,7 +215,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
 
       {/* KlickTipp Status */}
       <div className="border-t pt-6">
-        <h4 className="font-semibold text-[#1A1A1A] text-sm mb-3">KlickTipp-Status</h4>
+        <h4 className="font-semibold text-gray-900 text-sm mb-3">KlickTipp-Status</h4>
         {data.klicktipp_id ? (
           <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-700">
             ✓ Synchronisiert — KlickTipp-ID: <span className="font-mono">{data.klicktipp_id}</span>
@@ -236,7 +236,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
       <div className="border-t pt-6">
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-[#1A1A1A] text-sm">KlickTipp Tags</h4>
+            <h4 className="font-semibold text-gray-900 text-sm">KlickTipp Tags</h4>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500">Auto</span>
               <button
@@ -270,7 +270,7 @@ export function AutomationControls({ contactId, initialData, onUpdate }: Automat
                 handleUpdate({ klicktipp_tags_field: selected.length > 0 ? selected : undefined })
               }}
               disabled={saving || data.automation_disabled}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#FFC300]"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
               size={4}
             >
               {config.klicktipp_tags?.map((tag) => (

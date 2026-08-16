@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { AufgabenEditModal } from '@/components/AufgabenEditModal'
 import { HelpButton } from '@/components/help/HelpButton'
 import { isOverdue as istUeberfaellig } from '@/lib/pipeline'
+import { Button, PageHeader } from '@/components/ui'
 
 interface Aufgabe {
   id: string
@@ -201,27 +202,24 @@ export default function AufgabenPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-3xl font-bold text-gray-900">Aufgaben</h1>
-            <HelpButton articleId="aufgaben.overview" />
-          </div>
-          <p className="text-gray-500 text-sm mt-0.5">
+      <PageHeader
+        title="Aufgaben"
+        subtitle={
+          <span className="flex items-center gap-1.5">
             {loading ? 'Lädt…' : `${aufgaben.filter((a) => a.status !== 'erledigt').length} offen, ${aufgaben.filter((a) => a.status === 'erledigt').length} erledigt`}
-          </p>
-        </div>
-        <button
-          onClick={openCreateModal}
-          className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          Neue Aufgabe
-        </button>
-      </div>
+            <HelpButton articleId="aufgaben.overview" />
+          </span>
+        }
+        actions={
+          <Button onClick={openCreateModal}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Neue Aufgabe
+          </Button>
+        }
+      />
 
       <div className="mb-6 space-y-3">
         <input

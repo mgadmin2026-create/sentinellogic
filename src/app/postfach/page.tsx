@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { MailDetail, MailListItem, MailboxPage } from '@/types/postfach'
+import { Button, PageHeader } from '@/components/ui'
 
 function displayAddress(addresses: MailListItem['from']): string {
   const first = addresses[0]
@@ -158,31 +159,18 @@ export default function PostfachPage() {
   return (
     <div className="min-h-full bg-gray-50 p-4 md:p-6">
       <div className="max-w-[1500px] mx-auto">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">E-Mail-Postfach</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {mailbox ? `${mailbox.account} · ${mailbox.total} Nachrichten` : 'STRATO IMAP/SMTP'}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => loadInbox()}
-              disabled={loading}
-              className="px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              ↻ Aktualisieren
-            </button>
-            <button
-              type="button"
-              onClick={openCompose}
-              className="px-4 py-2.5 rounded-lg bg-[#FFC300] text-sm font-bold text-[#1A1A1A] hover:bg-[#e6b000]"
-            >
-              + Neue E-Mail
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="E-Mail-Postfach"
+          subtitle={mailbox ? `${mailbox.account} · ${mailbox.total} Nachrichten` : 'STRATO IMAP/SMTP'}
+          actions={
+            <>
+              <Button variant="secondary" onClick={() => loadInbox()} disabled={loading}>
+                ↻ Aktualisieren
+              </Button>
+              <Button onClick={openCompose}>+ Neue E-Mail</Button>
+            </>
+          }
+        />
 
         {sentNotice && (
           <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{sentNotice}</div>
@@ -195,7 +183,7 @@ export default function PostfachPage() {
           <section className={`border-r border-gray-200 ${selectedUid ? 'hidden lg:block' : 'block'}`} aria-label="Posteingang">
             <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
               <h2 className="font-bold text-gray-900">Posteingang</h2>
-              {unreadCount > 0 && <span className="rounded-full bg-[#FFC300] px-2 py-0.5 text-xs font-bold">{unreadCount} ungelesen</span>}
+              {unreadCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold">{unreadCount} ungelesen</span>}
             </div>
 
             {loading ? (
@@ -212,7 +200,7 @@ export default function PostfachPage() {
                     className={`w-full px-4 py-3 text-left transition-colors hover:bg-gray-50 ${selectedUid === message.uid ? 'bg-yellow-50' : ''}`}
                   >
                     <div className="flex items-start gap-3">
-                      <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${message.seen ? 'bg-transparent' : 'bg-[#FFC300]'}`} />
+                      <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${message.seen ? 'bg-transparent' : 'bg-brand'}`} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className={`truncate text-sm ${message.seen ? 'text-gray-700' : 'font-bold text-gray-900'}`}>{displayAddress(message.from)}</p>
@@ -246,7 +234,7 @@ export default function PostfachPage() {
                       <p className="mt-2 text-sm text-gray-700">Von: {fullAddress(detail.from)}</p>
                       <p className="mt-0.5 text-xs text-gray-400">An: {fullAddress(detail.to)} · {formatDate(detail.date, true)}</p>
                     </div>
-                    <button type="button" onClick={openReply} className="rounded-lg bg-[#FFC300] px-4 py-2 text-sm font-bold hover:bg-[#e6b000]">↩ Antworten</button>
+                    <button type="button" onClick={openReply} className="rounded-lg bg-brand px-4 py-2 text-sm font-bold hover:bg-brand-hover">↩ Antworten</button>
                   </div>
                   {detail.contact && (
                     <Link href={`/kontakte/${detail.contact.id}`} className="mt-4 inline-flex rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
@@ -299,7 +287,7 @@ export default function PostfachPage() {
               {sendError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{sendError}</p>}
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setComposeOpen(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold">Abbrechen</button>
-                <button type="button" onClick={sendMail} disabled={sending} className="rounded-lg bg-[#FFC300] px-5 py-2 text-sm font-bold disabled:opacity-50">
+                <button type="button" onClick={sendMail} disabled={sending} className="rounded-lg bg-brand px-5 py-2 text-sm font-bold disabled:opacity-50">
                   {sending ? 'Wird gesendet…' : 'Senden'}
                 </button>
               </div>

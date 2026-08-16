@@ -35,7 +35,7 @@ export function ReleaseNotesModal({ release, isOpen, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-[#FFC300] to-yellow-300 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+        <div className="sticky top-0 bg-gradient-to-r from-brand to-yellow-300 px-6 py-5 border-b border-gray-100 flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-700 font-semibold">Version</p>
             <h2 className="text-2xl font-bold text-gray-900">{release.version}</h2>
@@ -143,7 +143,7 @@ export function ReleaseNotesModal({ release, isOpen, onClose }: Props) {
               }).catch(console.error)
               onClose()
             }}
-            className="flex-1 bg-[#FFC300] hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+            className="flex-1 bg-brand hover:bg-yellow-500 text-gray-900 font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
           >
             ✓ Gelesen
           </button>

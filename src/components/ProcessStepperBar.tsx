@@ -24,7 +24,7 @@ export function ProcessStepperBar({ mergedSteps, currentPosition }: ProcessStepp
       return 'bg-emerald-500 text-white' // Grün für erledigt
     }
     if (type === 'current') {
-      return 'bg-[#FFC300] text-[#1A1A1A]' // Gold für aktuell
+      return 'bg-brand text-gray-900' // Gold für aktuell
     }
     return 'bg-gray-300 text-white' // Grau für zukünftig
   }
@@ -48,7 +48,7 @@ export function ProcessStepperBar({ mergedSteps, currentPosition }: ProcessStepp
           ? nextStep.done
             ? 'bg-emerald-500'
             : idx + 2 === currentPosition
-              ? 'bg-[#FFC300]'
+              ? 'bg-brand'
               : 'bg-gray-300'
           : 'bg-gray-300'
 
@@ -59,13 +59,13 @@ export function ProcessStepperBar({ mergedSteps, currentPosition }: ProcessStepp
               className={`relative group px-2 py-1 text-xs font-bold rounded-sm whitespace-nowrap transition-all cursor-default ${getStepColor(
                 step,
                 isDone ? 'done' : isCurrent ? 'current' : 'future'
-              )} ${isCurrent ? 'ring-2 ring-[#FFC300]/50' : ''}`}
+              )} ${isCurrent ? 'ring-2 ring-brand/50' : ''}`}
               title={step.label}
             >
               {formatLabel(step.label, position)}
 
               {/* Tooltip */}
-              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block bg-[#1A1A1A] text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap z-50 pointer-events-none">
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block bg-brand-dark text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap z-50 pointer-events-none">
                 {step.label}
                 {step.due_date && (
                   <div className="text-gray-300 text-xs mt-0.5">

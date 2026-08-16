@@ -23,7 +23,7 @@ export function AutomatisierungenTabs() {
               key={tab.href}
               href={tab.href}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                active ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-gray-500 hover:text-[#1A1A1A]'
+                active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               {tab.label}
