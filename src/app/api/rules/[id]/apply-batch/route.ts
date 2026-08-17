@@ -149,7 +149,11 @@ export async function POST(
           fieldsSummary.klicktipp_tags = ruleKlicktippTagList
         }
 
-        if (rule.actions.set_status) {
+        // Nie einen bereits gewonnenen Kunden per Automation zurückstufen — eine
+        // Regel wie "Facebook + Unternehmerschutz" greift per Quelle/Sparte, nicht
+        // per aktuellem Status, und würde sonst bei jeder erneuten Ausführung
+        // längst konvertierte Kunden wieder auf z.B. "new" zurücksetzen.
+        if (rule.actions.set_status && contact.status !== 'customer') {
           fieldsToSet.status = rule.actions.set_status
           fieldsSummary.status = rule.actions.set_status
         }
