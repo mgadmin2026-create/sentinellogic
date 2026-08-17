@@ -10,6 +10,13 @@ import { syncStoredContactToKlickTipp } from '@/lib/klicktipp-sync'
 import { syncContactToDialfire } from '@/lib/dialfire-sync'
 import { detectTestContact } from '@/lib/test-data'
 
+// Ohne dies unterliegt der GET-Handler dem Next.js Data Cache (Supabase-Client
+// nutzt intern fetch()) — ein PATCH kurz zuvor kann dann je nach Cache-Treffer
+// noch den alten Stand liefern. Gleiches Bug-Muster wie bei /api/dokumente
+// (v0.11.2) und /api/kontakte/[id]/sparten (v0.31.0).
+export const dynamic = 'force-dynamic'
+export const fetchCache = 'force-no-store'
+
 const VALID_STATUSES = ['new', 'contacted', 'qualified', 'customer', 'not_interested']
 const VALID_SOURCES = ['facebook', 'tiktok', 'calendly', 'csv', 'email', 'manuell', 'ki_upload']
 

@@ -672,7 +672,11 @@ export default function KontaktePage() {
     try {
       setLoading(true)
       const params = new URLSearchParams()
-      params.set('limit', '500')
+      // Hoch genug, um auch bei wachsender Kontaktzahl nicht wieder die
+      // ältesten Kontakte (samt ihrem Status, z.B. "Kunde") stillschweigend
+      // aus der Liste und den Tab-Zählern fallen zu lassen (waren zuvor bei
+      // 500 hart gedeckelt, aktuell schon über 500 aktive Kontakte).
+      params.set('limit', '10000')
       if (search) params.set('search', search)
 
       const res = await fetch(`/api/kontakte?${params.toString()}`)
