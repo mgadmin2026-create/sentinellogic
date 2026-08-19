@@ -527,4 +527,21 @@ export const TEST_CASES: TestCaseDefinition[] = [
     kind: 'E2E',
     resultTitles: ['ändert mehrere ausgewählte Kontakte kontrolliert in einem Schritt'],
   },
+  {
+    id: 'E2E-031',
+    name: 'Zentrale Inbox und interne Notiz',
+    description: 'Prüft die providerneutrale Kommunikationsansicht mit Arbeitslisten, Gesprächsverlauf, Kontaktsprung und einer ausschließlich intern sichtbaren Team-Notiz.',
+    steps: [
+      'Die Seite /kommunikation mit einem sicher simulierten WhatsApp-Gespräch öffnen.',
+      'Arbeitsansichten, Absender, Vorschau und Gesprächsverlauf prüfen.',
+      'Kontrollieren, dass das Öffnen den Ungelesen-Status zurücksetzt.',
+      'Eine interne Notiz speichern und im Verlauf wiederfinden.',
+      'Den direkten Sprung zum verknüpften Kontakt prüfen.',
+    ],
+    area: 'Kommunikation',
+    priority: 'Kritisch',
+    state: 'Bereit',
+    kind: 'E2E',
+    resultTitles: ['zeigt einen Gesprächsverlauf und speichert eine interne Notiz'],
+  },
 ]

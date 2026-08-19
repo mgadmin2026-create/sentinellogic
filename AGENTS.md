@@ -111,6 +111,7 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 
 **Gerade in Arbeit:**
 
+- [ ] Zentrale Kommunikations-Inbox: providerneutrales Grundgerüst auf `feature/zentrale-inbox` abnehmen; danach SuperChat-Gesprächsimport und Webhooks anbinden
 - [ ] Lead-Synchronisation (Dialfire + Sentimental Logic) weiter stabilisieren; KlickTipp-Outbound ist live
 - [ ] Infrastruktur Setup (Supabase, Vercel)
 - [ ] Regressionstest-Katalog nach jedem neuen Feature erweitern
@@ -191,9 +192,10 @@ feature/*   ← einzelne Features (z.B. feature/lead-sync)
 - [x] Regressionstest-Katalog um E2E-028 und E2E-029 für Kontaktansichten, Rücksprung, Detailmenü und Erstgespräch-PDF erweitert
 - [x] Aktionsmenü und verschachtelte Drawer stabilisiert; Regressionstests an die neue Kontaktoberfläche angepasst
 - [x] Kontaktübersicht um eine sichere Mehrfachbearbeitung mit sichtbarer Auswahl, zweistufiger Bestätigung, Status/Verantwortlichkeit/Kontakttyp/Tags/Sparten/Archivierung, Teilergebnis-Anzeige und E2E-030 erweitert
+- [x] Providerneutrales Grundgerüst der zentralen Kommunikations-Inbox auf `feature/zentrale-inbox` umgesetzt: Drei-Spalten-Ansicht, Arbeitslisten, Suche, Verlauf, Zuweisung, Gelesen-/Erledigt-Status, interne Notizen, Kontaktsprung, Migration `0074_communication_inbox.sql` und E2E-031; noch ohne produktiven Nachrichtenempfang/-versand
 
 **Nächste Aufgabe:**
-→ SuperChat-Gesprächslabel `Kunde AZ` mit einem echten Pilotkontakt abnehmen; anschließend KlickTipp-Öffnungs-, Klick- und Abmeldeereignisse im Rückkanal prüfen
+→ Inbox-Migration zunächst nichtproduktiv anwenden und Read-only-Import bestehender SuperChat-Gespräche samt idempotentem Webhook planen; produktiven SuperChat-Betrieb dabei unverändert lassen
 
 -----
 
