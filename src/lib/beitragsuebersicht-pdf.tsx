@@ -11,6 +11,8 @@ export interface BeitragsuebersichtPdfInput {
   kundentyp: 'privat' | 'gewerbe'
   beratername: string
   uebersicht: Beitragsuebersicht
+  /** Default true — bei false wird die Bemerkung-Spalte komplett weggelassen. */
+  includeBemerkungen?: boolean
 }
 
 const styles = StyleSheet.create({
@@ -40,7 +42,18 @@ const styles = StyleSheet.create({
   footer: { marginTop: 14, fontSize: 7, color: '#777', borderTopWidth: 0.5, borderTopColor: '#e0e0e0', paddingTop: 6, lineHeight: 1.4 },
 })
 
-function buildCols(zyklusLabel: string) {
+function buildCols(zyklusLabel: string, includeBemerkungen: boolean) {
+  if (!includeBemerkungen) {
+    return [
+      { key: 'sparte', label: 'Sparte', width: '22%' },
+      { key: 'versicherer', label: 'Bisheriger Versicherer', width: '16%' },
+      { key: 'alt', label: `Beitrag bisher (€/${zyklusLabel})`, width: '14%' },
+      { key: 'neu', label: `Angebot Allianz (€/${zyklusLabel})`, width: '14%' },
+      { key: 'diff', label: `Differenz (€/${zyklusLabel})`, width: '12%' },
+      { key: 'beginn', label: 'Beginn', width: '11%' },
+      { key: 'ablauf', label: 'Ablauf', width: '11%' },
+    ] as const
+  }
   return [
     { key: 'sparte', label: 'Sparte', width: '18%' },
     { key: 'versicherer', label: 'Bisheriger Versicherer', width: '13%' },
@@ -63,12 +76,12 @@ function fmtDate(iso: string | null): string {
   return `${d}.${m}.${y}`
 }
 
-function BeitragsuebersichtDocument({ kundenname, kundentyp, beratername, uebersicht }: BeitragsuebersichtPdfInput) {
+function BeitragsuebersichtDocument({ kundenname, kundentyp, beratername, uebersicht, includeBemerkungen = true }: BeitragsuebersichtPdfInput) {
   const summen = berechneSummen(uebersicht)
   const titel = kundentyp === 'privat' ? 'Privatkunden' : 'Firmenkunden'
   const zyklus: Zyklus = uebersicht.zyklus ?? 'jaehrlich'
   const zyklusLabel = ZYKLUS_LABEL[zyklus]
-  const COLS = buildCols(zyklusLabel)
+  const COLS = buildCols(zyklusLabel, includeBemerkungen)
 
   return (
     <Document>
@@ -126,7 +139,9 @@ function BeitragsuebersichtDocument({ kundenname, kundentyp, beratername, uebers
                 </Text>
                 <Text style={[styles.cell, { width: COLS[5].width }]}>{p.ist_flotte_zeile ? '—' : fmtDate(p.beginn)}</Text>
                 <Text style={[styles.cell, { width: COLS[6].width }]}>{p.ist_flotte_zeile ? '—' : fmtDate(p.ablauf)}</Text>
-                <Text style={[styles.cell, { width: COLS[7].width }]}>{bemerkung || '—'}</Text>
+                {includeBemerkungen && (
+                  <Text style={[styles.cell, { width: (COLS[7] as { width: string }).width }]}>{bemerkung || '—'}</Text>
+                )}
               </View>
             )
           })}
@@ -139,24 +154,24 @@ function BeitragsuebersichtDocument({ kundenname, kundentyp, beratername, uebers
         </View>
 
         <View style={styles.boxRow}>
-          <View style={[styles.box, summen.ersparnisProJahr > 0 ? styles.boxGood : {}]}>
-            <Text style={[styles.boxLabel, { color: summen.ersparnisProJahr > 0 ? '#1e7a44' : '#999' }]}>✓ Ihre Ersparnis pro Jahr</Text>
-            <Text style={[styles.boxValue, { color: summen.ersparnisProJahr > 0 ? '#1e7a44' : '#999' }]}>
-              {summen.ersparnisProJahr > 0 ? fmtEuro(summen.ersparnisProJahr) : '–'}
+          <View style={[styles.box, summen.ersparnis > 0 ? styles.boxGood : {}]}>
+            <Text style={[styles.boxLabel, { color: summen.ersparnis > 0 ? '#1e7a44' : '#999' }]}>✓ Ihre Ersparnis pro {zyklusLabel}</Text>
+            <Text style={[styles.boxValue, { color: summen.ersparnis > 0 ? '#1e7a44' : '#999' }]}>
+              {summen.ersparnis > 0 ? fmtEuro(summen.ersparnis) : '–'}
             </Text>
           </View>
-          <View style={[styles.box, summen.mehrbeitragProMonat > 0 ? styles.boxBlue : {}]}>
-            <Text style={[styles.boxLabel, { color: summen.mehrbeitragProMonat > 0 ? '#1f5aa6' : '#999' }]}>Ihr Mehrbeitrag pro Monat</Text>
-            <Text style={[styles.boxValue, { color: summen.mehrbeitragProMonat > 0 ? '#1f5aa6' : '#999' }]}>
-              {summen.mehrbeitragProMonat > 0 ? fmtEuro(summen.mehrbeitragProMonat) : '–'}
+          <View style={[styles.box, summen.mehrbeitrag > 0 ? styles.boxBlue : {}]}>
+            <Text style={[styles.boxLabel, { color: summen.mehrbeitrag > 0 ? '#1f5aa6' : '#999' }]}>Ihr Mehrbeitrag pro {zyklusLabel}</Text>
+            <Text style={[styles.boxValue, { color: summen.mehrbeitrag > 0 ? '#1f5aa6' : '#999' }]}>
+              {summen.mehrbeitrag > 0 ? fmtEuro(summen.mehrbeitrag) : '–'}
             </Text>
           </View>
         </View>
 
         <Text style={styles.footer}>
           {zyklus === 'jaehrlich'
-            ? 'Alle Beiträge verstehen sich als Jahresbeiträge in Euro. Der Mehrbeitrag wird zur besseren Übersicht auf den Monat umgerechnet.'
-            : `Alle Beiträge verstehen sich als Beiträge pro ${zyklusLabel} in Euro. Ersparnis und Mehrbeitrag werden zur besseren Übersicht auf Jahr bzw. Monat umgerechnet.`}
+            ? 'Alle Beiträge verstehen sich als Jahresbeiträge in Euro.'
+            : `Alle Beiträge, Ersparnis und Mehrbeitrag verstehen sich als Beträge pro ${zyklusLabel} in Euro.`}
           {' '}Angebot freibleibend – maßgeblich sind die jeweiligen Versicherungsbedingungen.{'\n'}
           Allianz Generalvertretung {beratername}
         </Text>

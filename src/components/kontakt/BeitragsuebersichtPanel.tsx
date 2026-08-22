@@ -3,11 +3,14 @@
 // Allianz-Beitrag, abgeleitet aus der Excel-Vorlage "Beitragsuebersicht_Vorlage_
 // Allianz_Guen". Eine laufende Übersicht pro Kontakt (keine Versionierung):
 // jeder Speichervorgang überschreibt den bisherigen Stand.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SPARTEN_PRIVAT, SPARTEN_GEWERBE, KFZ_FLOTTE_SPARTE } from '@/data/beitragsuebersicht-sparten'
 import { emptyPosition, emptyFahrzeug, type Beitragsuebersicht, type BeitragsPosition, type FlottenFahrzeug } from '@/types/beitragsuebersicht'
-import { berechneDifferenz, berechneSummen, effektiveWerte, summeFahrzeuge } from '@/lib/beitragsuebersicht-calc'
-import { ZAHLUNGEN_PRO_JAHR, ZYKLUS_LABEL, ZYKLUS_OPTIONEN, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
+import { berechneDifferenz, berechneSummen, effektiveWerte, summeFahrzeuge, baueBeitragspositionAusVertrag } from '@/lib/beitragsuebersicht-calc'
+import { ZAHLUNGEN_PRO_JAHR, ZYKLUS_LABEL, ZYKLUS_OPTIONEN, parseBeitrag, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
+import { BeitragsuebersichtUebernahmeForm, type BeitragsuebersichtUebernahmeWerte } from '@/components/BeitragsuebersichtUebernahmeForm'
+import { DOKUMENTTYP_LABEL } from '@/lib/dokumenttyp'
+import { ANGEBOT_STATUS_OPTIONEN, type AngebotStatus } from '@/lib/angebot-status'
 
 interface BeitragsuebersichtPanelProps {
   kontaktId: string
@@ -61,12 +64,44 @@ function DifferenzCell({ position, data }: { position: BeitragsPosition; data: B
   )
 }
 
+/** Verschiebt ein Element von `from` nach `to`, Rest rutscht entsprechend nach. */
+function moveItem<T>(list: T[], from: number, to: number): T[] {
+  if (from === to) return list
+  const copy = [...list]
+  const [item] = copy.splice(from, 1)
+  copy.splice(to, 0, item)
+  return copy
+}
+
 export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, onSave, onClose, onSendMail }: BeitragsuebersichtPanelProps) {
   const [data, setData] = useState<Beitragsuebersicht>(initialData ?? buildInitial(kontaktTyp))
   const [saving, setSaving] = useState(false)
   const [mailLoading, setMailLoading] = useState(false)
   const [mailError, setMailError] = useState<string | null>(null)
   const [pendingZyklus, setPendingZyklus] = useState<Zyklus | null>(null)
+  const [pdfMitBemerkungen, setPdfMitBemerkungen] = useState(true)
+  const [dragPositionIdx, setDragPositionIdx] = useState<number | null>(null)
+  const [dragFahrzeugIdx, setDragFahrzeugIdx] = useState<number | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null)
+  const [dokumentTypConfirm, setDokumentTypConfirm] = useState<{
+    dokumentId: string
+    fileName: string
+    dokumenttyp: string
+    angebotStatus: AngebotStatus
+    angebotUebernommen: boolean
+  } | null>(null)
+  const [uebernahmeVorschlag, setUebernahmeVorschlag] = useState<{
+    sparte: string
+    beitragOriginal: string
+    betragRoh: number
+    versicherungsgesellschaft: string
+    vertragsbeginn: string
+    vertragsende: string
+    werte: BeitragsuebersichtUebernahmeWerte
+  } | null>(null)
 
   useEffect(() => {
     setData(initialData ?? buildInitial(kontaktTyp))
@@ -88,6 +123,12 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
     setData((d) => ({ ...d, positionen: d.positionen.filter((_, i) => i !== idx) }))
   }
 
+  function dropPosition(zielIdx: number) {
+    if (dragPositionIdx === null) return
+    setData((d) => ({ ...d, positionen: moveItem(d.positionen, dragPositionIdx, zielIdx) }))
+    setDragPositionIdx(null)
+  }
+
   function updateFahrzeug(idx: number, patch: Partial<typeof data.fahrzeuge[number]>) {
     setData((d) => {
       const fahrzeuge = d.fahrzeuge.map((f, i) => (i === idx ? { ...f, ...patch } : f))
@@ -107,6 +148,126 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
       const fahrzeuge = d.fahrzeuge.filter((_, i) => i !== idx)
       return { ...d, fahrzeuge, positionen: d.flotte_aktiv ? syncFlottePosition(d.positionen, fahrzeuge) : d.positionen }
     })
+  }
+
+  function dropFahrzeug(zielIdx: number) {
+    if (dragFahrzeugIdx === null) return
+    setData((d) => ({ ...d, fahrzeuge: moveItem(d.fahrzeuge, dragFahrzeugIdx, zielIdx) }))
+    setDragFahrzeugIdx(null)
+  }
+
+  // Direkt-Upload eines Vertrags-/Angebotsdokuments aus der Beitragsübersicht
+  // heraus — erspart den Umweg über den Dokumente-Tab, wenn man ohnehin gerade
+  // eine neue Zeile anlegen will. Nutzt dieselbe Route (inkl. KI-Analyse,
+  // Drive-Ablage, Dokumenttyp-Erkennung) wie der reguläre Dokumenten-Upload.
+  async function uploadDokument(file: File) {
+    setUploading(true)
+    setUploadError(null)
+    setUploadWarning(null)
+    setDokumentTypConfirm(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`/api/kontakte/${kontaktId}/dokumente`, { method: 'POST', body: formData })
+      const json = await res.json()
+
+      if (!res.ok || json.needsConfirmation) {
+        if (json.needsConfirmation) {
+          throw new Error(
+            'Ein möglicher Namenskonflikt mit einem anderen Kontakt wurde erkannt — bitte den Upload stattdessen im Dokumente-Tab durchführen.'
+          )
+        }
+        throw new Error(json.error || `Upload fehlgeschlagen: ${file.name}`)
+      }
+
+      if (json.analyseWarnung) {
+        setUploadWarning(`Dokument hochgeladen, aber KI-Analyse fehlgeschlagen: ${json.analyseWarnung}`)
+      }
+
+      if (json.dokument?.dokumenttyp) {
+        setDokumentTypConfirm({
+          dokumentId: json.dokument.id,
+          fileName: json.dokument.file_name,
+          dokumenttyp: json.dokument.dokumenttyp,
+          angebotStatus: 'versendet',
+          angebotUebernommen: false,
+        })
+      }
+
+      if (json.beitragsuebersichtVorschlag) {
+        const v = json.beitragsuebersichtVorschlag
+        const betragRoh = parseBeitrag(v.beitrag)
+        if (betragRoh !== null) {
+          setUebernahmeVorschlag({
+            sparte: v.sparte,
+            beitragOriginal: v.beitrag,
+            betragRoh,
+            versicherungsgesellschaft: v.versicherungsgesellschaft,
+            vertragsbeginn: v.vertragsbeginn,
+            vertragsende: v.vertragsende,
+            werte: { uebernehmen: true, spalte: v.vorschlagSpalte, zyklus: v.erkannterZyklus ?? '' },
+          })
+        }
+      }
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload fehlgeschlagen')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.currentTarget.files?.[0]
+    if (file) uploadDokument(file)
+  }
+
+  // Übernimmt den Vorschlag als neue Zeile in den lokalen Entwurf — kein
+  // eigener Server-Roundtrip, damit unsavte Änderungen im Panel nicht durch
+  // einen parallelen Schreibzugriff überschrieben werden können. Wird erst
+  // mit dem normalen "Speichern"-Button persistiert, wie jede andere Zeile.
+  function bestaetigeUebernahme() {
+    if (!uebernahmeVorschlag) return
+    const { werte } = uebernahmeVorschlag
+    if (werte.uebernehmen && werte.zyklus) {
+      const position = baueBeitragspositionAusVertrag({
+        sparte: uebernahmeVorschlag.sparte,
+        betragRoh: uebernahmeVorschlag.betragRoh,
+        betragZyklus: werte.zyklus,
+        zielZyklus: zyklus,
+        spalte: werte.spalte,
+        versicherungsgesellschaft: uebernahmeVorschlag.versicherungsgesellschaft,
+        beginn: uebernahmeVorschlag.vertragsbeginn,
+        ende: uebernahmeVorschlag.vertragsende,
+        beitragOriginalText: uebernahmeVorschlag.beitragOriginal,
+      })
+      setData((d) => ({ ...d, positionen: [...d.positionen, position] }))
+      setUploadWarning('✓ Zeile aus dem Dokument übernommen — im Entwurf ergänzt, „Speichern“ nicht vergessen.')
+    }
+    setUebernahmeVorschlag(null)
+  }
+
+  async function uebernehmeAlsAngebot() {
+    if (!dokumentTypConfirm) return
+    try {
+      const name = dokumentTypConfirm.fileName.replace(/\.[^.]+$/, '')
+      const res = await fetch('/api/angebote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contact_id: kontaktId,
+          name,
+          status: dokumentTypConfirm.angebotStatus,
+          dokument_id: dokumentTypConfirm.dokumentId,
+          created_by: 'dokument_upload',
+        }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Angebot konnte nicht angelegt werden')
+      setDokumentTypConfirm((c) => (c ? { ...c, angebotUebernommen: true } : c))
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Angebot konnte nicht angelegt werden')
+    }
   }
 
   function handleFlotteAktivChange(aktiv: boolean) {
@@ -158,8 +319,15 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
     }
   }
 
+  function pdfUrl(): string {
+    const params = new URLSearchParams()
+    if (!pdfMitBemerkungen) params.set('bemerkungen', '0')
+    const query = params.toString()
+    return `/api/kontakte/${kontaktId}/beitragsuebersicht/pdf${query ? `?${query}` : ''}`
+  }
+
   function handlePdf() {
-    window.open(`/api/kontakte/${kontaktId}/beitragsuebersicht/pdf`, '_blank')
+    window.open(pdfUrl(), '_blank')
   }
 
   async function handleSendMail() {
@@ -167,7 +335,7 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
     setMailError(null)
     setMailLoading(true)
     try {
-      const res = await fetch(`/api/kontakte/${kontaktId}/beitragsuebersicht/pdf`)
+      const res = await fetch(pdfUrl())
       if (!res.ok) throw new Error('PDF konnte nicht erzeugt werden')
       const blob = await res.blob()
       const file = new File([blob], `Beitragsuebersicht_${zeitstempelDateiname()}.pdf`, { type: 'application/pdf' })
@@ -200,6 +368,81 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
         </select>
         <span className="text-[11px] text-gray-400">Gilt für die gesamte Übersicht — alle Beträge unten sind €/{zyklusLabel}.</span>
       </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 hover:border-yellow-400 px-3 py-2.5 transition-colors">
+        <input ref={fileInputRef} type="file" id="beitragsuebersicht-upload" onChange={handleFileInput} disabled={uploading} className="hidden" />
+        <label htmlFor="beitragsuebersicht-upload" className="flex-1 min-w-[10rem] cursor-pointer text-xs text-gray-600 hover:text-gray-900">
+          {uploading ? (
+            <span className="text-yellow-600">⏳ KI analysiert Dokument…</span>
+          ) : (
+            <>📤 Vertrag/Angebot hochladen &amp; als Zeile übernehmen</>
+          )}
+        </label>
+      </div>
+
+      {uploadError && <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{uploadError}</div>}
+      {uploadWarning && <div className="p-2.5 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-800">{uploadWarning}</div>}
+
+      {dokumentTypConfirm && (
+        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs space-y-2">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <span className="text-indigo-900">
+              📄 <strong className="truncate">{dokumentTypConfirm.fileName}</strong> erkannt als:{' '}
+              <strong>{DOKUMENTTYP_LABEL[dokumentTypConfirm.dokumenttyp as keyof typeof DOKUMENTTYP_LABEL] ?? dokumentTypConfirm.dokumenttyp}</strong>
+            </span>
+            <button onClick={() => setDokumentTypConfirm(null)} className="text-indigo-400 hover:text-indigo-700" title="Ausblenden">
+              ✕
+            </button>
+          </div>
+          {dokumentTypConfirm.dokumenttyp === 'angebot' && (
+            dokumentTypConfirm.angebotUebernommen ? (
+              <p className="text-indigo-700">✓ Als Angebot in die Angebotsübersicht übernommen</p>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span>Zusätzlich als Angebot anlegen:</span>
+                <select
+                  value={dokumentTypConfirm.angebotStatus}
+                  onChange={(e) => setDokumentTypConfirm((c) => (c ? { ...c, angebotStatus: e.target.value as AngebotStatus } : c))}
+                  className="px-2 py-1 border border-indigo-300 rounded-lg bg-white focus:outline-none"
+                >
+                  {ANGEBOT_STATUS_OPTIONEN.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={uebernehmeAlsAngebot}
+                  className="px-2.5 py-1 font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors"
+                >
+                  Als Angebot übernehmen
+                </button>
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {uebernahmeVorschlag && (
+        <BeitragsuebersichtUebernahmeForm
+          werte={uebernahmeVorschlag.werte}
+          onChange={(werte) => setUebernahmeVorschlag((v) => (v ? { ...v, werte } : v))}
+          sparte={uebernahmeVorschlag.sparte}
+          beitragText={uebernahmeVorschlag.beitragOriginal}
+        />
+      )}
+      {uebernahmeVorschlag && (
+        <div className="flex justify-end gap-2 -mt-2">
+          <button onClick={() => setUebernahmeVorschlag(null)} className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600">
+            Verwerfen
+          </button>
+          <button
+            onClick={bestaetigeUebernahme}
+            disabled={uebernahmeVorschlag.werte.uebernehmen && !uebernahmeVorschlag.werte.zyklus}
+            className="px-3 py-1.5 text-xs font-semibold bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 text-gray-900 rounded-lg transition-colors"
+          >
+            Übernehmen
+          </button>
+        </div>
+      )}
 
       {pendingZyklus && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -240,6 +483,7 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
         <table className="w-full text-xs min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 text-gray-500">
+              <th className="px-1 py-2 w-6" />
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Sparte</th>
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Versicherer alt</th>
               <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Alt €/{zyklusLabel}</th>
@@ -255,7 +499,23 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
             {data.positionen.map((p, idx) => {
               const isFlotteZeile = !!p.ist_flotte_zeile
               return (
-                <tr key={idx} className="border-t border-gray-100">
+                <tr
+                  key={idx}
+                  className={`border-t border-gray-100 ${dragPositionIdx === idx ? 'opacity-40' : ''}`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => dropPosition(idx)}
+                >
+                  <td className="px-1 py-1.5 text-center">
+                    <span
+                      draggable
+                      onDragStart={() => setDragPositionIdx(idx)}
+                      onDragEnd={() => setDragPositionIdx(null)}
+                      className="cursor-grab text-gray-300 hover:text-gray-500 select-none"
+                      title="Ziehen zum Verschieben"
+                    >
+                      ⠿
+                    </span>
+                  </td>
                   <td className="px-2 py-1.5">
                     <input
                       type="text"
@@ -380,6 +640,7 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                 <table className="w-full text-xs min-w-[600px]">
                   <thead>
                     <tr className="bg-gray-50 text-gray-500">
+                      <th className="px-1 py-2 w-6" />
                       <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Kennzeichen</th>
                       <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Fahrzeug</th>
                       <th className="text-left font-semibold uppercase tracking-wide px-2 py-2">Alt €/{zyklusLabel}</th>
@@ -393,7 +654,23 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
                     {data.fahrzeuge.map((f, idx) => {
                       const diff = berechneDifferenz(f.beitrag_alt, f.beitrag_neu)
                       return (
-                        <tr key={idx} className="border-t border-gray-100">
+                        <tr
+                          key={idx}
+                          className={`border-t border-gray-100 ${dragFahrzeugIdx === idx ? 'opacity-40' : ''}`}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => dropFahrzeug(idx)}
+                        >
+                          <td className="px-1 py-1.5 text-center">
+                            <span
+                              draggable
+                              onDragStart={() => setDragFahrzeugIdx(idx)}
+                              onDragEnd={() => setDragFahrzeugIdx(null)}
+                              className="cursor-grab text-gray-300 hover:text-gray-500 select-none"
+                              title="Ziehen zum Verschieben"
+                            >
+                              ⠿
+                            </span>
+                          </td>
                           <td className="px-2 py-1.5">
                             <input
                               type="text"
@@ -477,13 +754,13 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
           </span>
         </div>
         <div className="flex gap-2 mt-3">
-          <div className={`flex-1 rounded-lg border px-3 py-2 text-center ${summen.ersparnisProJahr > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-300'}`}>
-            <div className="text-[10px] font-bold uppercase tracking-wide">✓ Ersparnis / Jahr</div>
-            <div className="text-lg font-extrabold tabular-nums">{fmtEuro(summen.ersparnisProJahr)}</div>
+          <div className={`flex-1 rounded-lg border px-3 py-2 text-center ${summen.ersparnis > 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-gray-50 border-gray-200 text-gray-300'}`}>
+            <div className="text-[10px] font-bold uppercase tracking-wide">✓ Ersparnis / {zyklusLabel}</div>
+            <div className="text-lg font-extrabold tabular-nums">{fmtEuro(summen.ersparnis)}</div>
           </div>
-          <div className={`flex-1 rounded-lg border px-3 py-2 text-center ${summen.mehrbeitragProMonat > 0 ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-300'}`}>
-            <div className="text-[10px] font-bold uppercase tracking-wide">Mehrbeitrag / Monat</div>
-            <div className="text-lg font-extrabold tabular-nums">{fmtEuro(summen.mehrbeitragProMonat)}</div>
+          <div className={`flex-1 rounded-lg border px-3 py-2 text-center ${summen.mehrbeitrag > 0 ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-300'}`}>
+            <div className="text-[10px] font-bold uppercase tracking-wide">Mehrbeitrag / {zyklusLabel}</div>
+            <div className="text-lg font-extrabold tabular-nums">{fmtEuro(summen.mehrbeitrag)}</div>
           </div>
         </div>
       </div>
@@ -491,6 +768,16 @@ export function BeitragsuebersichtPanel({ kontaktId, kontaktTyp, initialData, on
       {mailError && (
         <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">{mailError}</div>
       )}
+
+      <label className="flex items-center gap-2 text-xs text-gray-500">
+        <input
+          type="checkbox"
+          checked={pdfMitBemerkungen}
+          onChange={(e) => setPdfMitBemerkungen(e.target.checked)}
+          className="rounded border-gray-300 text-yellow-500 focus:ring-yellow-400"
+        />
+        Bemerkungen in PDF/E-Mail-Export einschließen
+      </label>
 
       <div className="flex gap-2 pt-2">
         <button

@@ -46,6 +46,21 @@ export function konvertiereBetrag(betrag: number, von: Zyklus, nach: Zyklus): nu
   return Math.round(betrag * faktor * 100) / 100
 }
 
+// KI liefert den Beitrag als freien Text ("521,60 EUR jährlich", "1.200 €
+// p.a."), keine Zahl — hier auf einen Euro-Betrag reduziert. Punkte gelten
+// als Tausendertrennzeichen (deutsches Format), Komma als Dezimaltrennzeichen.
+// Bewusst client-sicher (kein Server-Import) — wird sowohl serverseitig
+// (beitragsuebersicht-uebernahme.ts) als auch clientseitig (Beitragsübersicht-
+// Panel-Upload) genutzt.
+export function parseBeitrag(raw?: string | null): number | null {
+  if (!raw) return null
+  const bereinigt = raw.replace(/\./g, '')
+  const match = bereinigt.match(/(\d+)(?:,(\d+))?/)
+  if (!match) return null
+  const value = Number(`${match[1]}.${match[2] || '0'}`)
+  return Number.isFinite(value) && value > 0 ? value : null
+}
+
 /**
  * Default-Zielspalte aus contract_type: eigen (Allianz-Angebot Melih/Derya
  * Gün) → "neu", fremd/unknown → "alt" (sicherer Default, überschreibbar).
