@@ -7,8 +7,14 @@
 // einer zusammengeführten — keine Deduplizierung nach Sparte, siehe
 // Nutzer-Vorgabe "bei mehreren Policen zu einer Sparte mehrere Zeilen machen".
 import { createServerClient } from '@/lib/supabase/server'
-import type { Beitragsuebersicht, BeitragsPosition } from '@/types/beitragsuebersicht'
-import { konvertiereBetrag, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
+import type { Beitragsuebersicht } from '@/types/beitragsuebersicht'
+import { parseBeitrag, type Zyklus } from '@/lib/beitragsuebersicht-zyklus'
+import { baueBeitragspositionAusVertrag } from '@/lib/beitragsuebersicht-calc'
+
+// Re-exportiert für Bestandscode (z.B. api/ki-upload/commit), das parseBeitrag
+// bisher von hier importiert hat — die eigentliche Implementierung liegt
+// jetzt client-sicher in beitragsuebersicht-zyklus.ts.
+export { parseBeitrag }
 
 type SupabaseClient = ReturnType<typeof createServerClient>
 
@@ -24,18 +30,6 @@ export interface VertragsExtraktionFuerUebernahme {
   vertragsende?: string | null
 }
 
-// KI liefert den Beitrag als freien Text ("521,60 EUR jährlich", "1.200 €
-// p.a."), keine Zahl — hier auf einen Euro-Betrag reduziert. Punkte gelten
-// als Tausendertrennzeichen (deutsches Format), Komma als Dezimaltrennzeichen.
-export function parseBeitrag(raw?: string | null): number | null {
-  if (!raw) return null
-  const bereinigt = raw.replace(/\./g, '')
-  const match = bereinigt.match(/(\d+)(?:,(\d+))?/)
-  if (!match) return null
-  const value = Number(`${match[1]}.${match[2] || '0'}`)
-  return Number.isFinite(value) && value > 0 ? value : null
-}
-
 export async function uebernehmeVertragInBeitragsuebersicht(
   supabase: SupabaseClient,
   kontaktId: string,
@@ -44,8 +38,6 @@ export async function uebernehmeVertragInBeitragsuebersicht(
   const sparte = extraktion.sparte?.trim()
   const betragRoh = parseBeitrag(extraktion.beitrag)
   if (!sparte || betragRoh === null) return
-
-  const istEigenvertrag = extraktion.spalte === 'neu'
 
   try {
     const { data: kontakt, error } = await supabase
@@ -62,21 +54,18 @@ export async function uebernehmeVertragInBeitragsuebersicht(
     const heute = new Date().toISOString().slice(0, 10)
     const bestehend = kontakt?.beitragsuebersicht as Beitragsuebersicht | null
     const zielZyklus: Zyklus = bestehend?.zyklus ?? 'jaehrlich'
-    const wurdeUmgerechnet = extraktion.betragZyklus !== zielZyklus
-    const betrag = wurdeUmgerechnet ? konvertiereBetrag(betragRoh, extraktion.betragZyklus, zielZyklus) : betragRoh
 
-    const position: BeitragsPosition = {
+    const position = baueBeitragspositionAusVertrag({
       sparte,
-      versicherer_alt: istEigenvertrag ? '' : extraktion.versicherungsgesellschaft?.trim() || '',
-      beitrag_alt: istEigenvertrag ? null : betrag,
-      beitrag_neu: istEigenvertrag ? betrag : null,
-      beginn: extraktion.vertragsbeginn || null,
-      ablauf: extraktion.vertragsende || null,
-      bemerkung: wurdeUmgerechnet
-        ? `Automatisch aus Vertragsupload übernommen: „${extraktion.beitrag}" (umgerechnet)`
-        : `Automatisch aus Vertragsupload übernommen: „${extraktion.beitrag}"`,
-      automatisch_uebernommen: true,
-    }
+      betragRoh,
+      betragZyklus: extraktion.betragZyklus,
+      zielZyklus,
+      spalte: extraktion.spalte,
+      versicherungsgesellschaft: extraktion.versicherungsgesellschaft,
+      beginn: extraktion.vertragsbeginn,
+      ende: extraktion.vertragsende,
+      beitragOriginalText: extraktion.beitrag,
+    })
 
     const neu: Beitragsuebersicht = bestehend
       ? { ...bestehend, datum: heute, positionen: [...bestehend.positionen, position] }

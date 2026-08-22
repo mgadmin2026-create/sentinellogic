@@ -5,7 +5,9 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { buildBeitragsuebersichtPdfBuffer } from '@/lib/beitragsuebersicht-pdf'
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const includeBemerkungen = new URL(request.url).searchParams.get('bemerkungen') !== '0'
+
   const currentUser = await getCurrentUser()
   if (!currentUser) {
     return Response.json({ success: false, error: 'Nicht angemeldet' }, { status: 401 })
@@ -38,6 +40,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
       kundentyp,
       beratername,
       uebersicht: contact.beitragsuebersicht,
+      includeBemerkungen,
     })
 
     const filenameBase = `Beitragsuebersicht-${kundenname.replace(/[^a-zA-Z0-9äöüÄÖÜß]+/g, '-')}`

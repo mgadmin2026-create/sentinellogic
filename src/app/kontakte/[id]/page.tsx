@@ -780,13 +780,13 @@ export default function KontaktDetailPage() {
                         <div className="text-lg font-bold text-gray-900 tabular-nums">{fmtEuroKachel(summen.sumNeu)}</div>
                         <div className="text-[11px] text-gray-400 uppercase tracking-wide">Angebot Allianz / {kachelZyklusLabel}</div>
                       </div>
-                      {summen.ersparnisProJahr > 0 ? (
+                      {summen.ersparnis > 0 ? (
                         <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold px-2.5 py-1 rounded-full">
-                          ✓ Ersparnis {fmtEuroKachel(summen.ersparnisProJahr)} / Jahr
+                          ✓ Ersparnis {fmtEuroKachel(summen.ersparnis)} / {kachelZyklusLabel}
                         </span>
-                      ) : summen.mehrbeitragProMonat > 0 ? (
+                      ) : summen.mehrbeitrag > 0 ? (
                         <span className="bg-blue-50 text-blue-700 border border-blue-200 text-xs font-semibold px-2.5 py-1 rounded-full">
-                          Mehrbeitrag {fmtEuroKachel(summen.mehrbeitragProMonat)} / Monat
+                          Mehrbeitrag {fmtEuroKachel(summen.mehrbeitrag)} / {kachelZyklusLabel}
                         </span>
                       ) : (
                         <span className="text-xs text-gray-400">Kein Unterschied</span>
